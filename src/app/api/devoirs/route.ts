@@ -56,8 +56,18 @@ export async function GET(request: NextRequest) {
         .get();
       const classeIds = elevesSnap.docs.map((doc) => doc.data().classeId);
 
+      // devoir.classes contient des noms ("Formation"), eleve.classeId contient des IDs
+      // → résoudre les IDs en noms de classes
+      const classeNames: string[] = [];
+      for (const cId of classeIds) {
+        const classeDoc = await adminDb.collection('classes').doc(cId).get();
+        if (classeDoc.exists) {
+          classeNames.push(classeDoc.data()?.nom);
+        }
+      }
+
       devoirs = devoirs.filter(
-        (d) => d.disponible === true && d.classes.some((c: string) => classeIds.includes(c))
+        (d) => d.disponible === true && d.classes.some((c: string) => classeNames.includes(c))
       );
     }
 
