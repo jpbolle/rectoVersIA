@@ -2,9 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { type User } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, getFirestore } from 'firebase/firestore';
 import { signInWithGoogle, signOutUser, onTokenRefresh } from '@/lib/firebase/auth';
-import { getFirebaseApp } from '@/lib/firebase/config';
 import { getUserRole, isAdmin as checkIsAdmin } from '@/lib/auth-utils';
 import type { UserRole } from '@/types';
 
@@ -122,28 +120,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      // Creer ou mettre a jour le document utilisateur dans Firestore
-      const db = getFirestore(getFirebaseApp());
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          email,
-          role,
-          displayName: user.displayName || '',
-          createdAt: serverTimestamp(),
-          lastLoginAt: serverTimestamp(),
+      // Creer ou mettre a jour le document utilisateur via API (adminDb, bypass les rules)
+      const token = await user.getIdToken();
+      try {
+        await fetch('/api/auth/init-user', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ displayName: user.displayName || '' }),
         });
-      } else {
-        await setDoc(userRef, { lastLoginAt: serverTimestamp() }, { merge: true });
+      } catch {
+        console.error('Erreur init-user');
       }
 
       // Si c'est un eleve, lier son uid Firebase a son document dans la collection "eleves"
-      // via l'API serveur (qui utilise le SDK admin et bypasse les regles Firestore)
       if (role === 'eleve') {
         try {
-          const token = await user.getIdToken();
           await fetch('/api/eleves/link', {
             method: 'POST',
             headers: {
@@ -153,7 +147,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         } catch (linkError) {
           console.error('Erreur liaison eleve/user:', linkError);
-          // Ne pas bloquer la connexion si le linkage echoue
         }
       }
 

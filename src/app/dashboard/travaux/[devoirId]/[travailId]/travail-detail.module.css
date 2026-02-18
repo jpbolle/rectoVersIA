@@ -20,16 +20,34 @@
 .headerLeft {
   display: flex;
   align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  flex: 1;
+  gap: 16px;
   min-width: 0;
+  flex-shrink: 1;
 }
 
 .headerRight {
   display: flex;
   align-items: center;
+  gap: 16px;
   flex-shrink: 0;
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.logoLink:hover {
+  transform: scale(1.08);
+}
+
+.logoImg {
+  width: 40px;
+  height: 40px;
 }
 
 .backBtn {

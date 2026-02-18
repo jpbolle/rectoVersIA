@@ -19,9 +19,11 @@ service cloud.firestore {
              || exists(/databases/$(database)/documents/professeurs/$(request.auth.token.email));
     }
 
-    // Fonction helper pour verifier si l'utilisateur est autorise (domaine OU professeur enregistre)
+    // Fonction helper pour verifier si l'utilisateur est autorise
+    // (domaine cnddinant.be OU professeur enregistre OU eleve externe enregistre via init-user)
     function isAuthorizedUser() {
-      return isAuthorizedDomain() || isProf();
+      return isAuthorizedDomain() || isProf()
+             || exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     // Fonction helper pour verifier si l'utilisateur accede a son propre document
@@ -47,7 +49,7 @@ service cloud.firestore {
       allow read, write: if isAuthenticated() && isProf();
 
       // Les eleves peuvent lire les devoirs disponibles
-      allow read: if isAuthenticated() && isAuthorizedDomain()
+      allow read: if isAuthenticated() && isAuthorizedUser()
                     && resource.data.disponible == true;
     }
 
@@ -57,9 +59,9 @@ service cloud.firestore {
       allow read, write: if isAuthenticated() && isProf();
 
       // Les eleves peuvent lire/ecrire leurs propres resultats
-      allow read, write: if isAuthenticated() && isAuthorizedDomain()
+      allow read, write: if isAuthenticated() && isAuthorizedUser()
                            && resource.data.studentId == request.auth.uid;
-      allow create: if isAuthenticated() && isAuthorizedDomain()
+      allow create: if isAuthenticated() && isAuthorizedUser()
                       && request.resource.data.studentId == request.auth.uid;
     }
 
@@ -75,15 +77,15 @@ service cloud.firestore {
       allow read: if isAuthenticated() && isProf();
 
       // Les eleves peuvent lire leurs propres travaux
-      allow read: if isAuthenticated() && isAuthorizedDomain()
+      allow read: if isAuthenticated() && isAuthorizedUser()
                     && resource.data.studentId == request.auth.uid;
 
       // Les eleves peuvent creer un travail pour eux-memes
-      allow create: if isAuthenticated() && isAuthorizedDomain()
+      allow create: if isAuthenticated() && isAuthorizedUser()
                       && request.resource.data.studentId == request.auth.uid;
 
       // Les eleves peuvent mettre a jour leurs propres travaux (sauf si deja soumis)
-      allow update: if isAuthenticated() && isAuthorizedDomain()
+      allow update: if isAuthenticated() && isAuthorizedUser()
                       && resource.data.studentId == request.auth.uid
                       && (resource.data.status != 'submitted' || request.resource.data.status == 'submitted');
     }

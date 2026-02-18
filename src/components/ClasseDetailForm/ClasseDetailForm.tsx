@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useEleves } from '@/hooks/useClasses';
 import type { Classe, Eleve } from '@/types/classe';
 import styles from './ClasseDetailForm.module.css';
@@ -8,6 +8,7 @@ import styles from './ClasseDetailForm.module.css';
 interface ClasseDetailFormProps {
   classe: Classe;
   isVisible: boolean;
+  refreshKey?: number;
   onClose: () => void;
   onAddEleve: (classeId: string) => void;
   onEditEleve: (eleve: Eleve) => void;
@@ -17,12 +18,19 @@ interface ClasseDetailFormProps {
 export default function ClasseDetailForm({
   classe,
   isVisible,
+  refreshKey,
   onClose,
   onAddEleve,
   onEditEleve,
   onDeleteEleve,
 }: ClasseDetailFormProps) {
-  const { eleves, isLoading } = useEleves(isVisible ? classe.id : undefined);
+  const { eleves, isLoading, refetch } = useEleves(isVisible ? classe.id : undefined);
+
+  useEffect(() => {
+    if (refreshKey && refreshKey > 0) {
+      refetch();
+    }
+  }, [refreshKey, refetch]);
 
   return (
     <div className={`${styles.form} ${isVisible ? styles.formVisible : ''}`}>

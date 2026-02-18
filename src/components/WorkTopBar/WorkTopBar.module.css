@@ -18,6 +18,24 @@
   min-width: 0;
 }
 
+.logoLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.logoLink:hover {
+  transform: scale(1.08);
+}
+
+.logoImg {
+  width: 36px;
+  height: 36px;
+}
+
 .backButton {
   display: flex;
   align-items: center;

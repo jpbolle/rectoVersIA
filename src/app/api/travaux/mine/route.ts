@@ -45,13 +45,43 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Chercher le travail de l'eleve
+    // Chercher le travail de l'eleve par ID genere
     const travailId = generateTravailId(devoirId, auth.uid);
     const travailRef = adminDb.collection('travaux').doc(travailId);
-    const travailSnap = await travailRef.get();
+    let travailSnap = await travailRef.get();
+
+    // Fallback : chercher par email (travail pre-cree par ensureTravaux)
+    if (!travailSnap.exists) {
+      const emailQuery = await adminDb
+        .collection('travaux')
+        .where('devoirId', '==', devoirId)
+        .where('studentEmail', '==', auth.email.toLowerCase())
+        .limit(1)
+        .get();
+
+      if (!emailQuery.empty) {
+        // Reclamer le travail pre-cree : mettre a jour le studentId
+        const preCreatedDoc = emailQuery.docs[0];
+        const now = new Date().toISOString();
+        await preCreatedDoc.ref.update({
+          studentId: auth.uid,
+          updatedAt: now,
+        });
+
+        // Mettre a jour la correction associee si elle existe
+        const correctionId = `CORR-${preCreatedDoc.id}`;
+        const correctionRef = adminDb.collection('corrections').doc(correctionId);
+        const correctionSnap = await correctionRef.get();
+        if (correctionSnap.exists) {
+          await correctionRef.update({ studentId: auth.uid });
+        }
+
+        travailSnap = await preCreatedDoc.ref.get();
+      }
+    }
 
     if (!travailSnap.exists) {
-      // Pas de travail existant - creer un nouveau
+      // Pas de travail existant ni pre-cree - creer un nouveau
       const now = new Date().toISOString();
       const newTravail: Travail = {
         id: travailId,

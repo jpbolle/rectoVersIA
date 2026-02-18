@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import UserAvatar from '@/components/UserAvatar';
 import styles from './WorkTopBar.module.css';
@@ -51,6 +52,9 @@ export default function WorkTopBar({
   return (
     <header className={styles.container}>
       <div className={styles.left}>
+        <Link href="/" className={styles.logoLink}>
+          <img src="/logoRecto.png" alt="Recto-VersIA" className={styles.logoImg} />
+        </Link>
         <button
           type="button"
           className={styles.backButton}

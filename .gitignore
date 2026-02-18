@@ -39,6 +39,9 @@ yarn-error.log*
 # claude code
 .claude/
 
+# deployment guide (contains server details)
+DEPLOYMENT.md
+
 # legacy Google Apps Script
 code-correctia.gs
 

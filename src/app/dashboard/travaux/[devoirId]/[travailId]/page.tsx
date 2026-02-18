@@ -11,6 +11,7 @@ import { useAiGridEvaluation } from '@/hooks/useAiGridEvaluation';
 import { useAiSuggestions } from '@/hooks/useAiSuggestions';
 import { getDraftType } from '@/lib/draft-utils';
 import { blobToDataUrl } from '@/lib/firebase/audio-storage';
+import Link from 'next/link';
 import AssistancePanel from '@/components/AssistancePanel';
 import UserAvatar from '@/components/UserAvatar';
 import type { Travail } from '@/types/travail';
@@ -387,6 +388,9 @@ export default function TravailDetailPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
+          <Link href="/" className={styles.logoLink}>
+            <img src="/logoRecto.png" alt="Recto-VersIA" className={styles.logoImg} />
+          </Link>
           <button className={styles.backBtn} onClick={handleBack}>
             ←
           </button>
@@ -397,40 +401,42 @@ export default function TravailDetailPage() {
               Travail de <strong>{travail.studentName}</strong>
             </p>
           </div>
+        </div>
 
-          {travaux.length > 1 && (
-            <div className={styles.navigation}>
-              <button
-                className={styles.navBtn}
-                onClick={handlePrevious}
-                disabled={!hasPrevious}
-                title="Travail précédent"
-              >
-                ‹
-              </button>
-              <select
-                className={styles.navSelect}
-                value={travailId}
-                onChange={(e) => handleSelectTravail(e.target.value)}
-                title="Sélectionner un élève"
-              >
-                {travaux.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.studentName} {t.status === 'submitted' ? '✓' : '📝'}
-                  </option>
-                ))}
-              </select>
-              <button
-                className={styles.navBtn}
-                onClick={handleNext}
-                disabled={!hasNext}
-                title="Travail suivant"
-              >
-                ›
-              </button>
-            </div>
-          )}
+        {travaux.length > 1 && (
+          <div className={styles.navigation}>
+            <button
+              className={styles.navBtn}
+              onClick={handlePrevious}
+              disabled={!hasPrevious}
+              title="Travail précédent"
+            >
+              ‹
+            </button>
+            <select
+              className={styles.navSelect}
+              value={travailId}
+              onChange={(e) => handleSelectTravail(e.target.value)}
+              title="Sélectionner un élève"
+            >
+              {travaux.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.studentName} {t.status === 'submitted' ? '✓' : '📝'}
+                </option>
+              ))}
+            </select>
+            <button
+              className={styles.navBtn}
+              onClick={handleNext}
+              disabled={!hasNext}
+              title="Travail suivant"
+            >
+              ›
+            </button>
+          </div>
+        )}
 
+        <div className={styles.headerRight}>
           <div className={styles.headerActions}>
             {travail.status === 'submitted' && (
               <button
@@ -443,21 +449,17 @@ export default function TravailDetailPage() {
               </button>
             )}
 
-            <label className={`${styles.visibilityToggleBox} ${travail.status !== 'submitted' ? styles.visibilityDisabled : ''}`}>
+            <label className={styles.visibilityToggleBox}>
               <span className={styles.visibilityLabel}>Rendre visible pour cet élève</span>
               <input
                 type="checkbox"
                 checked={correction?.visibleParEleve || false}
                 onChange={toggleVisibility}
-                disabled={travail.status !== 'submitted'}
                 className={styles.toggleInput}
               />
               <span className={styles.toggleSwitch} />
             </label>
           </div>
-        </div>
-
-        <div className={styles.headerRight}>
           <UserAvatar />
         </div>
       </header>

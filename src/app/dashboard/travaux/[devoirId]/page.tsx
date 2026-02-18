@@ -7,6 +7,7 @@ import UserAvatar from '@/components/UserAvatar';
 import type { Devoir } from '@/types/devoir';
 import type { Travail } from '@/types/travail';
 import type { Correction } from '@/types/correction';
+import Link from 'next/link';
 import Footer from '@/components/Footer/Footer';
 import styles from './travaux.module.css';
 
@@ -101,19 +102,30 @@ export default function TravauxPage() {
     [devoir]
   );
 
-  // Séparer et trier les travaux
-  const { travauxNonCorriges, travauxCorriges } = useMemo(() => {
+  // Detecter si un travail n'a pas ete ouvert par l'eleve
+  const isNotOpened = useCallback((travail: Travail) => {
+    return travail.status === 'draft' && travail.content === '';
+  }, []);
+
+  // Separer et trier les travaux en 3 groupes
+  const { travauxNonOuverts, travauxNonCorriges, travauxCorriges } = useMemo(() => {
+    const nonOuverts: Travail[] = [];
     const nonCorriges: Travail[] = [];
     const corriges: Travail[] = [];
 
     for (const t of travaux) {
       const correction = corrections.get(t.id);
-      if (correction && correction.score > 0) {
+      if (isNotOpened(t)) {
+        nonOuverts.push(t);
+      } else if (correction && correction.score > 0) {
         corriges.push(t);
       } else {
         nonCorriges.push(t);
       }
     }
+
+    // Non ouverts : tri par nom
+    nonOuverts.sort((a, b) => a.studentName.localeCompare(b.studentName));
 
     // Non corrigés : à temps d'abord, puis en retard
     nonCorriges.sort((a, b) => {
@@ -127,8 +139,8 @@ export default function TravauxPage() {
     // Corrigés : tri par nom
     corriges.sort((a, b) => a.studentName.localeCompare(b.studentName));
 
-    return { travauxNonCorriges: nonCorriges, travauxCorriges: corriges };
-  }, [travaux, corrections, isLate]);
+    return { travauxNonOuverts: nonOuverts, travauxNonCorriges: nonCorriges, travauxCorriges: corriges };
+  }, [travaux, corrections, isLate, isNotOpened]);
 
   const handleBack = () => {
     router.push('/dashboard');
@@ -156,18 +168,20 @@ export default function TravauxPage() {
     );
   }
 
+  const notOpenedCount = travauxNonOuverts.length;
   const submittedCount = travaux.filter((t) => t.status === 'submitted').length;
-  const draftCount = travaux.filter((t) => t.status === 'draft').length;
+  const draftCount = travaux.filter((t) => t.status === 'draft' && t.content !== '').length;
 
   const renderCard = (travail: Travail) => {
     const correction = corrections.get(travail.id);
     const hasScore = correction && correction.score > 0;
     const late = isLate(travail);
+    const notOpened = isNotOpened(travail);
 
     return (
       <div
         key={travail.id}
-        className={styles.travailCard}
+        className={`${styles.travailCard} ${notOpened ? styles.travailCardNotOpened : ''}`}
         onClick={() => router.push(`/dashboard/travaux/${devoirId}/${travail.id}`)}
         role="button"
         tabIndex={0}
@@ -176,26 +190,34 @@ export default function TravauxPage() {
         <div className={styles.travailHeader}>
           <div className={styles.headerTags}>
             <span className={styles.studentName}>{travail.studentName}</span>
-            <span
-              className={`${styles.statusBadge} ${
-                travail.status === 'submitted' ? styles.statusSubmitted : styles.statusDraft
-              }`}
-            >
-              {travail.status === 'submitted' ? 'Remis' : 'Brouillon'}
-            </span>
+            {notOpened ? (
+              <span className={`${styles.statusBadge} ${styles.statusNotOpened}`}>
+                Non ouvert
+              </span>
+            ) : (
+              <span
+                className={`${styles.statusBadge} ${
+                  travail.status === 'submitted' ? styles.statusSubmitted : styles.statusDraft
+                }`}
+              >
+                {travail.status === 'submitted' ? 'Remis' : 'Brouillon'}
+              </span>
+            )}
             {late && <span className={styles.lateBadge}>En retard</span>}
           </div>
           {hasScore && (
             <span className={styles.scoreBubble}>{correction.score}%</span>
           )}
         </div>
-        <div className={styles.travailMeta}>
-          <span className={styles.date}>
-            {travail.submittedAt
-              ? `Remis le ${new Date(travail.submittedAt).toLocaleDateString('fr-BE')}`
-              : `Modifié le ${new Date(travail.updatedAt).toLocaleDateString('fr-BE')}`}
-          </span>
-        </div>
+        {!notOpened && (
+          <div className={styles.travailMeta}>
+            <span className={styles.date}>
+              {travail.submittedAt
+                ? `Remis le ${new Date(travail.submittedAt).toLocaleDateString('fr-BE')}`
+                : `Modifié le ${new Date(travail.updatedAt).toLocaleDateString('fr-BE')}`}
+            </span>
+          </div>
+        )}
       </div>
     );
   };
@@ -204,6 +226,9 @@ export default function TravauxPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
+          <Link href="/" className={styles.logoLink}>
+            <img src="/logoRecto.png" alt="Recto-VersIA" className={styles.logoImg} />
+          </Link>
           <button className={styles.backBtn} onClick={handleBack}>
             ←
           </button>
@@ -231,23 +256,42 @@ export default function TravauxPage() {
             <span className={styles.statValueWarning}>{draftCount}</span>
             <span className={styles.statLabel}>Brouillons</span>
           </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValueNotOpened}>{notOpenedCount}</span>
+            <span className={styles.statLabel}>Non ouverts</span>
+          </div>
         </div>
 
         {travaux.length === 0 ? (
           <div className={styles.empty}>
             <span>📝</span>
-            <p>Aucun travail soumis pour ce devoir.</p>
+            <p>Aucun élève dans les classes de ce devoir.</p>
           </div>
         ) : (
           <div className={styles.columns}>
-            {/* Colonne gauche : non corrigés */}
+            {/* Colonne gauche : non ouverts */}
+            <div className={styles.column}>
+              <h3 className={`${styles.columnTitle} ${styles.columnTitleNotOpened}`}>
+                🔒 Non ouvert par l&apos;élève
+                <span className={styles.columnCount}>{travauxNonOuverts.length}</span>
+              </h3>
+              {travauxNonOuverts.length === 0 ? (
+                <p className={styles.columnEmpty}>Tous les élèves ont ouvert leur copie.</p>
+              ) : (
+                <div className={styles.travauxList}>
+                  {travauxNonOuverts.map(renderCard)}
+                </div>
+              )}
+            </div>
+
+            {/* Colonne centrale : à corriger */}
             <div className={styles.column}>
               <h3 className={styles.columnTitle}>
                 📝 À corriger
                 <span className={styles.columnCount}>{travauxNonCorriges.length}</span>
               </h3>
               {travauxNonCorriges.length === 0 ? (
-                <p className={styles.columnEmpty}>Tous les travaux sont corrigés !</p>
+                <p className={styles.columnEmpty}>Aucun travail à corriger.</p>
               ) : (
                 <div className={styles.travauxList}>
                   {travauxNonCorriges.map(renderCard)}

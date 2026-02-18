@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateTravailId } from '@/lib/travail-utils';
+import { ensureTravaux } from '@/lib/precreate-travaux';
 import type { Travail, CreateTravailData } from '@/types/travail';
 
 // POST - Creer un nouveau travail (eleve uniquement)
@@ -103,6 +104,15 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const devoirId = searchParams.get('devoirId');
+
+    // Pre-creer les travaux manquants pour les eleves des classes du devoir
+    if (devoirId) {
+      try {
+        await ensureTravaux(devoirId, auth.uid);
+      } catch (err) {
+        console.error('Erreur ensureTravaux:', err);
+      }
+    }
 
     let query = adminDb.collection('travaux').orderBy('updatedAt', 'desc');
 

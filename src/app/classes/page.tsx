@@ -50,6 +50,7 @@ export default function ClassesPage() {
   const [editingEleve, setEditingEleve] = useState<Eleve | null>(null);
   const [selectedClasseId, setSelectedClasseId] = useState<string | null>(null);
   const [isSavingEleve, setIsSavingEleve] = useState(false);
+  const [elevesRefreshKey, setElevesRefreshKey] = useState(0);
 
   // Onglet actif: actives ou archives
   const [activeTab, setActiveTab] = useState<'actives' | 'archives'>('actives');
@@ -183,10 +184,7 @@ export default function ClassesPage() {
       const json = await res.json();
       if (json.success) {
         setMessage({ text: 'Élève supprimé', type: 'success' });
-        // Rafraîchir la liste si le détail est ouvert
-        if (selectedClasse?.id === eleve.classeId) {
-          setSelectedClasse({ ...selectedClasse });
-        }
+        setElevesRefreshKey((k) => k + 1);
       } else {
         throw new Error(json.message);
       }
@@ -224,10 +222,7 @@ export default function ClassesPage() {
         });
         setIsEleveModalOpen(false);
         setEditingEleve(null);
-        // Rafraîchir la liste si le détail est ouvert
-        if (selectedClasse?.id === selectedClasseId) {
-          setSelectedClasse({ ...selectedClasse });
-        }
+        setElevesRefreshKey((k) => k + 1);
       } else {
         throw new Error(json.message);
       }
@@ -334,6 +329,7 @@ export default function ClassesPage() {
             <ClasseDetailForm
               classe={selectedClasse}
               isVisible={!!selectedClasse}
+              refreshKey={elevesRefreshKey}
               onClose={() => setSelectedClasse(null)}
               onAddEleve={handleAddEleve}
               onEditEleve={handleEditEleve}

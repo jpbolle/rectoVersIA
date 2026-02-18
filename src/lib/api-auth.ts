@@ -2,15 +2,24 @@ import { NextRequest } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase/admin';
 import { getUserRole, isAdmin } from '@/lib/auth-utils';
 
-// Resolution de role asynchrone : hardcode + Firestore professeurs
+// Resolution de role asynchrone : hardcode + Firestore professeurs + Firestore eleves
 async function resolveUserRole(email: string): Promise<'prof' | 'eleve' | null> {
   const role = getUserRole(email);
   if (role) return role;
 
-  // Fallback : verifier la collection professeurs
   const emailLower = email.toLowerCase().trim();
+
+  // Fallback 1 : verifier la collection professeurs
   const profDoc = await adminDb.collection('professeurs').doc(emailLower).get();
   if (profDoc.exists) return 'prof';
+
+  // Fallback 2 : verifier la collection eleves (élèves externes importés dans une classe)
+  const eleveQuery = await adminDb
+    .collection('eleves')
+    .where('email', '==', emailLower)
+    .limit(1)
+    .get();
+  if (!eleveQuery.empty) return 'eleve';
 
   return null;
 }
