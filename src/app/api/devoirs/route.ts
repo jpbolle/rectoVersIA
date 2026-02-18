@@ -47,10 +47,18 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Les eleves ne voient que les devoirs disponibles
-    // Note: filtrage par classe a implementer plus tard
+    // Les eleves ne voient que les devoirs disponibles ET assignes a leur(s) classe(s)
     if (auth.role === 'eleve') {
-      devoirs = devoirs.filter((d) => d.disponible === true);
+      const email = auth.email.toLowerCase().trim();
+      const elevesSnap = await adminDb
+        .collection('eleves')
+        .where('email', '==', email)
+        .get();
+      const classeIds = elevesSnap.docs.map((doc) => doc.data().classeId);
+
+      devoirs = devoirs.filter(
+        (d) => d.disponible === true && d.classes.some((c: string) => classeIds.includes(c))
+      );
     }
 
     return NextResponse.json({ success: true, data: devoirs });
