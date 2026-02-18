@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "travaux",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "devoirId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

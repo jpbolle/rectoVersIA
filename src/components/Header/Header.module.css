@@ -1,0 +1,272 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #1f3a5f 0%, #2a4d73 100%);
+  z-index: 100;
+  box-shadow: 0 6px 20px rgba(26, 35, 126, 0.3);
+  border-bottom: 4px solid #1f3a5f;
+  padding: 25px 40px;
+}
+
+.headerContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.title {
+  color: white;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.subtitle {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  margin-top: 8px;
+  font-weight: 400;
+}
+
+.navButtons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 25px;
+}
+
+.navBtn {
+  padding: 12px 30px;
+  border: 2px solid white;
+  background: transparent;
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: inherit;
+}
+
+.navBtn:hover {
+  background: white;
+  color: #1f3a5f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.navBtnActive {
+  background: white;
+  color: #1f3a5f;
+}
+
+.navBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.navBtn:disabled:hover {
+  background: transparent;
+  color: white;
+  transform: none;
+  box-shadow: none;
+}
+
+.headerActions {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.circleBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.circleBtn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: white;
+  transform: scale(1.05);
+}
+
+.eyeIcon {
+  font-size: 18px;
+}
+
+.avatarContainer {
+  position: relative;
+}
+
+.avatarBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: linear-gradient(135deg, #7c4dff 0%, #536dfe 100%);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  overflow: hidden;
+}
+
+.avatarBtn:hover {
+  border-color: white;
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.initials {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  overflow: hidden;
+  z-index: 150;
+}
+
+.menuUserInfo {
+  padding: 15px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.menuEmail {
+  font-size: 13px;
+  color: #333;
+  word-break: break-all;
+}
+
+.menuItem {
+  width: 100%;
+  padding: 12px 15px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  font-family: inherit;
+}
+
+.menuItem:hover {
+  background: #f0f0f0;
+}
+
+.backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99;
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 20px 20px;
+  }
+  .title {
+    font-size: 24px;
+  }
+  .subtitle {
+    font-size: 14px;
+  }
+  .navButtons {
+    gap: 10px;
+    margin-top: 15px;
+  }
+  .navBtn {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+  .headerActions {
+    top: 12px;
+    right: 12px;
+    gap: 8px;
+  }
+  .circleBtn,
+  .avatarBtn {
+    width: 36px;
+    height: 36px;
+  }
+  .eyeIcon {
+    font-size: 16px;
+  }
+  .initials {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 15px 12px;
+  }
+  .title {
+    font-size: 20px;
+  }
+  .subtitle {
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .navButtons {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .navBtn {
+    padding: 10px 16px;
+    font-size: 12px;
+    width: 100%;
+  }
+  .headerActions {
+    position: static;
+    margin-top: 10px;
+    justify-content: center;
+    width: 100%;
+  }
+  .circleBtn,
+  .avatarBtn {
+    width: 38px;
+    height: 38px;
+  }
+  .dropdownMenu {
+    right: 50%;
+    transform: translateX(50%);
+  }
+}

@@ -1,0 +1,361 @@
+.form {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  margin-bottom: 0;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.formVisible {
+  display: block;
+}
+
+.formHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e8eaed;
+}
+
+.titleSection {
+  flex: 1;
+}
+
+.formTitle {
+  color: #1f3a5f;
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.description {
+  color: #5f6368;
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #5f6368;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s ease;
+  margin-left: 20px;
+}
+
+.closeButton:hover {
+  color: #d93025;
+}
+
+.stats {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+  border-radius: 12px;
+  border: 2px solid rgba(26, 115, 232, 0.2);
+}
+
+.statIcon {
+  font-size: 32px;
+}
+
+.statInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.statValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f3a5f;
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: #5f6368;
+  margin-top: 4px;
+}
+
+.elevesSection {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 24px;
+  overflow: hidden;
+}
+
+.elevesSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.sectionTitle {
+  color: #1f3a5f;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.addEleveBtn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.addEleveBtn:hover {
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+  transform: translateY(-1px);
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.emptyIcon {
+  font-size: 64px;
+  margin: 0 0 16px 0;
+  opacity: 0.3;
+}
+
+.emptyText {
+  color: #5f6368;
+  font-size: 16px;
+  margin: 0 0 24px 0;
+}
+
+.emptyBtn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.emptyBtn:hover {
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+  transform: translateY(-1px);
+}
+
+.elevesList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.eleveCard {
+  background: white;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.eleveCard:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: #1a73e8;
+}
+
+.eleveInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.eleveAvatar {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1f3a5f 0%, #2a4d73 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.eleveDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.eleveName {
+  color: #202124;
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eleveEmail {
+  color: #5f6368;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eleveActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.actionBtn {
+  background: white;
+  border: 1px solid #dadce0;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.actionBtn:hover {
+  background: #f1f3f4;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+  .formTitle {
+    font-size: 20px;
+  }
+
+  .description {
+    font-size: 13px;
+  }
+
+  .closeButton {
+    font-size: 28px;
+  }
+
+  .stats {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .statItem {
+    padding: 14px 16px;
+  }
+
+  .statIcon {
+    font-size: 28px;
+  }
+
+  .statValue {
+    font-size: 20px;
+  }
+
+  .elevesSection {
+    padding: 20px;
+  }
+
+  .elevesSectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .addEleveBtn {
+    width: 100%;
+  }
+
+  .eleveCard {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .eleveActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .formTitle {
+    font-size: 18px;
+  }
+
+  .elevesSection {
+    padding: 16px;
+  }
+
+  .sectionTitle {
+    font-size: 16px;
+  }
+
+  .eleveInfo {
+    width: 100%;
+  }
+
+  .eleveDetails {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .eleveName {
+    font-size: 14px;
+  }
+
+  .eleveEmail {
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

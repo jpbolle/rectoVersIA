@@ -1,0 +1,116 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Fonction helper pour verifier si l'utilisateur est authentifie
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Fonction helper pour verifier le domaine autorise
+    function isAuthorizedDomain() {
+      return request.auth.token.email.matches('.*@cnddinant[.]be$');
+    }
+
+    // Fonction helper pour verifier si c'est un professeur (admin hardcode + collection professeurs)
+    function isProf() {
+      return request.auth.token.email == 'jeanphilippe.bolle@cnddinant.be'
+             || exists(/databases/$(database)/documents/professeurs/$(request.auth.token.email));
+    }
+
+    // Fonction helper pour verifier si l'utilisateur est autorise (domaine OU professeur enregistre)
+    function isAuthorizedUser() {
+      return isAuthorizedDomain() || isProf();
+    }
+
+    // Fonction helper pour verifier si l'utilisateur accede a son propre document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Collection professeurs - acces uniquement via adminDb (deny all client)
+    match /professeurs/{email} {
+      allow read, write: if false;
+    }
+
+    // Collection users - chaque utilisateur peut lire/ecrire son propre document
+    match /users/{userId} {
+      allow read: if isAuthenticated() && isAuthorizedUser() && isOwner(userId);
+      allow create: if isAuthenticated() && isAuthorizedUser() && isOwner(userId);
+      allow update: if isAuthenticated() && isAuthorizedUser() && isOwner(userId);
+    }
+
+    // Collection devoirs
+    match /devoirs/{devoirId} {
+      // Le prof peut tout faire
+      allow read, write: if isAuthenticated() && isProf();
+
+      // Les eleves peuvent lire les devoirs disponibles
+      allow read: if isAuthenticated() && isAuthorizedDomain()
+                    && resource.data.disponible == true;
+    }
+
+    // Collection resultats (corrections et autoevaluations)
+    match /resultats/{resultatId} {
+      // Le prof peut tout lire et ecrire
+      allow read, write: if isAuthenticated() && isProf();
+
+      // Les eleves peuvent lire/ecrire leurs propres resultats
+      allow read, write: if isAuthenticated() && isAuthorizedDomain()
+                           && resource.data.studentId == request.auth.uid;
+      allow create: if isAuthenticated() && isAuthorizedDomain()
+                      && request.resource.data.studentId == request.auth.uid;
+    }
+
+    // Collection students (mapping email <-> studentId)
+    match /students/{studentId} {
+      // Seul le prof peut lire le mapping complet
+      allow read, write: if isAuthenticated() && isProf();
+    }
+
+    // Collection travaux (travaux des eleves)
+    match /travaux/{travailId} {
+      // Le prof peut tout lire
+      allow read: if isAuthenticated() && isProf();
+
+      // Les eleves peuvent lire leurs propres travaux
+      allow read: if isAuthenticated() && isAuthorizedDomain()
+                    && resource.data.studentId == request.auth.uid;
+
+      // Les eleves peuvent creer un travail pour eux-memes
+      allow create: if isAuthenticated() && isAuthorizedDomain()
+                      && request.resource.data.studentId == request.auth.uid;
+
+      // Les eleves peuvent mettre a jour leurs propres travaux (sauf si deja soumis)
+      allow update: if isAuthenticated() && isAuthorizedDomain()
+                      && resource.data.studentId == request.auth.uid
+                      && (resource.data.status != 'submitted' || request.resource.data.status == 'submitted');
+    }
+
+    // Collection classes (gestion des classes par le prof)
+    match /classes/{classeId} {
+      // Seul le prof peut gerer les classes
+      allow read, write: if isAuthenticated() && isProf();
+    }
+
+    // Collection eleves (gestion des eleves par le prof)
+    match /eleves/{eleveId} {
+      // Seul le prof peut gerer les eleves
+      allow read, write: if isAuthenticated() && isProf();
+    }
+
+    // Collection aiSuggestions (suggestions IA pour les eleves)
+    match /aiSuggestions/{suggestionId} {
+      // Le prof peut tout lire (Phase 2 : visibilite des suggestions)
+      allow read: if isAuthenticated() && isProf();
+
+      // Les eleves peuvent lire leurs propres suggestions
+      allow read: if isAuthenticated() && isAuthorizedUser()
+                    && resource.data.studentId == request.auth.uid;
+
+      // Ecriture uniquement via adminDb (API route)
+      allow write: if false;
+    }
+  }
+}

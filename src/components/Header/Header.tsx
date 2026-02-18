@@ -1,0 +1,62 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import UserAvatar from '@/components/UserAvatar';
+import styles from './Header.module.css';
+
+interface HeaderProps {
+  variant: 'prof' | 'student';
+  topOffset?: number;
+}
+
+export default function Header({ variant, topOffset = 0 }: HeaderProps) {
+  const router = useRouter();
+
+  return (
+    <header className={styles.header} style={topOffset ? { top: `${topOffset}px` } : undefined}>
+      <div className={styles.headerContent}>
+        <h1 className={styles.title}>Recto-VersIA</h1>
+        <p className={styles.subtitle}>
+          {variant === 'prof' ? 'Assistant de correction' : 'Aide à l\'écriture et à la réécriture'}
+        </p>
+
+        {variant === 'prof' && (
+          <nav className={styles.navButtons}>
+            <button
+              className={styles.navBtn}
+              onClick={() => router.push('/dashboard')}
+            >
+              Mes Devoirs
+            </button>
+            <button
+              className={styles.navBtn}
+              onClick={() => router.push('/classes')}
+            >
+              Mes Classes
+            </button>
+            <button
+              className={styles.navBtn}
+              onClick={() => router.push('/grilles')}
+            >
+              Mes Grilles
+            </button>
+          </nav>
+        )}
+      </div>
+
+      <div className={styles.headerActions}>
+        {variant === 'prof' && (
+          <button
+            className={styles.circleBtn}
+            onClick={() => router.push('/activites')}
+            title="Vue de l'élève"
+          >
+            <span className={styles.eyeIcon}>👁️</span>
+          </button>
+        )}
+
+        <UserAvatar />
+      </div>
+    </header>
+  );
+}

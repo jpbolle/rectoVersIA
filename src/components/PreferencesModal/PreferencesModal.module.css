@@ -1,0 +1,386 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 1000px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.25s ease;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid #e8eaed;
+}
+
+.title {
+  color: #1f3a5f;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #5f6368;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.closeButton:hover {
+  color: #1f3a5f;
+}
+
+.body {
+  padding: 25px;
+}
+
+.columns {
+  display: flex;
+  gap: 30px;
+}
+
+.controls {
+  flex: 0 0 45%;
+  min-width: 0;
+}
+
+.previewWrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.formGroup {
+  margin-bottom: 20px;
+}
+
+.label {
+  display: block;
+  color: #1f3a5f;
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #dadce0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background: white;
+  cursor: pointer;
+}
+
+.select:hover {
+  border-color: #1a73e8;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+/* Interligne */
+.lineHeightControl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stepButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid #dadce0;
+  border-radius: 8px;
+  background: white;
+  color: #5f6368;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.stepButton:hover:not(:disabled) {
+  border-color: #1a73e8;
+  color: #1a73e8;
+  background: #e8f0fe;
+}
+
+.stepButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.slider {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #dadce0;
+  border-radius: 3px;
+  outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1a73e8;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1a73e8;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.lineHeightValue {
+  font-size: 13px;
+  color: #5f6368;
+  min-width: 36px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* Theme grid */
+.themeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.themeOption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.themeOption:hover {
+  background: #f8f9fa;
+}
+
+.themeOptionActive {
+  border-color: #1a73e8;
+  background: #e8f0fe;
+}
+
+.themeSwatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.themeLabel {
+  font-size: 10px;
+  color: #5f6368;
+  white-space: nowrap;
+}
+
+/* Apercu */
+.previewLabel {
+  color: #1f3a5f;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.preview {
+  border: 2px solid #dadce0;
+  border-radius: 10px;
+  padding: 20px;
+  min-height: 220px;
+  transition: all 0.25s ease;
+}
+
+.preview p {
+  margin: 0 0 12px;
+}
+
+.preview p:last-child {
+  margin-bottom: 0;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 25px;
+  border-top: 1px solid #e8eaed;
+  background: #f8f9fa;
+  border-radius: 0 0 16px 16px;
+}
+
+.cancelButton,
+.saveButton {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.cancelButton {
+  background: white;
+  border: 1px solid #dadce0;
+  color: #5f6368;
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: #f1f3f4;
+}
+
+.saveButton {
+  background: #1a73e8;
+  border: none;
+  color: white;
+}
+
+.saveButton:hover:not(:disabled) {
+  background: #1557b0;
+}
+
+.saveButton:disabled,
+.cancelButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .modal {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .columns {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .controls {
+    flex: none;
+  }
+
+  .previewWrapper {
+    flex: none;
+  }
+
+  .header {
+    padding: 15px 20px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .body {
+    padding: 20px;
+  }
+
+  .footer {
+    padding: 15px 20px;
+    border-radius: 0;
+  }
+
+  .themeGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .overlay {
+    padding: 0;
+  }
+
+  .header {
+    padding: 12px 15px;
+  }
+
+  .body {
+    padding: 15px;
+  }
+
+  .footer {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .cancelButton,
+  .saveButton {
+    width: 100%;
+    text-align: center;
+  }
+
+  .themeGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

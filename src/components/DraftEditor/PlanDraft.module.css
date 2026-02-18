@@ -1,0 +1,362 @@
+.container {
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #dce4ec 0%, #c5d3e0 100%);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.headerIcon {
+  font-size: 18px;
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #416286;
+}
+
+.headerHint {
+  font-size: 12px;
+  color: #5f6368;
+  margin-left: auto;
+}
+
+/* -- Arbre -- */
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-left: 2cm;
+}
+
+/* -- Bloc idee principale -- */
+.mainBlock {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px;
+  max-width: 75%;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mainItem {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1.5px solid #dadce0;
+  border-radius: 10px;
+}
+
+/* -- Numero -- */
+.number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5f6368;
+  background: #f0f0f0;
+  flex-shrink: 0;
+  font-family: 'SF Mono', 'Menlo', monospace;
+}
+
+.numberMain {
+  background: #1f3a5f;
+  color: #fff;
+  font-size: 13px;
+  min-width: 28px;
+  height: 30px;
+}
+
+/* -- Input -- */
+.itemInput {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1.5px solid #e8eaed;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: none;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  background: #fafafa;
+}
+
+.itemInput:focus {
+  outline: none;
+  border-color: #416286;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(65, 98, 134, 0.12);
+}
+
+.itemInputMain {
+  font-weight: 500;
+  font-size: 14px;
+  background: #fff;
+  border-color: transparent;
+  color: #1f3a5f;
+  text-transform: uppercase;
+}
+
+.itemInputMain:focus {
+  border-color: #416286;
+}
+
+.itemInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* -- Bouton supprimer (x) -- */
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #5f6368;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.mainItem:hover .actionButton,
+.childItem:hover .actionButton {
+  opacity: 1;
+}
+
+.removeAction:hover {
+  background: #fce4ec;
+  color: #c62828;
+}
+
+/* -- Enfants (idees secondaires) -- */
+.children {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  position: relative;
+}
+
+.children::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #c5d3e0;
+}
+
+/* -- Sous-enfants (depth >= 2) -- */
+.subChildren {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  position: relative;
+}
+
+.subChildren::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+}
+
+.childContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.childItem {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+/* Indentation par profondeur — appliquée sur le contenu, pas le conteneur */
+.depth1 > .itemRow > .childItem { padding-left: 36px; }
+.depth2 > .itemRow > .childItem { padding-left: 68px; }
+.depth3 > .itemRow > .childItem { padding-left: 100px; }
+.depth4 > .itemRow > .childItem { padding-left: 132px; }
+
+/* Lignes verticales des sous-niveaux */
+.depth1 > .subChildren::before { left: 54px; background: #c8e6c9; }
+.depth2 > .subChildren::before { left: 86px; background: #d1c4e9; }
+.depth3 > .subChildren::before { left: 118px; background: #ffe0b2; }
+
+/* -- Styles par niveau de profondeur -- */
+
+/* Niveau 1 : idees secondaires (bleu clair) */
+.depth1 .childItem .number,
+.number1 {
+  background: #e3ecf5;
+  color: #416286;
+}
+
+/* Niveau 2 : sous-idees (vert pastel) */
+.depth2 .childItem .number,
+.number2 {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.depth2 > .childItem .itemInput {
+  border-color: #c8e6c9;
+}
+
+.depth2 > .childItem .itemInput:focus {
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+}
+
+/* Niveau 3 : (violet pastel) */
+.depth3 .childItem .number,
+.number3 {
+  background: #ede7f6;
+  color: #5e35b1;
+}
+
+.depth3 > .childItem .itemInput {
+  border-color: #d1c4e9;
+}
+
+.depth3 > .childItem .itemInput:focus {
+  border-color: #5e35b1;
+  box-shadow: 0 0 0 3px rgba(94, 53, 177, 0.1);
+}
+
+/* Niveau 4 : (orange pastel) */
+.depth4 .childItem .number,
+.number4 {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.depth4 > .childItem .itemInput {
+  border-color: #ffe0b2;
+}
+
+.depth4 > .childItem .itemInput:focus {
+  border-color: #e65100;
+  box-shadow: 0 0 0 3px rgba(230, 81, 0, 0.1);
+}
+
+/* Indent du bouton ajouter idee secondaire sous le main block */
+.mainBlock > .addChildButton {
+  margin-left: 22px;
+}
+
+/* Indent du bouton ajouter sous-idee par profondeur */
+.depth1 > .addChildButton { margin-left: 36px; }
+.depth2 > .addChildButton { margin-left: 68px; }
+.depth3 > .addChildButton { margin-left: 100px; }
+
+/* -- Bouton ajouter idee secondaire / sous-idee -- */
+.addChildButton {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  margin-top: 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #416286;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  align-self: flex-start;
+}
+
+.addChildButton:hover {
+  background: #dce4ec;
+}
+
+/* -- Encadre pointille ajouter idee principale -- */
+.addRootButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 8px 16px;
+  margin-top: 2.5cm;
+  margin-bottom: 8px;
+  border: 2px dashed #dadce0;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #416286;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.addRootButton:hover {
+  background: #dce4ec;
+  border-color: #8da5bd;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tree {
+    padding-left: 10px;
+  }
+
+  .depth1 > .itemRow > .childItem { padding-left: 24px; }
+  .depth2 > .itemRow > .childItem { padding-left: 48px; }
+  .depth3 > .itemRow > .childItem { padding-left: 72px; }
+  .depth4 > .itemRow > .childItem { padding-left: 96px; }
+
+  .children::before { left: 14px; }
+  .depth1 > .subChildren::before { left: 38px; }
+  .depth2 > .subChildren::before { left: 62px; }
+  .depth3 > .subChildren::before { left: 86px; }
+
+  .mainBlock > .addChildButton { margin-left: 14px; }
+  .depth1 > .addChildButton { margin-left: 24px; }
+  .depth2 > .addChildButton { margin-left: 48px; }
+  .depth3 > .addChildButton { margin-left: 72px; }
+
+  .headerHint {
+    display: none;
+  }
+}

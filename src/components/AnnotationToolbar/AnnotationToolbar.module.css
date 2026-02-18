@@ -1,0 +1,123 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  flex-wrap: wrap;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #5f6368;
+  margin-right: 4px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 12px;
+  border: 2px solid #dadce0;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  color: #3c4043;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: #1a73e8;
+  background: #f0f6ff;
+}
+
+.btn.active {
+  border-color: #1a73e8;
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spellingIcon {
+  text-decoration: underline solid #e53935 2px;
+  color: #e53935;
+}
+
+.syntaxIcon {
+  text-decoration: underline wavy #ff9800;
+  color: #ff9800;
+}
+
+.lexicalIcon {
+  background: #2d1a1a;
+  color: white;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.voiceIcon {
+  font-size: 16px;
+}
+
+/* Recording indicator */
+.recording {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  padding: 4px 12px;
+  background: #fce8e6;
+  border-radius: 16px;
+}
+
+.recordingDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e53935;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.recordingTime {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c62828;
+  font-variant-numeric: tabular-nums;
+}
+
+.stopBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #e53935;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.stopBtn:hover {
+  background: #c62828;
+}

@@ -1,0 +1,116 @@
+.pageWrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+}
+
+.pageWrapper.ready {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mainContent {
+  flex: 1;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 30px;
+  padding-top: 220px;
+}
+
+.archivesSection {
+  background: white;
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.sectionHeader {
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e8eaed;
+}
+
+.sectionTitle {
+  color: #1f3a5f;
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.sectionSubtitle {
+  color: #5f6368;
+  font-size: 14px;
+  margin: 0;
+}
+
+.archivesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 25px;
+}
+
+@media (max-width: 1080px) {
+  .mainContent {
+    padding: 25px;
+  }
+  .archivesSection {
+    padding: 28px;
+  }
+  .archivesGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .mainContent {
+    padding: 20px;
+  }
+
+  .archivesSection {
+    padding: 25px;
+  }
+
+  .sectionTitle {
+    font-size: 20px;
+  }
+
+  .archivesGrid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mainContent {
+    padding: 15px;
+  }
+
+  .archivesSection {
+    padding: 20px;
+    border-radius: 12px;
+  }
+
+  .sectionHeader {
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+  }
+
+  .sectionTitle {
+    font-size: 18px;
+  }
+
+  .sectionSubtitle {
+    font-size: 13px;
+  }
+
+  .archivesGrid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+}

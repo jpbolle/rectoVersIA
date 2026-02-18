@@ -1,0 +1,208 @@
+/* ═══ FlipEditor — Carte retournable Recto / Verso ═══ */
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Barre de bascule ── */
+.flipBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #f0f4f9 0%, #e8ecf1 100%);
+  border-bottom: 1px solid #dadce0;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.flipToggle {
+  display: flex;
+  gap: 0;
+  background: #fff;
+  border-radius: 8px;
+  border: 1.5px solid #dadce0;
+  overflow: hidden;
+}
+
+.flipButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #5f6368;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.flipButton:first-child {
+  border-right: 1px solid #dadce0;
+}
+
+.flipButtonActive {
+  background: #C55764;
+  color: #fff;
+}
+
+.flipButton:not(.flipButtonActive):hover {
+  background: #f0f4f9;
+}
+
+.flipIcon {
+  font-size: 14px;
+}
+
+.flipLabel {
+  font-size: 13px;
+}
+
+/* ── Bouton retourner ── */
+.flipAction {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1.5px solid #dadce0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #5f6368;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.flipAction:hover {
+  background: #dce4ec;
+  border-color: #8da5bd;
+  color: #416286;
+}
+
+.flipAction:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.flipActionIcon {
+  font-size: 16px;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.spinning {
+  animation: spinOnce 0.5s ease;
+}
+
+.flipActionText {
+  font-size: 13px;
+}
+
+@keyframes spinOnce {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Conteneur de la carte ── */
+.flipContainer {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  perspective: 1200px;
+}
+
+.flipCard {
+  width: 100%;
+  height: 100%;
+  transform-style: flat;
+  transition: none;
+}
+
+.cardFace {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Animation flip en 2 phases ── */
+
+/* Phase 1 : sortie — rotation 0 → 90° (la carte s'aplatit) */
+.flipOut {
+  animation: flipOutAnim 280ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes flipOutAnim {
+  0% {
+    transform: perspective(1200px) rotateY(0deg);
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: perspective(1200px) rotateY(90deg);
+    opacity: 0;
+  }
+}
+
+/* Phase 2 : entree — rotation -90° → 0° (la nouvelle face apparait) */
+.flipIn {
+  animation: flipInAnim 280ms ease-out forwards;
+}
+
+@keyframes flipInAnim {
+  0% {
+    transform: perspective(1200px) rotateY(-90deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: perspective(1200px) rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .flipBar {
+    padding: 6px 8px;
+  }
+
+  .flipButton {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .flipActionText {
+    display: none;
+  }
+
+  .flipAction {
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .flipLabel {
+    display: none;
+  }
+
+  .flipButton {
+    padding: 6px 8px;
+  }
+}

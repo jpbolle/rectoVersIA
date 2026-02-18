@@ -1,0 +1,405 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+/* ── Section (Outils / Document) ── */
+.section {
+  border: 1.5px solid #dadce0;
+  border-radius: 10px;
+  padding: 16px;
+  background: white;
+  transition: border-color 0.2s ease;
+}
+
+.section:focus-within {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.08);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.sectionIcon {
+  font-size: 18px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f3a5f;
+  margin: 0;
+}
+
+.sectionHint {
+  font-size: 12px;
+  color: #9aa0a6;
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+/* ── Textarea (Outils) ── */
+.textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #e8eaed;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 100px;
+  transition: all 0.2s ease;
+  background: #fafbfc;
+}
+
+.textarea:hover:not(:disabled) {
+  border-color: #1a73e8;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: #1a73e8;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.08);
+}
+
+.textarea:disabled {
+  background: #f8f9fa;
+  color: #5f6368;
+  cursor: not-allowed;
+}
+
+.textarea::placeholder {
+  color: #bdc1c6;
+}
+
+/* ── URL Preview ── */
+.linkPreviewBox {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #f0f7ff;
+  border-radius: 8px;
+  border: 1px solid #d2e3fc;
+}
+
+.previewLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.previewLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.linkPreview {
+  color: #1a73e8;
+  font-size: 13px;
+  text-decoration: none;
+  word-break: break-all;
+  transition: color 0.15s ease;
+}
+
+.linkPreview:hover {
+  color: #1557b0;
+  text-decoration: underline;
+}
+
+/* ── Document Editor ── */
+.editorContainer {
+  border: 1.5px solid #e8eaed;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  transition: border-color 0.2s ease;
+}
+
+.editorContainer:focus-within {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.08);
+}
+
+.editorDisabled {
+  background: #f8f9fa;
+  opacity: 0.7;
+}
+
+.editorToolbar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 8px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e8eaed;
+  flex-wrap: wrap;
+}
+
+.toolbarBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #5f6368;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.toolbarBtn:hover:not(:disabled) {
+  background: #e8eaed;
+  color: #202124;
+}
+
+.toolbarBtnActive {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.toolbarBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbarSep {
+  width: 1px;
+  height: 20px;
+  background: #dadce0;
+  margin: 0 4px;
+}
+
+.editorContent {
+  min-height: 150px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.editorContent :global(.tiptap) {
+  padding: 14px 16px;
+  min-height: 150px;
+  outline: none;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #202124;
+}
+
+.editorContent :global(.tiptap p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  float: left;
+  color: #bdc1c6;
+  pointer-events: none;
+  height: 0;
+}
+
+.editorContent :global(.tiptap h2) {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f3a5f;
+  margin: 16px 0 8px;
+}
+
+.editorContent :global(.tiptap h3) {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 12px 0 6px;
+}
+
+.editorContent :global(.tiptap p) {
+  margin: 0 0 8px;
+}
+
+.editorContent :global(.tiptap ul),
+.editorContent :global(.tiptap ol) {
+  padding-left: 24px;
+  margin: 4px 0 8px;
+}
+
+.editorLoading {
+  padding: 20px;
+  text-align: center;
+  color: #9aa0a6;
+  font-size: 13px;
+}
+
+/* ── Outils Editor ── */
+.outilsEditorContainer {
+  border: 1.5px solid #e8eaed;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  transition: border-color 0.2s ease;
+}
+
+.outilsEditorContainer:focus-within {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.08);
+}
+
+.outilsToolbar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e8eaed;
+}
+
+.outilsLinkBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: #f0f7ff;
+  border-bottom: 1px solid #d2e3fc;
+}
+
+.outilsLinkInput {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.outilsLinkInput:focus {
+  border-color: #1a73e8;
+}
+
+.outilsLinkOk {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: #1a73e8;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.outilsLinkOk:hover {
+  background: #1557b0;
+}
+
+.outilsLinkCancel {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: #e8eaed;
+  color: #5f6368;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.outilsLinkCancel:hover {
+  background: #dadce0;
+}
+
+.outilsEditorContent {
+  min-height: 80px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.outilsEditorContent :global(.tiptap) {
+  padding: 10px 14px;
+  min-height: 80px;
+  outline: none;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #202124;
+}
+
+.outilsEditorContent :global(.tiptap p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  float: left;
+  color: #bdc1c6;
+  pointer-events: none;
+  height: 0;
+}
+
+.outilsEditorContent :global(.tiptap p) {
+  margin: 0 0 4px;
+}
+
+.outilsEditorContent :global(.tiptap a) {
+  color: #1a73e8;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.outilsEditorContent :global(.tiptap a:hover) {
+  color: #1557b0;
+}
+
+.outilsEditorContent :global(.tiptap ul) {
+  padding-left: 20px;
+  margin: 2px 0 4px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .section {
+    padding: 14px;
+  }
+
+  .sectionTitle {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    gap: 16px;
+  }
+
+  .section {
+    padding: 12px;
+  }
+
+  .textarea {
+    padding: 10px 12px;
+    font-size: 16px;
+    min-height: 80px;
+  }
+
+  .editorContent {
+    min-height: 120px;
+  }
+
+  .editorContent :global(.tiptap) {
+    padding: 12px;
+    font-size: 15px;
+  }
+
+  .toolbarBtn {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+}

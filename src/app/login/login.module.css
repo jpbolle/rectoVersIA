@@ -1,0 +1,289 @@
+/* ── Background ── */
+.body {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('/manuscrit-miserables.jpeg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(2px) brightness(0.55);
+  transform: scale(1.05);
+  z-index: 0;
+}
+
+/* Light vignette — keeps manuscript visible */
+.body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 30%,
+    rgba(0, 0, 0, 0.25) 100%
+  );
+  z-index: 1;
+}
+
+/* ── Card ── */
+.loginContainer {
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-radius: 28px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  padding: 52px 48px 32px;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  animation: cardEnter 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  display: flex;
+  flex-direction: column;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Logo & Title ── */
+.logoSection {
+  margin-bottom: 8px;
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.appIcon {
+  width: 100px;
+  height: 100px;
+  display: block;
+  margin: 0 auto 20px;
+  border-radius: 24px;
+  box-shadow:
+    0 8px 24px rgba(74, 95, 193, 0.2),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.appIcon:hover {
+  transform: scale(1.05) rotate(-2deg);
+  box-shadow:
+    0 12px 32px rgba(74, 95, 193, 0.28),
+    0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.title {
+  background: linear-gradient(135deg, #4a5fc1 0%, #7b68ee 40%, #5ba8d0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 30px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  letter-spacing: -0.3px;
+}
+
+.subtitle {
+  color: #8b92a5;
+  font-size: 15px;
+  margin-bottom: 32px;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+}
+
+/* ── Divider ── */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin-bottom: 28px;
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #dadce0, transparent);
+}
+
+.dividerText {
+  font-size: 12px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ── Button wrapper for staggered animation ── */
+.buttonWrapper {
+  width: 100%;
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+
+/* ── Loading ── */
+.loading {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #f0f0f5;
+  border-top: 3px solid #7b68ee;
+  border-radius: 50%;
+  animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ── Error ── */
+.errorMessage {
+  background: linear-gradient(135deg, #fff5f5, #fee2e2);
+  color: #b91c1c;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-top: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+  animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+/* ── Footer ── */
+.footer {
+  margin-top: 36px;
+  padding: 0;
+  flex-shrink: 0;
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.45s both;
+}
+
+.footerLineWrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.footerLineSegment {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e2e4e9, transparent);
+  min-width: 0;
+}
+
+.footerLogoLink {
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.footerLogo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+}
+
+.footerLogoLink:hover .footerLogo {
+  opacity: 0.6;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .loginContainer {
+    padding: 44px 36px 28px;
+    max-width: 400px;
+    border-radius: 24px;
+  }
+  .appIcon {
+    width: 88px;
+    height: 88px;
+  }
+  .title {
+    font-size: 26px;
+  }
+  .subtitle {
+    margin-bottom: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .loginContainer {
+    padding: 32px 24px 22px;
+    border-radius: 20px;
+    margin: 0 8px;
+  }
+  .title {
+    font-size: 24px;
+  }
+  .subtitle {
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  .appIcon {
+    width: 76px;
+    height: 76px;
+    border-radius: 20px;
+  }
+  .dividerText {
+    font-size: 11px;
+  }
+  .footerLogo {
+    height: 40px;
+  }
+}

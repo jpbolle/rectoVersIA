@@ -1,0 +1,370 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import { useDevoirs } from '@/hooks/useDevoirs';
+import { useGrilleTypes } from '@/hooks/useEvaluations';
+import { useClasses } from '@/hooks/useClasses';
+import Header from '@/components/Header/Header';
+import Footer from '@/components/Footer/Footer';
+import CreationForm from '@/components/CreationForm/CreationForm';
+import DevoirCard from '@/components/DevoirCard/DevoirCard';
+import CreateDevoirCard from '@/components/CreateDevoirCard/CreateDevoirCard';
+import EditDevoirModal from '@/components/EditDevoirModal/EditDevoirModal';
+import LoadingOverlay from '@/components/LoadingOverlay/LoadingOverlay';
+import MessageBox from '@/components/MessageBox/MessageBox';
+import EmptyState from '@/components/EmptyState/EmptyState';
+import type { CreateDevoirData, Devoir } from '@/types/devoir';
+import styles from './dashboard.module.css';
+
+export default function DashboardPage() {
+  const { isAuthenticated, isLoading: authLoading, role } = useAuth();
+  const router = useRouter();
+  const {
+    devoirs,
+    isLoading: devoirsLoading,
+    createDevoir,
+    updateDevoir,
+    deleteDevoir,
+    toggleDisponible,
+    toggleArchive,
+    toggleCorrige,
+    toggleCorrigeDisponible,
+  } = useDevoirs();
+  const { grilleTypes } = useGrilleTypes();
+  const { classes } = useClasses();
+
+  // Noms des classes actives (non archivees), triees
+  const activeClasseNames = classes
+    .filter((c) => !c.archive)
+    .map((c) => c.nom)
+    .sort((a, b) => a.localeCompare(b));
+
+  const [isReady, setIsReady] = useState(false);
+  const [isFormVisible, setIsFormVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // Edition modal
+  const [editingDevoir, setEditingDevoir] = useState<Devoir | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Devoirs non archivés, séparés en "en cours" et "corrigés"
+  const devoirsActuels = devoirs.filter((d) => !d.archive && !d.corrige);
+  const devoirsCorreges = devoirs.filter((d) => !d.archive && d.corrige);
+  const devoirsArchives = devoirs.filter((d) => d.archive);
+
+  // Onglet actif
+  const [activeTab, setActiveTab] = useState<'actuels' | 'archives'>('actuels');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      router.replace('/login');
+    } else if (role !== 'prof') {
+      router.replace('/activites');
+    }
+  }, [isAuthenticated, authLoading, role, router]);
+
+  const handleCreateDevoir = useCallback(
+    async (data: CreateDevoirData) => {
+      setIsSubmitting(true);
+      try {
+        await createDevoir(data);
+        setMessage({ text: 'Devoir créé avec succès !', type: 'success' });
+        setIsFormVisible(false);
+      } catch (err) {
+        setMessage({
+          text: err instanceof Error ? err.message : 'Erreur lors de la creation',
+          type: 'error',
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [createDevoir]
+  );
+
+  const handleToggleDisponible = useCallback(
+    async (id: string, disponible: boolean) => {
+      try {
+        await toggleDisponible(id, disponible);
+      } catch (err) {
+        setMessage({
+          text: err instanceof Error ? err.message : 'Erreur lors de la mise a jour',
+          type: 'error',
+        });
+      }
+    },
+    [toggleDisponible]
+  );
+
+  const handleToggleArchive = useCallback(
+    async (id: string, archive: boolean) => {
+      try {
+        await toggleArchive(id, archive);
+        if (archive) {
+          setMessage({ text: 'Devoir archivé', type: 'success' });
+        }
+      } catch (err) {
+        setMessage({
+          text: err instanceof Error ? err.message : 'Erreur lors de l\'archivage',
+          type: 'error',
+        });
+      }
+    },
+    [toggleArchive]
+  );
+
+  const handleToggleCorrige = useCallback(
+    async (id: string, corrige: boolean) => {
+      try {
+        await toggleCorrige(id, corrige);
+      } catch (err) {
+        setMessage({
+          text: err instanceof Error ? err.message : 'Erreur lors de la mise à jour',
+          type: 'error',
+        });
+      }
+    },
+    [toggleCorrige]
+  );
+
+  const handleToggleCorrigeDisponible = useCallback(
+    async (id: string, corrigeDisponible: boolean) => {
+      try {
+        await toggleCorrigeDisponible(id, corrigeDisponible);
+      } catch (err) {
+        setMessage({
+          text: err instanceof Error ? err.message : 'Erreur lors de la mise à jour',
+          type: 'error',
+        });
+      }
+    },
+    [toggleCorrigeDisponible]
+  );
+
+  // --- Sélection multiple supprimée ---
+
+  const handleEditDevoir = useCallback((devoir: Devoir) => {
+    setEditingDevoir(devoir);
+  }, []);
+
+  const handleDeleteDevoir = useCallback(
+    async (devoir: Devoir) => {
+      if (!confirm(`Supprimer le devoir "${devoir.intitule}" ? Cette action est irréversible.`)) {
+        return;
+      }
+      try {
+        await deleteDevoir(devoir.id);
+        setMessage({ text: 'Devoir supprimé avec succès', type: 'success' });
+      } catch (err) {
+        setMessage({
+          text: err instanceof Error ? err.message : 'Erreur lors de la suppression',
+          type: 'error',
+        });
+      }
+    },
+    [deleteDevoir]
+  );
+
+  const handleDuplicateDevoir = useCallback(
+    async (devoir: Devoir) => {
+      try {
+        await createDevoir({
+          intitule: `${devoir.intitule} (copie)`,
+          grille: devoir.grille,
+          classes: devoir.classes,
+          dateRemise: devoir.dateRemise,
+          consignes: devoir.consignes || '',
+          accesIA: devoir.accesIA,
+          disponible: false,
+          ressources: devoir.ressources || null,
+        });
+        setMessage({ text: 'Devoir dupliqué avec succès !', type: 'success' });
+      } catch (err) {
+        setMessage({
+          text: err instanceof Error ? err.message : 'Erreur lors de la duplication',
+          type: 'error',
+        });
+      }
+    },
+    [createDevoir]
+  );
+
+  const handleSaveEdit = useCallback(
+    async (id: string, data: Partial<Devoir>) => {
+      setIsSaving(true);
+      try {
+        await updateDevoir(id, data);
+        setMessage({ text: 'Devoir modifié avec succès !', type: 'success' });
+        setEditingDevoir(null);
+      } catch (err) {
+        setMessage({
+          text: err instanceof Error ? err.message : 'Erreur lors de la modification',
+          type: 'error',
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [updateDevoir]
+  );
+
+  if (authLoading) return null;
+
+  return (
+    <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
+      <Header variant="prof" />
+
+      <main className={styles.mainContent}>
+        <MessageBox
+          message={message?.text || null}
+          type={message?.type || 'success'}
+          onDismiss={() => setMessage(null)}
+        />
+
+        <section className={styles.evaluationsSection}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Mes Devoirs</h2>
+            <div className={styles.headerActions}>
+              <div className={styles.tabs}>
+                <button
+                  type="button"
+                  className={`${styles.tab} ${activeTab === 'actuels' ? styles.tabActive : ''}`}
+                  onClick={() => setActiveTab('actuels')}
+                >
+                  Travaux actuels
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.tab} ${activeTab === 'archives' ? styles.tabActive : ''}`}
+                  onClick={() => setActiveTab('archives')}
+                >
+                  Travaux archivés
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {activeTab === 'actuels' ? (
+            <>
+              {/* Travaux en cours */}
+              <h3 className={styles.subSectionTitle}>📝 Travaux en cours</h3>
+              <div className={styles.evaluationsGrid}>
+                {devoirsLoading ? (
+                  <EmptyState icon="hourglass" message="Chargement..." />
+                ) : devoirsActuels.length === 0 && devoirsCorreges.length === 0 ? (
+                  <CreateDevoirCard onClick={() => setIsFormVisible(true)} />
+                ) : devoirsActuels.length === 0 ? (
+                  <p className={styles.emptySubSection}>Aucun travail en cours</p>
+                ) : (
+                  <>
+                    {devoirsActuels.map((devoir) => (
+                      <DevoirCard
+                        key={devoir.id}
+                        devoir={devoir}
+                        variant="prof"
+                        onEdit={handleEditDevoir}
+                        onDelete={handleDeleteDevoir}
+                        onDuplicate={handleDuplicateDevoir}
+                        onToggleDisponible={handleToggleDisponible}
+                        onToggleArchive={handleToggleArchive}
+                        onToggleCorrige={handleToggleCorrige}
+                        onToggleCorrigeDisponible={handleToggleCorrigeDisponible}
+                      />
+                    ))}
+                  </>
+                )}
+                {!devoirsLoading && (devoirsActuels.length > 0 || devoirsCorreges.length > 0) && (
+                  <CreateDevoirCard onClick={() => setIsFormVisible(true)} />
+                )}
+              </div>
+
+              {/* Travaux corrigés */}
+              {devoirsCorreges.length > 0 && (
+                <>
+                  <h3 className={`${styles.subSectionTitle} ${styles.subSectionTitleCorrige}`}>✅ Travaux corrigés</h3>
+                  <div className={styles.evaluationsGrid}>
+                    {devoirsCorreges.map((devoir) => (
+                      <DevoirCard
+                        key={devoir.id}
+                        devoir={devoir}
+                        variant="prof"
+                        onEdit={handleEditDevoir}
+                        onDelete={handleDeleteDevoir}
+                        onDuplicate={handleDuplicateDevoir}
+                        onToggleDisponible={handleToggleDisponible}
+                        onToggleArchive={handleToggleArchive}
+                        onToggleCorrige={handleToggleCorrige}
+                        onToggleCorrigeDisponible={handleToggleCorrigeDisponible}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            /* Onglet Archives */
+            <div className={styles.evaluationsGrid}>
+              {devoirsLoading ? (
+                <EmptyState icon="hourglass" message="Chargement..." />
+              ) : devoirsArchives.length === 0 ? (
+                <EmptyState icon="archive" message="Aucun devoir archivé" />
+              ) : (
+                devoirsArchives.map((devoir) => (
+                  <DevoirCard
+                    key={devoir.id}
+                    devoir={devoir}
+                    variant="prof"
+                    onEdit={handleEditDevoir}
+                    onDelete={handleDeleteDevoir}
+                    onDuplicate={handleDuplicateDevoir}
+                    onToggleDisponible={handleToggleDisponible}
+                    onToggleArchive={handleToggleArchive}
+                    onToggleCorrige={handleToggleCorrige}
+                    onToggleCorrigeDisponible={handleToggleCorrigeDisponible}
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </section>
+
+        {isFormVisible && (
+          <section className={styles.creationSection}>
+            <CreationForm
+              classeNames={activeClasseNames}
+              grilleTypes={grilleTypes}
+              isVisible={isFormVisible}
+              onSubmit={handleCreateDevoir}
+              isSubmitting={isSubmitting}
+              onClose={() => setIsFormVisible(false)}
+            />
+          </section>
+        )}
+      </main>
+
+      <Footer />
+
+      <EditDevoirModal
+        devoir={editingDevoir}
+        classeNames={activeClasseNames}
+        grilleTypes={grilleTypes}
+        isOpen={editingDevoir !== null}
+        onClose={() => setEditingDevoir(null)}
+        onSave={handleSaveEdit}
+        isSaving={isSaving}
+      />
+
+      <LoadingOverlay isVisible={isNavigating} message="Chargement de l'interface..." />
+    </div>
+  );
+}

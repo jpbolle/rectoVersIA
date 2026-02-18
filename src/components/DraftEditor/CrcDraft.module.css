@@ -1,0 +1,710 @@
+.container {
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* ===== HEADER BANDEAU ===== */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #dce4ec 0%, #c5d3e0 100%);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.stepBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: #1f3a5f;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #416286;
+}
+
+.headerHint {
+  font-size: 12px;
+  color: #5f6368;
+  margin-left: auto;
+}
+
+/* ===== COLONNES BRAINSTORMING ===== */
+.columns {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+}
+
+.column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.divider {
+  width: 2px;
+  background: linear-gradient(to bottom, #e0e0e0, transparent);
+  margin: 0 12px;
+  flex-shrink: 0;
+}
+
+/* -- Column headers -- */
+.columnHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.columnHeader h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.columnIcon {
+  font-size: 14px;
+}
+
+.positiveHeader {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.negativeHeader {
+  background: #fce4ec;
+  color: #c62828;
+}
+
+/* ===== CARDS (ETIQUETTES) ===== */
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  border: 1.5px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+  transition: all 0.2s ease;
+  cursor: default;
+  position: relative;
+}
+
+.card[draggable="true"] {
+  cursor: grab;
+}
+
+.card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.cardPositive {
+  border-left: 3px solid #4caf50;
+}
+
+.cardNegative {
+  border-left: 3px solid #ef5350;
+}
+
+.cardDragging {
+  opacity: 0.4;
+  transform: scale(0.97);
+}
+
+/* -- Card header -- */
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cardBullet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.bulletPositive {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.bulletNegative {
+  background: #fce4ec;
+  color: #c62828;
+}
+
+/* -- Card inputs -- */
+.cardInput {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1.5px solid #e8eaed;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: none;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  background: #fafafa;
+}
+
+.cardInput:focus {
+  outline: none;
+  border-color: #416286;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(65, 98, 134, 0.1);
+}
+
+.cardInputMain {
+  font-weight: 500;
+  font-size: 14px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.cardInputMain:focus {
+  border-color: #416286;
+  background: #fff;
+}
+
+.cardInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* -- Résumé replié (card) -- */
+.cardSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  margin-left: 30px;
+  padding-left: 10px;
+  border-left: 2px solid #e8eaed;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.cardSummary:hover {
+  background: #f5f5f5;
+}
+
+.cardSummaryArg {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* -- Sous-champs (arguments) -- */
+.subFields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+  margin-left: 30px;
+  padding-left: 10px;
+  border-left: 2px solid #e8eaed;
+}
+
+.argumentBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #eee;
+}
+
+.argumentBlock:last-of-type {
+  border-bottom: none;
+}
+
+.argumentHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.argumentNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e8eaed;
+  color: #5f6368;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.argRemoveBtn {
+  opacity: 0.4 !important;
+}
+
+.argRemoveBtn:hover {
+  opacity: 1 !important;
+}
+
+.argumentFields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 24px;
+}
+
+.argumentField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.addArgBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1.5px dashed #dadce0;
+  border-radius: 6px;
+  background: transparent;
+  color: #416286;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.addArgBtn:hover {
+  background: #e3f2fd;
+  border-color: #90caf9;
+  color: #1565c0;
+}
+
+.subLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* -- Résumé arguments dans le plan -- */
+.planItemArgSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 8px;
+  border-left: 1.5px solid #e8eaed;
+  margin-top: 2px;
+}
+
+/* -- Boutons action -- */
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #5f6368;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.card:hover .actionBtn,
+.planItemWrapper:hover .actionBtn {
+  opacity: 1;
+}
+
+/* -- Chevron toggle -- */
+.chevronBtn {
+  opacity: 1 !important;
+  font-size: 16px;
+  color: #9e9e9e;
+  transition: transform 0.2s ease, color 0.15s ease;
+}
+
+.chevronBtn:hover {
+  color: #416286;
+  background: #e3f2fd;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.editBtn:hover {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.removeBtn:hover {
+  background: #fce4ec;
+  color: #c62828;
+}
+
+.planItemActions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.dragHint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #9e9e9e;
+  font-style: italic;
+  text-align: center;
+}
+
+/* -- Boutons ajouter -- */
+.addButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 2px dashed #dadce0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 4px;
+}
+
+.addPositive {
+  color: #2e7d32;
+}
+
+.addPositive:hover {
+  background: #e8f5e9;
+  border-color: #4caf50;
+}
+
+.addNegative {
+  color: #c62828;
+}
+
+.addNegative:hover {
+  background: #fce4ec;
+  border-color: #ef5350;
+}
+
+/* ===== PLAN D'ARGUMENTATION ===== */
+.planSection {
+  margin-top: 2cm;
+  padding-top: 20px;
+  border-top: 2px solid #e8eaed;
+}
+
+/* -- Avis général -- */
+.avisGeneral {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.avisLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f3a5f;
+}
+
+.avisInput {
+  padding: 10px 12px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.avisInput:focus {
+  outline: none;
+  border-color: #416286;
+  box-shadow: 0 0 0 3px rgba(65, 98, 134, 0.1);
+}
+
+.avisInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.planZone {
+  min-height: 80px;
+  border: 2px dashed #dadce0;
+  border-radius: 12px;
+  padding: 12px;
+  transition: all 0.2s ease;
+  background: #fafafa;
+  margin-left: 2cm;
+}
+
+.planZoneActive {
+  border-color: #1a73e8;
+  background: #e8f0fe;
+}
+
+.planEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  color: #9e9e9e;
+  font-size: 13px;
+  font-style: italic;
+  text-align: center;
+}
+
+.planEmpty p {
+  margin: 0;
+}
+
+.planItems {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.planItemRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planItemWrapper {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: grab;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.planItemWrapper:active {
+  cursor: grabbing;
+}
+
+.planItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.planItemPositive {
+  border-left: 3px solid #4caf50;
+}
+
+.planItemNegative {
+  border-left: 3px solid #ef5350;
+}
+
+.planItemDragOver {
+  border-top: 2px solid #1a73e8;
+}
+
+.planItemNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1f3a5f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-family: 'SF Mono', 'Menlo', monospace;
+}
+
+.planItemBullet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.planItemContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.planItemText {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f3a5f;
+}
+
+.planItemSub {
+  font-size: 11px;
+  color: #5f6368;
+}
+
+.planItemIllustration {
+  font-size: 11px;
+  color: #8d6e63;
+  font-style: italic;
+}
+
+.planItemHandle {
+  font-size: 16px;
+  color: #bdbdbd;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* ===== POPUP D'EDITION ===== */
+.editPopup {
+  border-top: 1px solid #e8eaed;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 0 0 8px 8px;
+  cursor: default;
+}
+
+.editPopupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.editPopupTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #416286;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.editPopupClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #5f6368;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.editPopupClose:hover {
+  background: #fce4ec;
+  color: #c62828;
+}
+
+.editPopupFields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editPopupField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.editPopupField .cardInput {
+  background: #fff;
+  border-color: #e0e0e0;
+}
+
+.planDropTarget {
+  min-height: 8px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.planDropTarget.planItemDragOver {
+  min-height: 4px;
+  background: #1a73e8;
+  margin: 4px 0;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .columns {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .divider {
+    width: 100%;
+    height: 2px;
+    margin: 0;
+  }
+
+  .headerHint {
+    display: none;
+  }
+
+  .subFields {
+    margin-left: 16px;
+  }
+
+  .planSection {
+    margin-top: 1cm;
+  }
+}

@@ -1,0 +1,151 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 20px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.content {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #202124;
+  white-space: pre-wrap;
+}
+
+.link {
+  color: #1a73e8;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.empty {
+  margin: 0;
+  font-size: 14px;
+  color: #9aa0a6;
+  font-style: italic;
+}
+
+.textRessource {
+  background: #fff;
+  border: 1px solid #e8eaed;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.fileList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fileItem {
+  margin: 0;
+}
+
+.fileLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #e8eaed;
+  border-radius: 6px;
+  color: #1a73e8;
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.fileLink:hover {
+  background: #e8f0fe;
+  border-color: #1a73e8;
+}
+
+.fileIcon {
+  font-size: 16px;
+}
+
+.fileName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.infoGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.infoLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #9aa0a6;
+}
+
+.infoValue {
+  font-size: 14px;
+  color: #202124;
+}
+
+.iaBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border-radius: 20px;
+  font-size: 13px;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .container {
+    gap: 20px;
+  }
+
+  .content {
+    padding: 14px;
+  }
+
+  .fileLink {
+    padding: 10px;
+  }
+}

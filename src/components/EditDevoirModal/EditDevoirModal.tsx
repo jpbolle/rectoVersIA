@@ -1,0 +1,248 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Toggle from '@/components/Toggle/Toggle';
+import DatePicker from '@/components/DatePicker/DatePicker';
+import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
+import { getTodayString } from '@/lib/devoir-utils';
+import type { Devoir, Classe, DevoirRessource } from '@/types/devoir';
+import styles from './EditDevoirModal.module.css';
+
+interface EditDevoirModalProps {
+  devoir: Devoir | null;
+  classeNames: string[];
+  grilleTypes: string[];
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (id: string, data: Partial<Devoir>) => Promise<void>;
+  isSaving: boolean;
+}
+
+export default function EditDevoirModal({
+  devoir,
+  classeNames,
+  grilleTypes,
+  isOpen,
+  onClose,
+  onSave,
+  isSaving,
+}: EditDevoirModalProps) {
+  const [selectedClasses, setSelectedClasses] = useState<Classe[]>([]);
+  const [dateRemise, setDateRemise] = useState('');
+  const [grille, setGrille] = useState('');
+  const [intitule, setIntitule] = useState('');
+  const [consignes, setConsignes] = useState('');
+  const [accesIA, setAccesIA] = useState(false);
+  const [disponible, setDisponible] = useState(false);
+
+  // Ressources
+  const [showRessources, setShowRessources] = useState(false);
+  const [ressources, setRessources] = useState<DevoirRessource | null>(null);
+
+  useEffect(() => {
+    if (devoir) {
+      setSelectedClasses(devoir.classes || []);
+      const date = devoir.dateRemise ? devoir.dateRemise.split('T')[0] : '';
+      setDateRemise(date);
+      setGrille(devoir.grille || '');
+      setIntitule(devoir.intitule || '');
+      setConsignes(devoir.consignes || '');
+      setAccesIA(devoir.accesIA || false);
+      setDisponible(devoir.disponible || false);
+
+      // Initialiser les ressources existantes
+      if (devoir.ressources) {
+        setShowRessources(true);
+        setRessources(devoir.ressources);
+      } else {
+        setShowRessources(false);
+        setRessources(null);
+      }
+    }
+  }, [devoir]);
+
+  const handleClassToggle = (classe: Classe) => {
+    setSelectedClasses((prev) =>
+      prev.includes(classe)
+        ? prev.filter((c) => c !== classe)
+        : [...prev, classe]
+    );
+  };
+
+  const isValid = selectedClasses.length > 0 && dateRemise && grille && intitule.trim();
+
+  const handleSave = async () => {
+    if (!devoir || !isValid) return;
+
+    await onSave(devoir.id, {
+      classes: selectedClasses,
+      dateRemise,
+      grille,
+      intitule: intitule.trim(),
+      consignes: consignes.trim(),
+      accesIA,
+      disponible,
+      ressources: showRessources ? ressources : null,
+    });
+  };
+
+  if (!isOpen || !devoir) return null;
+
+  return (
+    <div className={styles.overlay} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.header}>
+          <h2 className={styles.title}>Modifier le devoir</h2>
+          <button className={styles.closeButton} onClick={onClose}>
+            &times;
+          </button>
+        </div>
+
+        <div className={styles.body}>
+          {/* Classes */}
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Classe(s) <span className={styles.required}>*</span>
+            </label>
+            <div className={styles.classesGrid}>
+              {classeNames.map((c) => (
+                <label key={c} className={styles.classCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={selectedClasses.includes(c)}
+                    onChange={() => handleClassToggle(c)}
+                    className={styles.checkbox}
+                  />
+                  <span className={styles.classLabel}>{c}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Date et Grille */}
+          <div className={styles.formRow}>
+            <div className={styles.formGroup}>
+              <DatePicker
+                label="Date de remise"
+                value={dateRemise}
+                onChange={setDateRemise}
+                min={getTodayString()}
+                required
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>
+                Type de grille <span className={styles.required}>*</span>
+              </label>
+              <select
+                className={styles.select}
+                value={grille}
+                onChange={(e) => setGrille(e.target.value)}
+              >
+                <option value="">Sélectionnez...</option>
+                {grilleTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Intitule */}
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Intitulé du devoir <span className={styles.required}>*</span>
+            </label>
+            <input
+              className={styles.input}
+              type="text"
+              value={intitule}
+              onChange={(e) => setIntitule(e.target.value)}
+              placeholder="Ex : Dissertation sur Molière"
+            />
+          </div>
+
+          {/* Consignes */}
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Consignes particulières</label>
+            <textarea
+              className={styles.textarea}
+              value={consignes}
+              onChange={(e) => setConsignes(e.target.value)}
+              placeholder="Instructions détaillées pour les élèves..."
+              rows={3}
+            />
+          </div>
+
+          {/* Ressources */}
+          <div className={styles.optionalSection}>
+            <label className={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={showRessources}
+                onChange={(e) => {
+                  setShowRessources(e.target.checked);
+                  if (!e.target.checked) {
+                    setRessources(null);
+                  }
+                }}
+                className={styles.checkbox}
+              />
+              <span>Ajouter des ressources</span>
+            </label>
+            {showRessources && (
+              <div className={styles.ressourcesWrapper}>
+                <RessourcesInput
+                  ressources={ressources}
+                  onRessourcesChange={setRessources}
+                  disabled={isSaving}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Toggles */}
+          <div className={styles.toggleSection}>
+            <div className={styles.toggleGroup}>
+              <Toggle
+                checked={accesIA}
+                onChange={setAccesIA}
+                labelOn="Accès IA activé"
+                labelOff="Accès IA désactivé"
+                disabled={isSaving}
+              />
+            </div>
+            <div className={styles.toggleGroup}>
+              <Toggle
+                checked={disponible}
+                onChange={setDisponible}
+                labelOn="Disponible"
+                labelOff="Non disponible"
+                disabled={isSaving}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.footer}>
+          <button
+            className={styles.cancelButton}
+            onClick={onClose}
+            disabled={isSaving}
+          >
+            Annuler
+          </button>
+          <button
+            className={styles.saveButton}
+            onClick={handleSave}
+            disabled={isSaving || !isValid}
+          >
+            {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

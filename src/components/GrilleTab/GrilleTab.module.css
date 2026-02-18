@@ -1,0 +1,610 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: #9aa0a6;
+  margin: 0;
+}
+
+/* Conteneur pour les bandeaux côte à côte */
+.bannersContainer {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Ligne consigne + compteur critères */
+.instructionRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.instructionText {
+  font-size: 13px;
+  color: #5f6368;
+  margin: 0;
+  font-style: italic;
+  flex: 1;
+}
+
+/* Bandeau auto-évaluation élève */
+.studentScoreBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f0f4f8 0%, #e1e8ed 100%);
+  border-left: 4px solid #5f6368;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #202124;
+  flex: 1;
+}
+
+.studentInitials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #5f6368;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Bandeau correction prof */
+.profScoreBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%);
+  border-left: 4px solid #1a73e8;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1f3a5f;
+  flex: 1;
+}
+
+.profAvatarSmall {
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.criteria {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.criterion {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.criterionHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.criterionName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #202124;
+}
+
+.criterionWeight {
+  font-size: 12px;
+  color: #9aa0a6;
+}
+
+.levels {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.levelButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 30px 12px 10px;
+  background: #fff;
+  border: 2px solid #e8eaed;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  font-family: inherit;
+  flex: 1;
+  min-width: 60px;
+  position: relative;
+}
+
+.levelButton:hover:not(:disabled):not(.levelProfSuccess):not(.levelProfFailure) {
+  border-color: #1a73e8;
+  background: #f8fbff;
+}
+
+.levelButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Bulle initiales eleve (coin superieur droit, a l'interieur) */
+.studentBubble {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1a73e8;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 3px rgba(26, 115, 232, 0.3);
+  z-index: 1;
+}
+
+/* Bulle avatar prof (coin superieur droit, a l'interieur) */
+.profBubble {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+/* Si les deux bulles sont presentes, decaler celle de l'eleve */
+.studentBubble + .profBubble,
+.profBubble ~ .studentBubble {
+  /* Non applicable ici - gere par le positionnement */
+}
+
+/* Quand eleve ET prof sur la meme case */
+.levelButton .studentBubble:first-of-type {
+  right: 28px;
+}
+
+.profAvatar {
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Couleurs du prof: vert pour reussite */
+.levelProfSuccess {
+  border-color: #4caf50;
+  background: #e8f5e9;
+}
+
+/* Couleurs du prof: rouge pour echec */
+.levelProfFailure {
+  border-color: #f44336;
+  background: #fce8e6;
+}
+
+.levelDescription {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #3c4043;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.indicator {
+  display: block;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #e8f5e9;
+  border-radius: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.summaryLabel {
+  font-size: 13px;
+  color: #2e7d32;
+}
+
+.summaryValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1b5e20;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e8eaed;
+  border-top-color: #1a73e8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 20px;
+  background: #fce8e6;
+  border-radius: 8px;
+  color: #c5221f;
+  font-size: 14px;
+  text-align: center;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 20px;
+  color: #9aa0a6;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ── Bandeau score IA ── */
+
+.aiScoreBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(197, 87, 100, 0.08);
+  border-left: 4px solid #C55764;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #7a2a35;
+  flex: 1;
+}
+
+.aiBannerIcon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* ── Section requête IA ── */
+
+.aiRequestSection {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.aiRequestButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  max-width: 380px;
+  background: #C55764;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.aiRequestButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(197, 87, 100, 0.4);
+}
+
+.aiRequestDisabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  max-width: 380px;
+  background: #f5f5f5;
+  color: #9e9e9e;
+  border: 2px dashed #e0e0e0;
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: not-allowed;
+}
+
+.aiRequestLoading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  max-width: 380px;
+  background: rgba(197, 87, 100, 0.08);
+  border: 2px solid rgba(197, 87, 100, 0.3);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #7a2a35;
+  font-weight: 500;
+}
+
+.aiSpinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #C55764;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.aiRequestDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  max-width: 380px;
+  background: rgba(197, 87, 100, 0.08);
+  border: 2px solid rgba(197, 87, 100, 0.25);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #C55764;
+  font-weight: 500;
+}
+
+.aiCheckmark {
+  color: #C55764;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.aiErrorMsg {
+  font-size: 12px;
+  color: #e65100;
+  padding: 6px 12px;
+  background: #fff3e0;
+  border-radius: 6px;
+}
+
+/* ── Commentaires IA + prof en colonnes ── */
+
+.commentairesRow {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.commentairesRow > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.aiCommentaire {
+  background: rgba(197, 87, 100, 0.06);
+  border: 1px solid rgba(197, 87, 100, 0.2);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.aiCommentaireHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #7a2a35;
+}
+
+.aiCommentaireText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #37474f;
+}
+
+/* ── Bulle robot dans les cases de niveau ── */
+
+.aiBubble {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(197, 87, 100, 0.08);
+  border: 2px solid #C55764;
+  font-size: 14px;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(197, 87, 100, 0.3);
+  z-index: 3;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.aiBubble:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(197, 87, 100, 0.45);
+  background: rgba(197, 87, 100, 0.15);
+}
+
+/* ── Popup justification IA ── */
+
+.aiPopup {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 260px;
+  background: white;
+  border: 2px solid #6366f1;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  text-align: left;
+  animation: popupFadeIn 0.2s ease-out;
+}
+
+.aiPopupHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #4527a0;
+}
+
+.aiPopupText {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #37474f;
+}
+
+/* Popup fixe (portal) pour échapper à overflow:hidden */
+.aiPopupFixed {
+  position: fixed;
+  width: 280px;
+  background: white;
+  border: 2px solid #6366f1;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  text-align: left;
+  transform: translate(-50%, calc(-100% - 12px));
+  animation: popupFadeIn 0.2s ease-out;
+}
+
+@keyframes popupFadeIn {
+  from { opacity: 0; transform: translate(-50%, calc(-100% - 8px)); }
+  to { opacity: 1; transform: translate(-50%, calc(-100% - 12px)); }
+}
+
+/* ── Décalage des bulles quand IA + élève sur la même case ── */
+
+.levelButton .aiBubble + .studentBubble {
+  right: 4px;
+}
+
+@media (max-width: 768px) {
+  .criterion {
+    padding: 14px;
+  }
+
+  .levelButton {
+    padding: 8px 10px;
+  }
+
+  .levelDescription {
+    font-size: 12px;
+  }
+
+  .aiPopup {
+    width: 200px;
+    left: -20px;
+  }
+
+  .bannersContainer {
+    flex-direction: column;
+  }
+}
+
+/* ═══ Commentaire général du professeur (côté élève) ═══ */
+
+.profCommentaire {
+  background: #DFEAFD;
+  border: 1px solid rgba(42, 77, 115, 0.2);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.profCommentaireHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #2a4d73;
+  margin-bottom: 8px;
+}
+
+.profCommentaireAudio {
+  margin-bottom: 8px;
+}
+
+.profCommentaireText {
+  font-size: 13px;
+  color: #2a4d73;
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+}

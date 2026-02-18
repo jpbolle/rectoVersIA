@@ -1,0 +1,414 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Forcer les styles d'annotation pour éviter les doubles soulignements */
+.editorWrapper :global([data-annotation="spelling"]) {
+  text-decoration: underline solid #e53935 2px !important;
+  text-underline-offset: 3px !important;
+}
+
+.editorWrapper :global([data-annotation="syntax"]) {
+  text-decoration: underline wavy #ff9800 !important;
+  text-underline-offset: 3px !important;
+}
+
+/* Styles pour les hyperliens */
+.editorWrapper :global(.tiptap a) {
+  color: #1a73e8 !important;
+  text-decoration: underline !important;
+  cursor: pointer;
+}
+
+.editorWrapper :global(.tiptap a:hover) {
+  color: #0d47a1 !important;
+  text-decoration: underline !important;
+}
+
+.loading {
+  padding: 40px;
+  text-align: center;
+  color: #999;
+}
+
+.errorBar {
+  padding: 8px 16px;
+  background: #fce8e6;
+  color: #c62828;
+  font-size: 13px;
+  border-bottom: 1px solid #f5c6cb;
+}
+
+.voiceHint {
+  padding: 8px 16px;
+  background: #fff8e1;
+  color: #f57f17;
+  font-size: 13px;
+  border-bottom: 1px solid #ffecb3;
+}
+
+.editorWrapper {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  padding: 25px;
+}
+
+.editor {
+  min-height: 100%;
+}
+
+/* Force large line-height — !important overrides inline styles from student content */
+.editor :global(.tiptap) {
+  outline: none;
+  font-size: 15px;
+  line-height: 4.0 !important;
+  color: #333;
+}
+
+.editor :global(.tiptap p),
+.editor :global(.tiptap h2),
+.editor :global(.tiptap h3),
+.editor :global(.tiptap li) {
+  line-height: 4.0 !important;
+}
+
+/* Also override any element with an inline style="line-height:…" */
+.editor :global(.tiptap [style*="line-height"]) {
+  line-height: 4.0 !important;
+}
+
+.editor :global(.tiptap h2) {
+  font-size: 20px;
+  margin-top: 24px;
+  margin-bottom: 12px;
+  color: #1f3a5f;
+}
+
+.editor :global(.tiptap h3) {
+  font-size: 18px;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  color: #2a4d73;
+}
+
+.editor :global(.tiptap p) {
+  margin-bottom: 16px;
+}
+
+.editor :global(.tiptap ul),
+.editor :global(.tiptap ol) {
+  margin-bottom: 16px;
+  padding-left: 24px;
+}
+
+.editor :global(.tiptap li) {
+  margin-bottom: 8px;
+}
+
+/* ── Annotation mark styles ── */
+
+/* Lexical "Lex" bubble */
+.editor :global(.annotation-lexical) {
+  position: relative;
+}
+
+.editor :global(.annotation-lexical)::before {
+  content: 'Lex';
+  position: absolute;
+  top: -28px;
+  left: 0;
+  background: #2d1a1a;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0;
+  border-radius: 8px;
+  line-height: 18px !important;
+  white-space: nowrap;
+  pointer-events: none;
+  width: 28px;
+  height: 18px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0 !important;
+  text-indent: 0 !important;
+}
+
+.editor :global(.annotation-lexical)::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 10px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid #2d1a1a;
+  pointer-events: none;
+  margin-left: 0 !important;
+  text-indent: 0 !important;
+}
+
+/* Cursor indicates annotation mode */
+.editor:global(.annotation-mode) {
+  cursor: crosshair;
+}
+
+/* ── Audio play bubbles (phylactère de BD) ── */
+
+.audioBubble {
+  position: absolute;
+  z-index: 10;
+}
+
+.audioBubbleInner {
+  position: relative;
+  min-width: 32px;
+  height: 28px;
+  border-radius: 14px;
+  background: #4285f4;
+  border: none;
+  color: white;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0 10px;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Petite queue de phylactère pointant vers le bas (détachée) */
+.audioBubbleInner::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 8px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #4285f4;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.15));
+}
+
+.audioBubbleInner:hover {
+  background: #1a73e8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.audioBubbleInner:hover::after {
+  border-top-color: #1a73e8;
+}
+
+.audioBubblePlay {
+  display: block;
+}
+
+.audioBubblePause {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+/* Bouton X en exposant (top-right corner) */
+.audioBubbleDeleteBtn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #d32f2f;
+  border: 2px solid white;
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  line-height: 1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  animation: fadeInExposant 0.2s ease-out forwards;
+}
+
+@keyframes fadeInExposant {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.audioBubble:hover .audioBubbleDeleteBtn {
+  display: flex;
+}
+
+.audioBubbleDeleteBtn:hover {
+  background: #b71c1c;
+  transform: scale(1.2);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Selection popup ── */
+
+.selectionPopup {
+  position: absolute;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: white;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  z-index: 20;
+  animation: popupFadeIn 0.12s ease-out;
+}
+
+@keyframes popupFadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.popupBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 34px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.1s ease;
+}
+
+.popupBtn:hover {
+  background: #f0f0f0;
+}
+
+.popupOrth {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e53935;
+  text-decoration: underline solid #e53935 2px !important;
+}
+
+.popupSynt {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ff9800;
+  text-decoration: underline wavy #ff9800 !important;
+}
+
+.popupLex {
+  font-size: 10px;
+  font-weight: 700;
+  background: #2d1a1a;
+  color: white;
+  border-radius: 8px;
+  padding: 2px 6px;
+}
+
+.popupVoice {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.popupSep {
+  width: 1px;
+  height: 20px;
+  background: #dadce0;
+  margin: 0 2px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.popupEraser {
+  display: block;
+}
+
+/* ── AI suggestion popup (fixed — devant header, bandeau, etc.) ── */
+
+.aiPopup {
+  position: fixed;
+  z-index: 9999;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 10px 12px;
+  max-width: 280px;
+  font-size: 12px;
+  line-height: 1.5;
+  transform: translateY(-100%);
+  animation: aiPopupFadeIn 0.12s ease-out;
+  pointer-events: auto;
+}
+
+@keyframes aiPopupFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.aiPopupHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.aiPopupBadge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.aiPopupBadge_ortho { background: #e53935; }
+.aiPopupBadge_ponctu { background: #757575; }
+.aiPopupBadge_synt { background: #ff9800; }
+.aiPopupBadge_lex { background: #5d4037; }
+
+.aiPopupLabel {
+  font-weight: 600;
+  color: #333;
+}
+
+.aiPopupDismissed {
+  font-size: 10px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.aiPopupContent {
+  color: #555;
+  margin: 0;
+}

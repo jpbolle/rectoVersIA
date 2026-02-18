@@ -1,0 +1,429 @@
+'use client';
+
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import { useTravail } from '@/hooks/useTravail';
+import { useGrille } from '@/hooks/useGrille';
+import { useAiSuggestions } from '@/hooks/useAiSuggestions';
+import { useAiGridEvaluation } from '@/hooks/useAiGridEvaluation';
+import WorkTopBar from '@/components/WorkTopBar';
+import { FlipEditor } from '@/components/FlipEditor';
+import AssistancePanel from '@/components/AssistancePanel';
+import type { TabType } from '@/components/AssistancePanel/AssistancePanel';
+import type { Devoir } from '@/types/devoir';
+import type { Correction } from '@/types/correction';
+import type { DraftContent } from '@/types/travail';
+import type { AiSuggestionType } from '@/types/ai-suggestions';
+import { LEVEL_PERCENTAGES } from '@/types/grille';
+import styles from './travail.module.css';
+
+export default function TravailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const devoirId = params.id as string;
+
+  const { user, isAuthenticated, role, isLoading: authLoading } = useAuth();
+  const [devoir, setDevoir] = useState<Devoir | null>(null);
+  const [devoirLoading, setDevoirLoading] = useState(true);
+  const [devoirError, setDevoirError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [correction, setCorrection] = useState<Correction | null>(null);
+
+  // Les profs peuvent previsualiser la page en mode lecture seule
+  const isPreviewMode = role === 'prof';
+
+  // Hook travail uniquement pour les eleves
+  const {
+    travail,
+    isLoading: travailLoading,
+    isSaving,
+    error: travailError,
+    lastSaved,
+    updateContent,
+    updateDraftContent,
+    updateSelfEvaluation,
+    updateRessourceAnnotations,
+    updateRessourceNotes,
+    submit,
+  } = useTravail(isPreviewMode ? null : devoirId);
+
+  const {
+    grille,
+    isLoading: grilleLoading,
+    error: grilleError,
+  } = useGrille(devoir?.grille || null);
+
+  // IA - state et hook remontés ici pour orchestrer FlipEditor ↔ AssistancePanel
+  // accesIA : peut demander de nouvelles analyses (pas soumis)
+  const accesIA = !isPreviewMode && travail?.status !== 'submitted' && devoir?.accesIA === true;
+  // showAiData : charger les résultats IA existants (même après soumission)
+  const showAiData = !isPreviewMode && devoir?.accesIA === true;
+  const [activeTab, setActiveTab] = useState<TabType>('consignes');
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+
+  const {
+    suggestions: aiSuggestions,
+    activeRequest: aiActiveRequest,
+    error: aiError,
+    requestAnalysis,
+    dismissSuggestion,
+    usedTypes: aiUsedTypes,
+  } = useAiSuggestions(
+    showAiData ? travail?.id : undefined,
+    showAiData ? devoirId : undefined,
+  );
+
+  // IA grille — évaluation par critère (charger même après soumission)
+  const {
+    result: aiGridResult,
+    isRequesting: aiGridRequesting,
+    error: aiGridError,
+    requestEvaluation: requestAiGrid,
+  } = useAiGridEvaluation(
+    showAiData ? travail?.id : undefined,
+    showAiData ? devoirId : undefined,
+    showAiData && grille?.id ? grille.id : undefined,
+  );
+
+  // Fetch devoir
+  useEffect(() => {
+    async function fetchDevoir() {
+      if (!user || !devoirId) return;
+
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`/api/devoirs/${devoirId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const json = await res.json();
+
+        if (json.success) {
+          setDevoir(json.data);
+        } else {
+          setDevoirError(json.message || 'Erreur lors du chargement du devoir');
+        }
+      } catch (err) {
+        console.error('Erreur fetch devoir:', err);
+        setDevoirError('Erreur lors du chargement du devoir');
+      } finally {
+        setDevoirLoading(false);
+      }
+    }
+
+    if (isAuthenticated) {
+      fetchDevoir();
+    }
+  }, [user, isAuthenticated, devoirId]);
+
+  // Fetch correction du prof (visible par l'eleve)
+  useEffect(() => {
+    async function fetchCorrection() {
+      if (!user || !travail?.id) return;
+
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`/api/corrections?travailId=${travail.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = await res.json();
+
+        if (json.success && json.data) {
+          setCorrection(json.data);
+        }
+      } catch (err) {
+        // Silently fail - correction is optional
+        console.error('Erreur fetch correction:', err);
+      }
+    }
+
+    if (isAuthenticated && !isPreviewMode && travail) {
+      fetchCorrection();
+    }
+  }, [user, isAuthenticated, isPreviewMode, travail?.id]);
+
+  const handleContentChange = useCallback((content: string) => {
+    if (!isPreviewMode) {
+      updateContent(content);
+    }
+  }, [updateContent, isPreviewMode]);
+
+  const handleDraftChange = useCallback((draft: DraftContent) => {
+    if (!isPreviewMode) {
+      updateDraftContent(draft);
+    }
+  }, [updateDraftContent, isPreviewMode]);
+
+  const handleSelfEvaluationChange = useCallback((evaluation: Record<string, number>) => {
+    if (!isPreviewMode) {
+      updateSelfEvaluation(evaluation);
+    }
+  }, [updateSelfEvaluation, isPreviewMode]);
+
+  const handleSubmitClick = () => {
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirmModal(false);
+    setIsSubmitting(true);
+    try {
+      const success = await submit();
+      if (success) {
+        // Success - le statut sera mis a jour via le hook
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelSubmit = () => {
+    setShowConfirmModal(false);
+  };
+
+  // IA — requête → auto-switch vers onglet "Aide IA"
+  const handleAiRequest = useCallback(async (type: AiSuggestionType) => {
+    const currentContent = travail?.content || '';
+    if (!currentContent.replace(/<[^>]*>/g, '').trim()) return;
+    const result = await requestAnalysis(type, currentContent);
+    if (result) setActiveTab('ia');
+  }, [requestAnalysis, travail?.content]);
+
+  // IA grille — demander évaluation
+  const handleRequestAiGrid = useCallback(async () => {
+    const content = travail?.content || '';
+    if (!content.replace(/<[^>]*>/g, '').trim()) return;
+    await requestAiGrid(content);
+  }, [requestAiGrid, travail?.content]);
+
+  // IA — clic décoration inline → highlight permanent la carte dans l'onglet
+  const handleDecorationClick = useCallback((type: AiSuggestionType, itemId: string) => {
+    setActiveTab('ia');
+    const compositeId = `${type}:${itemId}`;
+    // Reset puis re-set pour re-trigger le scroll si même item
+    setHighlightedItemId(null);
+    requestAnimationFrame(() => setHighlightedItemId(compositeId));
+  }, []);
+
+  const handleBack = () => {
+    if (isPreviewMode) {
+      router.push('/activites');
+    } else {
+      router.push('/dashboard');
+    }
+  };
+
+  // Score du prof (visible par l'élève quand correction rendue)
+  const profScore = useMemo(() => {
+    if (!correction?.visibleParEleve || !correction.evaluation || !grille) return null;
+    let totalPoints = 0;
+    let maxPoints = 0;
+    grille.criteria.forEach((criterion) => {
+      const level = correction.evaluation![criterion.id];
+      if (level !== undefined) {
+        const pct = LEVEL_PERCENTAGES[level] ?? 0;
+        totalPoints += (criterion.weight * pct) / 100;
+      }
+      maxPoints += criterion.weight;
+    });
+    if (maxPoints === 0) return null;
+    const pts = Math.round(totalPoints * 10) / 10;
+    const percent = Math.round((totalPoints / maxPoints) * 100);
+    return { pts, max: maxPoints, percent };
+  }, [correction, grille]);
+
+  // Loading states - pour preview mode, on n'attend pas travailLoading
+  const isLoading = authLoading || devoirLoading || (!isPreviewMode && travailLoading);
+
+  if (isLoading) {
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.spinner} />
+        <span>Chargement...</span>
+      </div>
+    );
+  }
+
+  // Error states
+  if (devoirError) {
+    return (
+      <div className={styles.errorContainer}>
+        <span className={styles.errorIcon}>⚠️</span>
+        <h2>Erreur</h2>
+        <p>{devoirError}</p>
+        <button onClick={handleBack} className={styles.errorButton}>
+          Retour
+        </button>
+      </div>
+    );
+  }
+
+  if (!isPreviewMode && travailError) {
+    return (
+      <div className={styles.errorContainer}>
+        <span className={styles.errorIcon}>⚠️</span>
+        <h2>Erreur</h2>
+        <p>{travailError}</p>
+        <button onClick={handleBack} className={styles.errorButton}>
+          Retour
+        </button>
+      </div>
+    );
+  }
+
+  if (!devoir) {
+    return (
+      <div className={styles.errorContainer}>
+        <span className={styles.errorIcon}>📋</span>
+        <h2>Devoir non trouve</h2>
+        <p>Ce devoir n&apos;existe pas ou n&apos;est plus disponible.</p>
+        <button onClick={handleBack} className={styles.errorButton}>
+          Retour
+        </button>
+      </div>
+    );
+  }
+
+  // Pour les eleves, verifier qu'on a le travail
+  if (!isPreviewMode && !travail) {
+    return (
+      <div className={styles.errorContainer}>
+        <span className={styles.errorIcon}>📋</span>
+        <h2>Erreur</h2>
+        <p>Impossible de charger votre travail.</p>
+        <button onClick={handleBack} className={styles.errorButton}>
+          Retour
+        </button>
+      </div>
+    );
+  }
+
+  const isSubmitted = travail?.status === 'submitted';
+  const isDisabled = isPreviewMode || isSubmitted;
+
+  return (
+    <div className={`${styles.page} ${isPreviewMode ? styles.previewMode : ''}`}>
+      {isPreviewMode && (
+        <div className={styles.previewBanner}>
+          <span>👁️ Mode previsualisation - Vue eleve</span>
+          <button className={styles.previewBackButton} onClick={() => router.push('/dashboard')}>
+            Retour au tableau de bord
+          </button>
+        </div>
+      )}
+
+      <WorkTopBar
+        title={devoir.intitule}
+        status={isPreviewMode ? 'draft' : (travail?.status || 'draft')}
+        isSaving={isSaving}
+        lastSaved={lastSaved}
+        onSubmit={handleSubmitClick}
+        isSubmitting={isSubmitting}
+        isPreviewMode={isPreviewMode}
+      />
+
+      <main className={styles.main}>
+        <div className={styles.editorSection}>
+          <div className={styles.editorHeader}>
+            <h2>Mon travail</h2>
+          </div>
+          <div className={styles.editorWrapper}>
+            <FlipEditor
+              content={isPreviewMode ? '' : (travail?.content || '')}
+              onContentChange={handleContentChange}
+              draftContent={isPreviewMode ? null : (travail?.draftContent || null)}
+              onDraftChange={handleDraftChange}
+              grille={grille}
+              disabled={isDisabled}
+              placeholder={isPreviewMode ? "Zone de redaction de l'eleve..." : "Commencez à rédiger votre travail ici..."}
+              draftAnnotations={correction?.draftAnnotations}
+              accesIA={showAiData}
+              aiSuggestions={aiSuggestions}
+              onDecorationClick={handleDecorationClick}
+            />
+          </div>
+        </div>
+
+        <div className={styles.assistanceSection}>
+          <div className={styles.assistanceHeader}>
+            <h2>Outils d&apos;évaluation et de correction</h2>
+            {!isPreviewMode && profScore && (
+              <span
+                className={styles.profScoreBadge}
+                style={{ background: profScore.percent < 50 ? '#C55764' : '#2a4d73' }}
+              >
+                {profScore.pts}/{profScore.max} ({profScore.percent}%)
+              </span>
+            )}
+          </div>
+          <div className={styles.assistanceWrapper}>
+            <AssistancePanel
+              devoir={devoir}
+              grille={grille}
+              grilleLoading={grilleLoading}
+              grilleError={grilleError}
+              selfEvaluation={isPreviewMode ? null : (travail?.selfEvaluation || null)}
+              onSelfEvaluationChange={handleSelfEvaluationChange}
+              disabled={isDisabled}
+              studentName={travail?.studentName}
+              correction={correction}
+              studentContent={travail?.content || ''}
+              showRemarquesTab={true}
+              ressourceAnnotations={travail?.ressourceAnnotations}
+              onRessourceAnnotationsChange={isPreviewMode ? undefined : updateRessourceAnnotations}
+              ressourceNotes={travail?.ressourceNotes}
+              onRessourceNotesChange={isPreviewMode ? undefined : updateRessourceNotes}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              accesIA={accesIA}
+              showAiData={showAiData}
+              aiSuggestions={aiSuggestions}
+              aiActiveRequest={aiActiveRequest}
+              aiError={aiError}
+              aiUsedTypes={aiUsedTypes}
+              onAiRequest={handleAiRequest}
+              onAiDismiss={dismissSuggestion}
+              highlightedItemId={highlightedItemId}
+              aiGridResult={aiGridResult}
+              aiGridRequesting={aiGridRequesting}
+              aiGridError={aiGridError}
+              onRequestAiGrid={handleRequestAiGrid}
+            />
+          </div>
+        </div>
+      </main>
+
+      {showConfirmModal && !isPreviewMode && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal}>
+            <h3 className={styles.modalTitle}>Confirmer la remise</h3>
+            <p className={styles.modalText}>
+              Etes-vous sur de vouloir remettre votre travail ? Cette action est definitive
+              et vous ne pourrez plus modifier votre travail apres la remise.
+            </p>
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.modalCancel}
+                onClick={handleCancelSubmit}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className={styles.modalConfirm}
+                onClick={handleConfirmSubmit}
+              >
+                Confirmer la remise
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
