@@ -275,6 +275,32 @@ export function useEleves(classeId?: string) {
     [getAuthHeaders]
   );
 
+  const bulkCreateEleves = useCallback(
+    async (data: { nom: string; prenom: string; email: string }[]): Promise<number> => {
+      if (!classeId) throw new Error('Aucune classe sélectionnée');
+
+      const headers = await getAuthHeaders();
+      if (!headers) throw new Error('Non authentifié');
+
+      const res = await fetch('/api/eleves/bulk', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ classeId, eleves: data }),
+      });
+
+      const json = await res.json();
+
+      if (json.success) {
+        // Rafraîchir la liste complète
+        await fetchEleves();
+        return json.data.imported as number;
+      } else {
+        throw new Error(json.message || "Erreur lors de l'import");
+      }
+    },
+    [classeId, getAuthHeaders, fetchEleves]
+  );
+
   useEffect(() => {
     if (isAuthenticated && classeId) {
       fetchEleves();
@@ -288,6 +314,7 @@ export function useEleves(classeId?: string) {
     createEleve,
     updateEleve,
     deleteEleve,
+    bulkCreateEleves,
     refetch: fetchEleves,
   };
 }

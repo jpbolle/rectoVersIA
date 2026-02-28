@@ -11,6 +11,7 @@ interface ClasseDetailFormProps {
   refreshKey?: number;
   onClose: () => void;
   onAddEleve: (classeId: string) => void;
+  onBulkImport: (classeId: string) => void;
   onEditEleve: (eleve: Eleve) => void;
   onDeleteEleve: (eleve: Eleve) => void;
 }
@@ -21,6 +22,7 @@ export default function ClasseDetailForm({
   refreshKey,
   onClose,
   onAddEleve,
+  onBulkImport,
   onEditEleve,
   onDeleteEleve,
 }: ClasseDetailFormProps) {
@@ -71,12 +73,20 @@ export default function ClasseDetailForm({
       <div className={styles.elevesSection}>
         <div className={styles.elevesSectionHeader}>
           <h3 className={styles.sectionTitle}>Liste des élèves</h3>
-          <button
-            className={styles.addEleveBtn}
-            onClick={() => onAddEleve(classe.id)}
-          >
-            + Ajouter un élève
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              className={styles.addEleveBtn}
+              onClick={() => onAddEleve(classe.id)}
+            >
+              + Ajouter un élève
+            </button>
+            <button
+              className={styles.bulkImportBtn}
+              onClick={() => onBulkImport(classe.id)}
+            >
+              📋 Import en masse
+            </button>
+          </div>
         </div>
 
         {isLoading ? (

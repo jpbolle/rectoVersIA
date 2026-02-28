@@ -1,5 +1,6 @@
 import { Mark, Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { AddMarkStep, RemoveMarkStep } from '@tiptap/pm/transform';
 
 // ────────────────────────────────────────────────────────
 // ContentLock — ProseMirror plugin that blocks text edits
@@ -21,9 +22,9 @@ export const ContentLock = Extension.create({
           if (!tr.docChanged) return true;
 
           // Check each step: only allow AddMarkStep and RemoveMarkStep
+          // Use instanceof (not constructor.name) to survive minification
           for (const step of tr.steps) {
-            const stepType = step.constructor.name;
-            if (stepType !== 'AddMarkStep' && stepType !== 'RemoveMarkStep') {
+            if (!(step instanceof AddMarkStep) && !(step instanceof RemoveMarkStep)) {
               return false;
             }
           }

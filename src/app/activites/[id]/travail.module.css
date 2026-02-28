@@ -42,14 +42,13 @@
 .main {
   display: flex;
   flex: 1;
-  gap: 20px;
   padding: 20px;
   overflow: hidden;
   min-height: 0; /* Important pour le scroll dans flexbox */
 }
 
 .editorSection {
-  flex: 6;
+  flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -83,7 +82,7 @@
 }
 
 .assistanceSection {
-  flex: 4;
+  flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -282,15 +281,8 @@
 /* Responsive */
 @media (max-width: 1024px) {
   .main {
-    flex-direction: column;
-    gap: 16px;
     padding: 16px;
     overflow: auto;
-  }
-
-  .editorSection,
-  .assistanceSection {
-    flex: none;
   }
 
   .editorSection {

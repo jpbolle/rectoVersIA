@@ -196,14 +196,13 @@
 .main {
   display: flex;
   flex: 1;
-  gap: 20px;
   padding: 20px;
   overflow: hidden;
   min-height: 0;
 }
 
 .contentSection {
-  flex: 6;
+  flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -215,7 +214,7 @@
 }
 
 .evaluationSection {
-  flex: 4;
+  flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -738,15 +737,8 @@
 
 @media (max-width: 1024px) {
   .main {
-    flex-direction: column;
-    gap: 16px;
     padding: 16px;
     overflow: auto;
-  }
-
-  .contentSection,
-  .evaluationSection {
-    flex: none;
   }
 
   .contentSection {

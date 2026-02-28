@@ -16,6 +16,7 @@ import type { Correction } from '@/types/correction';
 import type { DraftContent } from '@/types/travail';
 import type { AiSuggestionType } from '@/types/ai-suggestions';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
+import ResizableSplit from '@/components/ResizableSplit/ResizableSplit';
 import styles from './travail.module.css';
 
 export default function TravailPage() {
@@ -327,74 +328,80 @@ export default function TravailPage() {
       />
 
       <main className={styles.main}>
-        <div className={styles.editorSection}>
-          <div className={styles.editorHeader}>
-            <h2>Mon travail</h2>
-          </div>
-          <div className={styles.editorWrapper}>
-            <FlipEditor
-              content={isPreviewMode ? '' : (travail?.content || '')}
-              onContentChange={handleContentChange}
-              draftContent={isPreviewMode ? null : (travail?.draftContent || null)}
-              onDraftChange={handleDraftChange}
-              grille={grille}
-              disabled={isDisabled}
-              placeholder={isPreviewMode ? "Zone de redaction de l'eleve..." : "Commencez à rédiger votre travail ici..."}
-              draftAnnotations={correction?.draftAnnotations}
-              accesIA={showAiData}
-              aiSuggestions={aiSuggestions}
-              onDecorationClick={handleDecorationClick}
-            />
-          </div>
-        </div>
-
-        <div className={styles.assistanceSection}>
-          <div className={styles.assistanceHeader}>
-            <h2>Outils d&apos;évaluation et de correction</h2>
-            {!isPreviewMode && profScore && (
-              <span
-                className={styles.profScoreBadge}
-                style={{ background: profScore.percent < 50 ? '#C55764' : '#2a4d73' }}
-              >
-                {profScore.pts}/{profScore.max} ({profScore.percent}%)
-              </span>
-            )}
-          </div>
-          <div className={styles.assistanceWrapper}>
-            <AssistancePanel
-              devoir={devoir}
-              grille={grille}
-              grilleLoading={grilleLoading}
-              grilleError={grilleError}
-              selfEvaluation={isPreviewMode ? null : (travail?.selfEvaluation || null)}
-              onSelfEvaluationChange={handleSelfEvaluationChange}
-              disabled={isDisabled}
-              studentName={travail?.studentName}
-              correction={correction}
-              studentContent={travail?.content || ''}
-              showRemarquesTab={true}
-              ressourceAnnotations={travail?.ressourceAnnotations}
-              onRessourceAnnotationsChange={isPreviewMode ? undefined : updateRessourceAnnotations}
-              ressourceNotes={travail?.ressourceNotes}
-              onRessourceNotesChange={isPreviewMode ? undefined : updateRessourceNotes}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              accesIA={accesIA}
-              showAiData={showAiData}
-              aiSuggestions={aiSuggestions}
-              aiActiveRequest={aiActiveRequest}
-              aiError={aiError}
-              aiUsedTypes={aiUsedTypes}
-              onAiRequest={handleAiRequest}
-              onAiDismiss={dismissSuggestion}
-              highlightedItemId={highlightedItemId}
-              aiGridResult={aiGridResult}
-              aiGridRequesting={aiGridRequesting}
-              aiGridError={aiGridError}
-              onRequestAiGrid={handleRequestAiGrid}
-            />
-          </div>
-        </div>
+        <ResizableSplit
+          storageKey="activite-split"
+          left={
+            <div className={styles.editorSection}>
+              <div className={styles.editorHeader}>
+                <h2>Mon travail</h2>
+              </div>
+              <div className={styles.editorWrapper}>
+                <FlipEditor
+                  content={isPreviewMode ? '' : (travail?.content || '')}
+                  onContentChange={handleContentChange}
+                  draftContent={isPreviewMode ? null : (travail?.draftContent || null)}
+                  onDraftChange={handleDraftChange}
+                  grille={grille}
+                  disabled={isDisabled}
+                  placeholder={isPreviewMode ? "Zone de redaction de l'eleve..." : "Commencez à rédiger votre travail ici..."}
+                  draftAnnotations={correction?.draftAnnotations}
+                  accesIA={showAiData}
+                  aiSuggestions={aiSuggestions}
+                  onDecorationClick={handleDecorationClick}
+                />
+              </div>
+            </div>
+          }
+          right={
+            <div className={styles.assistanceSection}>
+              <div className={styles.assistanceHeader}>
+                <h2>Outils d&apos;évaluation et de correction</h2>
+                {!isPreviewMode && profScore && (
+                  <span
+                    className={styles.profScoreBadge}
+                    style={{ background: profScore.percent < 50 ? '#C55764' : '#2a4d73' }}
+                  >
+                    {profScore.pts}/{profScore.max} ({profScore.percent}%)
+                  </span>
+                )}
+              </div>
+              <div className={styles.assistanceWrapper}>
+                <AssistancePanel
+                  devoir={devoir}
+                  grille={grille}
+                  grilleLoading={grilleLoading}
+                  grilleError={grilleError}
+                  selfEvaluation={isPreviewMode ? null : (travail?.selfEvaluation || null)}
+                  onSelfEvaluationChange={handleSelfEvaluationChange}
+                  disabled={isDisabled}
+                  studentName={travail?.studentName}
+                  correction={correction}
+                  studentContent={travail?.content || ''}
+                  showRemarquesTab={true}
+                  ressourceAnnotations={travail?.ressourceAnnotations}
+                  onRessourceAnnotationsChange={isPreviewMode ? undefined : updateRessourceAnnotations}
+                  ressourceNotes={travail?.ressourceNotes}
+                  onRessourceNotesChange={isPreviewMode ? undefined : updateRessourceNotes}
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                  accesIA={accesIA}
+                  showAiData={showAiData}
+                  aiSuggestions={aiSuggestions}
+                  aiActiveRequest={aiActiveRequest}
+                  aiError={aiError}
+                  aiUsedTypes={aiUsedTypes}
+                  onAiRequest={handleAiRequest}
+                  onAiDismiss={dismissSuggestion}
+                  highlightedItemId={highlightedItemId}
+                  aiGridResult={aiGridResult}
+                  aiGridRequesting={aiGridRequesting}
+                  aiGridError={aiGridError}
+                  onRequestAiGrid={handleRequestAiGrid}
+                />
+              </div>
+            </div>
+          }
+        />
       </main>
 
       {showConfirmModal && !isPreviewMode && (

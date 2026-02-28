@@ -18,6 +18,7 @@ import type { Travail } from '@/types/travail';
 import type { Devoir } from '@/types/devoir';
 import type { DraftType } from '@/types/travail';
 import type { DraftItemAnnotation } from '@/types/correction';
+import ResizableSplit from '@/components/ResizableSplit/ResizableSplit';
 import styles from './travail-detail.module.css';
 import flipStyles from '@/components/FlipEditor/FlipEditor.module.css';
 
@@ -465,219 +466,225 @@ export default function TravailDetailPage() {
       </header>
 
       <main className={styles.main}>
-        <div className={styles.contentSection}>
-          <div className={styles.sectionHeader}>
-            <h2>Contenu du travail</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {isLate && <span className={styles.lateBadge}>En retard</span>}
-              <div className={styles.statusBadge}>
-                {travail.status === 'submitted' ? (
-                  <>
-                    <span className={styles.statusIcon}>✓</span>
-                    <span>Remis le {new Date(travail.submittedAt!).toLocaleDateString('fr-BE')}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className={styles.statusIcon}>📝</span>
-                    <span>Brouillon</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Flip bar — visible seulement si l'élève a un brouillon */}
-          {hasDraft && (
-            <div className={flipStyles.flipBar}>
-              <div className={flipStyles.flipToggle}>
-                <button
-                  type="button"
-                  className={`${flipStyles.flipButton} ${flipSide === 'recto' ? flipStyles.flipButtonActive : ''}`}
-                  onClick={() => flipSide !== 'recto' && handleFlip()}
-                  disabled={isFlipping}
-                >
-                  <span className={flipStyles.flipIcon}>✏️</span>
-                  <span className={flipStyles.flipLabel}>Texte de l&apos;élève</span>
-                </button>
-                <button
-                  type="button"
-                  className={`${flipStyles.flipButton} ${flipSide === 'verso' ? flipStyles.flipButtonActive : ''}`}
-                  onClick={() => flipSide !== 'verso' && handleFlip()}
-                  disabled={isFlipping}
-                >
-                  <span className={flipStyles.flipIcon}>📝</span>
-                  <span className={flipStyles.flipLabel}>Planification de l&apos;élève</span>
-                </button>
-              </div>
-              <button
-                type="button"
-                className={flipStyles.flipAction}
-                onClick={handleFlip}
-                disabled={isFlipping}
-                title={`Retourner vers ${flipSide === 'recto' ? 'Brouillon' : 'Texte'}`}
-              >
-                <span className={`${flipStyles.flipActionIcon} ${isFlipping ? flipStyles.spinning : ''}`}>
-                  🔄
-                </span>
-                <span className={flipStyles.flipActionText}>Retourner</span>
-              </button>
-            </div>
-          )}
-
-          {/* Contenu avec animation flip */}
-          <div className={flipStyles.flipContainer}>
-            <div
-              className={`
-                ${flipStyles.flipCard}
-                ${flipPhase === 'out' ? flipStyles.flipOut : ''}
-                ${flipPhase === 'in' ? flipStyles.flipIn : ''}
-              `}
-            >
-              {flipSide === 'recto' ? (
-                <div className={flipStyles.cardFace}>
-                  {travail.content ? (
-                    <AnnotationEditor
-                      studentContent={travail.content}
-                      annotatedContent={correction?.annotatedContent}
-                      audioAnnotations={correction?.audioAnnotations}
-                      correctionId={`CORR-${travailId}`}
-                      onAnnotatedContentChange={updateAnnotatedContent}
-                      onAudioAnnotationsChange={updateAudioAnnotations}
-                      aiSuggestions={devoir.accesIA ? aiSuggestions : undefined}
-                    />
-                  ) : (
-                    <div className={styles.contentBox}>
-                      <p className={styles.emptyContent}>Aucun contenu rédigé</p>
-                    </div>
-                  )}
+        <ResizableSplit
+          storageKey="correction-split"
+          left={
+            <div className={styles.contentSection}>
+              <div className={styles.sectionHeader}>
+                <h2>Contenu du travail</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {isLate && <span className={styles.lateBadge}>En retard</span>}
+                  <div className={styles.statusBadge}>
+                    {travail.status === 'submitted' ? (
+                      <>
+                        <span className={styles.statusIcon}>✓</span>
+                        <span>Remis le {new Date(travail.submittedAt!).toLocaleDateString('fr-BE')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className={styles.statusIcon}>📝</span>
+                        <span>Brouillon</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <div className={flipStyles.cardFace}>
-                  {travail.draftContent ? (
-                    <DraftEditor
-                      draftType={draftType}
-                      draft={travail.draftContent}
-                      onChange={() => {}}
-                      disabled={true}
-                      draftAnnotations={correction?.draftAnnotations || {}}
-                      onAnnotationChange={handleDraftAnnotationChange}
-                      isRecording={isDraftRecording}
-                      recordingItemId={draftRecordingItemId}
-                      recordingDuration={draftRecordingDuration}
-                      onStartRecording={handleStartDraftRecording}
-                      onStopRecording={handleStopDraftRecording}
-                    />
-                  ) : (
-                    <div className={styles.contentBox}>
-                      <p className={styles.emptyContent}>Aucun brouillon</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.evaluationSection}>
-          <div className={styles.sectionHeader}>
-            <div className={styles.sectionHeaderTop}>
-              <div className={styles.sectionHeaderLeft}>
-                <h2>Outils d&apos;évaluation et de correction</h2>
               </div>
-              <div className={styles.sectionHeaderRight}>
-                {correctionSaving && (
-                  <span className={styles.savingIndicator}>Sauvegarde...</span>
-                )}
-                {profScore !== null && (
-                  <span className={styles.scoreDisplay}>
-                    {profScore}%
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
 
-          <div className={styles.assistanceWrapper}>
-            <AssistancePanel
-              devoir={devoir}
-              grille={grille}
-              grilleLoading={grilleLoading}
-              grilleError={grilleError}
-              selfEvaluation={travail.selfEvaluation || null}
-              onSelfEvaluationChange={updateEvaluation}
-              disabled={false}
-              studentName={travail.studentName}
-              correction={correction}
-              studentContent={travail.content}
-              showRemarquesTab={false}
-              isProfessorView={true}
-              showAiData={!!devoir.accesIA}
-              aiGridResult={aiGridResult}
-              studentRessourceAnnotations={travail.ressourceAnnotations}
-              studentRessourceNotes={travail.ressourceNotes}
-            />
-          </div>
-
-          {/* Commentaire général du professeur */}
-          <div className={styles.commentSection}>
-            <h3 className={styles.commentTitle}>Commentaire général</h3>
-            <div className={styles.commentRow}>
-              <textarea
-                className={styles.commentTextarea}
-                value={correction?.commentaireGeneral || ''}
-                onChange={(e) => updateCommentaireGeneral(e.target.value)}
-                placeholder="Commentaire écrit pour l'élève..."
-                rows={3}
-              />
-              <div className={styles.commentAudioCol}>
-                {isCommentRecording ? (
-                  <div className={styles.commentRecording}>
-                    <span className={styles.commentRecDot} />
-                    <span className={styles.commentRecTime}>
-                      {Math.floor(commentRecordingDuration / 60).toString().padStart(2, '0')}:{(commentRecordingDuration % 60).toString().padStart(2, '0')}
-                    </span>
+              {/* Flip bar — visible seulement si l'élève a un brouillon */}
+              {hasDraft && (
+                <div className={flipStyles.flipBar}>
+                  <div className={flipStyles.flipToggle}>
                     <button
                       type="button"
-                      className={styles.commentStopBtn}
-                      onClick={handleStopCommentRecording}
-                      title="Arrêter l'enregistrement"
+                      className={`${flipStyles.flipButton} ${flipSide === 'recto' ? flipStyles.flipButtonActive : ''}`}
+                      onClick={() => flipSide !== 'recto' && handleFlip()}
+                      disabled={isFlipping}
                     >
-                      ■
+                      <span className={flipStyles.flipIcon}>✏️</span>
+                      <span className={flipStyles.flipLabel}>Texte de l&apos;élève</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${flipStyles.flipButton} ${flipSide === 'verso' ? flipStyles.flipButtonActive : ''}`}
+                      onClick={() => flipSide !== 'verso' && handleFlip()}
+                      disabled={isFlipping}
+                    >
+                      <span className={flipStyles.flipIcon}>📝</span>
+                      <span className={flipStyles.flipLabel}>Planification de l&apos;élève</span>
                     </button>
                   </div>
-                ) : correction?.commentaireGeneralAudio ? (
-                  <div className={styles.commentAudioPlayback}>
-                    <button
-                      type="button"
-                      className={styles.commentPlayBtn}
-                      onClick={isPlayingComment ? handleStopPlayComment : handlePlayComment}
-                      title={isPlayingComment ? 'Arrêter' : 'Écouter'}
-                    >
-                      {isPlayingComment ? '⏸' : '▶'}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.commentDeleteAudioBtn}
-                      onClick={handleDeleteCommentAudio}
-                      title="Supprimer"
-                    >
-                      🗑
-                    </button>
-                  </div>
-                ) : (
                   <button
                     type="button"
-                    className={styles.commentMicBtn}
-                    onClick={startCommentRecording}
-                    title="Enregistrer un commentaire vocal"
+                    className={flipStyles.flipAction}
+                    onClick={handleFlip}
+                    disabled={isFlipping}
+                    title={`Retourner vers ${flipSide === 'recto' ? 'Brouillon' : 'Texte'}`}
                   >
-                    🎤
+                    <span className={`${flipStyles.flipActionIcon} ${isFlipping ? flipStyles.spinning : ''}`}>
+                      🔄
+                    </span>
+                    <span className={flipStyles.flipActionText}>Retourner</span>
                   </button>
-                )}
+                </div>
+              )}
+
+              {/* Contenu avec animation flip */}
+              <div className={flipStyles.flipContainer}>
+                <div
+                  className={`
+                    ${flipStyles.flipCard}
+                    ${flipPhase === 'out' ? flipStyles.flipOut : ''}
+                    ${flipPhase === 'in' ? flipStyles.flipIn : ''}
+                  `}
+                >
+                  {flipSide === 'recto' ? (
+                    <div className={flipStyles.cardFace}>
+                      {travail.content ? (
+                        <AnnotationEditor
+                          studentContent={travail.content}
+                          annotatedContent={correction?.annotatedContent}
+                          audioAnnotations={correction?.audioAnnotations}
+                          correctionId={`CORR-${travailId}`}
+                          onAnnotatedContentChange={updateAnnotatedContent}
+                          onAudioAnnotationsChange={updateAudioAnnotations}
+                          aiSuggestions={devoir.accesIA ? aiSuggestions : undefined}
+                        />
+                      ) : (
+                        <div className={styles.contentBox}>
+                          <p className={styles.emptyContent}>Aucun contenu rédigé</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className={flipStyles.cardFace}>
+                      {travail.draftContent ? (
+                        <DraftEditor
+                          draftType={draftType}
+                          draft={travail.draftContent}
+                          onChange={() => {}}
+                          disabled={true}
+                          draftAnnotations={correction?.draftAnnotations || {}}
+                          onAnnotationChange={handleDraftAnnotationChange}
+                          isRecording={isDraftRecording}
+                          recordingItemId={draftRecordingItemId}
+                          recordingDuration={draftRecordingDuration}
+                          onStartRecording={handleStartDraftRecording}
+                          onStopRecording={handleStopDraftRecording}
+                        />
+                      ) : (
+                        <div className={styles.contentBox}>
+                          <p className={styles.emptyContent}>Aucun brouillon</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          }
+          right={
+            <div className={styles.evaluationSection}>
+              <div className={styles.sectionHeader}>
+                <div className={styles.sectionHeaderTop}>
+                  <div className={styles.sectionHeaderLeft}>
+                    <h2>Outils d&apos;évaluation et de correction</h2>
+                  </div>
+                  <div className={styles.sectionHeaderRight}>
+                    {correctionSaving && (
+                      <span className={styles.savingIndicator}>Sauvegarde...</span>
+                    )}
+                    {profScore !== null && (
+                      <span className={styles.scoreDisplay}>
+                        {profScore}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.assistanceWrapper}>
+                <AssistancePanel
+                  devoir={devoir}
+                  grille={grille}
+                  grilleLoading={grilleLoading}
+                  grilleError={grilleError}
+                  selfEvaluation={travail.selfEvaluation || null}
+                  onSelfEvaluationChange={updateEvaluation}
+                  disabled={false}
+                  studentName={travail.studentName}
+                  correction={correction}
+                  studentContent={travail.content}
+                  showRemarquesTab={false}
+                  isProfessorView={true}
+                  showAiData={!!devoir.accesIA}
+                  aiGridResult={aiGridResult}
+                  studentRessourceAnnotations={travail.ressourceAnnotations}
+                  studentRessourceNotes={travail.ressourceNotes}
+                />
+              </div>
+
+              {/* Commentaire général du professeur */}
+              <div className={styles.commentSection}>
+                <h3 className={styles.commentTitle}>Commentaire général</h3>
+                <div className={styles.commentRow}>
+                  <textarea
+                    className={styles.commentTextarea}
+                    value={correction?.commentaireGeneral || ''}
+                    onChange={(e) => updateCommentaireGeneral(e.target.value)}
+                    placeholder="Commentaire écrit pour l'élève..."
+                    rows={3}
+                  />
+                  <div className={styles.commentAudioCol}>
+                    {isCommentRecording ? (
+                      <div className={styles.commentRecording}>
+                        <span className={styles.commentRecDot} />
+                        <span className={styles.commentRecTime}>
+                          {Math.floor(commentRecordingDuration / 60).toString().padStart(2, '0')}:{(commentRecordingDuration % 60).toString().padStart(2, '0')}
+                        </span>
+                        <button
+                          type="button"
+                          className={styles.commentStopBtn}
+                          onClick={handleStopCommentRecording}
+                          title="Arrêter l'enregistrement"
+                        >
+                          ■
+                        </button>
+                      </div>
+                    ) : correction?.commentaireGeneralAudio ? (
+                      <div className={styles.commentAudioPlayback}>
+                        <button
+                          type="button"
+                          className={styles.commentPlayBtn}
+                          onClick={isPlayingComment ? handleStopPlayComment : handlePlayComment}
+                          title={isPlayingComment ? 'Arrêter' : 'Écouter'}
+                        >
+                          {isPlayingComment ? '⏸' : '▶'}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.commentDeleteAudioBtn}
+                          onClick={handleDeleteCommentAudio}
+                          title="Supprimer"
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.commentMicBtn}
+                        onClick={startCommentRecording}
+                        title="Enregistrer un commentaire vocal"
+                      >
+                        🎤
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        />
       </main>
     </div>
   );

@@ -12,6 +12,7 @@ import ClasseCreationForm from '@/components/ClasseCreationForm/ClasseCreationFo
 import ClasseDetailForm from '@/components/ClasseDetailForm/ClasseDetailForm';
 import AddClasseModal from '@/components/AddClasseModal/AddClasseModal';
 import AddEleveModal from '@/components/AddEleveModal/AddEleveModal';
+import BulkImportEleveModal from '@/components/BulkImportEleveModal/BulkImportEleveModal';
 import MessageBox from '@/components/MessageBox/MessageBox';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import type { Classe, Eleve } from '@/types/classe';
@@ -51,6 +52,10 @@ export default function ClassesPage() {
   const [selectedClasseId, setSelectedClasseId] = useState<string | null>(null);
   const [isSavingEleve, setIsSavingEleve] = useState(false);
   const [elevesRefreshKey, setElevesRefreshKey] = useState(0);
+
+  // Modale import en masse
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
 
   // Onglet actif: actives ou archives
   const [activeTab, setActiveTab] = useState<'actives' | 'archives'>('actives');
@@ -161,6 +166,47 @@ export default function ClassesPage() {
     setSelectedClasseId(classeId);
     setEditingEleve(null);
     setIsEleveModalOpen(true);
+  };
+
+  const handleBulkImport = (classeId: string) => {
+    setSelectedClasseId(classeId);
+    setIsBulkImportOpen(true);
+  };
+
+  const handleBulkImportSubmit = async (eleves: { nom: string; prenom: string; email: string }[]) => {
+    if (!selectedClasseId || !user) return;
+
+    setIsBulkImporting(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/eleves/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ classeId: selectedClasseId, eleves }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        setMessage({
+          text: `${json.data.imported} élève(s) importé(s)`,
+          type: 'success',
+        });
+        setIsBulkImportOpen(false);
+        setElevesRefreshKey((k) => k + 1);
+      } else {
+        throw new Error(json.message);
+      }
+    } catch (err) {
+      setMessage({
+        text: err instanceof Error ? err.message : "Erreur lors de l'import",
+        type: 'error',
+      });
+    } finally {
+      setIsBulkImporting(false);
+    }
   };
 
   const handleEditEleve = (eleve: Eleve) => {
@@ -332,6 +378,7 @@ export default function ClassesPage() {
               refreshKey={elevesRefreshKey}
               onClose={() => setSelectedClasse(null)}
               onAddEleve={handleAddEleve}
+              onBulkImport={handleBulkImport}
               onEditEleve={handleEditEleve}
               onDeleteEleve={handleDeleteEleve}
             />
@@ -361,6 +408,14 @@ export default function ClassesPage() {
         onSubmit={handleSubmitEleve}
         editingEleve={editingEleve}
         isSaving={isSavingEleve}
+        classeName={classes.find((c) => c.id === selectedClasseId)?.nom}
+      />
+
+      <BulkImportEleveModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        onImport={handleBulkImportSubmit}
+        isSaving={isBulkImporting}
         classeName={classes.find((c) => c.id === selectedClasseId)?.nom}
       />
     </div>

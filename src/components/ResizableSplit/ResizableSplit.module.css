@@ -1,0 +1,103 @@
+.container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.left,
+.right {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.right {
+  flex: 1;
+}
+
+/* ── Divider ─────────────────────────────────────── */
+
+.divider {
+  flex: 0 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 10;
+  transition: background 0.15s ease;
+  touch-action: none;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  background: #dadce0;
+  border-radius: 1px;
+  transition: background 0.15s ease, width 0.15s ease;
+}
+
+.divider:hover::before,
+.dividerActive::before {
+  width: 4px;
+  background: #1a73e8;
+}
+
+/* Handle (3 dots) */
+.handle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  z-index: 1;
+  padding: 6px 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.divider:hover .handle,
+.dividerActive .handle {
+  opacity: 1;
+}
+
+.handle span {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #1a73e8;
+}
+
+/* Dragging state — prevent text selection globally */
+.dragging {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* ── Responsive ──────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .container {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .left,
+  .right {
+    flex: none !important;
+    width: 100% !important;
+  }
+
+  .divider {
+    display: none;
+  }
+}
