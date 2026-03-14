@@ -10,7 +10,7 @@
   gap: 8px;
   padding: 10px 14px;
   background: linear-gradient(135deg, #dce4ec 0%, #c5d3e0 100%);
-  border-radius: 10px;
+  border-radius: var(--c-radius);
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
@@ -24,11 +24,12 @@
   font-size: 15px;
   font-weight: 600;
   color: #416286;
+  font-family: var(--c-font-title);
 }
 
 .headerHint {
   font-size: 12px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   margin-left: auto;
 }
 
@@ -61,9 +62,9 @@
   align-items: flex-start;
   gap: 8px;
   padding: 8px 12px;
-  background: #fff;
-  border: 1.5px solid #dadce0;
-  border-radius: 10px;
+  background: var(--c-bg-card);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
 }
 
 /* -- Numero -- */
@@ -74,17 +75,17 @@
   min-width: 32px;
   height: 28px;
   padding: 0 6px;
-  border-radius: 6px;
+  border-radius: var(--c-radius);
   font-size: 12px;
   font-weight: 600;
-  color: #5f6368;
-  background: #f0f0f0;
+  color: var(--c-text-secondary);
+  background: var(--c-bg-element);
   flex-shrink: 0;
   font-family: 'SF Mono', 'Menlo', monospace;
 }
 
 .numberMain {
-  background: #1f3a5f;
+  background: var(--c-primary);
   color: #fff;
   font-size: 13px;
   min-width: 28px;
@@ -96,8 +97,8 @@
   flex: 1;
   min-width: 0;
   padding: 6px 10px;
-  border: 1.5px solid #e8eaed;
-  border-radius: 8px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
   font-size: 13px;
   font-family: inherit;
   line-height: 1.5;
@@ -110,16 +111,16 @@
 .itemInput:focus {
   outline: none;
   border-color: #416286;
-  background: #fff;
+  background: var(--c-bg-card);
   box-shadow: 0 0 0 3px rgba(65, 98, 134, 0.12);
 }
 
 .itemInputMain {
   font-weight: 500;
   font-size: 14px;
-  background: #fff;
+  background: var(--c-bg-card);
   border-color: transparent;
-  color: #1f3a5f;
+  color: var(--c-primary);
   text-transform: uppercase;
 }
 
@@ -140,9 +141,9 @@
   width: 26px;
   height: 26px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--c-radius);
   background: transparent;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -234,7 +235,7 @@
 .depth2 .childItem .number,
 .number2 {
   background: #e8f5e9;
-  color: #2e7d32;
+  color: var(--c-success);
 }
 
 .depth2 > .childItem .itemInput {
@@ -242,7 +243,7 @@
 }
 
 .depth2 > .childItem .itemInput:focus {
-  border-color: #2e7d32;
+  border-color: var(--c-success);
   box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
 }
 
@@ -295,7 +296,7 @@
   padding: 4px 12px;
   margin-top: 4px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--c-radius);
   background: transparent;
   font-size: 12px;
   font-weight: 500;
@@ -319,8 +320,8 @@
   padding: 8px 16px;
   margin-top: 2.5cm;
   margin-bottom: 8px;
-  border: 2px dashed #dadce0;
-  border-radius: 10px;
+  border: 2px dashed var(--c-border);
+  border-radius: var(--c-radius);
   background: transparent;
   font-size: 13px;
   font-weight: 500;

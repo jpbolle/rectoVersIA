@@ -15,7 +15,7 @@
   justify-content: space-between;
   padding: 8px 12px;
   background: linear-gradient(135deg, #f0f4f9 0%, #e8ecf1 100%);
-  border-bottom: 1px solid #dadce0;
+  border-bottom: 1px solid var(--c-border);
   flex-shrink: 0;
   gap: 12px;
 }
@@ -23,9 +23,9 @@
 .flipToggle {
   display: flex;
   gap: 0;
-  background: #fff;
-  border-radius: 8px;
-  border: 1.5px solid #dadce0;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius);
+  border: 1.5px solid var(--c-border);
   overflow: hidden;
 }
 
@@ -39,18 +39,18 @@
   font-size: 13px;
   font-weight: 500;
   font-family: inherit;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .flipButton:first-child {
-  border-right: 1px solid #dadce0;
+  border-right: 1px solid var(--c-border);
 }
 
 .flipButtonActive {
-  background: #C55764;
+  background: var(--c-accent);
   color: #fff;
 }
 
@@ -72,13 +72,13 @@
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  border: 1.5px solid #dadce0;
-  border-radius: 8px;
-  background: #fff;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
   font-size: 13px;
   font-weight: 500;
   font-family: inherit;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
 }

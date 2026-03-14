@@ -261,30 +261,28 @@ export default function DashboardPage() {
               <div className={styles.evaluationsGrid}>
                 {devoirsLoading ? (
                   <EmptyState icon="hourglass" message="Chargement..." />
-                ) : devoirsActuels.length === 0 && devoirsCorreges.length === 0 ? (
-                  <CreateDevoirCard onClick={() => setIsFormVisible(true)} />
-                ) : devoirsActuels.length === 0 ? (
-                  <p className={styles.emptySubSection}>Aucun travail en cours</p>
                 ) : (
                   <>
-                    {devoirsActuels.map((devoir) => (
-                      <DevoirCard
-                        key={devoir.id}
-                        devoir={devoir}
-                        variant="prof"
-                        onEdit={handleEditDevoir}
-                        onDelete={handleDeleteDevoir}
-                        onDuplicate={handleDuplicateDevoir}
-                        onToggleDisponible={handleToggleDisponible}
-                        onToggleArchive={handleToggleArchive}
-                        onToggleCorrige={handleToggleCorrige}
-                        onToggleCorrigeDisponible={handleToggleCorrigeDisponible}
-                      />
-                    ))}
+                    <CreateDevoirCard onClick={() => setIsFormVisible(true)} />
+                    {devoirsActuels.length === 0 && devoirsCorreges.length === 0 ? null : devoirsActuels.length === 0 ? (
+                      <p className={styles.emptySubSection}>Aucun travail en cours</p>
+                    ) : (
+                      devoirsActuels.map((devoir) => (
+                        <DevoirCard
+                          key={devoir.id}
+                          devoir={devoir}
+                          variant="prof"
+                          onEdit={handleEditDevoir}
+                          onDelete={handleDeleteDevoir}
+                          onDuplicate={handleDuplicateDevoir}
+                          onToggleDisponible={handleToggleDisponible}
+                          onToggleArchive={handleToggleArchive}
+                          onToggleCorrige={handleToggleCorrige}
+                          onToggleCorrigeDisponible={handleToggleCorrigeDisponible}
+                        />
+                      ))
+                    )}
                   </>
-                )}
-                {!devoirsLoading && (devoirsActuels.length > 0 || devoirsCorreges.length > 0) && (
-                  <CreateDevoirCard onClick={() => setIsFormVisible(true)} />
                 )}
               </div>
 

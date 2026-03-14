@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useDevoirs } from '@/hooks/useDevoirs';
+import { useStudentClasses } from '@/hooks/useStudentClasses';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import DevoirCard from '@/components/DevoirCard/DevoirCard';
@@ -14,6 +15,7 @@ export default function ActivitesPage() {
   const { isAuthenticated, isLoading: authLoading, role } = useAuth();
   const router = useRouter();
   const { devoirs, isLoading: devoirsLoading } = useDevoirs();
+  const { classes, isLoading: classesLoading } = useStudentClasses();
 
   const [isReady, setIsReady] = useState(false);
 
@@ -29,12 +31,16 @@ export default function ActivitesPage() {
     if (authLoading) return;
     if (!isAuthenticated) {
       router.replace('/login');
+      return;
     }
-    // Ne plus rediriger les profs - ils peuvent voir la vue élève
-  }, [isAuthenticated, authLoading, router]);
+    // Élève sans classe → renvoyer vers login pour rejoindre une classe
+    if (role === 'eleve' && !classesLoading && classes.length === 0) {
+      router.replace('/login');
+    }
+  }, [isAuthenticated, authLoading, role, classes, classesLoading, router]);
 
 
-  if (authLoading) return null;
+  if (authLoading || (role === 'eleve' && classesLoading)) return null;
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''} ${isPreviewMode ? styles.previewMode : ''}`}>

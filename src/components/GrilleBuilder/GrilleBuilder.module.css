@@ -1,8 +1,8 @@
 .builder {
-  background: white;
-  border-radius: 15px;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
   padding: 32px 40px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(61, 56, 50, 0.1);
   animation: slideIn 0.3s ease;
 }
 
@@ -22,9 +22,10 @@
 }
 
 .builderTitle {
-  color: #1f3a5f;
+  color: var(--c-primary);
   font-size: 20px;
   font-weight: 700;
+  font-family: var(--c-font-title);
   margin: 0;
 }
 
@@ -45,13 +46,13 @@
 .label {
   font-size: 13px;
   font-weight: 600;
-  color: #5f6368;
+  color: var(--c-text-secondary);
 }
 
 .input {
   padding: 10px 14px;
-  border: 2px solid #dadce0;
-  border-radius: 10px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
   font-size: 14px;
   font-family: inherit;
   transition: border-color 0.2s;
@@ -59,7 +60,7 @@
 }
 
 .input:focus {
-  border-color: #1a73e8;
+  border-color: var(--c-primary);
 }
 
 /* UAA chips */
@@ -74,31 +75,31 @@
   align-items: center;
   padding: 6px 14px;
   border-radius: 20px;
-  border: 2px solid #dadce0;
-  background: #f8f9fa;
+  border: 2px solid var(--c-border);
+  background: var(--c-bg-element);
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   transition: all 0.2s ease;
 }
 
 .uaaChip:hover {
-  border-color: #1a73e8;
-  background: #e8f0fe;
-  color: #1a73e8;
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--c-primary);
 }
 
 .uaaChipActive {
-  background: #1a73e8;
-  border-color: #1a73e8;
+  background: var(--c-primary);
+  border-color: var(--c-primary);
   color: white;
 }
 
 .uaaChipActive:hover {
-  background: #1565c0;
-  border-color: #1565c0;
+  background: var(--c-primary-light);
+  border-color: var(--c-primary-light);
   color: white;
 }
 
@@ -115,7 +116,7 @@
 
 .uaaDetailItem {
   font-size: 12px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   font-style: italic;
   line-height: 1.4;
 }
@@ -125,8 +126,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%);
-  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(45, 106, 90, 0.1) 0%, rgba(45, 106, 90, 0.05) 100%);
+  border-radius: var(--c-radius);
   padding: 10px 20px;
   margin-bottom: 20px;
 }
@@ -134,13 +135,13 @@
 .totalLabel {
   font-size: 14px;
   font-weight: 600;
-  color: #1f3a5f;
+  color: var(--c-primary);
 }
 
 .totalValue {
   font-size: 18px;
   font-weight: 700;
-  color: #1a73e8;
+  color: var(--c-primary);
 }
 
 /* Liste criteres */
@@ -153,8 +154,8 @@
 
 /* Bloc critere */
 .criterionBlock {
-  border: 2px solid #e8eaed;
-  border-radius: 12px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
   overflow: hidden;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -164,8 +165,8 @@
 }
 
 .criterionExpanded {
-  border-color: #1a73e8;
-  box-shadow: 0 2px 12px rgba(26, 115, 232, 0.1);
+  border-color: var(--c-primary);
+  box-shadow: 0 2px 12px rgba(45, 106, 90, 0.1);
 }
 
 /* En-tete critere */
@@ -174,18 +175,18 @@
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  background: #f8f9fa;
+  background: var(--c-bg-element);
   border-bottom: 1px solid transparent;
 }
 
 .criterionExpanded .criterionHeader {
-  border-bottom-color: #e8eaed;
+  border-bottom-color: var(--c-border);
 }
 
 .expandBtn {
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--c-radius-sm);
   border: none;
   background: transparent;
   cursor: pointer;
@@ -193,14 +194,14 @@
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .expandBtn:hover {
-  background: #e8eaed;
-  color: #1f3a5f;
+  background: var(--c-border);
+  color: var(--c-primary);
 }
 
 .chevron {
@@ -217,9 +218,9 @@
   font-size: 12px;
   font-weight: 700;
   color: white;
-  background: #1f3a5f;
+  background: var(--c-primary);
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: var(--c-radius-sm);
   flex-shrink: 0;
 }
 
@@ -227,11 +228,11 @@
   flex: 1;
   padding: 8px 12px;
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--c-radius);
   font-size: 15px;
   font-weight: 600;
   font-family: inherit;
-  color: #1f3a5f;
+  color: var(--c-primary);
   background: transparent;
   transition: all 0.2s;
   outline: none;
@@ -239,17 +240,17 @@
 }
 
 .criterionNameInput:hover {
-  border-color: #e8eaed;
-  background: white;
+  border-color: var(--c-border);
+  background: var(--c-bg-card);
 }
 
 .criterionNameInput:focus {
-  border-color: #1a73e8;
-  background: white;
+  border-color: var(--c-primary);
+  background: var(--c-bg-card);
 }
 
 .criterionNameInput::placeholder {
-  color: #9aa0a6;
+  color: var(--c-text-muted);
   font-weight: 400;
 }
 
@@ -258,18 +259,18 @@
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  border: 3px solid #1a73e8;
+  border: 3px solid var(--c-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: white;
+  background: var(--c-bg-card);
   transition: all 0.2s;
 }
 
 .weightCircle:hover {
-  border-color: #1558b0;
-  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.2);
+  border-color: var(--c-primary-light);
+  box-shadow: 0 2px 8px rgba(45, 106, 90, 0.2);
 }
 
 .weightInput {
@@ -278,7 +279,7 @@
   border: none;
   font-size: 16px;
   font-weight: 700;
-  color: #1a73e8;
+  color: var(--c-primary);
   font-family: inherit;
   background: transparent;
   outline: none;
@@ -300,22 +301,22 @@
 .moveBtn {
   width: 28px;
   height: 28px;
-  border-radius: 6px;
-  border: 1px solid #dadce0;
-  background: white;
+  border-radius: var(--c-radius-sm);
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
   cursor: pointer;
   font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  color: #5f6368;
+  color: var(--c-text-secondary);
 }
 
 .moveBtn:hover:not(:disabled) {
-  background: #f1f3f4;
-  border-color: #1a73e8;
-  color: #1a73e8;
+  background: var(--c-bg-element);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
 }
 
 .moveBtn:disabled {
@@ -326,9 +327,9 @@
 .removeCriterionBtn {
   width: 28px;
   height: 28px;
-  border-radius: 6px;
-  border: 1px solid #dadce0;
-  background: white;
+  border-radius: var(--c-radius-sm);
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
   cursor: pointer;
   font-size: 13px;
   display: flex;
@@ -339,7 +340,7 @@
 
 .removeCriterionBtn:hover:not(:disabled) {
   background: #fee;
-  border-color: #d93025;
+  border-color: var(--c-danger);
 }
 
 .removeCriterionBtn:disabled {
@@ -356,7 +357,7 @@
 
 /* Colonne niveau */
 .levelColumn {
-  border-right: 1px solid #f0f0f0;
+  border-right: 1px solid var(--c-bg-element);
   display: flex;
   flex-direction: column;
 }
@@ -369,7 +370,7 @@
 .levelHeader {
   padding: 10px 8px;
   text-align: center;
-  border-bottom: 1px solid #e8eaed;
+  border-bottom: 1px solid var(--c-border);
 }
 
 .levelHeader0 {
@@ -400,7 +401,7 @@
   display: block;
   font-size: 11px;
   font-weight: 700;
-  color: #333;
+  color: var(--c-text);
   text-transform: uppercase;
   letter-spacing: 0.3px;
   margin-bottom: 2px;
@@ -408,7 +409,7 @@
 
 .levelPct {
   font-size: 11px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   font-weight: 500;
 }
 
@@ -424,23 +425,23 @@
 
 /* Carte indicateur */
 .indicatorCard {
-  background: white;
-  border: 1px solid #e8eaed;
-  border-radius: 8px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
   padding: 8px 10px;
   position: relative;
   transition: all 0.15s;
 }
 
 .indicatorCard:hover {
-  border-color: #1a73e8;
-  box-shadow: 0 1px 4px rgba(26, 115, 232, 0.1);
+  border-color: var(--c-primary);
+  box-shadow: 0 1px 4px rgba(45, 106, 90, 0.1);
 }
 
 .indicatorText {
   font-size: 12px;
   line-height: 1.5;
-  color: #333;
+  color: var(--c-text);
   display: block;
   padding-right: 40px;
   word-break: break-word;
@@ -464,7 +465,7 @@
 .indicatorDeleteBtn {
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--c-radius-sm);
   border: none;
   background: transparent;
   cursor: pointer;
@@ -476,7 +477,7 @@
 }
 
 .indicatorEditBtn:hover {
-  background: #e8f0fe;
+  background: rgba(45, 106, 90, 0.1);
 }
 
 .indicatorDeleteBtn:hover {
@@ -487,14 +488,14 @@
 .indicatorTextarea {
   width: 100%;
   padding: 6px 8px;
-  border: 2px solid #1a73e8;
-  border-radius: 6px;
+  border: 2px solid var(--c-primary);
+  border-radius: var(--c-radius-sm);
   font-size: 12px;
   font-family: inherit;
   line-height: 1.5;
   resize: vertical;
   outline: none;
-  background: #f8fbff;
+  background: rgba(45, 106, 90, 0.03);
   box-sizing: border-box;
 }
 
@@ -516,7 +517,7 @@
   height: 24px;
   border-radius: 50%;
   border: none;
-  background: #1a73e8;
+  background: var(--c-primary);
   color: white;
   cursor: pointer;
   font-size: 14px;
@@ -528,7 +529,7 @@
 }
 
 .confirmAddBtn:hover {
-  background: #1558b0;
+  background: var(--c-primary-light);
 }
 
 .cancelAddBtn {
@@ -536,8 +537,8 @@
   height: 24px;
   border-radius: 50%;
   border: none;
-  background: #e8eaed;
-  color: #5f6368;
+  background: var(--c-border);
+  color: var(--c-text-secondary);
   cursor: pointer;
   font-size: 14px;
   font-weight: 700;
@@ -548,17 +549,17 @@
 }
 
 .cancelAddBtn:hover {
-  background: #dadce0;
+  background: var(--c-border);
 }
 
 /* Bouton ajouter indicateur */
 .addIndicatorBtn {
   width: 100%;
   padding: 6px 8px;
-  border: 1px dashed #dadce0;
-  border-radius: 6px;
+  border: 1px dashed var(--c-border);
+  border-radius: var(--c-radius-sm);
   background: transparent;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   font-size: 11px;
   font-family: inherit;
   cursor: pointer;
@@ -566,30 +567,32 @@
 }
 
 .addIndicatorBtn:hover {
-  border-color: #1a73e8;
-  color: #1a73e8;
-  background: #f8fbff;
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.03);
 }
 
 /* Bouton ajouter critere */
 .addCriterionBtn {
   width: 100%;
   padding: 14px;
-  border: 2px dashed rgba(26, 115, 232, 0.3);
-  border-radius: 12px;
+  border: 2px dashed rgba(45, 106, 90, 0.3);
+  border-radius: var(--c-radius-lg);
   background: transparent;
-  color: #1a73e8;
+  color: var(--c-primary);
   font-size: 15px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
   margin-bottom: 24px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .addCriterionBtn:hover {
-  background: rgba(26, 115, 232, 0.05);
-  border-color: rgba(26, 115, 232, 0.5);
+  background: rgba(45, 106, 90, 0.05);
+  border-color: rgba(45, 106, 90, 0.5);
 }
 
 /* Actions du builder */
@@ -601,19 +604,21 @@
 
 .cancelBtn {
   padding: 10px 24px;
-  border: 2px solid #dadce0;
-  border-radius: 8px;
-  background: white;
-  color: #5f6368;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  color: var(--c-text-secondary);
   font-size: 14px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .cancelBtn:hover:not(:disabled) {
-  background: #f1f3f4;
+  background: var(--c-bg-element);
   border-color: #c0c0c0;
 }
 
@@ -625,19 +630,21 @@
 .saveBtn {
   padding: 10px 28px;
   border: none;
-  border-radius: 8px;
-  background: #1a73e8;
+  border-radius: var(--c-radius);
+  background: var(--c-primary);
   color: white;
   font-size: 14px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .saveBtn:hover:not(:disabled) {
-  background: #1558b0;
-  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+  background: var(--c-primary-light);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
 }
 
 .saveBtn:disabled {
@@ -660,7 +667,7 @@
 @media (max-width: 768px) {
   .builder {
     padding: 24px 20px;
-    border-radius: 12px;
+    border-radius: var(--c-radius-lg);
   }
 
   .metaFields {
@@ -707,7 +714,7 @@
 
   .levelColumn {
     border-right: none;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--c-bg-element);
   }
 
   .levelColumn:last-child {

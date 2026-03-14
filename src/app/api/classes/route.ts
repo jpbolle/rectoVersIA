@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { generateClasseId, getCurrentAnneeScolaire } from '@/lib/classe-utils';
+import { generateClasseId, generateClasseCode, getCurrentAnneeScolaire } from '@/lib/classe-utils';
 import type { Classe, CreateClasseData } from '@/types/classe';
 
 // GET - Liste des classes du prof
@@ -27,6 +27,29 @@ export async function GET(request: NextRequest) {
       .where('profId', '==', auth.uid)
       .get();
 
+    // Générer des codes pour les classes qui n'en ont pas encore
+    const generatedCodes = new Map<string, string>(); // docId → code
+    const existingCodes = new Set<string>();
+
+    for (const doc of snapshot.docs) {
+      const code = doc.data().code;
+      if (code) existingCodes.add(code);
+    }
+
+    for (const doc of snapshot.docs) {
+      if (!doc.data().code) {
+        let code = generateClasseCode();
+        let attempts = 0;
+        while (existingCodes.has(code) && attempts < 20) {
+          code = generateClasseCode();
+          attempts++;
+        }
+        existingCodes.add(code);
+        generatedCodes.set(doc.id, code);
+        adminDb.collection('classes').doc(doc.id).update({ code }).catch(() => {});
+      }
+    }
+
     const classes: Classe[] = snapshot.docs
       .map((doc) => {
         const data = doc.data();
@@ -37,6 +60,7 @@ export async function GET(request: NextRequest) {
           profId: data.profId || '',
           anneeScolaire: data.anneeScolaire || '',
           archive: data.archive || false,
+          code: data.code || generatedCodes.get(doc.id) || '',
           googleClassroomId: data.googleClassroomId,
           createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || '',
           updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt || '',
@@ -84,12 +108,21 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const classeId = generateClasseId();
 
+    // Générer un code unique
+    let code = generateClasseCode();
+    for (let i = 0; i < 10; i++) {
+      const existing = await adminDb.collection('classes').where('code', '==', code).limit(1).get();
+      if (existing.empty) break;
+      code = generateClasseCode();
+    }
+
     const classe = {
       nom: body.nom.trim(),
       description: body.description?.trim() || '',
       profId: auth.uid,
       anneeScolaire: getCurrentAnneeScolaire(),
       archive: false,
+      code,
       createdAt: now,
       updatedAt: now,
     };

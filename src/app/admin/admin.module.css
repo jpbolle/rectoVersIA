@@ -1,6 +1,6 @@
 .pageWrapper {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--c-bg);
   display: flex;
   flex-direction: column;
   opacity: 0;
@@ -24,17 +24,18 @@
 }
 
 .pageTitle {
-  color: #1f3a5f;
+  color: var(--c-primary);
   font-size: 26px;
   font-weight: 700;
+  font-family: var(--c-font-title);
   margin: 0 0 30px;
 }
 
 .professeursSection {
-  background: white;
-  border-radius: 15px;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
   padding: 40px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--c-shadow-card);
 }
 
 .sectionHeader {
@@ -47,9 +48,10 @@
 }
 
 .sectionTitle {
-  color: #1f3a5f;
+  color: var(--c-primary);
   font-size: 20px;
   font-weight: 600;
+  font-family: var(--c-font-title);
   margin: 0;
 }
 
@@ -58,19 +60,21 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #C55764;
+  background: var(--c-accent);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--c-radius-lg);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s ease;
   font-family: inherit;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .addButton:hover {
-  background: #b04d58;
+  background: var(--c-accent-dark);
 }
 
 .professeursGrid {
@@ -81,9 +85,9 @@
 
 /* Card professeur */
 .profCard {
-  background: #fafafa;
-  border: 1px solid #e8e8e8;
-  border-radius: 12px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -92,19 +96,19 @@
 }
 
 .profCard:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--c-shadow-card);
 }
 
 .profName {
   font-size: 16px;
   font-weight: 600;
-  color: #1f3a5f;
+  color: var(--c-primary);
   margin: 0;
 }
 
 .profEmail {
   font-size: 13px;
-  color: #666;
+  color: var(--c-text-secondary);
   margin: 0;
 }
 
@@ -117,15 +121,15 @@
 
 .profDate {
   font-size: 12px;
-  color: #999;
+  color: var(--c-text-muted);
 }
 
 .deleteButton {
   background: none;
-  border: 1px solid #e8e8e8;
-  color: #999;
+  border: 1px solid var(--c-border);
+  color: var(--c-text-muted);
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: var(--c-radius-sm);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -133,24 +137,25 @@
 }
 
 .deleteButton:hover {
-  border-color: #e74c3c;
-  color: #e74c3c;
-  background: rgba(231, 76, 60, 0.05);
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+  background: rgba(180, 64, 64, 0.05);
 }
 
 /* Formulaire d'ajout */
 .formSection {
-  background: white;
-  border-radius: 15px;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
   padding: 40px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--c-shadow-card);
   margin-top: 30px;
 }
 
 .formTitle {
-  color: #1f3a5f;
+  color: var(--c-primary);
   font-size: 18px;
   font-weight: 600;
+  font-family: var(--c-font-title);
   margin: 0 0 24px;
 }
 
@@ -170,13 +175,13 @@
 .formLabel {
   font-size: 13px;
   font-weight: 500;
-  color: #555;
+  color: var(--c-text-secondary);
 }
 
 .formInput {
   padding: 10px 14px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
   font-size: 14px;
   font-family: inherit;
   transition: border-color 0.2s ease;
@@ -184,7 +189,7 @@
 
 .formInput:focus {
   outline: none;
-  border-color: #C55764;
+  border-color: var(--c-accent);
 }
 
 .formActions {
@@ -195,32 +200,34 @@
 
 .submitButton {
   padding: 10px 24px;
-  background: #C55764;
+  background: var(--c-accent);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--c-radius-lg);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s ease;
   font-family: inherit;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .submitButton:hover {
-  background: #b04d58;
+  background: var(--c-accent-dark);
 }
 
 .submitButton:disabled {
-  background: #ccc;
+  background: var(--c-border);
   cursor: not-allowed;
 }
 
 .cancelButton {
   padding: 10px 24px;
   background: transparent;
-  color: #666;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  color: var(--c-text-secondary);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -229,15 +236,15 @@
 }
 
 .cancelButton:hover {
-  border-color: #999;
-  color: #333;
+  border-color: var(--c-border-strong);
+  color: var(--c-text);
 }
 
 /* Empty state */
 .emptyState {
   text-align: center;
   padding: 40px;
-  color: #999;
+  color: var(--c-text-muted);
   font-size: 14px;
   grid-column: 1 / -1;
 }
@@ -250,14 +257,14 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  color: #666;
+  color: var(--c-text-secondary);
 }
 
 .spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #e8e8e8;
-  border-top-color: #C55764;
+  border: 3px solid var(--c-border);
+  border-top-color: var(--c-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -269,19 +276,19 @@
 /* Message */
 .message {
   padding: 12px 20px;
-  border-radius: 8px;
+  border-radius: var(--c-radius-lg);
   margin-bottom: 20px;
   font-size: 14px;
 }
 
 .messageSuccess {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: rgba(45, 138, 78, 0.1);
+  color: var(--c-success);
 }
 
 .messageError {
-  background: #fce4ec;
-  color: #c62828;
+  background: rgba(180, 64, 64, 0.1);
+  color: var(--c-danger);
 }
 
 /* Responsive */
@@ -308,7 +315,7 @@
   .professeursSection,
   .formSection {
     padding: 25px 20px;
-    border-radius: 12px;
+    border-radius: var(--c-radius-lg);
   }
   .formSection {
     margin-top: 20px;

@@ -24,7 +24,7 @@ export default function Header({ variant, topOffset = 0 }: HeaderProps) {
           {variant === 'prof' ? 'Assistant de correction' : 'Aide à l\'écriture et à la réécriture'}
         </p>
 
-        {variant === 'prof' && (
+        {variant === 'prof' ? (
           <nav className={styles.navButtons}>
             <button
               className={styles.navBtn}
@@ -43,6 +43,27 @@ export default function Header({ variant, topOffset = 0 }: HeaderProps) {
               onClick={() => router.push('/grilles')}
             >
               Mes Grilles
+            </button>
+          </nav>
+        ) : (
+          <nav className={styles.navButtons}>
+            <button
+              className={styles.navBtn}
+              onClick={() => router.push('/activites')}
+            >
+              Mes Activités
+            </button>
+            <button
+              className={styles.navBtn}
+              onClick={() => router.push('/mes-classes')}
+            >
+              Mes Classes
+            </button>
+            <button
+              className={styles.navBtn}
+              onClick={() => router.push('/profil')}
+            >
+              Mon Profil
             </button>
           </nav>
         )}

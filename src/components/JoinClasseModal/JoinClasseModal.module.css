@@ -1,0 +1,223 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(61, 56, 50, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  width: 100%;
+  max-width: 560px;
+  box-shadow: var(--c-shadow-popup);
+  border: 1px solid var(--c-border);
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--c-primary);
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.closeBtn:hover {
+  color: var(--c-primary);
+}
+
+.body {
+  padding: 24px;
+}
+
+.codeLabel {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-primary);
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.codeGrid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.codeInput {
+  width: 44px;
+  height: 52px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  text-transform: uppercase;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  color: var(--c-text);
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+
+.codeInput:focus {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.1);
+}
+
+.codeDash {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--c-text-muted);
+  margin: 0 4px;
+  user-select: none;
+}
+
+.nameRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+
+.nameInput {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-family: inherit;
+  color: var(--c-text);
+  transition: border-color 0.2s ease;
+}
+
+.nameInput:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.1);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.cancelBtn,
+.submitBtn {
+  flex: 1;
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: var(--c-radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.cancelBtn {
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  color: var(--c-text-secondary);
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background: var(--c-border);
+}
+
+.submitBtn {
+  background: var(--c-primary);
+  border: none;
+  color: var(--c-text-on-primary);
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
+  transform: translateY(-1px);
+}
+
+.submitBtn:disabled,
+.cancelBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  color: var(--c-danger);
+  font-size: 13px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.success {
+  color: var(--c-success);
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.warning {
+  color: var(--c-accent-dark);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .overlay { padding: 10px; }
+  .modal { max-width: 100%; }
+  .codeInput { width: 38px; height: 46px; font-size: 18px; }
+  .nameRow { grid-template-columns: 1fr; }
+}

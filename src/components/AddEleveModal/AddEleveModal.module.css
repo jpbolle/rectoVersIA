@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(61, 56, 50, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,11 +13,12 @@
 }
 
 .modal {
-  background: white;
-  border-radius: 16px;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
   width: 100%;
   max-width: 500px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--c-shadow-popup);
+  border: 1px solid var(--c-border);
   animation: slideIn 0.2s ease;
 }
 
@@ -37,19 +38,20 @@
   align-items: center;
   gap: 12px;
   padding: 20px 24px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--c-border);
 }
 
 .title {
   margin: 0;
+  font-family: var(--c-font-title);
   font-size: 20px;
   font-weight: 700;
-  color: #1f3a5f;
+  color: var(--c-primary);
 }
 
 .classeBadge {
-  background: #e8f0fe;
-  color: #1a73e8;
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--c-primary);
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 13px;
@@ -60,7 +62,7 @@
   background: none;
   border: none;
   font-size: 28px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   cursor: pointer;
   padding: 0;
   line-height: 1;
@@ -69,7 +71,7 @@
 }
 
 .closeBtn:hover {
-  color: #1f3a5f;
+  color: var(--c-primary);
 }
 
 .form {
@@ -90,7 +92,7 @@
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--c-text);
   margin-bottom: 8px;
 }
 
@@ -98,15 +100,17 @@
   width: 100%;
   padding: 12px 14px;
   font-size: 15px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
   transition: border-color 0.2s ease;
   font-family: inherit;
+  color: var(--c-text);
 }
 
 .input:focus {
   outline: none;
-  border-color: #1a73e8;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.1);
 }
 
 .actions {
@@ -121,30 +125,30 @@
   padding: 12px 20px;
   font-size: 15px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: var(--c-radius);
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
 }
 
 .cancelBtn {
-  background: #f5f5f5;
-  border: 1px solid #dadce0;
-  color: #5f6368;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  color: var(--c-text-secondary);
 }
 
 .cancelBtn:hover:not(:disabled) {
-  background: #e0e0e0;
+  background: var(--c-border);
 }
 
 .submitBtn {
-  background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+  background: var(--c-gradient-header);
   border: none;
-  color: white;
+  color: var(--c-text-on-primary);
 }
 
 .submitBtn:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
   transform: translateY(-1px);
 }
 

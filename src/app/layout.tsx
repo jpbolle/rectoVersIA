@@ -31,7 +31,7 @@ export default function RootLayout({
     <html lang="fr" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
         <link

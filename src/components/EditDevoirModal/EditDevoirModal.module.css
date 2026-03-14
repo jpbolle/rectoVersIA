@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(61, 56, 50, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,13 +13,14 @@
 }
 
 .modal {
-  background: white;
-  border-radius: 16px;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
   width: 100%;
   max-width: 1100px;
   max-height: 85vh;
   overflow-y: auto;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--c-shadow-popup);
+  border: 1px solid var(--c-border);
 }
 
 .header {
@@ -27,11 +28,12 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 25px;
-  border-bottom: 1px solid #e8eaed;
+  border-bottom: 1px solid var(--c-border);
 }
 
 .title {
-  color: #1f3a5f;
+  color: var(--c-primary);
+  font-family: var(--c-font-title);
   font-size: 20px;
   font-weight: 600;
   margin: 0;
@@ -41,7 +43,7 @@
   background: none;
   border: none;
   font-size: 28px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   cursor: pointer;
   padding: 0;
   line-height: 1;
@@ -49,7 +51,7 @@
 }
 
 .closeButton:hover {
-  color: #1f3a5f;
+  color: var(--c-primary);
 }
 
 .body {
@@ -68,61 +70,65 @@
 
 .label {
   display: block;
-  color: #1f3a5f;
+  color: var(--c-primary);
   font-weight: 600;
   margin-bottom: 8px;
   font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 .required {
-  color: #d93025;
+  color: var(--c-danger);
 }
 
 .input,
 .select {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid #dadce0;
-  border-radius: 8px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
   font-size: 14px;
   font-family: inherit;
   transition: all 0.2s ease;
-  background: white;
+  background: var(--c-bg-card);
+  color: var(--c-text);
 }
 
 .input:hover:not(:disabled),
 .select:hover:not(:disabled) {
-  border-color: #1a73e8;
+  border-color: var(--c-primary);
 }
 
 .input:focus,
 .select:focus {
   outline: none;
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.1);
 }
 
 .textarea {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid #dadce0;
-  border-radius: 8px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
   font-size: 14px;
   font-family: inherit;
   line-height: 1.5;
   resize: vertical;
   min-height: 80px;
   transition: all 0.2s ease;
+  color: var(--c-text);
 }
 
 .textarea:hover:not(:disabled) {
-  border-color: #1a73e8;
+  border-color: var(--c-primary);
 }
 
 .textarea:focus {
   outline: none;
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.1);
 }
 
 .classesGrid {
@@ -142,20 +148,20 @@
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #1a73e8;
+  accent-color: var(--c-primary);
 }
 
 .classLabel {
   font-size: 14px;
-  color: #202124;
+  color: var(--c-text);
 }
 
 .optionalSection {
   margin-bottom: 20px;
   padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e8eaed;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius-lg);
+  border: 1px solid var(--c-border);
 }
 
 .checkboxLabel {
@@ -165,7 +171,7 @@
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  color: #202124;
+  color: var(--c-text);
 }
 
 .ressourcesWrapper {
@@ -176,7 +182,7 @@
   display: flex;
   gap: 30px;
   padding: 15px 0;
-  border-top: 1px solid #e8eaed;
+  border-top: 1px solid var(--c-border);
 }
 
 .toggleGroup {
@@ -188,40 +194,42 @@
   justify-content: flex-end;
   gap: 12px;
   padding: 20px 25px;
-  border-top: 1px solid #e8eaed;
-  background: #f8f9fa;
-  border-radius: 0 0 15px 15px;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-bg-element);
+  border-radius: 0 0 var(--c-radius-lg) var(--c-radius-lg);
 }
 
 .cancelButton,
 .saveButton {
   padding: 12px 24px;
-  border-radius: 8px;
+  border-radius: var(--c-radius);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 2px;
 }
 
 .cancelButton {
-  background: white;
-  border: 1px solid #dadce0;
-  color: #5f6368;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  color: var(--c-text-secondary);
 }
 
 .cancelButton:hover:not(:disabled) {
-  background: #f1f3f4;
+  background: var(--c-bg-element);
 }
 
 .saveButton {
-  background: #1a73e8;
+  background: var(--c-primary);
   border: none;
-  color: white;
+  color: var(--c-text-on-primary);
 }
 
 .saveButton:hover:not(:disabled) {
-  background: #1557b0;
+  background: var(--c-primary-light);
 }
 
 .saveButton:disabled,

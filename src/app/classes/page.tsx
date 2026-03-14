@@ -336,12 +336,9 @@ export default function ClassesPage() {
           <div className={styles.classesGrid}>
             {classesLoading ? (
               <EmptyState icon="hourglass" message="Chargement..." />
-            ) : filteredClasses.length === 0 ? (
-              <>
-                <CreateClasseCard onClick={handleAddClasse} />
-              </>
             ) : (
               <>
+                <CreateClasseCard onClick={handleAddClasse} />
                 {filteredClasses.map((classe) => (
                   <ClasseCard
                     key={classe.id}
@@ -352,7 +349,6 @@ export default function ClassesPage() {
                     onClick={() => handleClasseClick(classe)}
                   />
                 ))}
-                <CreateClasseCard onClick={handleAddClasse} />
               </>
             )}
           </div>

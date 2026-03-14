@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+  background: var(--c-bg);
   opacity: 0;
   transform: translateY(10px);
   transition: all 0.3s ease;
@@ -23,27 +23,28 @@
 }
 
 .archivesSection {
-  background: white;
-  border-radius: 15px;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
   padding: 30px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--c-shadow-card);
 }
 
 .sectionHeader {
   margin-bottom: 25px;
   padding-bottom: 15px;
-  border-bottom: 2px solid #e8eaed;
+  border-bottom: 2px solid var(--c-border);
 }
 
 .sectionTitle {
-  color: #1f3a5f;
+  color: var(--c-primary);
   font-size: 22px;
   font-weight: 600;
+  font-family: var(--c-font-title);
   margin: 0 0 8px 0;
 }
 
 .sectionSubtitle {
-  color: #5f6368;
+  color: var(--c-text-secondary);
   font-size: 14px;
   margin: 0;
 }
@@ -93,7 +94,7 @@
 
   .archivesSection {
     padding: 20px;
-    border-radius: 12px;
+    border-radius: var(--c-radius-lg);
   }
 
   .sectionHeader {

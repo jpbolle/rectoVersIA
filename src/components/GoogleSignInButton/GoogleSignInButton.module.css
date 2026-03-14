@@ -1,11 +1,11 @@
 .googleBtn {
-  background: white;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 14px;
+  background: var(--c-bg-card);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
   padding: 14px 24px;
   font-size: 15px;
   font-weight: 500;
-  color: #374151;
+  color: var(--c-text);
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
@@ -13,24 +13,22 @@
   justify-content: center;
   gap: 12px;
   width: 100%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--c-shadow-card);
   font-family: inherit;
   letter-spacing: 0.1px;
 }
 
 .googleBtn:hover {
-  background: #fafbff;
-  border-color: #a5b4fc;
-  box-shadow:
-    0 4px 12px rgba(99, 102, 241, 0.12),
-    0 1px 3px rgba(0, 0, 0, 0.06);
+  background: var(--c-bg-element);
+  border-color: var(--c-primary);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.12);
   transform: translateY(-1px);
 }
 
 .googleBtn:active {
   transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  background: #f5f6ff;
+  box-shadow: var(--c-shadow-card);
+  background: var(--c-bg-element);
 }
 
 .googleBtn:disabled {
@@ -49,7 +47,6 @@
   .googleBtn {
     padding: 13px 20px;
     font-size: 14px;
-    border-radius: 12px;
   }
   .googleIcon {
     width: 20px;

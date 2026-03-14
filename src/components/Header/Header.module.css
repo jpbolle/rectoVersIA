@@ -3,10 +3,10 @@
   top: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(135deg, #1f3a5f 0%, #2a4d73 100%);
+  background: var(--c-gradient-header);
   z-index: 100;
-  box-shadow: 0 6px 20px rgba(26, 35, 126, 0.3);
-  border-bottom: 4px solid #1f3a5f;
+  box-shadow: var(--c-shadow-header);
+  border-bottom: 3px solid var(--c-primary-dark);
   padding: 25px 40px;
 }
 
@@ -17,7 +17,8 @@
 }
 
 .title {
-  color: white;
+  color: var(--c-text-on-primary);
+  font-family: var(--c-font-title);
   font-size: 32px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -39,29 +40,29 @@
 
 .navBtn {
   padding: 12px 30px;
-  border: 2px solid white;
+  border: 2px solid rgba(255, 255, 255, 0.7);
   background: transparent;
-  color: white;
-  border-radius: 8px;
+  color: var(--c-text-on-primary);
+  border-radius: var(--c-radius-sm);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-family: inherit;
+  letter-spacing: 2px;
+  font-family: var(--c-font-body);
 }
 
 .navBtn:hover {
-  background: white;
-  color: #1f3a5f;
+  background: var(--c-text-on-primary);
+  color: var(--c-primary);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
 }
 
 .navBtnActive {
-  background: white;
-  color: #1f3a5f;
+  background: var(--c-text-on-primary);
+  color: var(--c-primary);
 }
 
 .navBtn:disabled {
@@ -71,7 +72,7 @@
 
 .navBtn:disabled:hover {
   background: transparent;
-  color: white;
+  color: var(--c-text-on-primary);
   transform: none;
   box-shadow: none;
 }
@@ -139,7 +140,7 @@
   height: 40px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.6);
-  background: linear-gradient(135deg, #7c4dff 0%, #536dfe 100%);
+  background: var(--c-gradient-btn-accent);
   color: white;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -172,23 +173,24 @@
   position: absolute;
   top: 48px;
   right: 0;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius);
+  box-shadow: var(--c-shadow-popup);
   min-width: 200px;
   overflow: hidden;
   z-index: 150;
+  border: 1px solid var(--c-border);
 }
 
 .menuUserInfo {
   padding: 15px;
-  background: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
 }
 
 .menuEmail {
   font-size: 13px;
-  color: #333;
+  color: var(--c-text);
   word-break: break-all;
 }
 
@@ -199,14 +201,14 @@
   background: none;
   text-align: left;
   font-size: 14px;
-  color: #333;
+  color: var(--c-text);
   cursor: pointer;
   transition: background 0.2s ease;
   font-family: inherit;
 }
 
 .menuItem:hover {
-  background: #f0f0f0;
+  background: var(--c-bg-element);
 }
 
 .backdrop {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Toggle from '@/components/Toggle/Toggle';
 import type { Classe } from '@/types/classe';
 import styles from './ClasseCard.module.css';
@@ -20,7 +20,16 @@ export default function ClasseCard({
   onToggleArchive,
   onClick,
 }: ClasseCardProps) {
-  const router = useRouter();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyCode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (classe.code) {
+      navigator.clipboard.writeText(classe.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const handleToggleArchive = (value: boolean) => {
     onToggleArchive(classe.id, value);
@@ -51,6 +60,15 @@ export default function ClasseCard({
       onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
     >
       <h3 className={styles.title}>{classe.nom}</h3>
+
+      {classe.code && (
+        <div className={styles.codeRow} onClick={(e) => e.stopPropagation()}>
+          <span className={styles.codeBadge}>{classe.code}</span>
+          <button className={styles.copyBtn} onClick={handleCopyCode} title="Copier le code">
+            {copied ? '✅' : '📋'}
+          </button>
+        </div>
+      )}
 
       {classe.description && (
         <p className={styles.description}>{classe.description}</p>

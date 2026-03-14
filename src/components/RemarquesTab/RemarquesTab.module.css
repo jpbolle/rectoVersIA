@@ -7,23 +7,23 @@
 
 .header {
   padding: 20px 20px 15px;
-  border-bottom: 1px solid #dadce0;
-  background: #f8f9fa;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg-element);
 }
 
 .legendRow {
   display: flex;
   align-items: center;
   gap: 16px;
-  background: white;
+  background: var(--c-bg-card);
   padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid #e8eaed;
+  border-radius: var(--c-radius);
+  border: 1px solid var(--c-border);
 }
 
 .subtitle {
   font-size: 14px;
-  color: #1f3a5f;
+  color: var(--c-primary);
   margin: 0;
   font-weight: 600;
   line-height: 1.4;
@@ -51,7 +51,7 @@
   align-items: center;
   justify-content: center;
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--c-radius-sm);
   font-size: 11px;
   font-weight: 600;
   cursor: default;
@@ -81,7 +81,7 @@
 
 .legendText {
   font-size: 12px;
-  color: #202124;
+  color: var(--c-text);
 }
 
 .content {
@@ -109,7 +109,7 @@
 
 .emptyText {
   font-size: 14px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   max-width: 300px;
   line-height: 1.5;
   margin: 0;

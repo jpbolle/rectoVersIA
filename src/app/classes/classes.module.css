@@ -1,6 +1,6 @@
 .pageWrapper {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--c-bg);
   display: flex;
   flex-direction: column;
   opacity: 0;
@@ -24,25 +24,25 @@
 }
 
 .classesSection {
-  background: white;
-  border-radius: 15px;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
   padding: 40px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--c-shadow-card);
 }
 
 .creationSection {
-  background: white;
-  border-radius: 15px;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
   padding: 40px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--c-shadow-card);
   margin-top: 30px;
 }
 
 .detailSection {
-  background: white;
-  border-radius: 15px;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
   padding: 40px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--c-shadow-card);
   margin-top: 30px;
   overflow: hidden;
 }
@@ -57,16 +57,17 @@
 }
 
 .sectionTitle {
-  color: #1f3a5f;
+  color: var(--c-primary);
   font-size: 20px;
   font-weight: 600;
+  font-family: var(--c-font-title);
   margin: 0;
 }
 
 .tabs {
   display: flex;
-  background: #f5f5f5;
-  border-radius: 8px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius-lg);
   padding: 4px;
   gap: 4px;
 }
@@ -77,27 +78,27 @@
   background: transparent;
   font-size: 14px;
   font-weight: 500;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
-  border-radius: 6px;
+  border-radius: var(--c-radius-sm);
   font-family: inherit;
 }
 
 .tab:hover {
-  color: #1f3a5f;
-  background: rgba(26, 35, 126, 0.05);
+  color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.05);
 }
 
 .tabActive {
-  background: #C55764;
+  background: var(--c-accent);
   color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .tab.tabActive:hover,
 .tabActive:hover {
-  background: #C55764;
+  background: var(--c-accent);
   color: #fff;
 }
 
@@ -135,18 +136,18 @@
 
   .classesSection {
     padding: 25px 20px;
-    border-radius: 12px;
+    border-radius: var(--c-radius-lg);
   }
 
   .creationSection {
     padding: 25px 20px;
-    border-radius: 12px;
+    border-radius: var(--c-radius-lg);
     margin-top: 20px;
   }
 
   .detailSection {
     padding: 25px 20px;
-    border-radius: 12px;
+    border-radius: var(--c-radius-lg);
     margin-top: 20px;
   }
 

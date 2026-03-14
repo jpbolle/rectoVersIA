@@ -5,8 +5,8 @@ const AUTHORIZED_DOMAIN = 'cnddinant.be';
 export function getUserRole(email: string): 'prof' | 'eleve' | null {
   const emailLower = email.toLowerCase().trim();
   if (emailLower === PROF_EMAIL) return 'prof';
-  if (emailLower.endsWith(`@${AUTHORIZED_DOMAIN}`)) return 'eleve';
-  return null;
+  // Tout utilisateur connecté peut entrer comme élève
+  return 'eleve';
 }
 
 export function isAuthorizedDomain(email: string): boolean {

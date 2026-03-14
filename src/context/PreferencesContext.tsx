@@ -38,7 +38,13 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
         const res = await fetch('/api/preferences', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) throw new Error('Failed to load preferences');
+        if (!res.ok) {
+          // Nouvel utilisateur ou token pas encore prêt — utiliser les défauts
+          if (cancelled) return;
+          setPreferences(DEFAULT_PREFERENCES);
+          setIsLoading(false);
+          return;
+        }
         const json = await res.json();
         if (cancelled) return;
 

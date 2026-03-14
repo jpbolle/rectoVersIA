@@ -16,6 +16,7 @@ export interface Classe {
   profId: string;
   anneeScolaire: string;
   archive: boolean;      // Nouvelle propriété pour archiver
+  code?: string;         // Code de classe partageable (ex: "AB1-CD2-EF3")
   googleClassroomId?: string;  // Pour sync Google Classroom
   createdAt: string;
   updatedAt: string;

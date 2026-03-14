@@ -1,6 +1,6 @@
 .pageWrapper {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--c-bg);
   display: flex;
   flex-direction: column;
   opacity: 0;
@@ -24,17 +24,19 @@
 }
 
 .evaluationsSection {
-  background: white;
-  border-radius: 15px;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
   padding: 40px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--c-shadow-card);
+  border: 1px solid var(--c-border);
 }
 
 .creationSection {
-  background: white;
-  border-radius: 15px;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
   padding: 40px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--c-shadow-card);
+  border: 1px solid var(--c-border);
   margin-top: 30px;
 }
 
@@ -48,7 +50,8 @@
 }
 
 .sectionTitle {
-  color: #1f3a5f;
+  color: var(--c-primary);
+  font-family: var(--c-font-title);
   font-size: 20px;
   font-weight: 600;
   margin: 0;
@@ -56,8 +59,8 @@
 
 .tabs {
   display: flex;
-  background: #f5f5f5;
-  border-radius: 8px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
   padding: 4px;
   gap: 4px;
 }
@@ -68,7 +71,7 @@
   background: transparent;
   font-size: 14px;
   font-weight: 500;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
   border-radius: 6px;
@@ -76,21 +79,20 @@
 }
 
 .tab:hover {
-  color: #1f3a5f;
-  background: rgba(26, 35, 126, 0.05);
+  color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.06);
 }
 
-/* Accent actif : #C55764 */
 .tabActive {
-  background: #C55764;
-  color: #fff;
+  background: var(--c-accent);
+  color: var(--c-text-on-primary);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .tab.tabActive:hover,
 .tabActive:hover {
-  background: #C55764;
-  color: #fff;
+  background: var(--c-accent);
+  color: var(--c-text-on-primary);
 }
 
 .evaluationsGrid {
@@ -103,20 +105,20 @@
 .subSectionTitle {
   font-size: 16px;
   font-weight: 600;
-  color: #1f3a5f;
+  color: var(--c-primary);
   margin: 0 0 16px 0;
   padding-bottom: 8px;
-  border-bottom: 2px solid #e8f0fe;
+  border-bottom: 2px solid rgba(45, 106, 90, 0.12);
 }
 
 .subSectionTitleCorrige {
   margin-top: 32px;
-  color: #2e7d32;
-  border-bottom-color: #e8f5e9;
+  color: var(--c-success);
+  border-bottom-color: rgba(45, 138, 78, 0.15);
 }
 
 .emptySubSection {
-  color: #5f6368;
+  color: var(--c-text-secondary);
   font-size: 14px;
   font-style: italic;
   margin: 0;
@@ -154,11 +156,11 @@
   }
   .evaluationsSection {
     padding: 25px 20px;
-    border-radius: 12px;
+    border-radius: var(--c-radius-lg);
   }
   .creationSection {
     padding: 25px 20px;
-    border-radius: 12px;
+    border-radius: var(--c-radius-lg);
     margin-top: 20px;
   }
   .sectionHeader {

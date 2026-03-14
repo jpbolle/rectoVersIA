@@ -3,18 +3,18 @@
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--c-bg);
 }
 
 .header {
-  background: linear-gradient(135deg, #1f3a5f 0%, #2a4d73 100%);
+  background: var(--c-gradient-header);
   color: white;
   padding: 20px 30px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--c-shadow-header);
 }
 
 .headerLeft {
@@ -57,7 +57,7 @@
   font-size: 24px;
   width: 44px;
   height: 44px;
-  border-radius: 8px;
+  border-radius: var(--c-radius-lg);
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
@@ -67,7 +67,7 @@
 
 .backBtn:hover {
   background: white;
-  color: #1f3a5f;
+  color: var(--c-primary);
 }
 
 .headerContent {
@@ -77,6 +77,7 @@
 .title {
   font-size: 24px;
   font-weight: 600;
+  font-family: var(--c-font-title);
   margin: 0 0 5px 0;
 }
 
@@ -96,7 +97,7 @@
   gap: 10px;
   background: rgba(255, 255, 255, 0.1);
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--c-radius-lg);
 }
 
 .navBtn {
@@ -105,7 +106,7 @@
   border: 2px solid rgba(255, 255, 255, 0.5);
   background: transparent;
   color: white;
-  border-radius: 6px;
+  border-radius: var(--c-radius-sm);
   font-size: 24px;
   cursor: pointer;
   display: flex;
@@ -129,7 +130,7 @@
   border: 2px solid rgba(255, 255, 255, 0.5);
   color: white;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: var(--c-radius-sm);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -143,14 +144,14 @@
 }
 
 .navSelect option {
-  background: #1f3a5f;
+  background: var(--c-primary);
   color: white;
 }
 
 .statusBadge {
   background: rgba(255, 255, 255, 0.2);
   padding: 10px 20px;
-  border-radius: 8px;
+  border-radius: var(--c-radius-lg);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -180,6 +181,8 @@
   transition: all 0.3s ease;
   white-space: nowrap;
   font-family: inherit;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .returnBtn:hover:not(:disabled) {
@@ -207,9 +210,9 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  box-shadow: var(--c-shadow-card);
   overflow: hidden;
 }
 
@@ -225,9 +228,9 @@
 .assistanceWrapper {
   flex: 1;
   overflow: hidden;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  box-shadow: var(--c-shadow-card);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -239,7 +242,7 @@
   border-bottom: 1px solid #8a9fb8;
   flex-shrink: 0;
   display: flex;
-  border-radius: 12px 12px 0 0;
+  border-radius: var(--c-radius-lg) var(--c-radius-lg) 0 0;
   align-items: center;
   justify-content: space-between;
 }
@@ -248,6 +251,7 @@
   margin: 0;
   font-size: 18px;
   font-weight: 600;
+  font-family: var(--c-font-title);
   color: #fff;
 }
 
@@ -259,9 +263,9 @@
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
-  background: white;
-  border: 2px solid #e8eaed;
-  color: #5f6368;
+  background: var(--c-bg-card);
+  border: 2px solid var(--c-border);
+  color: var(--c-text-secondary);
 }
 
 .statusBadge .statusIcon {
@@ -273,7 +277,7 @@
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
-  background: #C55764;
+  background: var(--c-accent);
   color: #fff;
   white-space: nowrap;
 }
@@ -305,40 +309,40 @@
 
 .savingIndicator {
   font-size: 12px;
-  color: #9aa0a6;
+  color: var(--c-text-muted);
   font-style: italic;
 }
 
 .scoreDisplay {
-  background: #1f3a5f;
+  background: var(--c-primary);
   color: white;
   padding: 8px 20px;
   border-radius: 24px;
   font-size: 24px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(26, 35, 126, 0.3);
+  box-shadow: 0 2px 8px rgba(45, 106, 90, 0.3);
 }
 
-/* Visibility Toggle Box - Encadré blanc distinct sur fond bleu */
+/* Visibility Toggle Box - Encadre blanc distinct sur fond bleu */
 .visibilityToggleBox {
   display: inline-flex;
   align-items: center;
   gap: 12px;
   padding: 6px 14px;
   border-radius: 20px;
-  background: #ffffff;
-  border: 2px solid #e8eaed;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: var(--c-bg-card);
+  border: 2px solid var(--c-border);
+  box-shadow: var(--c-shadow-card);
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
 }
 
 .visibilityToggleBox:hover:not(.visibilityDisabled) {
-  background: #f8f9fa;
-  border-color: #1f3a5f;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: var(--c-bg-element);
+  border-color: var(--c-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .visibilityDisabled {
@@ -349,12 +353,12 @@
 .visibilityLabel {
   font-size: 13px;
   font-weight: 500;
-  color: #1f3a5f;
+  color: var(--c-primary);
   white-space: nowrap;
   order: 1;
 }
 
-/* Toggle visibilite eleve (ancien style, à supprimer) */
+/* Toggle visibilite eleve (ancien style, a supprimer) */
 .visibilityToggle {
   display: flex;
   align-items: center;
@@ -375,7 +379,7 @@
   position: relative;
   width: 44px;
   height: 24px;
-  background: #dadce0;
+  background: var(--c-border);
   border-radius: 24px;
   transition: background 0.2s ease;
   flex-shrink: 0;
@@ -396,7 +400,7 @@
 }
 
 .toggleInput:checked + .toggleSwitch {
-  background: #4caf50;
+  background: var(--c-success);
 }
 
 .toggleInput:checked + .toggleSwitch::before {
@@ -410,11 +414,11 @@
   white-space: nowrap;
 }
 
-/* Toggle dans le header (sur fond bleu) */
+/* Toggle dans le header (sur fond vert/primary) */
 .header .visibilityToggle {
   background: rgba(255, 255, 255, 0.1);
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--c-radius-lg);
   border: 2px solid rgba(255, 255, 255, 0.3);
   transition: all 0.3s ease;
 }
@@ -459,12 +463,12 @@
 }
 
 .visibilityButtonActive {
-  background: rgba(76, 175, 80, 0.3);
-  border-color: #4caf50;
+  background: rgba(45, 138, 78, 0.3);
+  border-color: var(--c-success);
 }
 
 .visibilityButtonActive:hover:not(:disabled) {
-  background: rgba(76, 175, 80, 0.4);
+  background: rgba(45, 138, 78, 0.4);
 }
 
 .contentBox,
@@ -478,21 +482,23 @@
 .content {
   font-size: 15px;
   line-height: 1.8;
-  color: #333;
+  color: var(--c-text);
 }
 
 .content h2 {
   font-size: 20px;
   margin-top: 24px;
   margin-bottom: 12px;
-  color: #1f3a5f;
+  color: var(--c-primary);
+  font-family: var(--c-font-title);
 }
 
 .content h3 {
   font-size: 18px;
   margin-top: 20px;
   margin-bottom: 10px;
-  color: #2a4d73;
+  color: var(--c-primary-light);
+  font-family: var(--c-font-title);
 }
 
 .content p {
@@ -511,7 +517,7 @@
 
 .emptyContent {
   text-align: center;
-  color: #999;
+  color: var(--c-text-muted);
   padding: 60px 20px;
   font-style: italic;
 }
@@ -519,7 +525,7 @@
 .noEvaluation {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--c-text-secondary);
 }
 
 .noEvaluation span {
@@ -540,8 +546,8 @@
 }
 
 .criterion {
-  background: #f8f9fa;
-  border-radius: 10px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius-lg);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -557,12 +563,12 @@
 .criterionName {
   font-size: 14px;
   font-weight: 600;
-  color: #202124;
+  color: var(--c-text);
 }
 
 .criterionWeight {
   font-size: 12px;
-  color: #9aa0a6;
+  color: var(--c-text-muted);
 }
 
 .levels {
@@ -578,9 +584,9 @@
   align-items: center;
   gap: 6px;
   padding: 10px 12px;
-  background: #fff;
-  border: 2px solid #e8eaed;
-  border-radius: 8px;
+  background: var(--c-bg-card);
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
   text-align: center;
   flex: 1;
   min-width: 60px;
@@ -591,20 +597,20 @@
 }
 
 .levelButton:hover {
-  border-color: #1a73e8;
-  background: #f8fbff;
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.05);
 }
 
 /* Selection prof: vert (reussite, niveaux 3-5) */
 .levelProfSuccess {
-  border-color: #4caf50;
-  background: #e8f5e9;
+  border-color: var(--c-success);
+  background: rgba(45, 138, 78, 0.1);
 }
 
 /* Selection prof: rouge (echec, niveaux 0-2) */
 .levelProfFailure {
-  border-color: #f44336;
-  background: #fce8e6;
+  border-color: var(--c-danger);
+  background: rgba(180, 64, 64, 0.1);
 }
 
 /* Bulle initiales eleve (coin superieur droit, a l'interieur) */
@@ -618,12 +624,12 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #1a73e8;
+  background: var(--c-primary);
   color: white;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  box-shadow: 0 1px 3px rgba(26, 115, 232, 0.3);
+  box-shadow: 0 1px 3px rgba(45, 106, 90, 0.3);
   z-index: 1;
 }
 
@@ -634,18 +640,18 @@
   gap: 4px;
   min-width: 28px;
   height: 28px;
-  background: #e8eaed;
+  background: var(--c-border);
   border-radius: 50%;
   font-size: 13px;
   font-weight: 600;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   flex-shrink: 0;
 }
 
 .levelDescription {
   font-size: 11px;
   line-height: 1.4;
-  color: #3c4043;
+  color: var(--c-text);
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -656,7 +662,7 @@
 .grilleError {
   text-align: center;
   padding: 40px 20px;
-  color: #666;
+  color: var(--c-text-secondary);
 }
 
 .grilleLoading {
@@ -680,7 +686,7 @@
   align-items: center;
   justify-content: center;
   gap: 20px;
-  background: #f5f5f5;
+  background: var(--c-bg);
 }
 
 .errorContainer span {
@@ -689,39 +695,41 @@
 
 .errorContainer h2 {
   font-size: 24px;
-  color: #333;
+  color: var(--c-text);
   margin: 0;
 }
 
 .errorContainer p {
-  color: #666;
+  color: var(--c-text-secondary);
   font-size: 16px;
   margin: 0;
 }
 
 .backButton {
-  background: #1a73e8;
+  background: var(--c-primary);
   color: white;
   border: none;
   padding: 12px 24px;
-  border-radius: 8px;
+  border-radius: var(--c-radius-lg);
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .backButton:hover {
-  background: #1565c0;
+  background: var(--c-primary-dark);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #e8eaed;
-  border-top: 4px solid #1a73e8;
+  border: 4px solid var(--c-border);
+  border-top: 4px solid var(--c-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -833,12 +841,12 @@
   }
 }
 
-/* ═══ Commentaire général du professeur ═══ */
+/* === Commentaire general du professeur === */
 
 .commentSection {
-  background: #C55764;
+  background: var(--c-accent);
   border: none;
-  border-radius: 12px;
+  border-radius: var(--c-radius-lg);
   padding: 16px 20px;
   margin-top: 16px;
 }
@@ -846,6 +854,7 @@
 .commentTitle {
   font-size: 14px;
   font-weight: 600;
+  font-family: var(--c-font-title);
   color: #fff;
   margin: 0 0 12px;
 }
@@ -918,7 +927,7 @@
   width: 24px;
   height: 24px;
   background: #fff;
-  color: #C55764;
+  color: var(--c-accent);
   border: none;
   border-radius: 50%;
   font-size: 10px;
@@ -947,7 +956,7 @@
   border: none;
   border-radius: 50%;
   background: #fff;
-  color: #C55764;
+  color: var(--c-accent);
   cursor: pointer;
   font-size: 13px;
   transition: all 0.15s ease;
@@ -965,7 +974,7 @@
   width: 24px;
   height: 24px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--c-radius-sm);
   background: transparent;
   color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
@@ -982,12 +991,12 @@
 .commentTextarea {
   flex: 1;
   min-width: 0;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
   padding: 10px 12px;
   font-size: 13px;
   font-family: inherit;
-  color: #202124;
+  color: var(--c-text);
   resize: vertical;
   min-height: 60px;
   transition: border-color 0.15s ease;
@@ -996,10 +1005,10 @@
 
 .commentTextarea:focus {
   outline: none;
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 2px rgba(45, 106, 90, 0.15);
 }
 
 .commentTextarea::placeholder {
-  color: #9aa0a6;
+  color: var(--c-text-muted);
 }

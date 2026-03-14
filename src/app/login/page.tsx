@@ -1,27 +1,62 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useStudentClasses } from '@/hooks/useStudentClasses';
 import GoogleSignInButton from '@/components/GoogleSignInButton/GoogleSignInButton';
+import JoinClasseModal from '@/components/JoinClasseModal/JoinClasseModal';
 import styles from './login.module.css';
 
+const MAX_FAILED_ATTEMPTS = 3;
+
 export default function LoginPage() {
-  const { isAuthenticated, isLoading, role, signIn } = useAuth();
+  const { isAuthenticated, isLoading, role, signIn, signOut } = useAuth();
   const router = useRouter();
+  const { classes, isLoading: classesLoading, joinClasse } = useStudentClasses();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [blocked, setBlocked] = useState(false);
+  const [checkingClasses, setCheckingClasses] = useState(false);
 
+  // Redirection pour les utilisateurs qui ont déjà des classes
   useEffect(() => {
-    if (isLoading) return;
-    if (isAuthenticated) {
-      if (role === 'prof') {
-        router.replace('/dashboard');
-      } else if (role === 'eleve') {
-        router.replace('/activites');
-      }
+    if (isLoading || classesLoading) return;
+    if (!isAuthenticated) return;
+
+    if (role === 'prof') {
+      router.replace('/dashboard');
+      return;
     }
-  }, [isAuthenticated, isLoading, role, router]);
+
+    // Élève avec des classes → rediriger
+    if (role === 'eleve' && classes.length > 0) {
+      router.replace('/activites');
+      return;
+    }
+
+    // Élève sans classe → afficher la popup sur l'écran de login
+    if (role === 'eleve' && !classesLoading && classes.length === 0 && !blocked) {
+      setCheckingClasses(false);
+      setShowJoinModal(true);
+    }
+  }, [isAuthenticated, isLoading, role, classes, classesLoading, router, blocked]);
+
+  // Blocage après 3 tentatives
+  useEffect(() => {
+    if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
+      setBlocked(true);
+      setShowJoinModal(false);
+      const timer = setTimeout(async () => {
+        await signOut();
+        setBlocked(false);
+        setFailedAttempts(0);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [failedAttempts, signOut]);
 
   async function handleGoogleSignIn() {
     setError(null);
@@ -30,12 +65,34 @@ export default function LoginPage() {
     const result = await signIn();
 
     if (result.success) {
-      // Le redirect sera gere par le useEffect ci-dessus
+      setCheckingClasses(true);
+      setIsSigningIn(false);
+      // Le useEffect ci-dessus gère la suite
     } else {
       setError(result.error || 'Erreur d\'authentification');
       setIsSigningIn(false);
     }
   }
+
+  const handleJoin = useCallback(async (code: string, nom: string, prenom: string) => {
+    try {
+      const result = await joinClasse(code, nom, prenom);
+      setFailedAttempts(0);
+      // Après succès, la liste de classes se met à jour → le useEffect redirigera
+      return result;
+    } catch (err) {
+      setFailedAttempts((prev) => prev + 1);
+      throw err;
+    }
+  }, [joinClasse]);
+
+  const handleCloseModal = useCallback(() => {
+    setShowJoinModal(false);
+    // Fermer le modal sans avoir rejoint = 1 tentative perdue
+    if (classes.length === 0 && !blocked) {
+      setFailedAttempts((prev) => prev + 1);
+    }
+  }, [classes.length, blocked]);
 
   if (isLoading) {
     return (
@@ -74,18 +131,30 @@ export default function LoginPage() {
             <p className={styles.subtitle}>Aide à l&#39;écriture</p>
           </div>
 
-          <div className={styles.buttonWrapper}>
-            <GoogleSignInButton
-              onClick={handleGoogleSignIn}
-              disabled={isSigningIn}
-            />
-          </div>
-
-          {isSigningIn && (
+          {blocked ? (
+            <div className={styles.errorMessage}>
+              Trop de tentatives échouées. Redirection...
+            </div>
+          ) : checkingClasses ? (
             <div className={styles.loading}>
               <div className={styles.spinner} />
             </div>
-          )}
+          ) : !isAuthenticated ? (
+            <>
+              <div className={styles.buttonWrapper}>
+                <GoogleSignInButton
+                  onClick={handleGoogleSignIn}
+                  disabled={isSigningIn}
+                />
+              </div>
+
+              {isSigningIn && (
+                <div className={styles.loading}>
+                  <div className={styles.spinner} />
+                </div>
+              )}
+            </>
+          ) : null}
 
           {error && (
             <div className={styles.errorMessage}>{error}</div>
@@ -106,6 +175,14 @@ export default function LoginPage() {
           </div>
         </footer>
       </div>
+
+      {showJoinModal && !blocked && (
+        <JoinClasseModal
+          onClose={handleCloseModal}
+          onJoin={handleJoin}
+          remainingAttempts={MAX_FAILED_ATTEMPTS - failedAttempts}
+        />
+      )}
     </div>
   );
 }

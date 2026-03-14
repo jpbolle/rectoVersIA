@@ -18,20 +18,20 @@
 
 /* Styles pour les hyperliens */
 .editorWrapper :global(.tiptap a) {
-  color: #1a73e8 !important;
+  color: var(--c-primary) !important;
   text-decoration: underline !important;
   cursor: pointer;
 }
 
 .editorWrapper :global(.tiptap a:hover) {
-  color: #0d47a1 !important;
+  color: var(--c-primary-dark) !important;
   text-decoration: underline !important;
 }
 
 .loading {
   padding: 40px;
   text-align: center;
-  color: #999;
+  color: var(--c-text-muted);
 }
 
 .errorBar {
@@ -66,7 +66,7 @@
   outline: none;
   font-size: 15px;
   line-height: 4.0 !important;
-  color: #333;
+  color: var(--c-text);
 }
 
 .editor :global(.tiptap p),
@@ -85,14 +85,16 @@
   font-size: 20px;
   margin-top: 24px;
   margin-bottom: 12px;
-  color: #1f3a5f;
+  color: var(--c-primary);
+  font-family: var(--c-font-title);
 }
 
 .editor :global(.tiptap h3) {
   font-size: 18px;
   margin-top: 20px;
   margin-bottom: 10px;
-  color: #2a4d73;
+  color: var(--c-primary-light);
+  font-family: var(--c-font-title);
 }
 
 .editor :global(.tiptap p) {
@@ -171,7 +173,7 @@
   min-width: 32px;
   height: 28px;
   border-radius: 14px;
-  background: #4285f4;
+  background: var(--c-primary);
   border: none;
   color: white;
   font-size: 12px;
@@ -182,7 +184,7 @@
   transition: all 0.15s ease;
   padding: 0 10px;
   line-height: 1;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(61, 56, 50, 0.2);
 }
 
 /* Petite queue de phylactère pointant vers le bas (détachée) */
@@ -195,18 +197,18 @@
   height: 0;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
-  border-top: 5px solid #4285f4;
-  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.15));
+  border-top: 5px solid var(--c-primary);
+  filter: drop-shadow(0 2px 2px rgba(61, 56, 50, 0.15));
 }
 
 .audioBubbleInner:hover {
-  background: #1a73e8;
+  background: var(--c-primary-dark);
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 10px rgba(61, 56, 50, 0.3);
 }
 
 .audioBubbleInner:hover::after {
-  border-top-color: #1a73e8;
+  border-top-color: var(--c-primary-dark);
 }
 
 .audioBubblePlay {
@@ -227,7 +229,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #d32f2f;
+  background: var(--c-danger);
   border: 2px solid white;
   color: white;
   font-size: 11px;
@@ -239,7 +241,7 @@
   transition: all 0.15s ease;
   padding: 0;
   line-height: 1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px rgba(61, 56, 50, 0.3);
   opacity: 0;
   animation: fadeInExposant 0.2s ease-out forwards;
 }
@@ -262,7 +264,7 @@
 .audioBubbleDeleteBtn:hover {
   background: #b71c1c;
   transform: scale(1.2);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 3px 6px rgba(61, 56, 50, 0.4);
 }
 
 /* ── Selection popup ── */
@@ -273,10 +275,10 @@
   display: flex;
   gap: 2px;
   padding: 4px;
-  background: white;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  box-shadow: 0 4px 16px rgba(61, 56, 50, 0.18);
   z-index: 20;
   animation: popupFadeIn 0.12s ease-out;
 }
@@ -293,7 +295,7 @@
   width: 40px;
   height: 34px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--c-radius);
   background: transparent;
   cursor: pointer;
   font-family: inherit;
@@ -301,7 +303,7 @@
 }
 
 .popupBtn:hover {
-  background: #f0f0f0;
+  background: var(--c-bg-element);
 }
 
 .popupOrth {
@@ -335,7 +337,7 @@
 .popupSep {
   width: 1px;
   height: 20px;
-  background: #dadce0;
+  background: var(--c-border);
   margin: 0 2px;
   flex-shrink: 0;
   align-self: center;
@@ -350,10 +352,10 @@
 .aiPopup {
   position: fixed;
   z-index: 9999;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  box-shadow: 0 4px 16px rgba(61, 56, 50, 0.15);
   padding: 10px 12px;
   max-width: 280px;
   font-size: 12px;
@@ -395,15 +397,15 @@
 
 .aiPopupLabel {
   font-weight: 600;
-  color: #333;
+  color: var(--c-text);
 }
 
 .aiPopupDismissed {
   font-size: 10px;
   background: #e8f5e9;
-  color: #2e7d32;
+  color: var(--c-success);
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--c-radius-sm);
   font-weight: 500;
   white-space: nowrap;
 }

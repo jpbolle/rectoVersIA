@@ -1,3 +1,55 @@
+/* ── Classica Design Tokens ─────────────────────── */
+:root {
+  /* Core Colors */
+  --c-primary: #2d6a5a;
+  --c-primary-light: #357a68;
+  --c-primary-dark: #245649;
+  --c-accent: #d4944c;
+  --c-accent-dark: #c4862e;
+
+  /* Backgrounds */
+  --c-bg: #faf6f0;
+  --c-bg-card: #ffffff;
+  --c-bg-element: #f0ebe3;
+
+  /* Text */
+  --c-text: #3d3832;
+  --c-text-secondary: #5a534b;
+  --c-text-muted: #8a7f72;
+  --c-text-dim: #a89e92;
+  --c-text-on-primary: #ffffff;
+
+  /* Borders */
+  --c-border: #d5cec4;
+  --c-border-strong: #b5ad9f;
+
+  /* Status */
+  --c-danger: #b44040;
+  --c-success: #2d8a4e;
+  --c-warning: #c4862e;
+
+  /* Shadows */
+  --c-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --c-shadow-popup: 0 4px 16px rgba(0, 0, 0, 0.15), 0 1px 4px rgba(0, 0, 0, 0.1);
+  --c-shadow-header: 0 4px 16px rgba(45, 106, 90, 0.2);
+
+  /* Gradients */
+  --c-gradient-header: linear-gradient(135deg, #2d6a5a 0%, #357a68 100%);
+  --c-gradient-btn: linear-gradient(90deg, #2d6a5a, #357a68);
+  --c-gradient-btn-accent: linear-gradient(90deg, #d4944c, #c4862e);
+  --c-gradient-score: linear-gradient(135deg, #2d6a5a, #357a68);
+
+  /* Radius */
+  --c-radius-sm: 4px;
+  --c-radius: 4px;
+  --c-radius-lg: 8px;
+
+  /* Fonts */
+  --c-font-title: 'Playfair Display', Georgia, serif;
+  --c-font-body: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+/* ── Reset ──────────────────────────────────────── */
 * {
   margin: 0;
   padding: 0;
@@ -5,10 +57,12 @@
 }
 
 body {
-  font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+  font-family: var(--c-font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  background: var(--c-bg);
+  color: var(--c-text);
 }
 
 a {
@@ -16,19 +70,16 @@ a {
   text-decoration: none;
 }
 
-/* Responsive images et vidéos */
 img,
 video {
   max-width: 100%;
   height: auto;
 }
 
-/* Amélioration du scroll sur mobile */
 html {
   scroll-behavior: smooth;
 }
 
-/* Amélioration de la lisibilité du texte sur mobile */
 @media (max-width: 768px) {
   body {
     font-size: 15px;

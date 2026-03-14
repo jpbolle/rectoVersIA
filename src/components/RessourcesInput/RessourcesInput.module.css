@@ -7,16 +7,16 @@
 
 /* ── Section (Outils / Document) ── */
 .section {
-  border: 1.5px solid #dadce0;
-  border-radius: 10px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
   padding: 16px;
-  background: white;
+  background: var(--c-bg-card);
   transition: border-color 0.2s ease;
 }
 
 .section:focus-within {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.08);
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.08);
 }
 
 .sectionHeader {
@@ -33,13 +33,13 @@
 .sectionTitle {
   font-size: 15px;
   font-weight: 600;
-  color: #1f3a5f;
+  color: var(--c-primary);
   margin: 0;
 }
 
 .sectionHint {
   font-size: 12px;
-  color: #9aa0a6;
+  color: var(--c-text-muted);
   margin: 0 0 12px 0;
   line-height: 1.4;
 }
@@ -48,8 +48,8 @@
 .textarea {
   width: 100%;
   padding: 12px 14px;
-  border: 1.5px solid #e8eaed;
-  border-radius: 8px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
   font-size: 14px;
   font-family: inherit;
   line-height: 1.6;
@@ -60,19 +60,19 @@
 }
 
 .textarea:hover:not(:disabled) {
-  border-color: #1a73e8;
+  border-color: var(--c-primary);
 }
 
 .textarea:focus {
   outline: none;
-  border-color: #1a73e8;
-  background: white;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.08);
+  border-color: var(--c-primary);
+  background: var(--c-bg-card);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.08);
 }
 
 .textarea:disabled {
-  background: #f8f9fa;
-  color: #5f6368;
+  background: var(--c-bg-element);
+  color: var(--c-text-secondary);
   cursor: not-allowed;
 }
 
@@ -84,15 +84,15 @@
 .linkPreviewBox {
   margin-top: 10px;
   padding: 10px 12px;
-  background: #f0f7ff;
-  border-radius: 8px;
-  border: 1px solid #d2e3fc;
+  background: rgba(45, 106, 90, 0.05);
+  border-radius: var(--c-radius);
+  border: 1px solid rgba(45, 106, 90, 0.15);
 }
 
 .previewLabel {
   font-size: 11px;
   font-weight: 600;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -105,7 +105,7 @@
 }
 
 .linkPreview {
-  color: #1a73e8;
+  color: var(--c-primary);
   font-size: 13px;
   text-decoration: none;
   word-break: break-all;
@@ -113,26 +113,26 @@
 }
 
 .linkPreview:hover {
-  color: #1557b0;
+  color: var(--c-primary-light);
   text-decoration: underline;
 }
 
 /* ── Document Editor ── */
 .editorContainer {
-  border: 1.5px solid #e8eaed;
-  border-radius: 8px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
   overflow: hidden;
-  background: white;
+  background: var(--c-bg-card);
   transition: border-color 0.2s ease;
 }
 
 .editorContainer:focus-within {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.08);
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.08);
 }
 
 .editorDisabled {
-  background: #f8f9fa;
+  background: var(--c-bg-element);
   opacity: 0.7;
 }
 
@@ -141,8 +141,8 @@
   align-items: center;
   gap: 3px;
   padding: 6px 8px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e8eaed;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
   flex-wrap: wrap;
 }
 
@@ -153,9 +153,9 @@
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--c-radius-sm);
   background: transparent;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -163,13 +163,13 @@
 }
 
 .toolbarBtn:hover:not(:disabled) {
-  background: #e8eaed;
-  color: #202124;
+  background: var(--c-border);
+  color: var(--c-text);
 }
 
 .toolbarBtnActive {
-  background: #e8f0fe;
-  color: #1a73e8;
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--c-primary);
 }
 
 .toolbarBtn:disabled {
@@ -180,7 +180,7 @@
 .toolbarSep {
   width: 1px;
   height: 20px;
-  background: #dadce0;
+  background: var(--c-border);
   margin: 0 4px;
 }
 
@@ -196,7 +196,7 @@
   outline: none;
   font-size: 14px;
   line-height: 1.7;
-  color: #202124;
+  color: var(--c-text);
 }
 
 .editorContent :global(.tiptap p.is-editor-empty:first-child::before) {
@@ -210,14 +210,15 @@
 .editorContent :global(.tiptap h2) {
   font-size: 20px;
   font-weight: 700;
-  color: #1f3a5f;
+  font-family: var(--c-font-title);
+  color: var(--c-primary);
   margin: 16px 0 8px;
 }
 
 .editorContent :global(.tiptap h3) {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: var(--c-text);
   margin: 12px 0 6px;
 }
 
@@ -234,22 +235,22 @@
 .editorLoading {
   padding: 20px;
   text-align: center;
-  color: #9aa0a6;
+  color: var(--c-text-muted);
   font-size: 13px;
 }
 
 /* ── Outils Editor ── */
 .outilsEditorContainer {
-  border: 1.5px solid #e8eaed;
-  border-radius: 8px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
   overflow: hidden;
-  background: white;
+  background: var(--c-bg-card);
   transition: border-color 0.2s ease;
 }
 
 .outilsEditorContainer:focus-within {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.08);
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.08);
 }
 
 .outilsToolbar {
@@ -257,8 +258,8 @@
   align-items: center;
   gap: 3px;
   padding: 4px 8px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e8eaed;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
 }
 
 .outilsLinkBar {
@@ -266,30 +267,30 @@
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
-  background: #f0f7ff;
-  border-bottom: 1px solid #d2e3fc;
+  background: rgba(45, 106, 90, 0.05);
+  border-bottom: 1px solid rgba(45, 106, 90, 0.15);
 }
 
 .outilsLinkInput {
   flex: 1;
   padding: 6px 10px;
-  border: 1px solid #dadce0;
-  border-radius: 6px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-sm);
   font-size: 13px;
   font-family: inherit;
   outline: none;
 }
 
 .outilsLinkInput:focus {
-  border-color: #1a73e8;
+  border-color: var(--c-primary);
 }
 
 .outilsLinkOk {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 6px;
-  background: #1a73e8;
+  border-radius: var(--c-radius-sm);
+  background: var(--c-primary);
   color: white;
   font-size: 14px;
   cursor: pointer;
@@ -299,16 +300,16 @@
 }
 
 .outilsLinkOk:hover {
-  background: #1557b0;
+  background: var(--c-primary-light);
 }
 
 .outilsLinkCancel {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 6px;
-  background: #e8eaed;
-  color: #5f6368;
+  border-radius: var(--c-radius-sm);
+  background: var(--c-border);
+  color: var(--c-text-secondary);
   font-size: 14px;
   cursor: pointer;
   display: flex;
@@ -317,7 +318,7 @@
 }
 
 .outilsLinkCancel:hover {
-  background: #dadce0;
+  background: var(--c-border);
 }
 
 .outilsEditorContent {
@@ -332,7 +333,7 @@
   outline: none;
   font-size: 14px;
   line-height: 1.6;
-  color: #202124;
+  color: var(--c-text);
 }
 
 .outilsEditorContent :global(.tiptap p.is-editor-empty:first-child::before) {
@@ -348,13 +349,13 @@
 }
 
 .outilsEditorContent :global(.tiptap a) {
-  color: #1a73e8;
+  color: var(--c-primary);
   text-decoration: underline;
   cursor: pointer;
 }
 
 .outilsEditorContent :global(.tiptap a:hover) {
-  color: #1557b0;
+  color: var(--c-primary-light);
 }
 
 .outilsEditorContent :global(.tiptap ul) {

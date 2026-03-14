@@ -1,0 +1,133 @@
+.pageWrapper {
+  min-height: 100vh;
+  background: var(--c-bg);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.ready {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mainContent {
+  flex: 1;
+  margin-top: 180px;
+  padding: 40px 20px 60px;
+  max-width: 1200px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.section {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  padding: 40px;
+  box-shadow: var(--c-shadow-card);
+  border: 1px solid var(--c-border);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  color: var(--c-primary);
+  font-family: var(--c-font-title);
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.joinBtn {
+  padding: 12px 24px;
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+  border: none;
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.joinBtn:hover {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* Blocked state */
+.blockedMessage {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.blockedIcon {
+  font-size: 64px;
+  display: block;
+  margin-bottom: 20px;
+}
+
+.blockedTitle {
+  font-family: var(--c-font-title);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--c-danger);
+  margin: 0 0 12px 0;
+}
+
+.blockedText {
+  font-size: 15px;
+  color: var(--c-text-secondary);
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .mainContent {
+    margin-top: 220px;
+    padding: 25px 15px 40px;
+  }
+  .section {
+    padding: 25px 20px;
+  }
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .joinBtn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .mainContent {
+    margin-top: 280px;
+    padding: 15px 10px 30px;
+  }
+  .section {
+    padding: 20px 15px;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  background: #f8f9fa;
+  background: var(--c-bg);
   display: flex;
   flex-direction: column;
 }
@@ -11,9 +11,9 @@
   justify-content: space-between;
   gap: 20px;
   padding: 20px 30px;
-  background: linear-gradient(135deg, #1f3a5f 0%, #2a4d73 100%);
+  background: var(--c-gradient-header);
   color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--c-shadow-header);
 }
 
 .headerLeft {
@@ -56,7 +56,7 @@
   height: 44px;
   border: 2px solid white;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
+  border-radius: var(--c-radius);
   font-size: 18px;
   color: white;
   cursor: pointer;
@@ -66,7 +66,7 @@
 
 .backBtn:hover {
   background: white;
-  color: #1f3a5f;
+  color: var(--c-primary);
 }
 
 .headerContent {
@@ -74,6 +74,7 @@
 }
 
 .title {
+  font-family: var(--c-font-title);
   font-size: 22px;
   font-weight: 600;
   color: white;
@@ -102,9 +103,9 @@
 
 .statCard {
   flex: 1;
-  background: #fff;
-  border: 1px solid #e8eaed;
-  border-radius: 12px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
   padding: 16px;
   text-align: center;
 }
@@ -113,33 +114,33 @@
   display: block;
   font-size: 28px;
   font-weight: 600;
-  color: #202124;
+  color: var(--c-text);
 }
 
 .statValueSuccess {
   display: block;
   font-size: 28px;
   font-weight: 600;
-  color: #2a4d73;
+  color: var(--c-primary);
 }
 
 .statValueWarning {
   display: block;
   font-size: 28px;
   font-weight: 600;
-  color: #fbbc04;
+  color: var(--c-accent);
 }
 
 .statValueNotOpened {
   display: block;
   font-size: 28px;
   font-weight: 600;
-  color: #9aa0a6;
+  color: var(--c-text-muted);
 }
 
 .statLabel {
   font-size: 12px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   margin-top: 2px;
 }
 
@@ -149,9 +150,9 @@
   align-items: center;
   gap: 12px;
   padding: 60px 20px;
-  background: #fff;
-  border: 1px solid #e8eaed;
-  border-radius: 12px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
   text-align: center;
 }
 
@@ -161,7 +162,7 @@
 
 .empty p {
   font-size: 15px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   margin: 0;
 }
 
@@ -174,9 +175,9 @@
 }
 
 .column {
-  background: #fff;
-  border: 1px solid #e8eaed;
-  border-radius: 12px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
   padding: 20px;
 }
 
@@ -189,16 +190,16 @@
   color: #fff;
   margin: -20px -20px 16px -20px;
   padding: 14px 20px;
-  border-radius: 12px 12px 0 0;
-  background: #C55764;
+  border-radius: var(--c-radius-lg) var(--c-radius-lg) 0 0;
+  background: var(--c-accent);
 }
 
 .columnTitleNotOpened {
-  background: #6B7B8D;
+  background: var(--c-text-muted);
 }
 
 .columnTitleCorrected {
-  background: #5A9B66;
+  background: var(--c-success);
 }
 
 .columnCount {
@@ -217,7 +218,7 @@
 
 .columnEmpty {
   font-size: 14px;
-  color: #9aa0a6;
+  color: var(--c-text-muted);
   text-align: center;
   padding: 24px 0;
   margin: 0;
@@ -232,33 +233,33 @@
 /* Compact card */
 .travailCard {
   position: relative;
-  background: #f8f9fa;
-  border: 1px solid #e8eaed;
-  border-radius: 10px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
   padding: 12px 16px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .travailCard:hover {
-  background: #e8f5e9;
-  border-color: #5A9B66;
-  box-shadow: 0 2px 8px rgba(90, 155, 102, 0.12);
+  background: rgba(45, 138, 78, 0.08);
+  border-color: var(--c-success);
+  box-shadow: 0 2px 8px rgba(45, 138, 78, 0.12);
 }
 
 .travailCardNotOpened {
-  background: #f1f3f4;
-  border-color: #e0e0e0;
+  background: var(--c-bg);
+  border-color: var(--c-border);
 }
 
 .travailCardNotOpened:hover {
-  background: #e8eaed;
-  border-color: #6B7B8D;
-  box-shadow: 0 2px 8px rgba(107, 123, 141, 0.12);
+  background: var(--c-bg-element);
+  border-color: var(--c-text-muted);
+  box-shadow: 0 2px 8px rgba(138, 127, 114, 0.12);
 }
 
 .travailCard:focus {
-  outline: 2px solid #1a73e8;
+  outline: 2px solid var(--c-primary);
   outline-offset: 2px;
 }
 
@@ -281,7 +282,7 @@
 .studentName {
   font-size: 14px;
   font-weight: 600;
-  color: #202124;
+  color: var(--c-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -297,18 +298,18 @@
 }
 
 .statusSubmitted {
-  background: #e8f0fe;
-  color: #1a73e8;
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--c-primary);
 }
 
 .statusDraft {
-  background: #fff8e1;
-  color: #f57c00;
+  background: rgba(212, 148, 76, 0.15);
+  color: var(--c-accent-dark);
 }
 
 .statusNotOpened {
-  background: #e8eaed;
-  color: #6B7B8D;
+  background: var(--c-bg-element);
+  color: var(--c-text-muted);
 }
 
 .lateBadge {
@@ -316,8 +317,8 @@
   border-radius: 12px;
   font-size: 11px;
   font-weight: 600;
-  background: #fce8e6;
-  color: #d93025;
+  background: rgba(180, 64, 64, 0.1);
+  color: var(--c-danger);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -330,13 +331,13 @@
   min-width: 48px;
   height: 36px;
   padding: 0 10px;
-  background: linear-gradient(135deg, #1a73e8, #4285f4);
+  background: var(--c-gradient-score);
   color: white;
   border-radius: 18px;
   font-size: 14px;
   font-weight: 700;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.3);
+  box-shadow: 0 2px 6px rgba(45, 106, 90, 0.3);
 }
 
 .travailMeta {
@@ -348,7 +349,7 @@
 
 .date {
   font-size: 12px;
-  color: #9aa0a6;
+  color: var(--c-text-muted);
 }
 
 /* Loading and Error */
@@ -359,14 +360,14 @@
   justify-content: center;
   min-height: 100vh;
   gap: 16px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid #e8eaed;
-  border-top-color: #1a73e8;
+  border: 3px solid var(--c-border);
+  border-top-color: var(--c-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -393,22 +394,22 @@
 
 .errorContainer h2 {
   font-size: 22px;
-  color: #202124;
+  color: var(--c-text);
   margin: 0;
 }
 
 .errorContainer p {
   font-size: 15px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   margin: 0;
 }
 
 .backButton {
   margin-top: 16px;
   padding: 10px 24px;
-  background: #1a73e8;
+  background: var(--c-primary);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--c-radius);
   font-size: 14px;
   font-weight: 500;
   color: #fff;
@@ -416,7 +417,7 @@
 }
 
 .backButton:hover {
-  background: #1557b0;
+  background: var(--c-primary-dark);
 }
 
 /* Chromebook */

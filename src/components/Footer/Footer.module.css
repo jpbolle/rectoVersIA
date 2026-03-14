@@ -1,8 +1,8 @@
 .footer {
   margin-top: auto;
-  border-top: 2px solid #1a73e8;
+  border-top: 2px solid var(--c-primary);
   padding: 10px 40px;
-  background: #f8f9fa;
+  background: var(--c-bg-element);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -13,13 +13,13 @@
 
 .footerLeft {
   font-weight: 600;
-  color: #1a73e8;
+  color: var(--c-primary);
   font-size: 14px;
 }
 
 .footerCenter {
   font-weight: 500;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   font-size: 14px;
 }
 

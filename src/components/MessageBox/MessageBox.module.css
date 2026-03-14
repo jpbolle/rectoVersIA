@@ -1,20 +1,20 @@
 .message {
   padding: 15px 20px;
-  border-radius: 8px;
+  border-radius: var(--c-radius);
   margin-bottom: 20px;
   font-size: 14px;
 }
 
 .success {
-  background: #e8f5e9;
-  color: #2e7d32;
-  border: 1px solid #81c784;
+  background: rgba(45, 138, 78, 0.08);
+  color: var(--c-success);
+  border: 1px solid rgba(45, 138, 78, 0.3);
 }
 
 .error {
-  background: #fce8e6;
-  color: #d93025;
-  border: 1px solid #f28b82;
+  background: rgba(180, 64, 64, 0.08);
+  color: var(--c-danger);
+  border: 1px solid rgba(180, 64, 64, 0.3);
 }
 
 @media (max-width: 768px) {
@@ -30,6 +30,5 @@
     padding: 12px 15px;
     font-size: 12px;
     margin-bottom: 15px;
-    border-radius: 6px;
   }
 }

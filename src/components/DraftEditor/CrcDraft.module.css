@@ -11,7 +11,7 @@
   gap: 8px;
   padding: 10px 14px;
   background: linear-gradient(135deg, #dce4ec 0%, #c5d3e0 100%);
-  border-radius: 10px;
+  border-radius: var(--c-radius);
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
@@ -23,8 +23,8 @@
   font-size: 11px;
   font-weight: 700;
   color: #fff;
-  background: #1f3a5f;
-  border-radius: 12px;
+  background: var(--c-primary);
+  border-radius: var(--c-radius-lg);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
@@ -35,11 +35,12 @@
   font-size: 15px;
   font-weight: 600;
   color: #416286;
+  font-family: var(--c-font-title);
 }
 
 .headerHint {
   font-size: 12px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   margin-left: auto;
 }
 
@@ -59,7 +60,7 @@
 
 .divider {
   width: 2px;
-  background: linear-gradient(to bottom, #e0e0e0, transparent);
+  background: linear-gradient(to bottom, var(--c-border), transparent);
   margin: 0 12px;
   flex-shrink: 0;
 }
@@ -70,7 +71,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--c-radius);
   margin-bottom: 10px;
 }
 
@@ -78,6 +79,7 @@
   margin: 0;
   font-size: 13px;
   font-weight: 600;
+  font-family: var(--c-font-title);
 }
 
 .columnIcon {
@@ -86,7 +88,7 @@
 
 .positiveHeader {
   background: #e8f5e9;
-  color: #2e7d32;
+  color: var(--c-success);
 }
 
 .negativeHeader {
@@ -102,10 +104,10 @@
 }
 
 .card {
-  border: 1.5px solid #e0e0e0;
-  border-radius: 10px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
   padding: 10px;
-  background: #fff;
+  background: var(--c-bg-card);
   transition: all 0.2s ease;
   cursor: default;
   position: relative;
@@ -154,7 +156,7 @@
 
 .bulletPositive {
   background: #e8f5e9;
-  color: #2e7d32;
+  color: var(--c-success);
 }
 
 .bulletNegative {
@@ -167,8 +169,8 @@
   flex: 1;
   min-width: 0;
   padding: 5px 8px;
-  border: 1.5px solid #e8eaed;
-  border-radius: 6px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
   font-size: 13px;
   font-family: inherit;
   line-height: 1.5;
@@ -181,7 +183,7 @@
 .cardInput:focus {
   outline: none;
   border-color: #416286;
-  background: #fff;
+  background: var(--c-bg-card);
   box-shadow: 0 0 0 3px rgba(65, 98, 134, 0.1);
 }
 
@@ -194,7 +196,7 @@
 
 .cardInputMain:focus {
   border-color: #416286;
-  background: #fff;
+  background: var(--c-bg-card);
 }
 
 .cardInput:disabled {
@@ -210,14 +212,14 @@
   margin-top: 6px;
   margin-left: 30px;
   padding-left: 10px;
-  border-left: 2px solid #e8eaed;
+  border-left: 2px solid var(--c-border);
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--c-radius-sm);
   transition: background 0.15s ease;
 }
 
 .cardSummary:hover {
-  background: #f5f5f5;
+  background: var(--c-bg-element);
 }
 
 .cardSummaryArg {
@@ -234,7 +236,7 @@
   margin-top: 8px;
   margin-left: 30px;
   padding-left: 10px;
-  border-left: 2px solid #e8eaed;
+  border-left: 2px solid var(--c-border);
 }
 
 .argumentBlock {
@@ -262,8 +264,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #e8eaed;
-  color: #5f6368;
+  background: var(--c-border);
+  color: var(--c-text-secondary);
   font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
@@ -294,8 +296,8 @@
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border: 1.5px dashed #dadce0;
-  border-radius: 6px;
+  border: 1.5px dashed var(--c-border);
+  border-radius: var(--c-radius);
   background: transparent;
   color: #416286;
   font-size: 11px;
@@ -316,7 +318,7 @@
 .subLabel {
   font-size: 11px;
   font-weight: 600;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -327,7 +329,7 @@
   flex-direction: column;
   gap: 1px;
   padding-left: 8px;
-  border-left: 1.5px solid #e8eaed;
+  border-left: 1.5px solid var(--c-border);
   margin-top: 2px;
 }
 
@@ -339,9 +341,9 @@
   width: 22px;
   height: 22px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--c-radius);
   background: transparent;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -401,8 +403,8 @@
   align-items: center;
   justify-content: center;
   padding: 8px 12px;
-  border: 2px dashed #dadce0;
-  border-radius: 8px;
+  border: 2px dashed var(--c-border);
+  border-radius: var(--c-radius);
   background: transparent;
   font-size: 13px;
   font-weight: 500;
@@ -413,7 +415,7 @@
 }
 
 .addPositive {
-  color: #2e7d32;
+  color: var(--c-success);
 }
 
 .addPositive:hover {
@@ -434,7 +436,7 @@
 .planSection {
   margin-top: 2cm;
   padding-top: 20px;
-  border-top: 2px solid #e8eaed;
+  border-top: 2px solid var(--c-border);
 }
 
 /* -- Avis général -- */
@@ -448,18 +450,19 @@
 .avisLabel {
   font-size: 13px;
   font-weight: 600;
-  color: #1f3a5f;
+  color: var(--c-primary);
+  font-family: var(--c-font-title);
 }
 
 .avisInput {
   padding: 10px 12px;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
   font-size: 13px;
   font-family: inherit;
   line-height: 1.5;
   resize: vertical;
-  background: #fff;
+  background: var(--c-bg-card);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -476,8 +479,8 @@
 
 .planZone {
   min-height: 80px;
-  border: 2px dashed #dadce0;
-  border-radius: 12px;
+  border: 2px dashed var(--c-border);
+  border-radius: var(--c-radius-lg);
   padding: 12px;
   transition: all 0.2s ease;
   background: #fafafa;
@@ -485,8 +488,8 @@
 }
 
 .planZoneActive {
-  border-color: #1a73e8;
-  background: #e8f0fe;
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.1);
 }
 
 .planEmpty {
@@ -519,9 +522,9 @@
 .planItemWrapper {
   flex: 1;
   min-width: 0;
-  background: #fff;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 8px;
+  background: var(--c-bg-card);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
   cursor: grab;
   transition: all 0.15s ease;
   position: relative;
@@ -547,7 +550,7 @@
 }
 
 .planItemDragOver {
-  border-top: 2px solid #1a73e8;
+  border-top: 2px solid var(--c-primary);
 }
 
 .planItemNumber {
@@ -557,7 +560,7 @@
   min-width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #1f3a5f;
+  background: var(--c-primary);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -588,12 +591,12 @@
 .planItemText {
   font-size: 13px;
   font-weight: 500;
-  color: #1f3a5f;
+  color: var(--c-primary);
 }
 
 .planItemSub {
   font-size: 11px;
-  color: #5f6368;
+  color: var(--c-text-secondary);
 }
 
 .planItemIllustration {
@@ -612,10 +615,10 @@
 
 /* ===== POPUP D'EDITION ===== */
 .editPopup {
-  border-top: 1px solid #e8eaed;
+  border-top: 1px solid var(--c-border);
   padding: 12px;
-  background: #f8f9fa;
-  border-radius: 0 0 8px 8px;
+  background: var(--c-bg-element);
+  border-radius: 0 0 var(--c-radius) var(--c-radius);
   cursor: default;
 }
 
@@ -632,6 +635,7 @@
   color: #416286;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  font-family: var(--c-font-title);
 }
 
 .editPopupClose {
@@ -641,9 +645,9 @@
   width: 22px;
   height: 22px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--c-radius);
   background: transparent;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   font-size: 16px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -667,19 +671,19 @@
 }
 
 .editPopupField .cardInput {
-  background: #fff;
-  border-color: #e0e0e0;
+  background: var(--c-bg-card);
+  border-color: var(--c-border);
 }
 
 .planDropTarget {
   min-height: 8px;
-  border-radius: 4px;
+  border-radius: var(--c-radius-sm);
   transition: all 0.15s ease;
 }
 
 .planDropTarget.planItemDragOver {
   min-height: 4px;
-  background: #1a73e8;
+  background: var(--c-primary);
   margin: 4px 0;
 }
 

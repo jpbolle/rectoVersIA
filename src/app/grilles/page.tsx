@@ -157,10 +157,9 @@ export default function GrillesPage() {
           <div className={styles.grillesGrid}>
             {grillesLoading ? (
               <EmptyState icon="hourglass" message="Chargement..." />
-            ) : grilles.length === 0 ? (
-              <CreateGrilleCard onClick={handleCreateClick} />
             ) : (
               <>
+                <CreateGrilleCard onClick={handleCreateClick} />
                 {grilles.map((grille) => (
                   <GrilleCard
                     key={grille.id}
@@ -170,7 +169,6 @@ export default function GrillesPage() {
                     onDuplicate={handleDuplicateClick}
                   />
                 ))}
-                <CreateGrilleCard onClick={handleCreateClick} />
               </>
             )}
           </div>

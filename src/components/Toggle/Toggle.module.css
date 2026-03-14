@@ -30,13 +30,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: #dadce0;
+  background: var(--c-border);
   border-radius: 26px;
   transition: all 0.3s ease;
 }
 
 .sliderOn {
-  background: #1a73e8;
+  background: var(--c-primary);
 }
 
 .knob {
@@ -62,11 +62,11 @@
 }
 
 .labelOn {
-  color: #1a73e8;
+  color: var(--c-primary);
 }
 
 .labelOff {
-  color: #5f6368;
+  color: var(--c-text-secondary);
 }
 
 @media (max-width: 480px) {

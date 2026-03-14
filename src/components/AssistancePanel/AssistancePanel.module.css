@@ -3,16 +3,16 @@
   flex-direction: column;
   height: 100%;
   max-height: 100%;
-  background: #fff;
-  border: 2px solid #dadce0;
+  background: var(--c-bg-card);
+  border: 2px solid var(--c-border);
   border-radius: 0;
   overflow: hidden;
 }
 
 .tabs {
   display: flex;
-  border-bottom: 2px solid #e8eaed;
-  background: #f8f9fa;
+  border-bottom: 2px solid var(--c-border);
+  background: var(--c-bg-element);
   flex-shrink: 0;
 }
 
@@ -23,7 +23,7 @@
   background: none;
   font-size: 14px;
   font-weight: 500;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
   border-bottom: 2px solid transparent;
@@ -32,14 +32,14 @@
 }
 
 .tab:hover {
-  color: #1a73e8;
-  background: rgba(26, 115, 232, 0.05);
+  color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.05);
 }
 
 .tabActive {
-  color: #1a73e8;
-  border-bottom-color: #1a73e8;
-  background: #fff;
+  color: var(--c-primary);
+  border-bottom-color: var(--c-primary);
+  background: var(--c-bg-card);
 }
 
 .tabHighlight {

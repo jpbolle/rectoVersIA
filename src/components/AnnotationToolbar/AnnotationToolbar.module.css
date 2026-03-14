@@ -3,15 +3,15 @@
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
   flex-wrap: wrap;
 }
 
 .label {
   font-size: 13px;
   font-weight: 600;
-  color: #5f6368;
+  color: var(--c-text-secondary);
   margin-right: 4px;
 }
 
@@ -21,9 +21,9 @@
   justify-content: center;
   height: 34px;
   padding: 0 12px;
-  border: 2px solid #dadce0;
-  border-radius: 6px;
-  background: white;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
@@ -33,14 +33,14 @@
 }
 
 .btn:hover:not(:disabled) {
-  border-color: #1a73e8;
-  background: #f0f6ff;
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.05);
 }
 
 .btn.active {
-  border-color: #1a73e8;
-  background: #e8f0fe;
-  color: #1a73e8;
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--c-primary);
 }
 
 .btn:disabled {
@@ -110,7 +110,7 @@
   background: #e53935;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--c-radius-sm);
   font-size: 12px;
   font-weight: 600;
   font-family: inherit;
