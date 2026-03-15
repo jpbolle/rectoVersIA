@@ -5,19 +5,10 @@ import { useAuth } from './useAuth';
 import type { Devoir, CreateDevoirData } from '@/types/devoir';
 
 export function useDevoirs() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, getAuthHeaders } = useAuth();
   const [devoirs, setDevoirs] = useState<Devoir[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const getAuthHeaders = useCallback(async () => {
-    if (!user) return null;
-    const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  }, [user]);
 
   const fetchDevoirs = useCallback(async () => {
     const headers = await getAuthHeaders();

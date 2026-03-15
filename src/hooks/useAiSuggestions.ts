@@ -7,7 +7,7 @@ import type { AiSuggestion, AiSuggestionType } from '@/types/ai-suggestions';
 type SuggestionsMap = Record<AiSuggestionType, AiSuggestion | null>;
 
 export function useAiSuggestions(travailId: string | undefined, devoirId: string | undefined) {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, getAuthHeaders } = useAuth();
   const [suggestions, setSuggestions] = useState<SuggestionsMap>({
     ortho: null,
     ponctu: null,
@@ -17,15 +17,6 @@ export function useAiSuggestions(travailId: string | undefined, devoirId: string
   const [isLoading, setIsLoading] = useState(true);
   const [activeRequest, setActiveRequest] = useState<AiSuggestionType | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const getAuthHeaders = useCallback(async () => {
-    if (!user) return null;
-    const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  }, [user]);
 
   // Charger les suggestions existantes au mount
   const fetchSuggestions = useCallback(async () => {

@@ -9,20 +9,11 @@ export function useAiGridEvaluation(
   devoirId: string | undefined,
   grilleId: string | undefined,
 ) {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, getAuthHeaders } = useAuth();
   const [result, setResult] = useState<AiGridResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const getAuthHeaders = useCallback(async () => {
-    if (!user) return null;
-    const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  }, [user]);
 
   // Charger le résultat existant au mount
   const fetchResult = useCallback(async () => {

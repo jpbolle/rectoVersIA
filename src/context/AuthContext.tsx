@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import { type User } from 'firebase/auth';
 import { signInWithGoogle, signOutUser, onTokenRefresh } from '@/lib/firebase/auth';
 import { getUserRole, isAdmin as checkIsAdmin } from '@/lib/auth-utils';
@@ -14,9 +14,12 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
+type AuthHeaders = { 'Content-Type': string; Authorization: string };
+
 interface AuthContextValue extends AuthState {
   signIn: () => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
+  getAuthHeaders: () => Promise<AuthHeaders | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -30,9 +33,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
   });
 
+  // Stable ref for user — avoids re-renders on token refresh
+  const userRef = useRef<User | null>(null);
+  const currentUidRef = useRef<string | null>(null);
+
   useEffect(() => {
     const unsubscribe = onTokenRefresh(async (user) => {
       if (user && user.email) {
+        // Token refresh for same user — update ref silently, no setState
+        if (currentUidRef.current === user.uid) {
+          userRef.current = user;
+          return;
+        }
+
         const email = user.email;
         let role = getUserRole(email);
 
@@ -53,6 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (role) {
+          currentUidRef.current = user.uid;
+          userRef.current = user;
           setState({
             user,
             role,
@@ -61,6 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: true,
           });
         } else {
+          currentUidRef.current = null;
+          userRef.current = null;
           await signOutUser();
           setState({
             user: null,
@@ -71,6 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
       } else {
+        currentUidRef.current = null;
+        userRef.current = null;
         setState({
           user: null,
           role: null,
@@ -82,6 +101,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  // Stable getAuthHeaders — never changes reference, uses userRef internally
+  const getAuthHeaders = useCallback(async (): Promise<AuthHeaders | null> => {
+    if (!userRef.current) return null;
+    const token = await userRef.current.getIdToken();
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
   }, []);
 
   const signIn = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
@@ -165,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signOut }}>
+    <AuthContext.Provider value={{ ...state, signIn, signOut, getAuthHeaders }}>
       {children}
     </AuthContext.Provider>
   );

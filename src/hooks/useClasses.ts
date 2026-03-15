@@ -5,19 +5,10 @@ import { useAuth } from './useAuth';
 import type { Classe, Eleve, CreateClasseData, CreateEleveData } from '@/types/classe';
 
 export function useClasses() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, getAuthHeaders } = useAuth();
   const [classes, setClasses] = useState<Classe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const getAuthHeaders = useCallback(async () => {
-    if (!user) return null;
-    const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  }, [user]);
 
   const fetchClasses = useCallback(async () => {
     const headers = await getAuthHeaders();
@@ -157,19 +148,10 @@ export function useClasses() {
 }
 
 export function useEleves(classeId?: string) {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, getAuthHeaders } = useAuth();
   const [eleves, setEleves] = useState<Eleve[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const getAuthHeaders = useCallback(async () => {
-    if (!user) return null;
-    const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  }, [user]);
 
   const fetchEleves = useCallback(async () => {
     if (!classeId) {

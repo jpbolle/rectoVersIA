@@ -40,21 +40,12 @@ const CLASSROOM_SCOPES = [
 ];
 
 export function useGoogleClassroom(): UseGoogleClassroomReturn {
-  const { user } = useAuth();
+  const { getAuthHeaders } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [courses, setCourses] = useState<ClassroomCourse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-
-  const getFirebaseIdToken = useCallback(async (): Promise<string | null> => {
-    if (!user) return null;
-    try {
-      return await user.getIdToken();
-    } catch {
-      return null;
-    }
-  }, [user]);
 
   const authorizeClassroom = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
@@ -122,15 +113,15 @@ export function useGoogleClassroom(): UseGoogleClassroomReturn {
     setError(null);
 
     try {
-      const idToken = await getFirebaseIdToken();
-      if (!idToken) {
+      const authHeaders = await getAuthHeaders();
+      if (!authHeaders) {
         setError('Session expirée');
         return [];
       }
 
       const response = await fetch('/api/classroom/courses', {
         headers: {
-          Authorization: `Bearer ${idToken}`,
+          ...authHeaders,
           'X-Google-Access-Token': accessToken,
         },
       });
@@ -151,7 +142,7 @@ export function useGoogleClassroom(): UseGoogleClassroomReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, getFirebaseIdToken]);
+  }, [accessToken, getAuthHeaders]);
 
   const importCourse = useCallback(
     async (
@@ -168,8 +159,8 @@ export function useGoogleClassroom(): UseGoogleClassroomReturn {
       setError(null);
 
       try {
-        const idToken = await getFirebaseIdToken();
-        if (!idToken) {
+        const authHeaders = await getAuthHeaders();
+        if (!authHeaders) {
           setError('Session expirée');
           return null;
         }
@@ -177,8 +168,7 @@ export function useGoogleClassroom(): UseGoogleClassroomReturn {
         const response = await fetch('/api/classroom/import', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${idToken}`,
+            ...authHeaders,
             'X-Google-Access-Token': accessToken,
           },
           body: JSON.stringify({
@@ -207,7 +197,7 @@ export function useGoogleClassroom(): UseGoogleClassroomReturn {
         setIsLoading(false);
       }
     },
-    [accessToken, getFirebaseIdToken]
+    [accessToken, getAuthHeaders]
   );
 
   const reset = useCallback(() => {

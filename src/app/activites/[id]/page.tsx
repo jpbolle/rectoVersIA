@@ -24,7 +24,7 @@ export default function TravailPage() {
   const router = useRouter();
   const devoirId = params.id as string;
 
-  const { user, isAuthenticated, role, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, role, isLoading: authLoading, getAuthHeaders } = useAuth();
   const [devoir, setDevoir] = useState<Devoir | null>(null);
   const [devoirLoading, setDevoirLoading] = useState(true);
   const [devoirError, setDevoirError] = useState<string | null>(null);
@@ -91,14 +91,13 @@ export default function TravailPage() {
   // Fetch devoir
   useEffect(() => {
     async function fetchDevoir() {
-      if (!user || !devoirId) return;
+      if (!devoirId) return;
 
       try {
-        const token = await user.getIdToken();
+        const headers = await getAuthHeaders();
+        if (!headers) return;
         const res = await fetch(`/api/devoirs/${devoirId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers,
         });
 
         const json = await res.json();
@@ -119,17 +118,18 @@ export default function TravailPage() {
     if (isAuthenticated) {
       fetchDevoir();
     }
-  }, [user, isAuthenticated, devoirId]);
+  }, [isAuthenticated, devoirId, getAuthHeaders]);
 
   // Fetch correction du prof (visible par l'eleve)
   useEffect(() => {
     async function fetchCorrection() {
-      if (!user || !travail?.id) return;
+      if (!travail?.id) return;
 
       try {
-        const token = await user.getIdToken();
+        const headers = await getAuthHeaders();
+        if (!headers) return;
         const res = await fetch(`/api/corrections?travailId=${travail.id}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers,
         });
         const json = await res.json();
 
@@ -145,7 +145,7 @@ export default function TravailPage() {
     if (isAuthenticated && !isPreviewMode && travail) {
       fetchCorrection();
     }
-  }, [user, isAuthenticated, isPreviewMode, travail?.id]);
+  }, [isAuthenticated, isPreviewMode, travail?.id, getAuthHeaders]);
 
   const handleContentChange = useCallback((content: string) => {
     if (!isPreviewMode) {

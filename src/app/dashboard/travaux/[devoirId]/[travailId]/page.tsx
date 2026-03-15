@@ -51,7 +51,7 @@ export default function TravailDetailPage() {
   const router = useRouter();
   const { devoirId, travailId } = params as { devoirId: string; travailId: string };
 
-  const { user, isAuthenticated, role, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, role, isLoading: authLoading, getAuthHeaders } = useAuth();
   const [travail, setTravail] = useState<Travail | null>(null);
   const [devoir, setDevoir] = useState<Devoir | null>(null);
   const [travaux, setTravaux] = useState<Travail[]>([]);
@@ -196,15 +196,6 @@ export default function TravailDetailPage() {
     setIsPlayingComment(false);
   }, [updateCommentaireGeneralAudio]);
 
-  const getAuthHeaders = useCallback(async () => {
-    if (!user) return null;
-    const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  }, [user]);
-
   useEffect(() => {
     if (!authLoading && role !== 'prof') {
       router.replace('/dashboard');
@@ -286,7 +277,7 @@ export default function TravailDetailPage() {
   };
 
   const handleReturnForCorrection = async () => {
-    if (!travail || !user) return;
+    if (!travail) return;
 
     const confirmed = window.confirm(
       `Êtes-vous sûr de vouloir renvoyer le travail de ${travail.studentName} en correction ? L'élève pourra à nouveau modifier son travail.`
@@ -297,13 +288,11 @@ export default function TravailDetailPage() {
     setIsReturning(true);
 
     try {
-      const token = await user.getIdToken();
+      const headers = await getAuthHeaders();
+      if (!headers) return;
       const res = await fetch(`/api/travaux/${travail.id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({ status: 'draft' }),
       });
 

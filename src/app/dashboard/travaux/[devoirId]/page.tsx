@@ -16,21 +16,12 @@ export default function TravauxPage() {
   const router = useRouter();
   const devoirId = params.devoirId as string;
 
-  const { user, isAuthenticated, role, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, role, isLoading: authLoading, getAuthHeaders } = useAuth();
   const [devoir, setDevoir] = useState<Devoir | null>(null);
   const [travaux, setTravaux] = useState<Travail[]>([]);
   const [corrections, setCorrections] = useState<Map<string, Correction>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const getAuthHeaders = useCallback(async () => {
-    if (!user) return null;
-    const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  }, [user]);
 
   useEffect(() => {
     if (!authLoading && role !== 'prof') {

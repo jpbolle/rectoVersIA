@@ -5,19 +5,10 @@ import { useAuth } from './useAuth';
 import type { Grille, CreateGrilleData, GrilleCriterion } from '@/types/grille';
 
 export function useGrilles() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, getAuthHeaders } = useAuth();
   const [grilles, setGrilles] = useState<Grille[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const getAuthHeaders = useCallback(async () => {
-    if (!user) return null;
-    const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  }, [user]);
 
   const fetchGrilles = useCallback(async () => {
     const headers = await getAuthHeaders();

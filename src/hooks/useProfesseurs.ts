@@ -5,19 +5,10 @@ import { useAuth } from './useAuth';
 import type { Professeur, CreateProfesseurData } from '@/types/professeur';
 
 export function useProfesseurs() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, getAuthHeaders } = useAuth();
   const [professeurs, setProfesseurs] = useState<Professeur[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const getAuthHeaders = useCallback(async () => {
-    if (!user) return null;
-    const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  }, [user]);
 
   const fetchProfesseurs = useCallback(async () => {
     const headers = await getAuthHeaders();

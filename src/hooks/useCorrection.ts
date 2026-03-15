@@ -32,7 +32,7 @@ export function calculateScore(
 }
 
 export function useCorrection(travailId: string | null, devoirId: string | null, studentId: string | null, grille: Grille | null) {
-  const { user, role } = useAuth();
+  const { role, getAuthHeaders } = useAuth();
   const [correction, setCorrection] = useState<Correction | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -40,15 +40,6 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const pendingUpdate = useRef<UpdateCorrectionData | null>(null);
-
-  const getAuthHeaders = useCallback(async () => {
-    if (!user) return null;
-    const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  }, [user]);
 
   // Fetch correction existante
   const fetchCorrection = useCallback(async () => {

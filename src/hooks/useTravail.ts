@@ -7,7 +7,7 @@ import type { Travail, UpdateTravailData } from '@/types/travail';
 const DEBOUNCE_DELAY = 2500; // 2.5 secondes
 
 export function useTravail(devoirId: string | null) {
-  const { user, isAuthenticated, role } = useAuth();
+  const { isAuthenticated, role, getAuthHeaders } = useAuth();
   const [travail, setTravail] = useState<Travail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -16,15 +16,6 @@ export function useTravail(devoirId: string | null) {
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const pendingUpdate = useRef<UpdateTravailData | null>(null);
-
-  const getAuthHeaders = useCallback(async () => {
-    if (!user) return null;
-    const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  }, [user]);
 
   // Fetch le travail de l'eleve connecte
   const fetchTravail = useCallback(async () => {

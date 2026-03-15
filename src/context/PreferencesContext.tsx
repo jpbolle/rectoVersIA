@@ -17,14 +17,14 @@ interface PreferencesContextValue {
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, getAuthHeaders } = useAuth();
   const [preferences, setPreferences] = useState<EditorPreferences>(DEFAULT_PREFERENCES);
   const [isLoading, setIsLoading] = useState(true);
   const [preferencesSet, setPreferencesSet] = useState(true); // true par defaut pour eviter flash
 
   // Charge les prefs depuis l'API au login
   useEffect(() => {
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated) {
       setPreferences(DEFAULT_PREFERENCES);
       setIsLoading(false);
       return;
@@ -34,10 +34,14 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
 
     async function loadPreferences() {
       try {
-        const token = await user!.getIdToken();
-        const res = await fetch('/api/preferences', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const headers = await getAuthHeaders();
+        if (!headers) {
+          if (cancelled) return;
+          setPreferences(DEFAULT_PREFERENCES);
+          setIsLoading(false);
+          return;
+        }
+        const res = await fetch('/api/preferences', { headers });
         if (!res.ok) {
           // Nouvel utilisateur ou token pas encore prêt — utiliser les défauts
           if (cancelled) return;
@@ -56,15 +60,14 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
         if (localTheme && PAGE_THEMES.some(t => t.id === localTheme) && serverPrefs.theme === DEFAULT_PREFERENCES.theme) {
           serverPrefs.theme = localTheme;
           // Ecrire dans Firestore
-          const putToken = await user!.getIdToken();
-          fetch('/api/preferences', {
-            method: 'PUT',
-            headers: {
-              Authorization: `Bearer ${putToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(serverPrefs),
-          });
+          const putHeaders = await getAuthHeaders();
+          if (putHeaders) {
+            fetch('/api/preferences', {
+              method: 'PUT',
+              headers: putHeaders,
+              body: JSON.stringify(serverPrefs),
+            });
+          }
           localStorage.removeItem(THEME_STORAGE_KEY);
         } else {
           // Supprimer localStorage dans tous les cas si prefs existent
@@ -81,7 +84,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
 
     loadPreferences();
     return () => { cancelled = true; };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, getAuthHeaders]);
 
   const updatePreferences = useCallback(async (partial: Partial<EditorPreferences>) => {
     const newPrefs = { ...preferences, ...partial };
@@ -89,13 +92,11 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     setPreferences(newPrefs);
 
     try {
-      const token = await user!.getIdToken();
+      const headers = await getAuthHeaders();
+      if (!headers) throw new Error('Not authenticated');
       const res = await fetch('/api/preferences', {
         method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(newPrefs),
       });
       if (!res.ok) throw new Error('Failed to save preferences');
@@ -104,7 +105,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       // Revert on failure
       setPreferences(preferences);
     }
-  }, [preferences, user]);
+  }, [preferences, getAuthHeaders]);
 
   const markPreferencesSet = useCallback(() => {
     setPreferencesSet(true);

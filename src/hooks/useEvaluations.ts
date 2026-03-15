@@ -9,18 +9,19 @@ import type { Grille } from '@/types/grille';
  * Utilise par CreationForm et EditDevoirModal pour les dropdowns
  */
 export function useGrilleTypes() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, getAuthHeaders } = useAuth();
   const [grilleTypes, setGrilleTypes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated || !user) return;
+    if (!isAuthenticated) return;
 
     async function fetchGrilles() {
       try {
-        const token = await user!.getIdToken();
+        const headers = await getAuthHeaders();
+        if (!headers) return;
         const res = await fetch('/api/grilles', {
-          headers: { Authorization: `Bearer ${token}` },
+          headers,
         });
         const json = await res.json();
         if (json.success) {
@@ -39,7 +40,7 @@ export function useGrilleTypes() {
     }
 
     fetchGrilles();
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, getAuthHeaders]);
 
   return { grilleTypes, isLoading };
 }
