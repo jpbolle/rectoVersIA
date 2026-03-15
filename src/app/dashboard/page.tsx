@@ -19,7 +19,7 @@ import type { CreateDevoirData, Devoir } from '@/types/devoir';
 import styles from './dashboard.module.css';
 
 export default function DashboardPage() {
-  const { isAuthenticated, isLoading: authLoading, role } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, role, getAuthHeaders } = useAuth();
   const router = useRouter();
   const {
     devoirs,
@@ -190,6 +190,7 @@ export default function DashboardPage() {
           accesIA: devoir.accesIA,
           disponible: false,
           ressources: devoir.ressources || null,
+          typeTravail: devoir.typeTravail || 'ecrire',
         });
         setMessage({ text: 'Devoir dupliqué avec succès !', type: 'success' });
       } catch (err) {
@@ -243,6 +244,7 @@ export default function DashboardPage() {
               onSubmit={handleCreateDevoir}
               isSubmitting={isSubmitting}
               onClose={() => setIsFormVisible(false)}
+              getAuthHeaders={getAuthHeaders}
             />
           </section>
         )}

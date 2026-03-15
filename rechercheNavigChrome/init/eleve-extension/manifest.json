@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "NavigKid!",
+  "version": "1.0",
+  "description": "Extension pour recherche guidée par IA",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "background": {
+    "service_worker": "background/index.js"
+  },
+  "sidebar_action": {
+    "default_panel": "sidebar/index.html",
+    "default_title": "NavigKid!"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.google.com/*"],
+      "js": ["content/index.js"]
+    }
+  ]
+}

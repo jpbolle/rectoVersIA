@@ -1,0 +1,613 @@
+/* QuestionnaireBuilder — Classica design system */
+
+.builder {
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius-lg);
+  border: 2px solid var(--c-primary);
+}
+
+.builderTitle {
+  font-family: var(--c-font-title);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--c-primary);
+  margin: 0 0 20px 0;
+}
+
+/* ─── Infos générales ─── */
+
+.infoSection {
+  margin-bottom: 20px;
+}
+
+.fieldGroup {
+  margin-bottom: 15px;
+}
+
+.label {
+  display: block;
+  color: var(--c-primary);
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.input,
+.select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--c-bg-card);
+  color: var(--c-text);
+  transition: border-color 0.2s ease;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.1);
+}
+
+.textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 70px;
+  color: var(--c-text);
+  transition: border-color 0.2s ease;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.1);
+}
+
+.textarea::placeholder,
+.input::placeholder {
+  color: var(--c-text-dim);
+}
+
+/* ─── Thèmes (tags) ─── */
+
+.themesRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.themesRow .input {
+  flex: 1;
+}
+
+.btnAddTheme {
+  padding: 10px 16px;
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+  border: none;
+  border-radius: var(--c-radius);
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.btnAddTheme:hover {
+  background: var(--c-primary-light);
+  color: var(--c-primary);
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--c-primary);
+  padding: 4px 12px;
+  border-radius: var(--c-radius);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tagRemove {
+  background: none;
+  border: none;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  line-height: 1;
+}
+
+.tagRemove:hover {
+  color: var(--c-danger);
+}
+
+/* ─── Tableau des questions ─── */
+
+.questionsSection {
+  margin-top: 20px;
+}
+
+.questionsTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-primary);
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.emptyMessage {
+  text-align: center;
+  padding: 30px 0;
+  color: var(--c-text-secondary);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tableHeader {
+  border-bottom: 2px solid var(--c-border);
+}
+
+.tableHeader th {
+  color: var(--c-primary);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.tableHeader th:nth-child(2) {
+  text-align: left;
+}
+
+.questionRow {
+  border-bottom: 1px solid var(--c-border);
+  vertical-align: top;
+}
+
+.questionRow:hover .btnDeleteQuestion {
+  opacity: 1;
+}
+
+.cellCenter {
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.cellLeft {
+  padding: 10px 6px;
+}
+
+.questionNumber {
+  font-weight: 700;
+  color: var(--c-accent);
+  font-size: 14px;
+}
+
+/* ─── Boutons déplacer ─── */
+
+.moveButtons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.btnMove {
+  width: 22px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--c-border);
+  border-radius: 3px;
+  background: var(--c-bg-card);
+  color: var(--c-text-secondary);
+  font-size: 9px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnMove:hover:not(:disabled) {
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--c-primary);
+  border-color: var(--c-primary);
+}
+
+.btnMove:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+/* ─── Textarea question ─── */
+
+.questionTextarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  color: var(--c-text);
+}
+
+.questionTextarea:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+/* ─── QCM options ─── */
+
+.qcmOptions {
+  margin-top: 8px;
+}
+
+.qcmHint {
+  font-size: 10px;
+  color: var(--c-text-secondary);
+  font-style: italic;
+  margin-bottom: 6px;
+}
+
+.qcmOption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all 0.15s ease;
+  margin-bottom: 4px;
+}
+
+.qcmOptionCorrect {
+  border-left-color: #22c55e;
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.qcmLabel {
+  font-size: 12px;
+  font-weight: 700;
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.qcmLabelCorrect {
+  color: #22c55e;
+}
+
+.qcmLabelDefault {
+  color: var(--c-accent);
+}
+
+.qcmInput {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--c-text);
+}
+
+.qcmInputCorrect {
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.qcmInput:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.btnRemoveOption {
+  background: none;
+  border: none;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px;
+}
+
+.btnRemoveOption:hover {
+  color: var(--c-danger);
+}
+
+.btnAddOption {
+  background: none;
+  border: none;
+  color: var(--c-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.btnAddOption:hover {
+  text-decoration: underline;
+}
+
+/* ─── Corrigé & références ─── */
+
+.details {
+  margin-top: 8px;
+}
+
+.detailsSummary {
+  font-size: 10px;
+  color: var(--c-accent);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+.detailsSummary:hover {
+  color: var(--c-primary);
+}
+
+.detailsContent {
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(212, 148, 76, 0.06);
+  border: 1px solid rgba(212, 148, 76, 0.2);
+  border-radius: var(--c-radius);
+  font-size: 12px;
+}
+
+.detailsLabel {
+  font-weight: 700;
+  color: var(--c-accent);
+  margin-bottom: 4px;
+}
+
+.detailsTextarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid rgba(212, 148, 76, 0.3);
+  border-radius: var(--c-radius);
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 50px;
+  color: var(--c-text);
+  background: var(--c-bg-card);
+}
+
+.detailsTextarea:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.refRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.refArrow {
+  color: var(--c-accent);
+  flex-shrink: 0;
+}
+
+.refInput {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid rgba(212, 148, 76, 0.3);
+  border-radius: var(--c-radius);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--c-text);
+  background: var(--c-bg-card);
+}
+
+.refInput:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.refLink {
+  color: var(--c-primary);
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.refLink:hover {
+  text-decoration: underline;
+}
+
+.btnAddRef {
+  composes: btnAddOption;
+  margin-top: 4px;
+}
+
+/* ─── Select petit (type, sources) ─── */
+
+.selectSmall {
+  padding: 6px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-size: 12px;
+  background: var(--c-bg-card);
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+.selectSmall:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.inputSmall {
+  width: 50px;
+  padding: 6px 4px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-size: 12px;
+  text-align: center;
+  background: var(--c-bg-card);
+  color: var(--c-text);
+}
+
+.inputSmall:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+/* ─── Bouton supprimer question ─── */
+
+.btnDeleteQuestion {
+  background: none;
+  border: none;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.btnDeleteQuestion:hover {
+  color: var(--c-danger);
+  background: rgba(220, 53, 69, 0.06);
+}
+
+/* ─── Footer : total + boutons ajouter ─── */
+
+.footer {
+  margin-top: 16px;
+}
+
+.footerInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.footerHints {
+  display: flex;
+  gap: 20px;
+  font-size: 11px;
+  color: var(--c-text-secondary);
+}
+
+.totalPoints {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-primary);
+}
+
+.addButtons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btnAdd {
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--c-radius);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btnAddTexte,
+.btnAddQcm {
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--c-primary);
+}
+
+.btnAddTexte:hover,
+.btnAddQcm:hover {
+  background: rgba(45, 106, 90, 0.18);
+}
+
+.btnAddIA {
+  background: var(--c-accent);
+  color: white;
+}
+
+.btnAddIA:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btnAddIA:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 768px) {
+  .builder {
+    padding: 15px;
+  }
+
+  .table {
+    font-size: 12px;
+  }
+
+  .footerHints {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .addButtons {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .builder {
+    padding: 12px;
+  }
+
+  .builderTitle {
+    font-size: 16px;
+  }
+
+  .themesRow {
+    flex-direction: column;
+  }
+}

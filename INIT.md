@@ -5,12 +5,12 @@
 | Champ | Valeur |
 |-------|--------|
 | **Nom** | Recto-versIA — Assistant de correction pedagogique avec IA |
-| **Version** | 3.0 (mars 2026) |
+| **Version** | 3.1 (mars 2026) |
 | **Domaine** | EdTech — correction de productions ecrites d'eleves |
 | **Ecole** | College Notre-Dame de Dinant (Belgique) |
 | **Utilisateur principal** | Jean-Philippe Bolle (professeur) |
 
-Application web : un enseignant corrige des productions d'eleves via des grilles a 6 niveaux, avec assistance IA (precorrection Claude, dictee vocale Whisper). Les eleves redigent, s'autoevaluent et consultent la correction du professeur.
+Application web : un enseignant corrige des productions d'eleves via des grilles a 6 niveaux, avec assistance IA (precorrection Claude, dictee vocale Whisper). Les eleves redigent, s'autoevaluent et consultent la correction du professeur. Inclut une extension Chrome NavigKid pour la recherche guidee sur le web.
 
 ---
 
@@ -73,7 +73,28 @@ interface Devoir {
   profId: string;
   anneeScolaire: string;         // "2025-2026" (calcul auto)
   createdAt: Timestamp;
+  typeTravail: 'ecrire' | 'lire' | 'rechercher';
+  questionnaireId?: string;       // ref questionnaires/{id} (type rechercher)
+  codeAcces?: string;             // code 6 chars extension Chrome (type rechercher)
 }
+```
+
+### `questionnaires` (NavigKid)
+```typescript
+interface Questionnaire {
+  id: string;
+  titre: string;
+  theme: string;                   // tags separes par virgule
+  consignes: string;
+  questions: Question[];           // texte/qcm, nbSources, points, reponseAttendue
+  codeAcces: string;               // 6 chars (alphabet reduit)
+  profId: string;
+  devoirId: string;
+  archive: boolean;
+  creeLe: Timestamp;
+}
+// Sous-collection: questionnaires/{id}/reponses/{eleveId}
+// Collection separee: recherches/{eleveId}
 ```
 
 ### `travaux`
@@ -198,6 +219,11 @@ interface Grille {
 | `/api/admin/stats` | GET | Stats globales (admin) |
 | `/api/ai/writing-help` | POST | Aide redaction IA |
 | `/api/ai/grid-eval` | GET, POST | Evaluation IA grille |
+| `/api/navigkid/generer-questions` | POST | Generation IA questions recherche |
+| `/api/navigkid/questionnaire` | GET | Lire un questionnaire par id |
+| `/api/navigkid/reponse` | GET | Reponse eleve par questionnaireId + eleveId |
+| `/api/navigkid/activites-eleve` | GET | Activites recherche disponibles pour l'eleve |
+| `/api/navigkid/aide-ia` | POST | Aide IA : verification sources, mots-cles, reponses |
 
 ---
 
@@ -241,8 +267,13 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 - `PlanDraft` — plan hierarchique
 - `FreeDraft` — brouillon libre
 
+### NavigKid (recherche guidee)
+- `QuestionnaireBuilder` — constructeur questionnaire (questions texte/qcm, themes, generation IA)
+- `RechercheResponseViewer` — vue reponses eleve (sources, passages, mots-cles)
+- `RechercheStatsTab` — onglet stats recherche dans AssistancePanel
+
 ### Panels
-- `AssistancePanel` — panel lateral avec onglets (Consignes, Ressources, Grille, Remarques, Aide IA)
+- `AssistancePanel` — panel lateral avec onglets (Consignes, Ressources, Grille, Remarques, Aide IA, Recherche)
 - `GrilleTab` — grille interactive avec 3 evaluations (eleve, IA, prof)
 
 ### UI
@@ -290,6 +321,10 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 
 ## 10. Roadmap
 
+### Fait (v3.1)
+- [x] **Integration NavigKid** : type de travail "Rechercher", constructeur questionnaire, extension Chrome, vue correction, aide IA
+- [x] **Extension Chrome NavigKid** : Google OAuth, liste activites (actif/archive), aide IA conditionnelle
+
 ### Fait (v3.0)
 - [x] **Multi-professeurs** : isolation par profId (devoirs, classes, grilles, corrections)
 - [x] **Acces temporaire** : 1 jour / 1 semaine avec expiration auto
@@ -298,8 +333,7 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 - [x] **Page roadmap** : accessible a tous via menu avatar
 
 ### Priorite haute
-1. **Integration NavigKid** : recherche guidee web dans Recto-versIA (questionnaires, suivi, correction IA)
-2. **Avis critique entre pairs (CRC)** : l'eleve lit/redige un avis sur le CRC d'un autre eleve. Attribution aleatoire et anonyme
+1. **Avis critique entre pairs (CRC)** : l'eleve lit/redige un avis sur le CRC d'un autre eleve. Attribution aleatoire et anonyme
 
 ### Priorite moyenne
 3. **Grille de metacognition** : ecart auto-evaluation / correction prof, evolution du texte

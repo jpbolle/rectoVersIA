@@ -39,6 +39,10 @@ yarn-error.log*
 # claude code
 .claude/
 
+# NavigKid legacy
+rechercheNavigChrome/.next/
+rechercheNavigChrome/node_modules/
+
 # deployment guide (contains server details)
 DEPLOYMENT.md
 

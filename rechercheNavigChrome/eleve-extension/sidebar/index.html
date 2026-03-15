@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NavigKid! - Élève</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Écran authentification (Google OAuth) -->
+    <div id="ecran-auth">
+      <div class="logo">🔍</div>
+      <h1>NavigKid!</h1>
+      <p class="sous-titre">Recherche guidée</p>
+
+      <div class="carte" style="text-align: center; margin-top: 24px;">
+        <p class="aide-description">Connecte-toi avec ton compte Google scolaire.</p>
+        <button id="btn-google-login" class="btn-google">
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.462.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+          Se connecter avec Google
+        </button>
+        <p id="erreur-auth" class="erreur" hidden></p>
+      </div>
+    </div>
+
+    <!-- Écran liste des activités (après auth) -->
+    <div id="ecran-activites" hidden>
+      <div class="user-bar">
+        <span id="user-nom" class="user-nom"></span>
+        <button id="btn-deconnexion" class="btn-deconnexion">Déconnexion</button>
+      </div>
+
+      <h2 class="activites-titre">Mes activités de recherche</h2>
+
+      <!-- Onglets Actif / Archivé -->
+      <div class="activites-tabs">
+        <button class="activites-tab active" data-tab="actif">En cours</button>
+        <button class="activites-tab" data-tab="archive">Corrigés</button>
+      </div>
+
+      <div id="liste-activites-actif" class="liste-activites"></div>
+      <div id="liste-activites-archive" class="liste-activites" hidden></div>
+
+      <div id="activites-vide" class="aide-description" style="text-align:center; padding: 30px 0;" hidden>
+        Aucune activité de recherche disponible.
+      </div>
+      <div id="activites-loading" style="text-align:center; padding: 30px 0;">
+        <div class="spinner"></div>
+        Chargement...
+      </div>
+      <p id="erreur-activites" class="erreur" hidden></p>
+    </div>
+
+    <!-- Écran questionnaire - Vue question unique -->
+    <div id="ecran-questionnaire" hidden>
+      <div class="user-bar">
+        <span id="user-nom-q" class="user-nom"></span>
+        <button id="btn-retour-activites" class="btn-deconnexion">← Retour</button>
+      </div>
+      <header>
+        <h2 id="titre-questionnaire"></h2>
+        <span class="badge" id="theme-questionnaire"></span>
+      </header>
+
+      <div id="consignes" class="carte">
+        <h3>📋 Consignes</h3>
+        <p id="texte-consignes"></p>
+      </div>
+
+      <!-- Navigation haut -->
+      <div class="question-nav">
+        <button id="btn-prev" class="btn-nav" disabled>&larr;</button>
+        <span id="question-compteur" class="question-compteur">Question 1 / 1</span>
+        <button id="btn-next" class="btn-nav">&rarr;</button>
+      </div>
+
+      <!-- Carte question unique -->
+      <div id="carte-question" class="carte carte-question">
+        <!-- Énoncé de la question -->
+        <div id="question-texte-zone"></div>
+
+        <!-- Bloc Recherche effectuée -->
+        <div class="recherche-bloc">
+          <h4 class="recherche-bloc-titre">🔍 Recherche effectuée</h4>
+
+          <!-- Mots-clés recherchés -->
+          <div class="tracking-section">
+            <h4 class="tracking-titre">🔎 Mots-clés recherchés</h4>
+            <div id="liste-mots-cles" class="tags"></div>
+            <p id="aucun-mot-cle" class="aide-description">Tes recherches Google apparaîtront ici.</p>
+          </div>
+
+          <!-- Sites consultés -->
+          <div class="tracking-section">
+            <h4 class="tracking-titre">📌 Sites consultés <span id="compteur-sites" class="compteur">0</span></h4>
+            <div id="liste-sites"></div>
+            <p id="aucun-site" class="aide-description">Clique sur un résultat Google pour l'ajouter ici.</p>
+          </div>
+
+          <!-- Passages soulignés -->
+          <div class="tracking-section">
+            <h4 class="tracking-titre">✏️ Passages soulignés <span id="compteur-passages" class="compteur">0</span></h4>
+            <div id="liste-passages"></div>
+            <p id="aucun-passage" class="aide-description">Surligne du texte sur une page web pour le collecter ici.</p>
+          </div>
+        </div>
+
+        <!-- Réponse (en bas) -->
+        <div class="reponse-bloc">
+          <h4 class="tracking-titre">✍️ Ta réponse</h4>
+          <div id="question-reponse"></div>
+        </div>
+      </div>
+
+      <!-- Dots navigation -->
+      <div id="question-dots" class="question-dots"></div>
+
+      <!-- Navigation bas -->
+      <div class="question-nav-bas">
+        <button id="btn-prev-bas" class="btn-secondaire" disabled>&larr; Précédente</button>
+        <button id="btn-next-bas" class="btn-secondaire">Suivante &rarr;</button>
+      </div>
+
+      <!-- Aide IA (conditionnel) -->
+      <div id="aide-ia-section" class="actions" hidden>
+        <button id="btn-aide-ia" class="btn-aide-ia">🤖 Vérifier mon travail (IA)</button>
+        <div id="aide-ia-loading" hidden style="text-align:center;padding:12px 0;">
+          <div class="spinner"></div>
+          Analyse en cours...
+        </div>
+        <div id="aide-ia-resultat" hidden></div>
+      </div>
+
+      <!-- Soumission -->
+      <div class="actions">
+        <button id="btn-soumettre" class="btn-principal">Envoyer mes réponses</button>
+        <p id="message-soumission" hidden></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK (local) -->
+  <script src="lib/firebase-app-compat.js"></script>
+  <script src="lib/firebase-auth-compat.js"></script>
+  <script src="lib/firebase-firestore-compat.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

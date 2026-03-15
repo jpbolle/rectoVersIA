@@ -17,7 +17,9 @@ import type { Correction } from '@/types/correction';
 import type { DraftContent } from '@/types/travail';
 import type { AiSuggestionType } from '@/types/ai-suggestions';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
+import RechercheResponseViewer from '@/components/RechercheResponseViewer/RechercheResponseViewer';
 import ResizableSplit from '@/components/ResizableSplit/ResizableSplit';
+import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
 import styles from './travail.module.css';
 
 export default function TravailPage() {
@@ -33,6 +35,10 @@ export default function TravailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [correction, setCorrection] = useState<Correction | null>(null);
+
+  // NavigKid (type rechercher)
+  const [nkQuestions, setNkQuestions] = useState<NavigKidQuestion[]>([]);
+  const [nkReponse, setNkReponse] = useState<NavigKidReponse | null>(null);
 
   // Les profs peuvent previsualiser la page en mode lecture seule
   const isPreviewMode = role === 'prof';
@@ -114,6 +120,24 @@ export default function TravailPage() {
 
         if (json.success) {
           setDevoir(json.data);
+
+          // Si type rechercher, charger le questionnaire et la réponse de l'élève
+          if (json.data.typeTravail === 'rechercher' && json.data.questionnaireId) {
+            try {
+              const qRes = await fetch(
+                `/api/navigkid/questionnaire?id=${json.data.questionnaireId}`,
+                { headers }
+              );
+              const qJson = await qRes.json();
+              if (qJson.success && qJson.data?.questions) {
+                setNkQuestions(qJson.data.questions);
+              }
+
+              // La réponse sera chargée quand le travail sera disponible (via useEffect séparé)
+            } catch (err) {
+              console.error('Erreur fetch navigkid:', err);
+            }
+          }
         } else {
           setDevoirError(json.message || 'Erreur lors du chargement du devoir');
         }
@@ -156,6 +180,31 @@ export default function TravailPage() {
       fetchCorrection();
     }
   }, [isAuthenticated, isPreviewMode, travail?.id, getAuthHeaders]);
+
+  // Fetch réponse NavigKid de l'élève
+  useEffect(() => {
+    async function fetchNkReponse() {
+      if (!devoir?.questionnaireId || !travail?.studentId) return;
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers) return;
+        const rRes = await fetch(
+          `/api/navigkid/reponse?questionnaireId=${devoir.questionnaireId}&eleveId=${travail.studentId}`,
+          { headers }
+        );
+        const rJson = await rRes.json();
+        if (rJson.success && rJson.data) {
+          setNkReponse(rJson.data);
+        }
+      } catch (err) {
+        console.error('Erreur fetch navigkid reponse:', err);
+      }
+    }
+
+    if (isAuthenticated && devoir?.typeTravail === 'rechercher' && travail?.studentId) {
+      fetchNkReponse();
+    }
+  }, [isAuthenticated, devoir?.typeTravail, devoir?.questionnaireId, travail?.studentId, getAuthHeaders]);
 
   const handleContentChange = useCallback((content: string) => {
     if (!isPreviewMode) {
@@ -315,6 +364,37 @@ export default function TravailPage() {
 
   const isSubmitted = travail?.status === 'submitted';
   const isDisabled = isPreviewMode || isSubmitted;
+  const isRecherche = devoir?.typeTravail === 'rechercher';
+  const correctionVisible = correction?.visibleParEleve === true;
+
+  // Pour les devoirs rechercher sans correction visible, afficher un message d'attente
+  if (isRecherche && !correctionVisible && !isPreviewMode) {
+    return (
+      <div className={styles.page}>
+        <WorkTopBar
+          title={devoir.intitule}
+          status={nkReponse ? 'submitted' : 'draft'}
+          isSaving={false}
+          lastSaved={null}
+          onSubmit={() => {}}
+          isSubmitting={false}
+          isPreviewMode={true}
+        />
+        <div className={styles.errorContainer}>
+          <span className={styles.errorIcon}>🔍</span>
+          <h2>Activité de recherche</h2>
+          <p>
+            {nkReponse
+              ? 'Tes réponses ont été envoyées via l\'extension NavigKid. Tu pourras consulter la correction ici quand ton professeur l\'aura rendue disponible.'
+              : 'Utilise l\'extension NavigKid! dans Chrome pour répondre au questionnaire de recherche.'}
+          </p>
+          <button onClick={handleBack} className={styles.errorButton}>
+            Retour aux activités
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`${styles.page} ${isPreviewMode ? styles.previewMode : ''}`}>
@@ -341,26 +421,38 @@ export default function TravailPage() {
         <ResizableSplit
           storageKey="activite-split"
           left={
-            <div className={styles.editorSection}>
-              <div className={styles.editorHeader}>
-                <h2>Mon travail</h2>
-              </div>
-              <div className={styles.editorWrapper}>
-                <FlipEditor
-                  content={isPreviewMode ? '' : (travail?.content || '')}
-                  onContentChange={handleContentChange}
-                  draftContent={isPreviewMode ? null : (travail?.draftContent || null)}
-                  onDraftChange={handleDraftChange}
-                  grille={grille}
-                  disabled={isDisabled}
-                  placeholder={isPreviewMode ? "Zone de redaction de l'eleve..." : "Commencez à rédiger votre travail ici..."}
-                  draftAnnotations={correction?.draftAnnotations}
-                  accesIA={showAiData}
-                  aiSuggestions={aiSuggestions}
-                  onDecorationClick={handleDecorationClick}
+            isRecherche ? (
+              <div className={styles.editorSection}>
+                <div className={styles.editorHeader}>
+                  <h2>Mes réponses de recherche</h2>
+                </div>
+                <RechercheResponseViewer
+                  questions={nkQuestions}
+                  reponse={nkReponse}
                 />
               </div>
-            </div>
+            ) : (
+              <div className={styles.editorSection}>
+                <div className={styles.editorHeader}>
+                  <h2>Mon travail</h2>
+                </div>
+                <div className={styles.editorWrapper}>
+                  <FlipEditor
+                    content={isPreviewMode ? '' : (travail?.content || '')}
+                    onContentChange={handleContentChange}
+                    draftContent={isPreviewMode ? null : (travail?.draftContent || null)}
+                    onDraftChange={handleDraftChange}
+                    grille={grille}
+                    disabled={isDisabled}
+                    placeholder={isPreviewMode ? "Zone de redaction de l'eleve..." : "Commencez à rédiger votre travail ici..."}
+                    draftAnnotations={correction?.draftAnnotations}
+                    accesIA={showAiData}
+                    aiSuggestions={aiSuggestions}
+                    onDecorationClick={handleDecorationClick}
+                  />
+                </div>
+              </div>
+            )
           }
           right={
             <div className={styles.assistanceSection}>
@@ -407,6 +499,8 @@ export default function TravailPage() {
                   aiGridRequesting={aiGridRequesting}
                   aiGridError={aiGridError}
                   onRequestAiGrid={handleRequestAiGrid}
+                  navigkidQuestions={nkQuestions.length > 0 ? nkQuestions : undefined}
+                  navigkidReponse={nkReponse}
                 />
               </div>
             </div>

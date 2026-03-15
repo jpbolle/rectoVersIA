@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "questionnaires",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "profId", "order": "ASCENDING" },
+        { "fieldPath": "creeLe", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

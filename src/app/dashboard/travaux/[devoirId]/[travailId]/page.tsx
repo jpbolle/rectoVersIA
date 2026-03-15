@@ -18,7 +18,9 @@ import type { Travail } from '@/types/travail';
 import type { Devoir } from '@/types/devoir';
 import type { DraftType } from '@/types/travail';
 import type { DraftItemAnnotation } from '@/types/correction';
+import RechercheResponseViewer from '@/components/RechercheResponseViewer/RechercheResponseViewer';
 import ResizableSplit from '@/components/ResizableSplit/ResizableSplit';
+import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
 import styles from './travail-detail.module.css';
 import flipStyles from '@/components/FlipEditor/FlipEditor.module.css';
 
@@ -58,6 +60,10 @@ export default function TravailDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReturning, setIsReturning] = useState(false);
+
+  // NavigKid (type rechercher)
+  const [nkQuestions, setNkQuestions] = useState<NavigKidQuestion[]>([]);
+  const [nkReponse, setNkReponse] = useState<NavigKidReponse | null>(null);
 
   const {
     grille,
@@ -226,6 +232,32 @@ export default function TravailDetailPage() {
 
         if (devoirJson.success) {
           setDevoir(devoirJson.data);
+
+          // Si type rechercher, charger le questionnaire et la réponse élève
+          if (devoirJson.data.typeTravail === 'rechercher' && devoirJson.data.questionnaireId) {
+            try {
+              const qRes = await fetch(
+                `/api/navigkid/questionnaire?id=${devoirJson.data.questionnaireId}`,
+                { headers }
+              );
+              const qJson = await qRes.json();
+              if (qJson.success && qJson.data?.questions) {
+                setNkQuestions(qJson.data.questions);
+              }
+
+              // Réponse élève depuis la sous-collection
+              const rRes = await fetch(
+                `/api/navigkid/reponse?questionnaireId=${devoirJson.data.questionnaireId}&eleveId=${travailJson.data.studentId}`,
+                { headers }
+              );
+              const rJson = await rRes.json();
+              if (rJson.success && rJson.data) {
+                setNkReponse(rJson.data);
+              }
+            } catch (err) {
+              console.error('Erreur fetch navigkid:', err);
+            }
+          }
         } else {
           setError('Devoir non trouvé');
           return;
@@ -458,6 +490,17 @@ export default function TravailDetailPage() {
         <ResizableSplit
           storageKey="correction-split"
           left={
+            devoir.typeTravail === 'rechercher' ? (
+              <div className={styles.contentSection}>
+                <div className={styles.sectionHeader}>
+                  <h2>Réponses de recherche</h2>
+                </div>
+                <RechercheResponseViewer
+                  questions={nkQuestions}
+                  reponse={nkReponse}
+                />
+              </div>
+            ) : (
             <div className={styles.contentSection}>
               <div className={styles.sectionHeader}>
                 <h2>Contenu du travail</h2>
@@ -570,6 +613,7 @@ export default function TravailDetailPage() {
                 </div>
               </div>
             </div>
+            )
           }
           right={
             <div className={styles.evaluationSection}>
@@ -609,6 +653,8 @@ export default function TravailDetailPage() {
                   aiGridResult={aiGridResult}
                   studentRessourceAnnotations={travail.ressourceAnnotations}
                   studentRessourceNotes={travail.ressourceNotes}
+                  navigkidQuestions={nkQuestions.length > 0 ? nkQuestions : undefined}
+                  navigkidReponse={nkReponse}
                 />
               </div>
 

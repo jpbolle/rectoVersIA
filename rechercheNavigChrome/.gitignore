@@ -1,0 +1,32 @@
+# ─── Données sensibles / secrets ───
+.env
+.env.local
+.env.*.local
+prof-webapp/.env.local
+prof-webapp/.env
+
+# ─── Dépendances ───
+node_modules/
+prof-webapp/node_modules/
+
+# ─── Build Next.js ───
+.next/
+prof-webapp/.next/
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
+
+# ─── IDE ───
+.vscode/
+.idea/
+
+# ─── Logs ───
+*.log
+npm-debug.log*
+
+# ─── Firebase ───
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

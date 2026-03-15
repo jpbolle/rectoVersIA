@@ -1,0 +1,178 @@
+/* RechercheStatsTab — Statistiques de recherche d'un élève */
+
+.container {
+  padding: 16px;
+}
+
+.section {
+  margin-bottom: 20px;
+}
+
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--c-primary);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+/* ─── Résumé ─── */
+
+.summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.summaryCard {
+  padding: 12px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+  text-align: center;
+}
+
+.summaryValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--c-primary);
+}
+
+.summaryLabel {
+  font-size: 11px;
+  color: var(--c-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* ─── Mots-clés ─── */
+
+.tagCloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  padding: 4px 10px;
+  background: rgba(45, 106, 90, 0.08);
+  color: var(--c-primary);
+  border-radius: var(--c-radius);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tagCount {
+  font-size: 10px;
+  color: var(--c-text-secondary);
+  margin-left: 4px;
+}
+
+/* ─── Sites ─── */
+
+.domainList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.domainItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+}
+
+.domainName {
+  font-size: 13px;
+  color: var(--c-text);
+  font-weight: 500;
+}
+
+.domainMeta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--c-text-secondary);
+}
+
+.domainMetaValue {
+  font-weight: 600;
+  color: var(--c-accent);
+}
+
+/* ─── Progression par question ─── */
+
+.progressList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progressItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progressNum {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.progressComplete {
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+}
+
+.progressIncomplete {
+  background: var(--c-bg-element);
+  color: var(--c-text-secondary);
+  border: 1px solid var(--c-border);
+}
+
+.progressBar {
+  flex: 1;
+  height: 6px;
+  background: var(--c-bg-element);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--c-primary);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progressLabel {
+  font-size: 11px;
+  color: var(--c-text-secondary);
+  width: 80px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ─── Vide ─── */
+
+.empty {
+  text-align: center;
+  padding: 30px;
+  color: var(--c-text-secondary);
+  font-style: italic;
+  font-size: 13px;
+}

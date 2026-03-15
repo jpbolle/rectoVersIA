@@ -4,8 +4,10 @@ import { useState, useCallback } from 'react';
 import Toggle from '@/components/Toggle/Toggle';
 import DatePicker from '@/components/DatePicker/DatePicker';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
+import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/QuestionnaireBuilder';
 import { getTodayString } from '@/lib/devoir-utils';
-import type { CreateDevoirData, Classe, DevoirRessource } from '@/types/devoir';
+import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail } from '@/types/devoir';
+import type { NavigKidQuestion } from '@/types/navigkid';
 import styles from './CreationForm.module.css';
 
 interface CreationFormProps {
@@ -15,6 +17,7 @@ interface CreationFormProps {
   onSubmit: (data: CreateDevoirData) => Promise<void>;
   isSubmitting: boolean;
   onClose?: () => void;
+  getAuthHeaders?: () => Promise<Record<string, string> | null>;
 }
 
 export default function CreationForm({
@@ -24,6 +27,7 @@ export default function CreationForm({
   onSubmit,
   isSubmitting,
   onClose,
+  getAuthHeaders,
 }: CreationFormProps) {
   // Champs obligatoires
   const [selectedClasses, setSelectedClasses] = useState<Classe[]>([]);
@@ -37,11 +41,19 @@ export default function CreationForm({
   const [consignes, setConsignes] = useState('');
   const [ressources, setRessources] = useState<DevoirRessource | null>(null);
 
+  // Type de travail
+  const [typeTravail, setTypeTravail] = useState<TypeTravail>('ecrire');
+
+  // NavigKid (type rechercher)
+  const [nkQuestions, setNkQuestions] = useState<NavigKidQuestion[]>([]);
+  const [nkThemes, setNkThemes] = useState<string[]>([]);
+
   // Toggles (initialement à false)
   const [accesIA, setAccesIA] = useState(false);
   const [disponible, setDisponible] = useState(false);
 
-  const isValid = selectedClasses.length > 0 && dateRemise && grille && intitule.trim();
+  const baseValid = selectedClasses.length > 0 && dateRemise && grille && intitule.trim();
+  const isValid = baseValid && (typeTravail !== 'rechercher' || nkQuestions.some(q => q.texte.trim()));
 
   const handleClassToggle = (classe: Classe) => {
     setSelectedClasses((prev) =>
@@ -62,12 +74,15 @@ export default function CreationForm({
     setRessources(null);
     setAccesIA(false);
     setDisponible(false);
+    setTypeTravail('ecrire');
+    setNkQuestions([]);
+    setNkThemes([]);
   }, []);
 
   async function handleSubmit() {
     if (!isValid) return;
 
-    await onSubmit({
+    const data: CreateDevoirData = {
       classes: selectedClasses,
       dateRemise,
       grille,
@@ -76,7 +91,18 @@ export default function CreationForm({
       ressources: showRessources ? ressources : null,
       accesIA,
       disponible,
-    });
+      typeTravail,
+    };
+
+    if (typeTravail === 'rechercher') {
+      const questionsValides = nkQuestions.filter(q => q.texte.trim());
+      data.questionnaire = {
+        themes: nkThemes.join(', '),
+        questions: questionsValides,
+      };
+    }
+
+    await onSubmit(data);
 
     resetForm();
   }
@@ -97,8 +123,8 @@ export default function CreationForm({
         )}
       </div>
 
-      {/* Ligne 1: Classes + Date + Grille */}
-      <div className={styles.formRowThree}>
+      {/* Ligne 1: Classes + Date + Type travail + Grille */}
+      <div className={styles.formRowFour}>
         <div className={styles.formGroup}>
           <label className={styles.label}>
             Classe(s) <span className={styles.required}>*</span>
@@ -126,6 +152,21 @@ export default function CreationForm({
             min={getTodayString()}
             required
           />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label className={styles.label}>
+            Type de travail <span className={styles.required}>*</span>
+          </label>
+          <select
+            className={styles.select}
+            value={typeTravail}
+            onChange={(e) => setTypeTravail(e.target.value as TypeTravail)}
+          >
+            <option value="ecrire">Écrire</option>
+            <option value="lire">Lire</option>
+            <option value="rechercher">Rechercher</option>
+          </select>
         </div>
 
         <div className={styles.formGroup}>
@@ -202,6 +243,19 @@ export default function CreationForm({
           />
         )}
       </div>
+
+      {/* Questionnaire NavigKid (type rechercher) */}
+      {typeTravail === 'rechercher' && (
+        <QuestionnaireBuilder
+          questions={nkQuestions}
+          onQuestionsChange={setNkQuestions}
+          themes={nkThemes}
+          onThemesChange={setNkThemes}
+          titre={intitule}
+          disabled={isSubmitting}
+          getAuthHeaders={getAuthHeaders}
+        />
+      )}
 
       {/* Toggles */}
       <div className={styles.toggleSection}>

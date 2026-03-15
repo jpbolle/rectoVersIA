@@ -1,0 +1,276 @@
+/* RechercheResponseViewer — Vue des réponses élève (recherche) */
+
+.container {
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.questionCard {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+}
+
+.questionHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.questionNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.questionTexte {
+  font-size: 14px;
+  color: var(--c-text);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.questionType {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: var(--c-radius);
+  flex-shrink: 0;
+}
+
+.typeTexte {
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--c-primary);
+}
+
+.typeQcm {
+  background: rgba(212, 148, 76, 0.15);
+  color: var(--c-accent);
+}
+
+/* ─── Réponse ─── */
+
+.reponseSection {
+  margin-bottom: 12px;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--c-text-secondary);
+  margin-bottom: 6px;
+}
+
+.reponseText {
+  padding: 10px 14px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--c-text);
+  white-space: pre-wrap;
+}
+
+.reponseEmpty {
+  color: var(--c-text-dim);
+  font-style: italic;
+}
+
+.qcmReponse {
+  padding: 8px 14px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  color: var(--c-text);
+  border-left: 3px solid var(--c-accent);
+}
+
+/* ─── Sources collectées ─── */
+
+.sourcesSection {
+  margin-bottom: 12px;
+}
+
+.sourcesList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sourceItem {
+  padding: 10px 12px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+  border-left: 3px solid var(--c-primary);
+}
+
+.sourceHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.sourceTitre {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.sourceUrl {
+  font-size: 11px;
+  color: var(--c-text-secondary);
+  word-break: break-all;
+}
+
+.sourceUrl a {
+  color: var(--c-primary);
+  text-decoration: none;
+}
+
+.sourceUrl a:hover {
+  text-decoration: underline;
+}
+
+.sourceMeta {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.sourceTag {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.tagPertinent {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.tagNonPertinent {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.fiabilite {
+  color: var(--c-text-secondary);
+}
+
+.fiabiliteValue {
+  font-weight: 600;
+  color: var(--c-accent);
+}
+
+.temps {
+  color: var(--c-text-secondary);
+}
+
+/* ─── Passages surlignés ─── */
+
+.passagesSection {
+  margin-bottom: 8px;
+}
+
+.passagesList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.passageItem {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+}
+
+.passageCouleur {
+  width: 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.passageContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.passageTexte {
+  font-size: 13px;
+  color: var(--c-text);
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.passageUrl {
+  font-size: 11px;
+  color: var(--c-text-secondary);
+  margin-top: 2px;
+}
+
+/* ─── Mots-clés ─── */
+
+.motsClesSection {
+  margin-bottom: 12px;
+}
+
+.tagsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.motCleTag {
+  padding: 3px 10px;
+  background: rgba(45, 106, 90, 0.08);
+  color: var(--c-primary);
+  border-radius: var(--c-radius);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ─── État vide ─── */
+
+.emptyState {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--c-text-secondary);
+  font-style: italic;
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 768px) {
+  .container {
+    padding: 12px;
+  }
+
+  .questionCard {
+    padding: 12px;
+  }
+
+  .sourceMeta {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}

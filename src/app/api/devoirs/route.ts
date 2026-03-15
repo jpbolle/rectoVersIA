@@ -53,6 +53,9 @@ export async function GET(request: NextRequest) {
         createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || '',
         anneeScolaire: data.anneeScolaire || '',
         profId: data.profId || '',
+        typeTravail: data.typeTravail || 'ecrire',
+        questionnaireId: data.questionnaireId || undefined,
+        codeAcces: data.codeAcces || undefined,
       };
     });
 
@@ -90,6 +93,16 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Génère un code d'accès 6 caractères (alphabet réduit sans 0/O/1/I/L)
+function generateCodeAcces(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
 export async function POST(request: NextRequest) {
   const auth = await verifyAuth(request);
   if (!auth) {
@@ -111,6 +124,8 @@ export async function POST(request: NextRequest) {
       ressources,
       accesIA,
       disponible,
+      typeTravail,
+      questionnaire,
     } = body;
 
     // Validation des champs requis
@@ -124,7 +139,8 @@ export async function POST(request: NextRequest) {
     const id = generateDevoirId();
     const anneeScolaire = calculateSchoolYear();
 
-    await adminDb.collection('devoirs').doc(id).set({
+    // Données de base du devoir
+    const devoirData: Record<string, unknown> = {
       id,
       classes,
       dateRemise: new Date(dateRemise),
@@ -140,11 +156,36 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
       anneeScolaire,
       profId: auth.uid,
-    });
+      typeTravail: typeTravail || 'ecrire',
+    };
+
+    // Si type "rechercher", créer le questionnaire dans Firestore
+    if (typeTravail === 'rechercher' && questionnaire) {
+      const codeAcces = generateCodeAcces();
+      const questionnaireRef = adminDb.collection('questionnaires').doc();
+      const questionnaireId = questionnaireRef.id;
+
+      await questionnaireRef.set({
+        titre: intitule,
+        theme: questionnaire.themes || '',
+        consignes: consignes || '',
+        questions: questionnaire.questions || [],
+        codeAcces,
+        profId: auth.uid,
+        devoirId: id,
+        archive: false,
+        creeLe: new Date(),
+      });
+
+      devoirData.questionnaireId = questionnaireId;
+      devoirData.codeAcces = codeAcces;
+    }
+
+    await adminDb.collection('devoirs').doc(id).set(devoirData);
 
     return NextResponse.json({
       success: true,
-      data: { id },
+      data: { id, codeAcces: devoirData.codeAcces || null },
       message: `Devoir "${intitule}" cree avec succes`,
     });
   } catch (error) {

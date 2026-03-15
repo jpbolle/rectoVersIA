@@ -6,14 +6,16 @@ import RessourcesTab from '@/components/RessourcesTab';
 import GrilleTab from '@/components/GrilleTab';
 import RemarquesTab from '@/components/RemarquesTab';
 import AiTab from '@/components/AiTab/AiTab';
+import RechercheStatsTab from '@/components/RechercheStatsTab/RechercheStatsTab';
 import type { Devoir } from '@/types/devoir';
 import type { Grille } from '@/types/grille';
 import type { Correction } from '@/types/correction';
 import type { AiSuggestion, AiSuggestionType } from '@/types/ai-suggestions';
 import type { AiGridResult } from '@/types/ai-grid';
+import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
 import styles from './AssistancePanel.module.css';
 
-export type TabType = 'consignes' | 'ressources' | 'grille' | 'remarques' | 'ia';
+export type TabType = 'consignes' | 'ressources' | 'grille' | 'remarques' | 'ia' | 'recherche';
 
 interface AssistancePanelProps {
   devoir: Devoir;
@@ -52,6 +54,9 @@ interface AssistancePanelProps {
   aiGridRequesting?: boolean;
   aiGridError?: string | null;
   onRequestAiGrid?: () => void;
+  // NavigKid (type rechercher)
+  navigkidQuestions?: NavigKidQuestion[];
+  navigkidReponse?: NavigKidReponse | null;
 }
 
 export default function AssistancePanel({
@@ -88,6 +93,8 @@ export default function AssistancePanel({
   aiGridRequesting,
   aiGridError,
   onRequestAiGrid,
+  navigkidQuestions,
+  navigkidReponse,
 }: AssistancePanelProps) {
   // Mode contrôlé vs interne
   const [internalTab, setInternalTab] = useState<TabType>('consignes');
@@ -146,6 +153,15 @@ export default function AssistancePanel({
             {hasRemarques && <span className={styles.badge}>•</span>}
           </button>
         )}
+        {navigkidQuestions && navigkidQuestions.length > 0 && (
+          <button
+            type="button"
+            className={`${styles.tab} ${currentTab === 'recherche' ? styles.tabActive : ''}`}
+            onClick={() => handleTabChange('recherche')}
+          >
+            Recherche
+          </button>
+        )}
         <button
           type="button"
           className={`${styles.tab} ${currentTab === 'grille' ? styles.tabActive : ''}`}
@@ -194,6 +210,12 @@ export default function AssistancePanel({
           <RemarquesTab
             correction={correction}
             studentContent={studentContent}
+          />
+        )}
+        {currentTab === 'recherche' && navigkidQuestions && (
+          <RechercheStatsTab
+            questions={navigkidQuestions}
+            reponse={navigkidReponse ?? null}
           />
         )}
         {!isProfessorView && (accesIA || showAiData) && currentTab === 'ia' && aiSuggestions && (

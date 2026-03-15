@@ -9,6 +9,18 @@ import styles from './roadmap.module.css';
 
 const NOUVEAUTES = [
   {
+    version: 'v3.1',
+    date: 'Mars 2026',
+    items: [
+      'Intégration NavigKid : recherche guidée web dans Recto-versIA',
+      'Type de travail : Écrire, Lire ou Rechercher',
+      'Constructeur de questionnaire avec génération IA',
+      'Extension Chrome NavigKid avec authentification Google',
+      'Vue correction prof pour activités de recherche (sources, passages, stats)',
+      'Aide IA pour les élèves : vérification des sources, mots-clés et réponses',
+    ],
+  },
+  {
     version: 'v3.0',
     date: 'Mars 2026',
     items: [
@@ -54,10 +66,6 @@ const A_VENIR = [
   {
     priorite: 'Prochainement',
     items: [
-      {
-        titre: 'Intégration NavigKid',
-        description: 'Recherche guidée sur le web intégrée à Recto-versIA — questionnaires, suivi des recherches, correction IA',
-      },
       {
         titre: 'Avis critique entre pairs (CRC)',
         description: 'L\'élève lit et rédige un avis sur le CRC d\'un autre élève. Attribution aléatoire et anonyme',
