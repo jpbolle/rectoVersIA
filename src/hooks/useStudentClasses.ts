@@ -17,12 +17,17 @@ export function useStudentClasses() {
   const [isLoading, setIsLoading] = useState(true);
   const fetchedRef = useRef(false);
   const userUidRef = useRef<string | null>(null);
+  const userRef = useRef<typeof user>(null);
+
+  // Keep userRef in sync — stable reference for fetchClasses
+  userRef.current = user;
 
   const fetchClasses = useCallback(async () => {
-    if (!user) return;
+    const currentUser = userRef.current;
+    if (!currentUser) return;
     setIsLoading(true);
     try {
-      const token = await user.getIdToken();
+      const token = await currentUser.getIdToken();
       const res = await fetch('/api/classes/student', {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -35,7 +40,6 @@ export function useStudentClasses() {
     } finally {
       setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch une seule fois par user (basé sur uid)

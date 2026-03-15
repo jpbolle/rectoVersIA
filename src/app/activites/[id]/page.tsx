@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useStudentClasses } from '@/hooks/useStudentClasses';
 import { useTravail } from '@/hooks/useTravail';
 import { useGrille } from '@/hooks/useGrille';
 import { useAiSuggestions } from '@/hooks/useAiSuggestions';
@@ -25,6 +26,7 @@ export default function TravailPage() {
   const devoirId = params.id as string;
 
   const { isAuthenticated, role, isLoading: authLoading, getAuthHeaders } = useAuth();
+  const { classes, isLoading: classesLoading } = useStudentClasses();
   const [devoir, setDevoir] = useState<Devoir | null>(null);
   const [devoirLoading, setDevoirLoading] = useState(true);
   const [devoirError, setDevoirError] = useState<string | null>(null);
@@ -87,6 +89,14 @@ export default function TravailPage() {
     showAiData ? devoirId : undefined,
     showAiData && grille?.id ? grille.id : undefined,
   );
+
+  // Élève sans classe → retour au login
+  useEffect(() => {
+    if (authLoading || classesLoading || isPreviewMode) return;
+    if (role === 'eleve' && classes.length === 0) {
+      router.replace('/login');
+    }
+  }, [authLoading, classesLoading, isPreviewMode, role, classes, router]);
 
   // Fetch devoir
   useEffect(() => {

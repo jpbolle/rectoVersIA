@@ -18,6 +18,7 @@ export default function ActivitesPage() {
   const { classes, isLoading: classesLoading } = useStudentClasses();
 
   const [isReady, setIsReady] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   // Mode prévisualisation pour les profs
   const isPreviewMode = role === 'prof';
@@ -28,19 +29,21 @@ export default function ActivitesPage() {
   }, []);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || redirecting) return;
     if (!isAuthenticated) {
+      setRedirecting(true);
       router.replace('/login');
       return;
     }
     // Élève sans classe → renvoyer vers login pour rejoindre une classe
     if (role === 'eleve' && !classesLoading && classes.length === 0) {
+      setRedirecting(true);
       router.replace('/login');
     }
-  }, [isAuthenticated, authLoading, role, classes, classesLoading, router]);
+  }, [isAuthenticated, authLoading, role, classes, classesLoading, router, redirecting]);
 
 
-  if (authLoading || (role === 'eleve' && classesLoading)) return null;
+  if (authLoading || redirecting || (role === 'eleve' && classesLoading)) return null;
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''} ${isPreviewMode ? styles.previewMode : ''}`}>

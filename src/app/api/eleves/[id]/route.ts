@@ -173,7 +173,33 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const classeId = data.classeId;
+
+    // Supprimer le doc racine
     await adminDb.collection('eleves').doc(id).delete();
+
+    // Supprimer le doc dans la sous-collection de la classe
+    if (classeId) {
+      const subDocs = await adminDb
+        .collection('classes')
+        .doc(classeId)
+        .collection('eleves')
+        .where('email', '==', data.email?.toLowerCase?.() || '')
+        .get();
+
+      const batch = adminDb.batch();
+      subDocs.docs.forEach((d) => batch.delete(d.ref));
+      if (!subDocs.empty) await batch.commit();
+    }
+
+    // Supprimer le doc users/{firebaseUid} si lié
+    if (data.firebaseUid) {
+      try {
+        await adminDb.collection('users').doc(data.firebaseUid).delete();
+      } catch {
+        // Silently fail — le doc users peut ne pas exister
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

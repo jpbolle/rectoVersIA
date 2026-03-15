@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Edition modal
@@ -65,13 +66,15 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || redirecting) return;
     if (!isAuthenticated) {
+      setRedirecting(true);
       router.replace('/login');
     } else if (role !== 'prof') {
-      router.replace('/activites');
+      setRedirecting(true);
+      router.replace('/login');
     }
-  }, [isAuthenticated, authLoading, role, router]);
+  }, [isAuthenticated, authLoading, role, router, redirecting]);
 
   const handleCreateDevoir = useCallback(
     async (data: CreateDevoirData) => {
@@ -218,7 +221,7 @@ export default function DashboardPage() {
     [updateDevoir]
   );
 
-  if (authLoading) return null;
+  if (authLoading || redirecting) return null;
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>

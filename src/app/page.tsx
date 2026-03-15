@@ -1,27 +1,30 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function Home() {
   const { isAuthenticated, isLoading, role } = useAuth();
   const router = useRouter();
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || redirecting) return;
 
     if (!isAuthenticated) {
+      setRedirecting(true);
       router.replace('/login');
       return;
     }
 
+    setRedirecting(true);
     if (role === 'prof') {
       router.replace('/dashboard');
-    } else if (role === 'eleve') {
-      router.replace('/activites');
+    } else {
+      router.replace('/login');
     }
-  }, [isAuthenticated, isLoading, role, router]);
+  }, [isAuthenticated, isLoading, role, router, redirecting]);
 
   return (
     <div style={{
