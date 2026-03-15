@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
-import type { Grille, CreateGrilleData, GrilleCriterion } from '@/types/grille';
+import type { Grille, CreateGrilleData } from '@/types/grille';
 
 export function useGrilles() {
   const { isAuthenticated, getAuthHeaders } = useAuth();
   const [grilles, setGrilles] = useState<Grille[]>([]);
+  const [sharedGrilles, setSharedGrilles] = useState<Grille[]>([]);
+  const [otherProfsGrilles, setOtherProfsGrilles] = useState<Grille[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +25,8 @@ export function useGrilles() {
 
       if (json.success) {
         setGrilles(json.data);
+        setSharedGrilles(json.shared || []);
+        setOtherProfsGrilles(json.otherProfs || []);
       } else {
         setError(json.message || 'Erreur lors du chargement');
       }
@@ -111,11 +115,16 @@ export function useGrilles() {
     }
   }, [isAuthenticated, fetchGrilles]);
 
-  // Noms des grilles (pour retrocompat avec useGrilleTypes)
-  const grilleNames = grilles.filter((g) => !g.archive).map((g) => g.name);
+  // Noms des grilles (mes grilles + partagees, pour selection dans devoirs)
+  const grilleNames = [
+    ...grilles.filter((g) => !g.archive),
+    ...sharedGrilles,
+  ].map((g) => g.name);
 
   return {
     grilles,
+    sharedGrilles,
+    otherProfsGrilles,
     grilleNames,
     isLoading,
     error,

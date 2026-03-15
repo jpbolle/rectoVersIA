@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateCriterionId } from '@/lib/grille-utils';
 import type { Grille, GrilleCriterion } from '@/types/grille';
+import { isAdmin } from '@/lib/auth-utils';
 
 function docToGrille(doc: FirebaseFirestore.DocumentSnapshot): Grille {
   const data = doc.data()!;
@@ -12,6 +13,8 @@ function docToGrille(doc: FirebaseFirestore.DocumentSnapshot): Grille {
     description: data.description || '',
     uaa: data.uaa || [],
     profId: data.profId || '',
+    profName: data.profName || '',
+    shared: data.shared ?? false,
     anneeScolaire: data.anneeScolaire || '',
     archive: data.archive ?? false,
     criteria: (data.criteria || []).map((c: GrilleCriterion) => ({
@@ -109,6 +112,8 @@ export async function PATCH(
     if (body.description !== undefined) updateData.description = body.description;
     if (body.uaa !== undefined) updateData.uaa = Array.isArray(body.uaa) ? body.uaa : [];
     if (body.archive !== undefined) updateData.archive = body.archive;
+    // Seul l'admin peut changer le flag shared
+    if (body.shared !== undefined && isAdmin(auth.email)) updateData.shared = body.shared;
 
     if (body.criteria !== undefined && Array.isArray(body.criteria)) {
       updateData.criteria = body.criteria.map(

@@ -11,17 +11,18 @@ async function resolveUserRole(email: string): Promise<'prof' | 'eleve' | null> 
 
   // Fallback 1 : verifier la collection professeurs
   const profDoc = await adminDb.collection('professeurs').doc(emailLower).get();
-  if (profDoc.exists) return 'prof';
+  if (profDoc.exists) {
+    const expiresAt = profDoc.data()?.expiresAt;
+    // Acces expire → supprimer le doc et traiter comme non-prof
+    if (expiresAt && new Date(expiresAt) < new Date()) {
+      await adminDb.collection('professeurs').doc(emailLower).delete();
+    } else {
+      return 'prof';
+    }
+  }
 
-  // Fallback 2 : verifier la collection eleves (élèves externes importés dans une classe)
-  const eleveQuery = await adminDb
-    .collection('eleves')
-    .where('email', '==', emailLower)
-    .limit(1)
-    .get();
-  if (!eleveQuery.empty) return 'eleve';
-
-  return null;
+  // Tout utilisateur connecte qui n'est pas prof est eleve par defaut
+  return 'eleve';
 }
 
 export async function verifyAuth(request: NextRequest) {

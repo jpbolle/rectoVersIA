@@ -45,7 +45,10 @@
 - Le cache se corrompt parfois (fichiers `.sst` manquants)
 
 ## Grilles de correction
-- Restent dans Google Sheets (le prof les edite la-bas)
+- Stockees dans Firestore (collection `grilles`), editables dans l'app via GrilleBuilder
+- Chaque grille a un `profId` — isolation multi-prof
+- `shared: true` = grille exemple visible par tous (admin seulement)
+- Section "Grilles des professeurs" : duplication en lecture seule
 - 6 niveaux fixes : Neant (0%), Tres insuffisant (15%), Insuffisant (35%), Suffisant (60%), Acquis (80%), Parfaitement acquis (100%)
 - Ne jamais modifier l'echelle
 

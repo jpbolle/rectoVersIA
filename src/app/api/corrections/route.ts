@@ -27,6 +27,13 @@ export async function GET(request: NextRequest) {
       if (auth.role !== 'prof') {
         return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
       }
+
+      // Verifier que le devoir appartient au prof
+      const devoirDoc = await adminDb.collection('devoirs').doc(devoirId).get();
+      if (!devoirDoc.exists || devoirDoc.data()?.profId !== auth.uid) {
+        return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
+      }
+
       const snapshot = await adminDb
         .collection('corrections')
         .where('devoirId', '==', devoirId)

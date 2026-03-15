@@ -1,0 +1,189 @@
+.pageWrapper {
+  min-height: 100vh;
+  background: var(--c-bg);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.ready {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mainContent {
+  flex: 1;
+  margin-top: 180px;
+  padding: 40px 20px 60px;
+  max-width: 1200px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pageTitle {
+  color: var(--c-primary);
+  font-size: 26px;
+  font-weight: 700;
+  font-family: var(--c-font-title);
+  margin: 0 0 6px;
+}
+
+.pageSubtitle {
+  color: var(--c-text-secondary);
+  font-size: 14px;
+  margin: 0 0 30px;
+}
+
+/* Layout 2 colonnes */
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.columnTitle {
+  color: var(--c-primary);
+  font-size: 20px;
+  font-weight: 600;
+  font-family: var(--c-font-title);
+  margin: 0 0 4px;
+}
+
+/* Cards nouveautes */
+.releaseCard {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  padding: 24px;
+  box-shadow: var(--c-shadow-card);
+}
+
+.releaseHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.versionBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--c-radius-lg);
+  background: var(--c-primary);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.releaseDate {
+  font-size: 13px;
+  color: var(--c-text-muted);
+}
+
+.itemList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--c-text);
+  line-height: 1.5;
+}
+
+.checkIcon {
+  color: var(--c-primary);
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Cards a venir */
+.futureCard {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  padding: 24px;
+  box-shadow: var(--c-shadow-card);
+}
+
+.prioriteLabel {
+  color: var(--c-accent);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 0 0 16px;
+  font-family: var(--c-font-title);
+}
+
+.futureItem {
+  margin-bottom: 16px;
+}
+
+.futureItem:last-child {
+  margin-bottom: 0;
+}
+
+.futureTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-primary);
+  margin: 0 0 4px;
+}
+
+.futureDesc {
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 1080px) {
+  .mainContent {
+    margin-top: 190px;
+    padding: 30px 20px 50px;
+  }
+}
+
+@media (max-width: 768px) {
+  .mainContent {
+    margin-top: 220px;
+    padding: 25px 15px 40px;
+  }
+
+  .columns {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mainContent {
+    margin-top: 280px;
+    padding: 15px 10px 30px;
+  }
+
+  .releaseCard,
+  .futureCard {
+    padding: 20px 16px;
+  }
+}

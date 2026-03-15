@@ -25,9 +25,11 @@ export function useGrilleTypes() {
         });
         const json = await res.json();
         if (json.success) {
-          // L'API retourne maintenant des objets Grille complets
-          const grilles: Grille[] = json.data;
-          const names = grilles
+          // Mes grilles + grilles exemples (shared)
+          const myGrilles: Grille[] = json.data || [];
+          const sharedGrilles: Grille[] = json.shared || [];
+          const allGrilles = [...myGrilles, ...sharedGrilles];
+          const names = allGrilles
             .filter((g) => !g.archive)
             .map((g) => g.name);
           setGrilleTypes(names);

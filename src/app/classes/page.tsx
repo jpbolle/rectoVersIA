@@ -312,6 +312,33 @@ export default function ClassesPage() {
           onDismiss={() => setMessage(null)}
         />
 
+        {isFormVisible && (
+          <section className={styles.creationSection}>
+            <ClasseCreationForm
+              isVisible={isFormVisible}
+              onSubmit={handleSubmitClasse}
+              isSubmitting={isSubmitting}
+              onClose={() => setIsFormVisible(false)}
+              onImportSuccess={handleImportSuccess}
+            />
+          </section>
+        )}
+
+        {selectedClasse && (
+          <section className={styles.detailSection}>
+            <ClasseDetailForm
+              classe={selectedClasse}
+              isVisible={!!selectedClasse}
+              refreshKey={elevesRefreshKey}
+              onClose={() => setSelectedClasse(null)}
+              onAddEleve={handleAddEleve}
+              onBulkImport={handleBulkImport}
+              onEditEleve={handleEditEleve}
+              onDeleteEleve={handleDeleteEleve}
+            />
+          </section>
+        )}
+
         <section className={styles.classesSection}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Mes Classes</h2>
@@ -354,32 +381,6 @@ export default function ClassesPage() {
           </div>
         </section>
 
-        {isFormVisible && (
-          <section className={styles.creationSection}>
-            <ClasseCreationForm
-              isVisible={isFormVisible}
-              onSubmit={handleSubmitClasse}
-              isSubmitting={isSubmitting}
-              onClose={() => setIsFormVisible(false)}
-              onImportSuccess={handleImportSuccess}
-            />
-          </section>
-        )}
-
-        {selectedClasse && (
-          <section className={styles.detailSection}>
-            <ClasseDetailForm
-              classe={selectedClasse}
-              isVisible={!!selectedClasse}
-              refreshKey={elevesRefreshKey}
-              onClose={() => setSelectedClasse(null)}
-              onAddEleve={handleAddEleve}
-              onBulkImport={handleBulkImport}
-              onEditEleve={handleEditEleve}
-              onDeleteEleve={handleDeleteEleve}
-            />
-          </section>
-        )}
       </main>
 
       <Footer />

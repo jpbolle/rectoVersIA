@@ -234,9 +234,22 @@ export default function DashboardPage() {
           onDismiss={() => setMessage(null)}
         />
 
+        {isFormVisible && (
+          <section className={styles.creationSection}>
+            <CreationForm
+              classeNames={activeClasseNames}
+              grilleTypes={grilleTypes}
+              isVisible={isFormVisible}
+              onSubmit={handleCreateDevoir}
+              isSubmitting={isSubmitting}
+              onClose={() => setIsFormVisible(false)}
+            />
+          </section>
+        )}
+
         <section className={styles.evaluationsSection}>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Mes Devoirs</h2>
+            <h2 className={styles.sectionTitle}>Mes Activités</h2>
             <div className={styles.headerActions}>
               <div className={styles.tabs}>
                 <button
@@ -339,18 +352,6 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {isFormVisible && (
-          <section className={styles.creationSection}>
-            <CreationForm
-              classeNames={activeClasseNames}
-              grilleTypes={grilleTypes}
-              isVisible={isFormVisible}
-              onSubmit={handleCreateDevoir}
-              isSubmitting={isSubmitting}
-              onClose={() => setIsFormVisible(false)}
-            />
-          </section>
-        )}
       </main>
 
       <Footer />

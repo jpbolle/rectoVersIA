@@ -5,7 +5,7 @@
 | Champ | Valeur |
 |-------|--------|
 | **Nom** | Recto-versIA — Assistant de correction pedagogique avec IA |
-| **Version** | 2.9 (mars 2026) |
+| **Version** | 3.0 (mars 2026) |
 | **Domaine** | EdTech — correction de productions ecrites d'eleves |
 | **Ecole** | College Notre-Dame de Dinant (Belgique) |
 | **Utilisateur principal** | Jean-Philippe Bolle (professeur) |
@@ -146,8 +146,25 @@ interface Eleve {
 - `users/{uid}` : profil + preferences editeur (`font`, `fontSize`, `lineHeight`, `theme`)
 - `aiGridEvaluations` : ID = `AIGRID-{travailId}`, evaluation IA par critere
 
-### Grilles (Google Sheets)
-- Chaque onglet = une grille, 6 niveaux (0/15/35/60/80/100%), cache 5min
+### `grilles`
+```typescript
+interface Grille {
+  id: string;                    // GRL-YYYYMMDD-XXXX
+  name: string;
+  description?: string;
+  uaa: number[];                 // UAA ciblees (0-6)
+  profId: string;
+  shared: boolean;               // grille exemple visible par tous (admin seulement)
+  anneeScolaire: string;
+  archive: boolean;
+  criteria: GrilleCriterion[];
+  createdAt: string;
+  updatedAt: string;
+}
+```
+- 6 niveaux fixes (0/15/35/60/80/100%)
+- Chaque prof ne voit que ses grilles + grilles partagees (shared)
+- Section "Grilles des professeurs" : duplication lecture seule
 
 ---
 
@@ -172,12 +189,13 @@ interface Eleve {
 | `/api/eleves/[id]` | GET, PATCH, DELETE | Detail / modifier / supprimer (cascade: eleves + sous-collection + users) |
 | `/api/eleves/bulk` | POST | Import en masse (max 500) |
 | `/api/eleves/link` | POST | Lier eleve a UID Firebase |
-| `/api/grilles` | GET | Noms de grilles |
-| `/api/grilles/[name]` | GET | Contenu grille |
+| `/api/grilles` | GET, POST | Lister (mes grilles + shared + autres profs) / creer |
+| `/api/grilles/[name]` | GET, PATCH, DELETE | Detail / modifier / supprimer grille |
 | `/api/preferences` | GET, PUT | Preferences editeur |
 | `/api/auth/role` | GET | Resolution role |
 | `/api/auth/init-user` | POST | Creation doc utilisateur |
-| `/api/professeurs` | GET, POST, DELETE | CRUD professeurs (admin) |
+| `/api/professeurs` | GET, POST, DELETE | CRUD professeurs (admin, supporte expiresAt) |
+| `/api/admin/stats` | GET | Stats globales (admin) |
 | `/api/ai/writing-help` | POST | Aide redaction IA |
 | `/api/ai/grid-eval` | GET, POST | Evaluation IA grille |
 
@@ -195,14 +213,15 @@ interface Eleve {
 | `/classes` | prof | Gestion classes et eleves |
 | `/grilles` | prof | Consultation grilles |
 | `/archives` | prof | Devoirs archives |
-| `/admin` | admin | Gestion professeurs |
+| `/admin` | admin | Gestion professeurs + stats |
+| `/roadmap` | tous | Nouveautes + fonctionnalites a venir |
 | `/activites` | eleve | Devoirs disponibles |
 | `/activites/[id]` | eleve | Redaction + auto-evaluation + remise |
 | `/mes-classes` | eleve | Classes + rejoindre une classe |
 | `/profil` | eleve | Profil d'ecrilecteur (stats) |
 
 ### Header prof
-Mes Devoirs → `/dashboard` | Mes Classes → `/classes` | Mes Grilles → `/grilles` | Vue eleve (oeil) → `/activites` | Avatar menu
+Mes Activités → `/dashboard` | Mes Classes → `/classes` | Mes Grilles → `/grilles` | Vue eleve (oeil) → `/activites` | Avatar menu
 
 ### Header eleve
 Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil → `/profil` | Avatar menu
@@ -271,12 +290,19 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 
 ## 10. Roadmap
 
+### Fait (v3.0)
+- [x] **Multi-professeurs** : isolation par profId (devoirs, classes, grilles, corrections)
+- [x] **Acces temporaire** : 1 jour / 1 semaine avec expiration auto
+- [x] **Grilles partagees** : exemples admin + duplication entre profs
+- [x] **Stats admin** : vue d'ensemble de l'app
+- [x] **Page roadmap** : accessible a tous via menu avatar
+
 ### Priorite haute
-1. **Avis critique entre pairs (CRC)** : onglet ou l'eleve lit/redige un avis sur le CRC d'un autre eleve. Attribution aleatoire et anonyme
+1. **Integration NavigKid** : recherche guidee web dans Recto-versIA (questionnaires, suivi, correction IA)
+2. **Avis critique entre pairs (CRC)** : l'eleve lit/redige un avis sur le CRC d'un autre eleve. Attribution aleatoire et anonyme
 
 ### Priorite moyenne
-2. **Grille de metacognition** : ecart auto-evaluation / correction prof, evolution du texte
-3. **Filtrage devoirs prof** : par professeur (multi-profs)
+3. **Grille de metacognition** : ecart auto-evaluation / correction prof, evolution du texte
 4. **Finalisation correction** : versioning, verrouillage apres envoi
 5. **Commentaires prof ameliores** : assistance IA + dictee vocale
 6. **Immersive Reader** : Microsoft Azure, synthese vocale, decoupage syllabique

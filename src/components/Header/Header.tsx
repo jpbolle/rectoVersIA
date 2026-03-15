@@ -30,7 +30,7 @@ export default function Header({ variant, topOffset = 0 }: HeaderProps) {
               className={styles.navBtn}
               onClick={() => router.push('/dashboard')}
             >
-              Mes Devoirs
+              Mes Activités
             </button>
             <button
               className={styles.navBtn}

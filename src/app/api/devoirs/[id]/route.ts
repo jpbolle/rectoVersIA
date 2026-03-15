@@ -25,6 +25,14 @@ export async function GET(
 
     const data = docSnap.data()!;
 
+    // Les profs ne voient que leurs propres devoirs
+    if (auth.role === 'prof' && data.profId !== auth.uid) {
+      return NextResponse.json(
+        { success: false, message: 'Acces refuse' },
+        { status: 403 }
+      );
+    }
+
     // Les eleves ne peuvent voir que les devoirs disponibles
     if (auth.role === 'eleve' && !data.disponible) {
       return NextResponse.json(
@@ -85,6 +93,14 @@ export async function PATCH(
       return NextResponse.json(
         { success: false, message: 'Devoir non trouve' },
         { status: 404 }
+      );
+    }
+
+    // Verifier que le devoir appartient au prof
+    if (docSnap.data()?.profId !== auth.uid) {
+      return NextResponse.json(
+        { success: false, message: 'Acces refuse' },
+        { status: 403 }
       );
     }
 
@@ -185,6 +201,14 @@ export async function DELETE(
       return NextResponse.json(
         { success: false, message: 'Devoir non trouve' },
         { status: 404 }
+      );
+    }
+
+    // Verifier que le devoir appartient au prof
+    if (docSnap.data()?.profId !== auth.uid) {
+      return NextResponse.json(
+        { success: false, message: 'Acces refuse' },
+        { status: 403 }
       );
     }
 

@@ -30,6 +30,10 @@
   box-shadow: var(--c-shadow-card);
 }
 
+.grillesSection + .grillesSection {
+  margin-top: 24px;
+}
+
 .sectionHeader {
   margin-bottom: 24px;
 }
@@ -56,7 +60,7 @@
 
 /* Section builder (creation / edition) */
 .builderSection {
-  margin-top: 30px;
+  margin-bottom: 24px;
   animation: slideIn 0.3s ease;
 }
 

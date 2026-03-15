@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { isAdmin } from '@/lib/auth-utils';
@@ -10,8 +10,19 @@ import Footer from '@/components/Footer/Footer';
 import type { CreateProfesseurData } from '@/types/professeur';
 import styles from './admin.module.css';
 
+interface AdminStats {
+  professeurs: number;
+  classes: number;
+  eleves: number;
+  devoirs: number;
+  travaux: number;
+  travauxSoumis: number;
+  corrections: number;
+  correctionsFinalisees: number;
+}
+
 export default function AdminPage() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, getAuthHeaders } = useAuth();
   const router = useRouter();
   const {
     professeurs,
@@ -24,11 +35,13 @@ export default function AdminPage() {
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
 
   // Champs du formulaire
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
   const [email, setEmail] = useState('');
+  const [accessDuration, setAccessDuration] = useState<'permanent' | '1day' | '1week'>('permanent');
 
   useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 100);
@@ -45,10 +58,36 @@ export default function AdminPage() {
     }
   }, [isAuthenticated, authLoading, user, router]);
 
+  // Charger les stats
+  const fetchStats = useCallback(async () => {
+    const headers = await getAuthHeaders();
+    if (!headers) return;
+    try {
+      const res = await fetch('/api/admin/stats', { headers });
+      const json = await res.json();
+      if (json.success) setStats(json.data);
+    } catch {
+      // Silently fail
+    }
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    if (isAuthenticated) fetchStats();
+  }, [isAuthenticated, fetchStats]);
+
   const resetForm = () => {
     setNom('');
     setPrenom('');
     setEmail('');
+    setAccessDuration('permanent');
+  };
+
+  const computeExpiresAt = (duration: 'permanent' | '1day' | '1week'): string | null => {
+    if (duration === 'permanent') return null;
+    const now = new Date();
+    if (duration === '1day') now.setDate(now.getDate() + 1);
+    if (duration === '1week') now.setDate(now.getDate() + 7);
+    return now.toISOString();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,11 +100,16 @@ export default function AdminPage() {
         nom: nom.trim(),
         prenom: prenom.trim(),
         email: email.trim(),
+        expiresAt: computeExpiresAt(accessDuration),
       };
       await createProfesseur(data);
-      setMessage({ text: 'Professeur ajouté', type: 'success' });
+      const durationLabel =
+        accessDuration === '1day' ? ' (accès 1 jour)' :
+        accessDuration === '1week' ? ' (accès 1 semaine)' : '';
+      setMessage({ text: `Professeur ajouté${durationLabel}`, type: 'success' });
       resetForm();
       setShowForm(false);
+      fetchStats();
     } catch (err) {
       setMessage({
         text: err instanceof Error ? err.message : 'Erreur lors de l\'ajout',
@@ -82,6 +126,7 @@ export default function AdminPage() {
     try {
       await deleteProfesseur(id);
       setMessage({ text: 'Professeur supprimé', type: 'success' });
+      fetchStats();
     } catch (err) {
       setMessage({
         text: err instanceof Error ? err.message : 'Erreur lors de la suppression',
@@ -119,6 +164,17 @@ export default function AdminPage() {
     }
   };
 
+  const getExpirationLabel = (expiresAt?: string | null) => {
+    if (!expiresAt) return null;
+    const expires = new Date(expiresAt);
+    const now = new Date();
+    const diffMs = expires.getTime() - now.getTime();
+    if (diffMs <= 0) return 'Expiré';
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) return 'Expire demain';
+    return `Expire dans ${diffDays} jours`;
+  };
+
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
       <Header variant="prof" />
@@ -132,6 +188,44 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Stats */}
+        {stats && (
+          <section className={styles.statsSection}>
+            <h2 className={styles.sectionTitle}>Vue d&apos;ensemble</h2>
+            <div className={styles.statsGrid}>
+              <div className={styles.statCard}>
+                <span className={styles.statValue}>{stats.professeurs}</span>
+                <span className={styles.statLabel}>Professeurs</span>
+              </div>
+              <div className={styles.statCard}>
+                <span className={styles.statValue}>{stats.classes}</span>
+                <span className={styles.statLabel}>Classes</span>
+              </div>
+              <div className={styles.statCard}>
+                <span className={styles.statValue}>{stats.eleves}</span>
+                <span className={styles.statLabel}>Élèves</span>
+              </div>
+              <div className={styles.statCard}>
+                <span className={styles.statValue}>{stats.devoirs}</span>
+                <span className={styles.statLabel}>Devoirs</span>
+              </div>
+              <div className={styles.statCard}>
+                <span className={styles.statValue}>
+                  {stats.travauxSoumis}<span className={styles.statTotal}>/{stats.travaux}</span>
+                </span>
+                <span className={styles.statLabel}>Travaux soumis</span>
+              </div>
+              <div className={styles.statCard}>
+                <span className={styles.statValue}>
+                  {stats.correctionsFinalisees}<span className={styles.statTotal}>/{stats.corrections}</span>
+                </span>
+                <span className={styles.statLabel}>Corrections finalisées</span>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Professeurs */}
         <section className={styles.professeursSection}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Professeurs</h2>
@@ -154,22 +248,28 @@ export default function AdminPage() {
                 Aucun professeur enregistré. Ajoutez-en un pour commencer.
               </div>
             ) : (
-              professeurs.map((prof) => (
-                <div key={prof.id} className={styles.profCard}>
-                  <h3 className={styles.profName}>{prof.prenom} {prof.nom}</h3>
-                  <p className={styles.profEmail}>{prof.email}</p>
-                  <div className={styles.profFooter}>
-                    <span className={styles.profDate}>Ajouté le {formatDate(prof.createdAt)}</span>
-                    <button
-                      type="button"
-                      className={styles.deleteButton}
-                      onClick={() => handleDelete(prof.id, `${prof.prenom} ${prof.nom}`)}
-                    >
-                      Supprimer
-                    </button>
+              professeurs.map((prof) => {
+                const expirationLabel = getExpirationLabel(prof.expiresAt);
+                return (
+                  <div key={prof.id} className={styles.profCard}>
+                    <h3 className={styles.profName}>{prof.prenom} {prof.nom}</h3>
+                    <p className={styles.profEmail}>{prof.email}</p>
+                    {expirationLabel && (
+                      <span className={styles.expirationBadge}>{expirationLabel}</span>
+                    )}
+                    <div className={styles.profFooter}>
+                      <span className={styles.profDate}>Ajouté le {formatDate(prof.createdAt)}</span>
+                      <button
+                        type="button"
+                        className={styles.deleteButton}
+                        onClick={() => handleDelete(prof.id, `${prof.prenom} ${prof.nom}`)}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>
@@ -216,6 +316,46 @@ export default function AdminPage() {
                   />
                 </div>
               </div>
+
+              <div className={styles.durationField}>
+                <label className={styles.formLabel}>Durée de l&apos;accès</label>
+                <div className={styles.durationOptions}>
+                  <label className={`${styles.durationOption} ${accessDuration === 'permanent' ? styles.durationActive : ''}`}>
+                    <input
+                      type="radio"
+                      name="duration"
+                      value="permanent"
+                      checked={accessDuration === 'permanent'}
+                      onChange={() => setAccessDuration('permanent')}
+                      className={styles.durationRadio}
+                    />
+                    Permanent
+                  </label>
+                  <label className={`${styles.durationOption} ${accessDuration === '1day' ? styles.durationActive : ''}`}>
+                    <input
+                      type="radio"
+                      name="duration"
+                      value="1day"
+                      checked={accessDuration === '1day'}
+                      onChange={() => setAccessDuration('1day')}
+                      className={styles.durationRadio}
+                    />
+                    1 jour
+                  </label>
+                  <label className={`${styles.durationOption} ${accessDuration === '1week' ? styles.durationActive : ''}`}>
+                    <input
+                      type="radio"
+                      name="duration"
+                      value="1week"
+                      checked={accessDuration === '1week'}
+                      onChange={() => setAccessDuration('1week')}
+                      className={styles.durationRadio}
+                    />
+                    1 semaine
+                  </label>
+                </div>
+              </div>
+
               <div className={styles.formActions}>
                 <button
                   type="submit"

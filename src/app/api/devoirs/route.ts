@@ -13,10 +13,19 @@ export async function GET(request: NextRequest) {
   try {
     let snapshot;
     try {
-      snapshot = await adminDb
-        .collection('devoirs')
-        .orderBy('dateRemise', 'desc')
-        .get();
+      // Chaque prof ne voit que ses propres devoirs
+      if (auth.role === 'prof') {
+        snapshot = await adminDb
+          .collection('devoirs')
+          .where('profId', '==', auth.uid)
+          .orderBy('dateRemise', 'desc')
+          .get();
+      } else {
+        snapshot = await adminDb
+          .collection('devoirs')
+          .orderBy('dateRemise', 'desc')
+          .get();
+      }
     } catch (queryError: unknown) {
       // Collection vide ou inexistante
       const error = queryError as { code?: number };

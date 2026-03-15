@@ -31,6 +31,55 @@
   margin: 0 0 30px;
 }
 
+/* Stats */
+.statsSection {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  padding: 40px;
+  box-shadow: var(--c-shadow-card);
+  margin-bottom: 24px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.statCard {
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--c-primary);
+  font-family: var(--c-font-title);
+  line-height: 1.2;
+}
+
+.statTotal {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--c-text-muted);
+}
+
+.statLabel {
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  font-weight: 500;
+}
+
+/* Section professeurs */
 .professeursSection {
   background: var(--c-bg-card);
   border-radius: var(--c-radius-lg);
@@ -112,6 +161,17 @@
   margin: 0;
 }
 
+.expirationBadge {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: var(--c-radius-lg);
+  background: rgba(212, 148, 76, 0.15);
+  color: var(--c-accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .profFooter {
   display: flex;
   justify-content: space-between;
@@ -190,6 +250,45 @@
 .formInput:focus {
   outline: none;
   border-color: var(--c-accent);
+}
+
+/* Duree d'acces */
+.durationField {
+  margin-top: 20px;
+}
+
+.durationOptions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.durationOption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--c-text-secondary);
+}
+
+.durationOption:hover {
+  border-color: var(--c-primary);
+}
+
+.durationActive {
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.08);
+  color: var(--c-primary);
+  font-weight: 600;
+}
+
+.durationRadio {
+  display: none;
 }
 
 .formActions {
@@ -298,12 +397,16 @@
     padding: 30px 20px 50px;
   }
   .professeursSection,
-  .formSection {
+  .formSection,
+  .statsSection {
     padding: 30px;
   }
   .professeursGrid {
     grid-template-columns: repeat(2, 1fr);
     gap: 18px;
+  }
+  .statsGrid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -313,7 +416,8 @@
     padding: 25px 15px 40px;
   }
   .professeursSection,
-  .formSection {
+  .formSection,
+  .statsSection {
     padding: 25px 20px;
     border-radius: var(--c-radius-lg);
   }
@@ -332,6 +436,12 @@
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 15px;
   }
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .durationOptions {
+    flex-wrap: wrap;
+  }
 }
 
 @media (max-width: 480px) {
@@ -340,11 +450,16 @@
     padding: 15px 10px 30px;
   }
   .professeursSection,
-  .formSection {
+  .formSection,
+  .statsSection {
     padding: 20px 15px;
   }
   .professeursGrid {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+  .statsGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 }

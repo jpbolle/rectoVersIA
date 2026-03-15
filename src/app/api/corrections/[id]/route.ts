@@ -27,6 +27,14 @@ export async function PATCH(
       );
     }
 
+    // Verifier que la correction appartient au prof
+    if (docSnap.data()?.profId !== auth.uid) {
+      return NextResponse.json(
+        { success: false, message: 'Acces refuse' },
+        { status: 403 }
+      );
+    }
+
     const updateData: Record<string, unknown> = {
       updatedAt: new Date().toISOString(),
     };

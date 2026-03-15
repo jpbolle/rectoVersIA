@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       prenom: prenom.trim(),
       email: emailLower,
       createdAt: now,
+      expiresAt: body.expiresAt || null,
     };
 
     await adminDb.collection('professeurs').doc(docId).set(professeur);

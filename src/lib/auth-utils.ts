@@ -5,8 +5,8 @@ const AUTHORIZED_DOMAIN = 'cnddinant.be';
 export function getUserRole(email: string): 'prof' | 'eleve' | null {
   const emailLower = email.toLowerCase().trim();
   if (emailLower === PROF_EMAIL) return 'prof';
-  // Tout utilisateur connecté peut entrer comme élève
-  return 'eleve';
+  // Retourne null pour forcer le fallback API (verifie professeurs puis eleves dans Firestore)
+  return null;
 }
 
 export function isAuthorizedDomain(email: string): boolean {

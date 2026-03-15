@@ -17,6 +17,8 @@ export interface Grille {
   description?: string;
   uaa: number[];       // UAA ciblées (ex: [0, 3])
   profId: string;
+  profName?: string;   // Nom du prof (pour affichage dans "Grilles des professeurs")
+  shared: boolean;     // Grille exemple visible par tous (admin seulement)
   anneeScolaire: string;
   archive: boolean;
   criteria: GrilleCriterion[];

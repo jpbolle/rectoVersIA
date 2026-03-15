@@ -80,6 +80,9 @@ export default function UserAvatar() {
             <button className={styles.menuItem} onClick={handleOpenPreferences}>
               Mes préférences
             </button>
+            <button className={styles.menuItem} onClick={() => { setShowMenu(false); router.push('/roadmap'); }}>
+              Roadmap
+            </button>
             {isAdmin(user?.email || '') && (
               <button className={styles.menuItem} onClick={() => { setShowMenu(false); router.push('/admin'); }}>
                 Administration du site
