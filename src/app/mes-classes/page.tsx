@@ -24,13 +24,13 @@ export default function MesClassesPage() {
   }, []);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading && !isAuthenticated) return;
     if (!isAuthenticated) {
       router.replace('/login');
     }
   }, [authLoading, isAuthenticated, router]);
 
-  if (authLoading || !isAuthenticated) return null;
+  if (!isAuthenticated) return null;
 
   const handleJoin = async (code: string, nom: string, prenom: string) => {
     return await joinClasse(code, nom, prenom);

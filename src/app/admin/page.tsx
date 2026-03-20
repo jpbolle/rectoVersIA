@@ -50,7 +50,7 @@ export default function AdminPage() {
 
   // Redirection si non-admin
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading && !isAuthenticated) return;
     if (!isAuthenticated) {
       router.replace('/login');
     } else if (!isAdmin(user?.email || '')) {
@@ -143,7 +143,7 @@ export default function AdminPage() {
     }
   }, [message]);
 
-  if (authLoading) {
+  if (authLoading && !isAuthenticated) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner} />

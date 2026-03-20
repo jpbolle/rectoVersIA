@@ -119,13 +119,13 @@ export default function RoadmapPage() {
   }, []);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading && !isAuthenticated) return;
     if (!isAuthenticated) {
       router.replace('/login');
     }
   }, [isAuthenticated, authLoading, router]);
 
-  if (authLoading) return null;
+  if (authLoading && !isAuthenticated) return null;
 
   const headerVariant = role === 'prof' ? 'prof' : 'student';
 

@@ -29,7 +29,7 @@ export default function ActivitesPage() {
   }, []);
 
   useEffect(() => {
-    if (authLoading || redirecting) return;
+    if ((authLoading && !isAuthenticated) || redirecting) return;
     if (!isAuthenticated) {
       setRedirecting(true);
       router.replace('/login');
@@ -43,7 +43,7 @@ export default function ActivitesPage() {
   }, [isAuthenticated, authLoading, role, classes, classesLoading, router, redirecting]);
 
 
-  if (authLoading || redirecting || (role === 'eleve' && classesLoading)) return null;
+  if ((authLoading && !isAuthenticated) || redirecting || (role === 'eleve' && classesLoading)) return null;
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''} ${isPreviewMode ? styles.previewMode : ''}`}>

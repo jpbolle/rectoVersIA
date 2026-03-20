@@ -57,6 +57,9 @@ export async function GET(
       createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || '',
       anneeScolaire: data.anneeScolaire || '',
       profId: data.profId || '',
+      typeTravail: data.typeTravail || 'ecrire',
+      questionnaireId: data.questionnaireId || null,
+      codeAcces: data.codeAcces || null,
     };
 
     return NextResponse.json({ success: true, data: devoir });

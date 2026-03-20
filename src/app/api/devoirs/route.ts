@@ -129,9 +129,9 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validation des champs requis
-    if (!classes || !Array.isArray(classes) || classes.length === 0 || !dateRemise || !grille || !intitule) {
+    if (!Array.isArray(classes) || !dateRemise || !grille || !intitule) {
       return NextResponse.json(
-        { success: false, message: 'Au moins une classe, date de remise, grille et intitulé requis' },
+        { success: false, message: 'Date de remise, grille et intitulé requis' },
         { status: 400 }
       );
     }

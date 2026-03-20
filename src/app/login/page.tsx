@@ -20,19 +20,26 @@ export default function LoginPage() {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [blocked, setBlocked] = useState(false);
   const [checkingClasses, setCheckingClasses] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   // Redirection pour les utilisateurs qui ont déjà des classes
   useEffect(() => {
-    if (isLoading || classesLoading) return;
+    // Attendre Firebase seulement si pas encore authentifié (pas de cache)
+    if (!isAuthenticated && isLoading) return;
     if (!isAuthenticated) return;
 
     if (role === 'prof') {
+      setRedirecting(true);
       router.replace('/dashboard');
       return;
     }
 
+    // Pour l'élève, attendre que ses classes soient chargées
+    if (role === 'eleve' && classesLoading) return;
+
     // Élève avec des classes → rediriger
     if (role === 'eleve' && classes.length > 0) {
+      setRedirecting(true);
       router.replace('/activites');
       return;
     }
@@ -94,7 +101,7 @@ export default function LoginPage() {
     }
   }, [classes.length, blocked]);
 
-  if (isLoading) {
+  if (isLoading && !isAuthenticated) {
     return (
       <div className={styles.body}>
         <div className={styles.loginContainer}>
@@ -176,7 +183,7 @@ export default function LoginPage() {
         </footer>
       </div>
 
-      {showJoinModal && !blocked && (
+      {showJoinModal && !blocked && !redirecting && (
         <JoinClasseModal
           onClose={handleCloseModal}
           onJoin={handleJoin}

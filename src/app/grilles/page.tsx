@@ -43,7 +43,7 @@ export default function GrillesPage() {
   }, []);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading && !isAuthenticated) return;
     if (!isAuthenticated) {
       router.replace('/login');
     } else if (role !== 'prof') {
@@ -158,7 +158,7 @@ export default function GrillesPage() {
     setBuilderMode(null);
   }, []);
 
-  if (authLoading) return null;
+  if (authLoading && !isAuthenticated) return null;
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>

@@ -22,7 +22,7 @@ export default function Home() {
     if (role === 'prof') {
       router.replace('/dashboard');
     } else {
-      router.replace('/login');
+      router.replace('/activites');
     }
   }, [isAuthenticated, isLoading, role, router, redirecting]);
 

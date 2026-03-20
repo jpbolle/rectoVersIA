@@ -24,7 +24,27 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// ─── Cache sessionStorage : évite le flash auth entre navigations ───
+const SESSION_KEY = 'rv_auth_v1';
+
+function readAuthCache(): { role: UserRole; isAdmin: boolean } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function writeAuthCache(role: UserRole, isAdmin: boolean) {
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role, isAdmin })); } catch {}
+}
+
+function clearAuthCache() {
+  try { sessionStorage.removeItem(SESSION_KEY); } catch {}
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Démarrage identique serveur/client pour éviter le mismatch d'hydratation
   const [state, setState] = useState<AuthState>({
     user: null,
     role: null,
@@ -32,6 +52,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
     isAuthenticated: false,
   });
+
+  // Appliquer le cache sessionStorage APRÈS hydratation (useEffect = client seulement)
+  useEffect(() => {
+    const cached = readAuthCache();
+    if (cached) {
+      setState((prev) => ({
+        ...prev,
+        role: cached.role,
+        isAdmin: cached.isAdmin,
+        isAuthenticated: true,
+        // isLoading reste true — Firebase confirmera ensuite
+      }));
+    }
+  }, []);
 
   // Stable ref for user — avoids re-renders on token refresh
   const userRef = useRef<User | null>(null);
@@ -66,16 +100,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (role) {
+          const isAdminVal = checkIsAdmin(email);
+          writeAuthCache(role, isAdminVal);
           currentUidRef.current = user.uid;
           userRef.current = user;
           setState({
             user,
             role,
-            isAdmin: checkIsAdmin(email),
+            isAdmin: isAdminVal,
             isLoading: false,
             isAuthenticated: true,
           });
         } else {
+          clearAuthCache();
           currentUidRef.current = null;
           userRef.current = null;
           await signOutUser();
@@ -88,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
       } else {
+        clearAuthCache();
         currentUidRef.current = null;
         userRef.current = null;
         setState({
@@ -190,6 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    clearAuthCache();
     await signOutUser();
   }, []);
 

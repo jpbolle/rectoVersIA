@@ -57,6 +57,8 @@ interface AssistancePanelProps {
   // NavigKid (type rechercher)
   navigkidQuestions?: NavigKidQuestion[];
   navigkidReponse?: NavigKidReponse | null;
+  // Mode recherche élève : restreint les onglets à Consignes / Remarques / Statistiques
+  rechercheMode?: boolean;
 }
 
 export default function AssistancePanel({
@@ -95,6 +97,7 @@ export default function AssistancePanel({
   onRequestAiGrid,
   navigkidQuestions,
   navigkidReponse,
+  rechercheMode = false,
 }: AssistancePanelProps) {
   // Mode contrôlé vs interne
   const [internalTab, setInternalTab] = useState<TabType>('consignes');
@@ -126,14 +129,16 @@ export default function AssistancePanel({
         >
           Consignes
         </button>
-        <button
-          type="button"
-          className={`${styles.tab} ${currentTab === 'ressources' ? styles.tabActive : ''}`}
-          onClick={() => handleTabChange('ressources')}
-        >
-          Ressources
-        </button>
-        {!isProfessorView && (accesIA || showAiData) && (
+        {!rechercheMode && (
+          <button
+            type="button"
+            className={`${styles.tab} ${currentTab === 'ressources' ? styles.tabActive : ''}`}
+            onClick={() => handleTabChange('ressources')}
+          >
+            Ressources
+          </button>
+        )}
+        {!rechercheMode && !isProfessorView && (accesIA || showAiData) && (
           <button
             type="button"
             className={`${styles.tab} ${currentTab === 'ia' ? styles.tabActive : ''}`}
@@ -153,7 +158,16 @@ export default function AssistancePanel({
             {hasRemarques && <span className={styles.badge}>•</span>}
           </button>
         )}
-        {navigkidQuestions && navigkidQuestions.length > 0 && (
+        {rechercheMode && navigkidQuestions && navigkidQuestions.length > 0 && (
+          <button
+            type="button"
+            className={`${styles.tab} ${currentTab === 'recherche' ? styles.tabActive : ''}`}
+            onClick={() => handleTabChange('recherche')}
+          >
+            Statistiques
+          </button>
+        )}
+        {!rechercheMode && navigkidQuestions && navigkidQuestions.length > 0 && (
           <button
             type="button"
             className={`${styles.tab} ${currentTab === 'recherche' ? styles.tabActive : ''}`}

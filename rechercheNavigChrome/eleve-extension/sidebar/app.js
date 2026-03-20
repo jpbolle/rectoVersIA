@@ -22,6 +22,13 @@ const auth = firebase.auth();
 // Signaler au background que la sidebar est ouverte
 chrome.runtime.connect({ name: "sidebar" });
 
+// Activer directement le surlignage sur le tab actif (robuste aux redémarrages service worker)
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  if (tabs[0]?.id) {
+    chrome.tabs.sendMessage(tabs[0].id, { type: "HIGHLIGHTER_ETAT", actif: true }).catch(() => {});
+  }
+});
+
 // ─── État de l'application ───
 const state = {
   user: null,

@@ -98,11 +98,11 @@ export default function TravailPage() {
 
   // Élève sans classe → retour au login
   useEffect(() => {
-    if (authLoading || classesLoading || isPreviewMode) return;
+    if ((authLoading && !isAuthenticated) || classesLoading || isPreviewMode) return;
     if (role === 'eleve' && classes.length === 0) {
       router.replace('/login');
     }
-  }, [authLoading, classesLoading, isPreviewMode, role, classes, router]);
+  }, [authLoading, isAuthenticated, classesLoading, isPreviewMode, role, classes, router]);
 
   // Fetch devoir
   useEffect(() => {
@@ -297,7 +297,7 @@ export default function TravailPage() {
   }, [correction, grille]);
 
   // Loading states - pour preview mode, on n'attend pas travailLoading
-  const isLoading = authLoading || devoirLoading || (!isPreviewMode && travailLoading);
+  const isLoading = (authLoading && !isAuthenticated) || devoirLoading || (!isPreviewMode && travailLoading);
 
   if (isLoading) {
     return (
@@ -367,35 +367,6 @@ export default function TravailPage() {
   const isRecherche = devoir?.typeTravail === 'rechercher';
   const correctionVisible = correction?.visibleParEleve === true;
 
-  // Pour les devoirs rechercher sans correction visible, afficher un message d'attente
-  if (isRecherche && !correctionVisible && !isPreviewMode) {
-    return (
-      <div className={styles.page}>
-        <WorkTopBar
-          title={devoir.intitule}
-          status={nkReponse ? 'submitted' : 'draft'}
-          isSaving={false}
-          lastSaved={null}
-          onSubmit={() => {}}
-          isSubmitting={false}
-          isPreviewMode={true}
-        />
-        <div className={styles.errorContainer}>
-          <span className={styles.errorIcon}>🔍</span>
-          <h2>Activité de recherche</h2>
-          <p>
-            {nkReponse
-              ? 'Tes réponses ont été envoyées via l\'extension NavigKid. Tu pourras consulter la correction ici quand ton professeur l\'aura rendue disponible.'
-              : 'Utilise l\'extension NavigKid! dans Chrome pour répondre au questionnaire de recherche.'}
-          </p>
-          <button onClick={handleBack} className={styles.errorButton}>
-            Retour aux activités
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={`${styles.page} ${isPreviewMode ? styles.previewMode : ''}`}>
       {isPreviewMode && (
@@ -424,11 +395,12 @@ export default function TravailPage() {
             isRecherche ? (
               <div className={styles.editorSection}>
                 <div className={styles.editorHeader}>
-                  <h2>Mes réponses de recherche</h2>
+                  <h2>Questionnaire de recherche</h2>
                 </div>
                 <RechercheResponseViewer
                   questions={nkQuestions}
                   reponse={nkReponse}
+                  studentView={!isPreviewMode}
                 />
               </div>
             ) : (
@@ -501,6 +473,7 @@ export default function TravailPage() {
                   onRequestAiGrid={handleRequestAiGrid}
                   navigkidQuestions={nkQuestions.length > 0 ? nkQuestions : undefined}
                   navigkidReponse={nkReponse}
+                  rechercheMode={isRecherche}
                 />
               </div>
             </div>

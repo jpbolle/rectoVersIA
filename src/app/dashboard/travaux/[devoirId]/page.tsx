@@ -7,6 +7,7 @@ import UserAvatar from '@/components/UserAvatar';
 import type { Devoir } from '@/types/devoir';
 import type { Travail } from '@/types/travail';
 import type { Correction } from '@/types/correction';
+import type { NavigKidQuestion } from '@/types/navigkid';
 import Link from 'next/link';
 import Footer from '@/components/Footer/Footer';
 import styles from './travaux.module.css';
@@ -24,9 +25,11 @@ export default function TravauxPage() {
   const [error, setError] = useState<string | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [questionnaire, setQuestionnaire] = useState<NavigKidQuestion[] | null>(null);
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && role !== 'prof') {
+    if (role && role !== 'prof') {
       router.replace('/dashboard');
     }
   }, [authLoading, role, router]);
@@ -46,6 +49,15 @@ export default function TravauxPage() {
 
         if (devoirJson.success) {
           setDevoir(devoirJson.data);
+
+          // Charger le questionnaire si type rechercher
+          if (devoirJson.data.typeTravail === 'rechercher' && devoirJson.data.questionnaireId) {
+            const qRes = await fetch(`/api/navigkid/questionnaire?id=${devoirJson.data.questionnaireId}`, { headers });
+            const qJson = await qRes.json();
+            if (qJson.success) {
+              setQuestionnaire(qJson.data.questions || []);
+            }
+          }
         } else {
           setError('Devoir non trouve');
           return;
@@ -147,7 +159,7 @@ export default function TravauxPage() {
     router.push('/dashboard');
   };
 
-  if (authLoading || isLoading) {
+  if ((authLoading && !isAuthenticated) || isLoading) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner} />
@@ -254,6 +266,42 @@ export default function TravauxPage() {
           <UserAvatar />
         </div>
       </header>
+
+      {/* Questionnaire NavigKid en lecture */}
+      {questionnaire && (
+        <div className={styles.questionnairePanel}>
+          <button
+            className={styles.questionnairePanelToggle}
+            onClick={() => setShowQuestionnaire((v) => !v)}
+          >
+            📋 Questionnaire ({questionnaire.length} question{questionnaire.length > 1 ? 's' : ''})
+            <span>{showQuestionnaire ? '▲' : '▼'}</span>
+          </button>
+          {showQuestionnaire && (
+            <ol className={styles.questionnaireList}>
+              {questionnaire.map((q, i) => (
+                <li key={i} className={styles.questionnaireItem}>
+                  <span className={styles.questionnaireTexte}>{q.texte}</span>
+                  <span className={styles.questionnaireType}>{q.type === 'qcm' ? 'QCM' : 'Texte libre'}</span>
+                  {q.type === 'qcm' && q.options && (
+                    <ul className={styles.questionnaireOptions}>
+                      {q.options.map((opt, j) => (
+                        <li key={j} className={q.correctes?.includes(j) ? styles.correctOption : ''}>
+                          {opt}
+                          {q.correctes?.includes(j) && ' ✓'}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {q.reponseAttendue && (
+                    <p className={styles.questionnaireCorrige}><em>Corrigé : {q.reponseAttendue}</em></p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
 
       <main className={styles.main}>
         <div className={styles.stats}>

@@ -66,7 +66,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (authLoading || redirecting) return;
+    if ((authLoading && !isAuthenticated) || redirecting) return;
     if (!isAuthenticated) {
       setRedirecting(true);
       router.replace('/login');
@@ -181,16 +181,33 @@ export default function DashboardPage() {
   const handleDuplicateDevoir = useCallback(
     async (devoir: Devoir) => {
       try {
+        // Récupérer le questionnaire si type rechercher
+        let questionnaire: CreateDevoirData['questionnaire'] | undefined;
+        if (devoir.typeTravail === 'rechercher' && devoir.questionnaireId) {
+          const headers = await getAuthHeaders();
+          if (headers) {
+            const qRes = await fetch(`/api/navigkid/questionnaire?id=${devoir.questionnaireId}`, { headers });
+            const qJson = await qRes.json();
+            if (qJson.success) {
+              questionnaire = {
+                themes: qJson.data.theme || '',
+                questions: qJson.data.questions || [],
+              };
+            }
+          }
+        }
+
         await createDevoir({
-          intitule: `${devoir.intitule} (copie)`,
+          intitule: `COPIE - ${devoir.intitule}`,
           grille: devoir.grille,
-          classes: devoir.classes,
+          classes: [],
           dateRemise: devoir.dateRemise,
           consignes: devoir.consignes || '',
           accesIA: devoir.accesIA,
           disponible: false,
           ressources: devoir.ressources || null,
           typeTravail: devoir.typeTravail || 'ecrire',
+          questionnaire,
         });
         setMessage({ text: 'Devoir dupliqué avec succès !', type: 'success' });
       } catch (err) {
@@ -200,7 +217,7 @@ export default function DashboardPage() {
         });
       }
     },
-    [createDevoir]
+    [createDevoir, getAuthHeaders]
   );
 
   const handleSaveEdit = useCallback(
@@ -222,7 +239,7 @@ export default function DashboardPage() {
     [updateDevoir]
   );
 
-  if (authLoading || redirecting) return null;
+  if ((authLoading && !isAuthenticated) || redirecting) return null;
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
@@ -366,6 +383,7 @@ export default function DashboardPage() {
         onClose={() => setEditingDevoir(null)}
         onSave={handleSaveEdit}
         isSaving={isSaving}
+        getAuthHeaders={getAuthHeaders}
       />
 
       <LoadingOverlay isVisible={isNavigating} message="Chargement de l'interface..." />

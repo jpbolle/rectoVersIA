@@ -203,7 +203,7 @@ export default function TravailDetailPage() {
   }, [updateCommentaireGeneralAudio]);
 
   useEffect(() => {
-    if (!authLoading && role !== 'prof') {
+    if (role && role !== 'prof') {
       router.replace('/dashboard');
     }
   }, [authLoading, role, router]);
@@ -372,7 +372,7 @@ export default function TravailDetailPage() {
     return new Date(travail.submittedAt) > deadline;
   }, [devoir?.dateRemise, travail?.submittedAt]);
 
-  if (authLoading || isLoading) {
+  if ((authLoading && !isAuthenticated) || isLoading) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner} />

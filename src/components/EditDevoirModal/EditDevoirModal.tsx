@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import Toggle from '@/components/Toggle/Toggle';
 import DatePicker from '@/components/DatePicker/DatePicker';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
+import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/QuestionnaireBuilder';
 import { getTodayString } from '@/lib/devoir-utils';
 import type { Devoir, Classe, DevoirRessource } from '@/types/devoir';
+import type { NavigKidQuestion } from '@/types/navigkid';
 import styles from './EditDevoirModal.module.css';
 
 interface EditDevoirModalProps {
@@ -16,6 +18,7 @@ interface EditDevoirModalProps {
   onClose: () => void;
   onSave: (id: string, data: Partial<Devoir>) => Promise<void>;
   isSaving: boolean;
+  getAuthHeaders: () => Promise<Record<string, string> | null>;
 }
 
 export default function EditDevoirModal({
@@ -26,6 +29,7 @@ export default function EditDevoirModal({
   onClose,
   onSave,
   isSaving,
+  getAuthHeaders,
 }: EditDevoirModalProps) {
   const [selectedClasses, setSelectedClasses] = useState<Classe[]>([]);
   const [dateRemise, setDateRemise] = useState('');
@@ -38,6 +42,10 @@ export default function EditDevoirModal({
   // Ressources
   const [showRessources, setShowRessources] = useState(false);
   const [ressources, setRessources] = useState<DevoirRessource | null>(null);
+
+  // Questionnaire (type rechercher)
+  const [nkQuestions, setNkQuestions] = useState<NavigKidQuestion[]>([]);
+  const [nkThemes, setNkThemes] = useState<string[]>([]);
 
   useEffect(() => {
     if (devoir) {
@@ -58,8 +66,29 @@ export default function EditDevoirModal({
         setShowRessources(false);
         setRessources(null);
       }
+
+      // Charger le questionnaire si type rechercher
+      if (devoir.typeTravail === 'rechercher' && devoir.questionnaireId) {
+        getAuthHeaders().then((headers) => {
+          if (!headers) return;
+          fetch(`/api/navigkid/questionnaire?id=${devoir.questionnaireId}`, { headers })
+            .then((r) => r.json())
+            .then((json) => {
+              if (json.success) {
+                setNkQuestions(json.data.questions || []);
+                setNkThemes(
+                  json.data.theme ? json.data.theme.split(',').map((t: string) => t.trim()).filter(Boolean) : []
+                );
+              }
+            })
+            .catch(() => {});
+        });
+      } else {
+        setNkQuestions([]);
+        setNkThemes([]);
+      }
     }
-  }, [devoir]);
+  }, [devoir, getAuthHeaders]);
 
   const handleClassToggle = (classe: Classe) => {
     setSelectedClasses((prev) =>
@@ -73,6 +102,21 @@ export default function EditDevoirModal({
 
   const handleSave = async () => {
     if (!devoir || !isValid) return;
+
+    // Sauvegarder le questionnaire si type rechercher
+    if (devoir.typeTravail === 'rechercher' && devoir.questionnaireId) {
+      const headers = await getAuthHeaders();
+      if (headers) {
+        await fetch(`/api/navigkid/questionnaire?id=${devoir.questionnaireId}`, {
+          method: 'PATCH',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questions: nkQuestions,
+            theme: nkThemes.join(', '),
+          }),
+        });
+      }
+    }
 
     await onSave(devoir.id, {
       classes: selectedClasses,
@@ -202,6 +246,21 @@ export default function EditDevoirModal({
               </div>
             )}
           </div>
+
+          {/* Questionnaire NavigKid */}
+          {devoir?.typeTravail === 'rechercher' && (
+            <div className={styles.formGroup}>
+              <QuestionnaireBuilder
+                questions={nkQuestions}
+                onQuestionsChange={setNkQuestions}
+                themes={nkThemes}
+                onThemesChange={setNkThemes}
+                titre={intitule}
+                disabled={isSaving}
+                getAuthHeaders={getAuthHeaders}
+              />
+            </div>
+          )}
 
           {/* Toggles */}
           <div className={styles.toggleSection}>

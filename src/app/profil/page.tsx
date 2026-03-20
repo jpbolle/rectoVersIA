@@ -29,7 +29,7 @@ export default function ProfilPage() {
   }, []);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading && !isAuthenticated) return;
     if (!isAuthenticated) {
       router.replace('/login');
       return;
@@ -39,7 +39,7 @@ export default function ProfilPage() {
     }
   }, [authLoading, isAuthenticated, role, classes, classesLoading, router]);
 
-  if (authLoading || !isAuthenticated || (role === 'eleve' && classesLoading)) return null;
+  if (!isAuthenticated || (role === 'eleve' && classesLoading)) return null;
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
