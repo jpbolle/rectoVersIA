@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NavigKid!",
-  "version": "1.1",
+  "version": "1.2",
   "description": "Extension de recherche guidée par IA pour les élèves",
   "permissions": ["storage", "activeTab", "scripting", "sidePanel", "identity"],
   "host_permissions": [
