@@ -1047,3 +1047,18 @@ body::before {
   background: var(--accent-light);
   border-radius: 6px;
 }
+
+/* Feedback IA inline par question */
+#question-ia-feedback {
+  margin-top: 12px;
+}
+
+.ia-section-question {
+  border-color: var(--primary);
+  border-left: 3px solid var(--primary);
+  background: var(--primary-light);
+}
+
+.ia-section-question .ia-section-titre {
+  color: var(--primary-dark);
+}

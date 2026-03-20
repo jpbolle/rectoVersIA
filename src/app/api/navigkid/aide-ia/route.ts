@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Cle API non configuree.' }, { status: 500 });
   }
 
-  const { questionnaireId } = await request.json();
+  const { questionnaireId, questionsData: passedQuestionsData } = await request.json();
   if (!questionnaireId) {
     return NextResponse.json({ error: 'questionnaireId requis.' }, { status: 400 });
   }
@@ -34,21 +34,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Charger la réponse de l'élève
-    const rDoc = await adminDb
-      .collection('questionnaires')
-      .doc(questionnaireId)
-      .collection('reponses')
-      .doc(auth.uid)
-      .get();
-
-    // Charger les recherches de l'élève
-    const rechDoc = await adminDb.collection('recherches').doc(auth.uid).get();
-
     // Construire le contexte pour Claude
+    // Priorité : données passées directement par l'extension (état courant avant soumission)
+    // Fallback : lire depuis Firestore (réponses déjà soumises)
     const questions = questionnaire.questions || [];
-    const reponses = rDoc.exists ? (rDoc.data()?.questions || []) : [];
-    const recherches = rechDoc.exists ? (rechDoc.data()?.parQuestion || []) : [];
+    let reponses: ReponseEleve[] = [];
+
+    if (passedQuestionsData && Array.isArray(passedQuestionsData) && passedQuestionsData.length > 0) {
+      reponses = passedQuestionsData;
+    } else {
+      const rDoc = await adminDb
+        .collection('questionnaires')
+        .doc(questionnaireId)
+        .collection('reponses')
+        .doc(auth.uid)
+        .get();
+      reponses = rDoc.exists ? (rDoc.data()?.questions || []) : [];
+    }
+
+    // Les motsCles sont déjà dans reponses — pas besoin de charger recherches séparément
+    const recherches: RechercheParQuestion[] = [];
 
     const prompt = buildPrompt(questions, reponses, recherches);
 

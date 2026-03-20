@@ -39,7 +39,8 @@ const state = {
   questionnaire: null,
   questionnaireId: "",
   questionCourante: 0,
-  questions: []
+  questions: [],
+  feedbackIA: null // { motsCles: {...}, questions: [...] }
 };
 
 // ─── Persistance locale ───
@@ -344,6 +345,9 @@ function afficherQuestionnaireRestaure() {
   btn.textContent = "Envoyer mes réponses";
   $("#message-soumission").hidden = true;
 
+  // Reset feedback IA
+  state.feedbackIA = null;
+
   // Aide IA — afficher uniquement si activé par le prof
   const aideIaSection = $("#aide-ia-section");
   if (state.activiteEnCours?.accesIA) {
@@ -445,6 +449,20 @@ function afficherQuestionCourante() {
 
   // Passages soulignés
   afficherPassages(qData);
+
+  // Feedback IA par question
+  const feedbackZone = $("#question-ia-feedback");
+  if (state.feedbackIA && state.feedbackIA.questions) {
+    const qFeedback = state.feedbackIA.questions.find((q) => q.numero === idx + 1);
+    if (qFeedback) {
+      feedbackZone.innerHTML = renderFeedbackQuestion(qFeedback);
+      feedbackZone.hidden = false;
+    } else {
+      feedbackZone.hidden = true;
+    }
+  } else {
+    feedbackZone.hidden = true;
+  }
 
   // Dots
   afficherDots();
@@ -795,6 +813,7 @@ $("#btn-aide-ia").addEventListener("click", async () => {
   btn.disabled = true;
   loading.hidden = false;
   resultat.hidden = true;
+  $("#question-ia-feedback").hidden = true;
 
   try {
     const token = await state.user.getIdToken();
@@ -804,7 +823,11 @@ $("#btn-aide-ia").addEventListener("click", async () => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ questionnaireId: state.questionnaireId })
+      // Envoyer les données courantes directement (pas besoin que l'élève ait soumis)
+      body: JSON.stringify({
+        questionnaireId: state.questionnaireId,
+        questionsData: state.questions
+      })
     });
 
     const json = await res.json();
@@ -817,8 +840,18 @@ $("#btn-aide-ia").addEventListener("click", async () => {
       return;
     }
 
-    resultat.innerHTML = renderFeedbackIA(json.feedback);
-    resultat.hidden = false;
+    // Stocker le feedback et distribuer par question
+    state.feedbackIA = json.feedback;
+
+    // Afficher le feedback mots-clés global dans la section IA
+    if (json.feedback.motsCles) {
+      resultat.innerHTML = renderFeedbackMotsCles(json.feedback.motsCles);
+      resultat.hidden = false;
+    }
+
+    // Afficher le feedback de la question courante inline
+    afficherQuestionCourante();
+
     btn.disabled = false;
   } catch (err) {
     console.error("Erreur aide IA:", err);
@@ -829,52 +862,43 @@ $("#btn-aide-ia").addEventListener("click", async () => {
   }
 });
 
-function renderFeedbackIA(fb) {
-  let html = "";
+function renderFeedbackMotsCles(motsCles) {
+  const verdictClass = motsCles.verdict === "bon" ? "verdict-bon" : motsCles.verdict === "moyen" ? "verdict-moyen" : "verdict-insuffisant";
+  return `
+    <div class="ia-section">
+      <h4 class="ia-section-titre">🔎 Mots-clés de recherche <span class="ia-verdict ${verdictClass}">${motsCles.verdict}</span></h4>
+      <p class="ia-feedback">${motsCles.feedback}</p>
+      <p class="ia-feedback" style="font-size:0.8em;opacity:0.7;margin-top:6px;">⬆ Navigue entre les questions pour voir le feedback de chacune.</p>
+    </div>
+  `;
+}
 
-  // Mots-clés
-  if (fb.motsCles) {
-    const verdictClass = fb.motsCles.verdict === "bon" ? "verdict-bon" : fb.motsCles.verdict === "moyen" ? "verdict-moyen" : "verdict-insuffisant";
-    html += `
-      <div class="ia-section">
-        <h4 class="ia-section-titre">🔎 Mots-clés <span class="ia-verdict ${verdictClass}">${fb.motsCles.verdict}</span></h4>
-        <p class="ia-feedback">${fb.motsCles.feedback}</p>
-      </div>
-    `;
-  }
-
-  // Questions
-  if (fb.questions && fb.questions.length > 0) {
-    fb.questions.forEach((q) => {
-      html += `
-        <div class="ia-section">
-          <h4 class="ia-section-titre">Question ${q.numero} <span class="ia-type">${q.type}</span></h4>
-          ${q.sources ? `
-            <div class="ia-subsection">
-              <span class="ia-label">Sources :</span>
-              <p class="ia-feedback">${q.sources.pertinence}</p>
-              <p class="ia-feedback">${q.sources.fiabilite}</p>
-            </div>
-          ` : ""}
-          ${q.passages ? `
-            <div class="ia-subsection">
-              <span class="ia-label">Passages :</span>
-              <p class="ia-feedback">${q.passages}</p>
-            </div>
-          ` : ""}
-          ${q.reponse ? `
-            <div class="ia-subsection">
-              <span class="ia-label">Réponse :</span>
-              <p class="ia-feedback">${q.reponse}</p>
-            </div>
-          ` : ""}
-          ${q.conseil ? `
-            <div class="ia-conseil">💡 ${q.conseil}</div>
-          ` : ""}
+function renderFeedbackQuestion(q) {
+  return `
+    <div class="ia-section ia-section-question">
+      <h4 class="ia-section-titre">🤖 Analyse IA — Question ${q.numero}</h4>
+      ${q.sources ? `
+        <div class="ia-subsection">
+          <span class="ia-label">📌 Sources :</span>
+          <p class="ia-feedback">${q.sources.pertinence}</p>
+          <p class="ia-feedback">${q.sources.fiabilite}</p>
         </div>
-      `;
-    });
-  }
-
-  return html || '<p class="aide-description">Aucun feedback disponible.</p>';
+      ` : ""}
+      ${q.passages ? `
+        <div class="ia-subsection">
+          <span class="ia-label">✏️ Passages :</span>
+          <p class="ia-feedback">${q.passages}</p>
+        </div>
+      ` : ""}
+      ${q.reponse ? `
+        <div class="ia-subsection">
+          <span class="ia-label">✍️ Réponse :</span>
+          <p class="ia-feedback">${q.reponse}</p>
+        </div>
+      ` : ""}
+      ${q.conseil ? `
+        <div class="ia-conseil">💡 ${q.conseil}</div>
+      ` : ""}
+    </div>
+  `;
 }
