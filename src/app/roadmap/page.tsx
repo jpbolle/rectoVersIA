@@ -9,6 +9,16 @@ import styles from './roadmap.module.css';
 
 const NOUVEAUTES = [
   {
+    version: 'v3.2',
+    date: 'Mars 2026',
+    items: [
+      'Tableau de bord des travaux : statistiques de classe en temps réel (taux de remise, réussites, échecs, moyenne, médiane)',
+      'Distribution des résultats par tranches et 3 critères les plus faibles de la classe',
+      'Statistiques d\'écriture (orthographe, ponctuation, syntaxe) dépliables',
+      'Header fixe sur la page de listing des travaux',
+    ],
+  },
+  {
     version: 'v3.1',
     date: 'Mars 2026',
     items: [
