@@ -67,8 +67,74 @@
   font-weight: 700;
 }
 
+.ponctuIcon {
+  text-decoration: underline dotted #757575 2px;
+  color: #757575;
+}
+
 .voiceIcon {
   font-size: 16px;
+}
+
+/* Toggle "vue prof seul" */
+.profViewOnlyToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.profViewOnlyCheckbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.profViewOnlyTrack {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  background: var(--c-border);
+  border-radius: 9px;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.profViewOnlyTrack::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: white;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.profViewOnlyActive .profViewOnlyTrack {
+  background: var(--c-primary);
+}
+
+.profViewOnlyActive .profViewOnlyTrack::before {
+  transform: translateX(14px);
+}
+
+.profViewOnlyLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+.profViewOnlyActive .profViewOnlyLabel {
+  color: var(--c-primary);
 }
 
 /* Recording indicator */

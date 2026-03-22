@@ -202,6 +202,208 @@
   background: rgba(180, 64, 64, 0.05);
 }
 
+/* Card prof cliquable */
+.profCard {
+  cursor: pointer;
+}
+
+.profCardSelected {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 2px rgba(45, 106, 90, 0.2);
+}
+
+/* Panel stats prof */
+.profStatsPanel {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  padding: 32px 40px 40px;
+  box-shadow: var(--c-shadow-card);
+  margin-top: 24px;
+  border-top: 3px solid var(--c-primary);
+}
+
+.profStatsPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.closePanelBtn {
+  background: none;
+  border: 1px solid var(--c-border);
+  color: var(--c-text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.closePanelBtn:hover {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+
+.panelLoading {
+  padding: 24px;
+  text-align: center;
+  color: var(--c-text-muted);
+  font-size: 14px;
+}
+
+.profStatsContent {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.aiSummaryBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: rgba(45, 106, 90, 0.07);
+  border-radius: var(--c-radius-lg);
+  font-size: 14px;
+  color: var(--c-primary);
+  border: 1px solid rgba(45, 106, 90, 0.15);
+}
+
+.profStatsColumns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.profStatBlock {
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 20px;
+}
+
+.profStatBlockTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-primary);
+  margin: 0 0 14px;
+  font-family: var(--c-font-title);
+}
+
+.profStatEmpty {
+  font-size: 13px;
+  color: var(--c-text-muted);
+  margin: 0;
+}
+
+.profStatList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profStatItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.profStatItemName {
+  color: var(--c-text);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profStatItemMeta {
+  color: var(--c-text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Tableau devoirs */
+.devoirsTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.devoirsTableHead,
+.devoirsTableRow {
+  display: grid;
+  grid-template-columns: 1fr 60px 80px 70px 40px;
+  align-items: center;
+  padding: 10px 14px;
+  gap: 8px;
+}
+
+.devoirsTableHead {
+  background: var(--c-bg-element);
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  font-size: 12px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.devoirsTableRow {
+  border-bottom: 1px solid var(--c-border);
+}
+
+.devoirsTableRow:last-child {
+  border-bottom: none;
+}
+
+.devoirsTableRow:nth-child(even) {
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.devoirTitre {
+  font-weight: 500;
+  color: var(--c-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.devoirStat {
+  text-align: center;
+  color: var(--c-text-secondary);
+}
+
+.iaBadge {
+  display: inline-block;
+  background: rgba(45, 106, 90, 0.12);
+  color: var(--c-primary);
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.iaOff {
+  color: var(--c-text-muted);
+}
+
 /* Formulaire d'ajout */
 .formSection {
   background: var(--c-bg-card);
@@ -417,9 +619,19 @@
   }
   .professeursSection,
   .formSection,
-  .statsSection {
+  .statsSection,
+  .profStatsPanel {
     padding: 25px 20px;
     border-radius: var(--c-radius-lg);
+  }
+  .profStatsColumns {
+    grid-template-columns: 1fr;
+  }
+  .devoirsTableHead,
+  .devoirsTableRow {
+    grid-template-columns: 1fr 50px 70px 60px 36px;
+    font-size: 12px;
+    padding: 8px 10px;
   }
   .formSection {
     margin-top: 20px;

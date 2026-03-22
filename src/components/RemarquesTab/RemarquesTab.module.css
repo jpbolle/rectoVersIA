@@ -45,6 +45,7 @@
 
 .legendBtnSpelling,
 .legendBtnSyntax,
+.legendBtnPonctu,
 .legendBtnLexical,
 .legendBtnVoice {
   display: inline-flex;
@@ -66,6 +67,13 @@
 .legendBtnSyntax {
   background: #ff9800;
   color: white;
+}
+
+.legendBtnPonctu {
+  background: transparent;
+  color: #757575;
+  border: 1px dotted #757575;
+  text-decoration: underline dotted #757575 2px;
 }
 
 .legendBtnLexical {

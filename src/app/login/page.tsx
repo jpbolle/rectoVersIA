@@ -101,7 +101,10 @@ export default function LoginPage() {
     }
   }, [classes.length, blocked]);
 
-  if (isLoading && !isAuthenticated) {
+  // Si déjà authentifié ou en cours de redirection → ne rien rendre (évite le flash de la page login)
+  if (isAuthenticated || redirecting) return null;
+
+  if (isLoading) {
     return (
       <div className={styles.body}>
         <div className={styles.loginContainer}>

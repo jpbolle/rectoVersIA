@@ -16,6 +16,35 @@
   text-underline-offset: 3px !important;
 }
 
+.editorWrapper :global([data-annotation="ponctu"]) {
+  text-decoration: underline dotted #757575 2px !important;
+  text-underline-offset: 3px !important;
+}
+
+/* Mode vue prof seul — texte dans son dernier état, sans aucune surcouche */
+
+/* 1. Bulles IA (cercles O/P/S/L) */
+.profViewOnly :global([data-ai-bubble-type]) {
+  display: none !important;
+}
+
+/* 2. Texte supprimé du diff (widget span injecté) */
+.profViewOnly :global([data-diff-removed]) {
+  display: none !important;
+}
+
+/* 3. Texte réécrit/ajouté du diff : retirer la mise en forme bleue/gras — le texte reste visible normalement */
+.profViewOnly :global(.diff-added) {
+  font-weight: inherit !important;
+  color: inherit !important;
+}
+
+/* 4. Strikethroughs manuels de l'élève (<s> HTML) */
+.profViewOnly :global(s),
+.profViewOnly :global(del) {
+  display: none !important;
+}
+
 /* Styles pour les hyperliens */
 .editorWrapper :global(.tiptap a) {
   color: var(--c-primary) !important;
@@ -267,10 +296,10 @@
   box-shadow: 0 3px 6px rgba(61, 56, 50, 0.4);
 }
 
-/* ── Selection popup ── */
+/* ── Selection popup (position fixed via portal — toujours visible, au-dessus de tout) ── */
 
-.selectionPopup {
-  position: absolute;
+.selectionPopupFixed {
+  position: fixed;
   transform: translateX(-50%);
   display: flex;
   gap: 2px;
@@ -279,7 +308,7 @@
   border: 1px solid var(--c-border);
   border-radius: var(--c-radius);
   box-shadow: 0 4px 16px rgba(61, 56, 50, 0.18);
-  z-index: 20;
+  z-index: 9999;
   animation: popupFadeIn 0.12s ease-out;
 }
 
@@ -318,6 +347,13 @@
   font-weight: 700;
   color: #ff9800;
   text-decoration: underline wavy #ff9800 !important;
+}
+
+.popupPonctu {
+  font-size: 12px;
+  font-weight: 700;
+  color: #757575;
+  text-decoration: underline dotted #757575 2px !important;
 }
 
 .popupLex {

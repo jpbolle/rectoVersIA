@@ -2,7 +2,7 @@
 
 import styles from './AnnotationToolbar.module.css';
 
-export type AnnotationTool = 'spelling' | 'syntax' | 'lexical' | 'voice' | null;
+export type AnnotationTool = 'spelling' | 'syntax' | 'ponctu' | 'lexical' | 'voice' | null;
 
 interface AnnotationToolbarProps {
   activeTool: AnnotationTool;
@@ -10,6 +10,8 @@ interface AnnotationToolbarProps {
   isRecording: boolean;
   recordingDuration: number;
   onStopRecording: () => void;
+  profViewOnly?: boolean;
+  onProfViewOnlyChange?: (value: boolean) => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -24,6 +26,8 @@ export default function AnnotationToolbar({
   isRecording,
   recordingDuration,
   onStopRecording,
+  profViewOnly = false,
+  onProfViewOnlyChange,
 }: AnnotationToolbarProps) {
   const toggle = (tool: AnnotationTool) => {
     onToolChange(activeTool === tool ? null : tool);
@@ -53,6 +57,15 @@ export default function AnnotationToolbar({
 
       <button
         type="button"
+        className={`${styles.btn} ${activeTool === 'ponctu' ? styles.active : ''}`}
+        onClick={() => toggle('ponctu')}
+        title="Ponctuation (pointillé gris)"
+      >
+        <span className={styles.ponctuIcon}>Ponct</span>
+      </button>
+
+      <button
+        type="button"
         className={`${styles.btn} ${activeTool === 'lexical' ? styles.active : ''}`}
         onClick={() => toggle('lexical')}
         title="Lexique (tampon Lex)"
@@ -69,6 +82,21 @@ export default function AnnotationToolbar({
       >
         <span className={styles.voiceIcon}>&#128172;</span>
       </button>
+
+      {onProfViewOnlyChange && (
+        <label className={`${styles.profViewOnlyToggle} ${profViewOnly ? styles.profViewOnlyActive : ''}`}>
+          <input
+            type="checkbox"
+            checked={profViewOnly}
+            onChange={(e) => onProfViewOnlyChange(e.target.checked)}
+            className={styles.profViewOnlyCheckbox}
+          />
+          <span className={styles.profViewOnlyTrack} />
+          <span className={styles.profViewOnlyLabel}>
+            {profViewOnly ? 'Masquer remarques IA et réécritures' : 'Afficher remarques IA et réécritures'}
+          </span>
+        </label>
+      )}
 
       {isRecording && (
         <div className={styles.recording}>

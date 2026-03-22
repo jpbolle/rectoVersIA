@@ -10,6 +10,16 @@ import Footer from '@/components/Footer/Footer';
 import type { CreateProfesseurData } from '@/types/professeur';
 import styles from './admin.module.css';
 
+interface ClasseStat { id: string; nom: string; nbEleves: number; }
+interface DevoirStat { id: string; titre: string; accesIA: boolean; nbSoumis: number; nbCorrections: number; nbGridIA: number; }
+interface GrilleStat { id: string; nom: string; nbCriteres: number; }
+interface ProfStats {
+  classes: ClasseStat[];
+  devoirs: DevoirStat[];
+  grilles: GrilleStat[];
+  aiStats: { devoirsAvecIA: number; totalGridIA: number };
+}
+
 interface AdminStats {
   professeurs: number;
   classes: number;
@@ -36,6 +46,11 @@ export default function AdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
+
+  // Panel stats prof
+  const [selectedProfEmail, setSelectedProfEmail] = useState<string | null>(null);
+  const [profStats, setProfStats] = useState<ProfStats | null>(null);
+  const [profStatsLoading, setProfStatsLoading] = useState(false);
 
   // Champs du formulaire
   const [nom, setNom] = useState('');
@@ -74,6 +89,23 @@ export default function AdminPage() {
   useEffect(() => {
     if (isAuthenticated) fetchStats();
   }, [isAuthenticated, fetchStats]);
+
+  const openProfPanel = useCallback(async (profEmail: string) => {
+    setSelectedProfEmail(profEmail);
+    setProfStats(null);
+    setProfStatsLoading(true);
+    const headers = await getAuthHeaders();
+    if (!headers) { setProfStatsLoading(false); return; }
+    try {
+      const res = await fetch(`/api/admin/prof-stats/${encodeURIComponent(profEmail)}`, { headers });
+      const json = await res.json();
+      if (json.success) setProfStats(json.data);
+    } catch {
+      // Silently fail
+    } finally {
+      setProfStatsLoading(false);
+    }
+  }, [getAuthHeaders]);
 
   const resetForm = () => {
     setNom('');
@@ -250,8 +282,16 @@ export default function AdminPage() {
             ) : (
               professeurs.map((prof) => {
                 const expirationLabel = getExpirationLabel(prof.expiresAt);
+                const isSelected = selectedProfEmail === prof.email;
                 return (
-                  <div key={prof.id} className={styles.profCard}>
+                  <div
+                    key={prof.id}
+                    className={`${styles.profCard} ${isSelected ? styles.profCardSelected : ''}`}
+                    onClick={() => openProfPanel(prof.email)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && openProfPanel(prof.email)}
+                  >
                     <h3 className={styles.profName}>{prof.prenom} {prof.nom}</h3>
                     <p className={styles.profEmail}>{prof.email}</p>
                     {expirationLabel && (
@@ -262,7 +302,7 @@ export default function AdminPage() {
                       <button
                         type="button"
                         className={styles.deleteButton}
-                        onClick={() => handleDelete(prof.id, `${prof.prenom} ${prof.nom}`)}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(prof.id, `${prof.prenom} ${prof.nom}`); }}
                       >
                         Supprimer
                       </button>
@@ -273,6 +313,107 @@ export default function AdminPage() {
             )}
           </div>
         </section>
+
+        {/* Panel stats prof */}
+        {selectedProfEmail && (
+          <section className={styles.profStatsPanel}>
+            <div className={styles.profStatsPanelHeader}>
+              <h2 className={styles.sectionTitle}>
+                Statistiques — {professeurs.find(p => p.email === selectedProfEmail)?.prenom}{' '}
+                {professeurs.find(p => p.email === selectedProfEmail)?.nom}
+              </h2>
+              <button
+                type="button"
+                className={styles.closePanelBtn}
+                onClick={() => { setSelectedProfEmail(null); setProfStats(null); }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {profStatsLoading && <div className={styles.panelLoading}>Chargement...</div>}
+
+            {!profStatsLoading && profStats && (
+              <div className={styles.profStatsContent}>
+                {/* IA résumé */}
+                {profStats.aiStats.devoirsAvecIA > 0 && (
+                  <div className={styles.aiSummaryBar}>
+                    <span>🤖</span>
+                    <span>
+                      <strong>{profStats.aiStats.devoirsAvecIA}</strong> devoir{profStats.aiStats.devoirsAvecIA > 1 ? 's' : ''} avec IA activée
+                      {profStats.aiStats.totalGridIA > 0 && (
+                        <> · <strong>{profStats.aiStats.totalGridIA}</strong> évaluation{profStats.aiStats.totalGridIA > 1 ? 's' : ''} IA de grille utilisée{profStats.aiStats.totalGridIA > 1 ? 's' : ''}</>
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                <div className={styles.profStatsColumns}>
+                  {/* Classes */}
+                  <div className={styles.profStatBlock}>
+                    <h3 className={styles.profStatBlockTitle}>Classes ({profStats.classes.length})</h3>
+                    {profStats.classes.length === 0 ? (
+                      <p className={styles.profStatEmpty}>Aucune classe</p>
+                    ) : (
+                      <ul className={styles.profStatList}>
+                        {profStats.classes.map((c) => (
+                          <li key={c.id} className={styles.profStatItem}>
+                            <span className={styles.profStatItemName}>{c.nom}</span>
+                            <span className={styles.profStatItemMeta}>{c.nbEleves} élève{c.nbEleves > 1 ? 's' : ''}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Grilles */}
+                  <div className={styles.profStatBlock}>
+                    <h3 className={styles.profStatBlockTitle}>Grilles ({profStats.grilles.length})</h3>
+                    {profStats.grilles.length === 0 ? (
+                      <p className={styles.profStatEmpty}>Aucune grille</p>
+                    ) : (
+                      <ul className={styles.profStatList}>
+                        {profStats.grilles.map((g) => (
+                          <li key={g.id} className={styles.profStatItem}>
+                            <span className={styles.profStatItemName}>{g.nom}</span>
+                            <span className={styles.profStatItemMeta}>{g.nbCriteres} critère{g.nbCriteres > 1 ? 's' : ''}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+
+                {/* Devoirs */}
+                <div className={styles.profStatBlock}>
+                  <h3 className={styles.profStatBlockTitle}>Devoirs ({profStats.devoirs.length})</h3>
+                  {profStats.devoirs.length === 0 ? (
+                    <p className={styles.profStatEmpty}>Aucun devoir</p>
+                  ) : (
+                    <div className={styles.devoirsTable}>
+                      <div className={styles.devoirsTableHead}>
+                        <span>Titre</span>
+                        <span>Soumis</span>
+                        <span>Corrections</span>
+                        <span>Grille IA</span>
+                        <span>IA</span>
+                      </div>
+                      {profStats.devoirs.map((d) => (
+                        <div key={d.id} className={styles.devoirsTableRow}>
+                          <span className={styles.devoirTitre}>{d.titre}</span>
+                          <span className={styles.devoirStat}>{d.nbSoumis}</span>
+                          <span className={styles.devoirStat}>{d.nbCorrections}</span>
+                          <span className={styles.devoirStat}>{d.accesIA ? d.nbGridIA : '—'}</span>
+                          <span>{d.accesIA ? <span className={styles.iaBadge}>✓</span> : <span className={styles.iaOff}>—</span>}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {showForm && (
           <section className={styles.formSection}>

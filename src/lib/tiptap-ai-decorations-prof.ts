@@ -390,6 +390,7 @@ function createDiffDecorations(
         decorations.push(
           Decoration.inline(from, to, {
             style: 'font-weight:700; color:#2a4d73;',
+            class: 'diff-added',
           }),
         );
       }
@@ -404,6 +405,7 @@ function createDiffDecorations(
             () => {
               const span = document.createElement('span');
               span.contentEditable = 'false';
+              span.setAttribute('data-diff-removed', '');
               span.textContent = removedText;
               span.style.cssText = [
                 'text-decoration:line-through',

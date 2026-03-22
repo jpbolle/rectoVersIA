@@ -146,6 +146,33 @@ export const LexicalMark = Mark.create({
 });
 
 // ────────────────────────────────────────────────────────
+// PunctuationMark — dotted gray underline for punctuation errors
+// ────────────────────────────────────────────────────────
+
+export const PunctuationMark = Mark.create({
+  name: 'ponctu',
+
+  parseHTML() {
+    return [
+      {
+        tag: 'span[data-annotation="ponctu"]',
+      },
+    ];
+  },
+
+  renderHTML() {
+    return [
+      'span',
+      {
+        'data-annotation': 'ponctu',
+        style: 'text-decoration: underline dotted #757575 2px !important; text-underline-offset: 3px;',
+      },
+      0,
+    ];
+  },
+});
+
+// ────────────────────────────────────────────────────────
 // StudentCommentMark — dotted underline with tooltip
 // (used by students in resource annotation editor)
 // ────────────────────────────────────────────────────────

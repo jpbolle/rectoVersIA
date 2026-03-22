@@ -7,11 +7,13 @@ import { FontFamily } from '@tiptap/extension-font-family';
 import TextAlign from '@tiptap/extension-text-align';
 import Link from '@tiptap/extension-link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LineHeight, Indent, FontSize } from '@/lib/tiptap-extensions';
 import {
   ContentLock,
   SpellingMark,
   SyntaxMark,
+  PunctuationMark,
   LexicalMark,
   VoiceAnnotationMark,
 } from '@/lib/tiptap-annotations';
@@ -63,6 +65,7 @@ export default function AnnotationEditor({
     top: number;
     left: number;
   } | null>(null);
+  const [profViewOnly, setProfViewOnly] = useState(false);
 
   const editorWrapperRef = useRef<HTMLDivElement>(null);
   const voiceSelectionRef = useRef<{ from: number; to: number } | null>(null);
@@ -101,6 +104,7 @@ export default function AnnotationEditor({
       ContentLock,
       SpellingMark,
       SyntaxMark,
+      PunctuationMark,
       LexicalMark,
       VoiceAnnotationMark,
       ProfAiDecorationsExtension,
@@ -138,13 +142,15 @@ export default function AnnotationEditor({
 
       const range = domSelection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
-      const wrapper = editorWrapperRef.current;
-      if (!wrapper) return;
-      const wrapperRect = wrapper.getBoundingClientRect();
+
+      // Utiliser les coordonnées viewport (fixed) pour éviter les débordements hors écran
+      const POPUP_HALF_W = 160;
+      const rawLeft = rect.left + rect.width / 2;
+      const clampedLeft = Math.max(POPUP_HALF_W + 8, Math.min(window.innerWidth - POPUP_HALF_W - 8, rawLeft));
 
       setSelectionPopup({
-        top: rect.top - wrapperRect.top + wrapper.scrollTop - 50,
-        left: rect.left - wrapperRect.left + rect.width / 2,
+        top: rect.top - 54,
+        left: clampedLeft,
       });
     };
 
@@ -162,7 +168,7 @@ export default function AnnotationEditor({
 
   // ─── Apply a text mark from popup (or toolbar click-to-annotate) ───
   const applyMarkFromPopup = useCallback(
-    (markName: 'spelling' | 'syntax' | 'lexical') => {
+    (markName: 'spelling' | 'syntax' | 'ponctu' | 'lexical') => {
       if (!editor) return;
 
       const { from, to } = editor.state.selection;
@@ -191,6 +197,7 @@ export default function AnnotationEditor({
       .focus()
       .unsetMark('spelling')
       .unsetMark('syntax')
+      .unsetMark('ponctu')
       .unsetMark('lexical')
       .unsetMark('voiceAnnotation')
       .run();
@@ -477,12 +484,14 @@ export default function AnnotationEditor({
         isRecording={isRecording}
         recordingDuration={recordingDuration}
         onStopRecording={handleStopRecording}
+        profViewOnly={profViewOnly}
+        onProfViewOnlyChange={setProfViewOnly}
       />
 
       {recorderError && <div className={styles.errorBar}>{recorderError}</div>}
 
       <div
-        className={styles.editorWrapper}
+        className={`${styles.editorWrapper}${profViewOnly ? ` ${styles.profViewOnly}` : ''}`}
         ref={editorWrapperRef}
         onMouseOver={handleAiBubbleMouseOver}
         onMouseOut={handleAiBubbleMouseOut}
@@ -493,10 +502,10 @@ export default function AnnotationEditor({
           onClick={handleEditorClick}
         />
 
-        {/* ── Selection popup ── */}
-        {selectionPopup && !isRecording && (
+        {/* ── Selection popup (rendu via portal en position fixed — toujours visible, au-dessus des headers) ── */}
+        {selectionPopup && !isRecording && typeof document !== 'undefined' && createPortal(
           <div
-            className={styles.selectionPopup}
+            className={styles.selectionPopupFixed}
             style={{ top: selectionPopup.top, left: selectionPopup.left }}
             onMouseDown={(e) => e.preventDefault()}
           >
@@ -515,6 +524,14 @@ export default function AnnotationEditor({
               title="Syntaxe"
             >
               <span className={styles.popupSynt}>Synt</span>
+            </button>
+            <button
+              type="button"
+              className={styles.popupBtn}
+              onClick={() => applyMarkFromPopup('ponctu')}
+              title="Ponctuation"
+            >
+              <span className={styles.popupPonctu}>Ponct</span>
             </button>
             <button
               type="button"
@@ -545,7 +562,8 @@ export default function AnnotationEditor({
                 <line x1="2" y1="15.5" x2="16" y2="15.5" stroke="#b0bec5" strokeWidth="1.2"/>
               </svg>
             </button>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* ── Audio play bubbles ── */}

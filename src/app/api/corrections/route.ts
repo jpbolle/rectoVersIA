@@ -79,12 +79,8 @@ export async function GET(request: NextRequest) {
 
     const data = docSnap.data()!;
 
-    // Les eleves ne voient la correction que si visibleParEleve est true
+    // Pour les élèves : vérifier que c'est bien leur travail
     if (auth.role === 'eleve') {
-      if (!data.visibleParEleve) {
-        return NextResponse.json({ success: true, data: null });
-      }
-      // Verifier que c'est bien leur travail
       if (data.studentId !== auth.uid) {
         return NextResponse.json(
           { success: false, message: 'Acces refuse' },
@@ -93,6 +89,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const visible = data.visibleParEleve || false;
+    // Les annotations du prof (texte souligné) sont toujours visibles pour l'élève.
+    // L'évaluation (grille + note) n'est visible que si visibleParEleve = true.
     const correction: Correction = {
       id: data.id || docSnap.id,
       travailId: data.travailId,
@@ -100,13 +99,13 @@ export async function GET(request: NextRequest) {
       studentId: data.studentId,
       profId: data.profId,
       profEmail: data.profEmail,
-      evaluation: data.evaluation || {},
-      commentaireGeneral: data.commentaireGeneral || '',
-      commentaireGeneralAudio: data.commentaireGeneralAudio || undefined,
+      evaluation: (auth.role !== 'eleve' || visible) ? (data.evaluation || {}) : {},
+      commentaireGeneral: (auth.role !== 'eleve' || visible) ? (data.commentaireGeneral || '') : '',
+      commentaireGeneralAudio: (auth.role !== 'eleve' || visible) ? (data.commentaireGeneralAudio || undefined) : undefined,
       commentairesCriteres: data.commentairesCriteres || {},
-      score: data.score || 0,
+      score: (auth.role !== 'eleve' || visible) ? (data.score || 0) : 0,
       status: data.status || 'draft',
-      visibleParEleve: data.visibleParEleve || false,
+      visibleParEleve: visible,
       annotatedContent: data.annotatedContent || undefined,
       audioAnnotations: data.audioAnnotations || [],
       draftAnnotations: data.draftAnnotations || undefined,

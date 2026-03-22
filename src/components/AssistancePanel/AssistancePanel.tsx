@@ -110,7 +110,8 @@ export default function AssistancePanel({
     }
   };
 
-  const hasRemarques = correction?.visibleParEleve && correction?.annotatedContent;
+  // Les annotations du prof sont toujours visibles — l'onglet s'active dès qu'elles existent
+  const hasRemarques = !!correction?.annotatedContent;
 
   // Badge IA : au moins une suggestion active (non-dismissed)
   const hasAiSuggestions = aiSuggestions
@@ -155,7 +156,6 @@ export default function AssistancePanel({
             onClick={() => handleTabChange('remarques')}
           >
             Remarques du professeur
-            {hasRemarques && <span className={styles.badge}>•</span>}
           </button>
         )}
         {rechercheMode && navigkidQuestions && navigkidQuestions.length > 0 && (

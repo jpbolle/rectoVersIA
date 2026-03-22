@@ -148,6 +148,8 @@ export default function GrilleTab({
   const hasEnoughSelfEval = selfEvalPct >= 0.75;
   const hasContent = studentContent.replace(/<[^>]*>/g, '').trim().length > 0;
   const canRequestAiGrid = accesIA && !isProfessorView && hasEnoughSelfEval && hasContent && !aiGridResult && !aiGridRequesting;
+  // Le prof peut demander l'IA uniquement si l'élève ne l'a pas déjà utilisée
+  const canProfRequestAiGrid = isProfessorView && (accesIA || showAiData) && hasContent && !aiGridResult && !aiGridRequesting;
 
   // Lookup rapide : criterionId → AiGridCriterionResult
   const aiCriteriaMap = React.useMemo(() => {
@@ -210,11 +212,18 @@ export default function GrilleTab({
                 </div>
               )}
 
-              {profEvaluation && profScoreData && (
-                <div className={styles.profScoreBanner}>
-                  <Image src="/jpavatar.png" alt="Prof" width={24} height={24} className={styles.profAvatarSmall} />
-                  <span>Correction du professeur : <strong>{profScoreData.pct}%</strong> ({profScoreData.pts}/{profScoreData.max})</span>
-                </div>
+              {profEvaluation && (
+                profScoreData && Object.keys(profEvaluation).length > 0 ? (
+                  <div className={styles.profScoreBanner}>
+                    <Image src="/jpavatar.png" alt="Prof" width={24} height={24} className={styles.profAvatarSmall} />
+                    <span>Correction du professeur : <strong>{profScoreData.pct}%</strong> ({profScoreData.pts}/{profScoreData.max})</span>
+                  </div>
+                ) : (
+                  <div className={styles.profScoreBannerEmpty}>
+                    <Image src="/jpavatar.png" alt="Prof" width={24} height={24} className={styles.profAvatarSmall} />
+                    <span>Correction : <em>non évalué</em></span>
+                  </div>
+                )
               )}
             </div>
           ) : null}
@@ -251,12 +260,17 @@ export default function GrilleTab({
               <span>Évaluation IA : <strong>{aiScoreData.pct}%</strong> ({aiScoreData.pts}/{aiScoreData.max})</span>
             </div>
           )}
-          {profScoreData && (
+          {correction?.evaluation && Object.keys(correction.evaluation).length > 0 && profScoreData ? (
             <div className={styles.profScoreBanner}>
               <Image src="/jpavatar.png" alt="Prof" width={24} height={24} className={styles.profAvatarSmall} />
               <span>Votre correction : <strong>{profScoreData.pct}%</strong> ({profScoreData.pts}/{profScoreData.max})</span>
             </div>
-          )}
+          ) : isProfessorView ? (
+            <div className={styles.profScoreBannerEmpty}>
+              <Image src="/jpavatar.png" alt="Prof" width={24} height={24} className={styles.profAvatarSmall} />
+              <span>Correction : <em>non évalué</em></span>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -335,6 +349,20 @@ export default function GrilleTab({
           </div>
         ))}
       </div>
+
+      {/* Bouton IA pour le prof — uniquement si l'élève ne l'a pas déjà utilisé */}
+      {canProfRequestAiGrid && (
+        <div className={styles.aiRequestSection}>
+          <button
+            type="button"
+            className={styles.aiRequestButton}
+            onClick={onRequestAiGrid}
+          >
+            <span>🤖</span>
+            <span>Évaluation IA (élève n&apos;a pas utilisé l&apos;IA)</span>
+          </button>
+        </div>
+      )}
 
       {/* Badge / bouton évaluation IA — après la grille */}
       {!isProfessorView && (accesIA || showAiData) && (

@@ -88,14 +88,22 @@ export default function TravailDetailPage() {
     grille
   );
 
-  // IA grille — charger l'évaluation IA si elle existe
+  // IA grille — charger l'évaluation IA (et permettre au prof de la déclencher si pas encore faite)
   const {
     result: aiGridResult,
+    isRequesting: aiGridRequesting,
+    error: aiGridError,
+    requestEvaluation: requestAiGridEval,
   } = useAiGridEvaluation(
     devoir?.accesIA ? travailId : undefined,
     devoir?.accesIA ? devoirId : undefined,
     devoir?.accesIA && grille?.id ? grille.id : undefined,
   );
+
+  const handleProfRequestAiGrid = useCallback(async () => {
+    if (!travail?.content) return;
+    await requestAiGridEval(travail.content);
+  }, [travail?.content, requestAiGridEval]);
 
   // IA suggestions de réécriture — lecture seule côté prof
   const {
@@ -649,8 +657,12 @@ export default function TravailDetailPage() {
                   studentContent={travail.content}
                   showRemarquesTab={false}
                   isProfessorView={true}
+                  accesIA={!!devoir.accesIA}
                   showAiData={!!devoir.accesIA}
                   aiGridResult={aiGridResult}
+                  aiGridRequesting={aiGridRequesting}
+                  aiGridError={aiGridError}
+                  onRequestAiGrid={handleProfRequestAiGrid}
                   studentRessourceAnnotations={travail.ressourceAnnotations}
                   studentRessourceNotes={travail.ressourceNotes}
                   navigkidQuestions={nkQuestions.length > 0 ? nkQuestions : undefined}

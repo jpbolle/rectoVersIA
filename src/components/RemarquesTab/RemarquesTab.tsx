@@ -15,16 +15,13 @@ interface RemarquesTabProps {
 }
 
 export default function RemarquesTab({ correction, studentContent }: RemarquesTabProps) {
-  // Si correction pas visible ou pas de contenu annoté
-  if (!correction?.visibleParEleve || !correction?.annotatedContent) {
+  // Les annotations du prof sont toujours visibles dès qu'elles existent
+  if (!correction?.annotatedContent) {
     return (
       <div className={styles.empty}>
         <span className={styles.emptyIcon}>📝</span>
         <p className={styles.emptyText}>
-          {!correction?.visibleParEleve 
-            ? 'Le professeur n\'a pas encore rendu sa correction visible.'
-            : 'Le professeur n\'a pas encore annoté votre travail.'
-          }
+          Le professeur n&apos;a pas encore annoté votre travail.
         </p>
       </div>
     );
@@ -43,6 +40,10 @@ export default function RemarquesTab({ correction, studentContent }: RemarquesTa
             <div className={styles.legendItem}>
               <span className={styles.legendBtnSyntax}>Synt</span>
               <span className={styles.legendText}>Syntaxe</span>
+            </div>
+            <div className={styles.legendItem}>
+              <span className={styles.legendBtnPonctu}>Ponct</span>
+              <span className={styles.legendText}>Ponctuation</span>
             </div>
             <div className={styles.legendItem}>
               <span className={styles.legendBtnLexical}>Lex</span>

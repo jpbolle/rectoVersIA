@@ -5,7 +5,7 @@
 | Champ | Valeur |
 |-------|--------|
 | **Nom** | Recto-versIA — Assistant de correction pedagogique avec IA |
-| **Version** | 3.1 (mars 2026) |
+| **Version** | 3.3 (mars 2026) |
 | **Domaine** | EdTech — correction de productions ecrites d'eleves |
 | **Ecole** | College Notre-Dame de Dinant (Belgique) |
 | **Utilisateur principal** | Jean-Philippe Bolle (professeur) |
@@ -217,6 +217,8 @@ interface Grille {
 | `/api/auth/init-user` | POST | Creation doc utilisateur |
 | `/api/professeurs` | GET, POST, DELETE | CRUD professeurs (admin, supporte expiresAt) |
 | `/api/admin/stats` | GET | Stats globales (admin) |
+| `/api/admin/prof-stats/[profId]` | GET | Stats detaillees par prof (classes, devoirs, grilles, IA) — profId = email encode |
+| `/api/roadmap` | GET, POST | Lire / ecrire la roadmap Firestore (POST admin seulement) |
 | `/api/ai/writing-help` | POST | Aide redaction IA |
 | `/api/ai/grid-eval` | GET, POST | Evaluation IA grille |
 | `/api/navigkid/generer-questions` | POST | Generation IA questions recherche |
@@ -312,7 +314,7 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 - `src/lib/editor-constants.ts` — FONTS, FONT_SIZES, PAGE_THEMES, LINE_HEIGHT
 - `src/lib/classe-utils.ts` — generateClasseId, generateClasseCode
 - `src/lib/tiptap-extensions.ts` — LineHeight, Indent, FontSize
-- `src/lib/tiptap-annotations.ts` — ContentLock, SpellingMark, SyntaxMark, LexicalMark
+- `src/lib/tiptap-annotations.ts` — ContentLock, SpellingMark, SyntaxMark, LexicalMark, PunctuationMark
 - `src/lib/tiptap-ai-decorations.ts` — Decorations IA eleve
 - `src/lib/tiptap-ai-decorations-prof.ts` — Decorations IA prof
 - `src/middleware.ts` — Vide (auth cote client uniquement)
@@ -320,6 +322,14 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 ---
 
 ## 10. Roadmap
+
+### Fait (v3.3)
+- [x] **Page admin — stats par prof** : clic sur une fiche prof → panel avec classes, devoirs, grilles, usage IA (fix profId = Firebase UID, pas email)
+- [x] **Roadmap dynamique** : Firestore-backed, admin peut ajouter/supprimer items, drag & drop dans "A venir", date auto avec calendrier natif
+
+### Fait (v3.2)
+- [x] **Statistiques classe** : taux de remise, moyenne, distribution, top criteres faibles
+- [x] **Page correction prof** : toggle "Afficher remarques IA et reecritures", bouton IA grille pour le prof, "non evalue" si grille vide, ponctuation restauree
 
 ### Fait (v3.1)
 - [x] **Integration NavigKid** : type de travail "Rechercher", constructeur questionnaire, extension Chrome, vue correction, aide IA

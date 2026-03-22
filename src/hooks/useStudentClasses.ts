@@ -46,7 +46,6 @@ export function useStudentClasses() {
   useEffect(() => {
     if (!user) {
       setClasses([]);
-      setIsLoading(false);
       fetchedRef.current = false;
       userUidRef.current = null;
       return;
