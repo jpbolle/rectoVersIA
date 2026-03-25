@@ -88,6 +88,11 @@
   color: var(--c-success);
 }
 
+.statusBadgeCorrige {
+  background: rgba(212, 148, 76, 0.12);
+  color: var(--c-accent-dark);
+}
+
 .iaBadge {
   position: absolute;
   top: 12px;

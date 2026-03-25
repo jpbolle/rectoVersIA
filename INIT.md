@@ -201,6 +201,7 @@ interface Grille {
 | `/api/travaux/mine` | GET | Travail de l'eleve connecte |
 | `/api/corrections` | GET, POST | Corrections. GET supporte `?devoirId=X` |
 | `/api/corrections/[id]` | PATCH | Modifier correction |
+| `/api/corrections/mine` | GET | Corrections de l'eleve connecte (devoirId + visibleParEleve) |
 | `/api/classes` | GET, POST | Lister / creer classes |
 | `/api/classes/[id]` | GET, PATCH, DELETE | Detail / modifier / supprimer |
 | `/api/classes/student` | GET | Classes de l'eleve (par firebaseUid/email) |
@@ -266,7 +267,7 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 
 ### Brouillons
 - `CrcDraft` — compte rendu critique (brainstorming + plan drag & drop)
-- `PlanDraft` — plan hierarchique
+- `PlanDraft` — plan hierarchique avec drag & drop (idees principales et sous-idees)
 - `FreeDraft` — brouillon libre
 
 ### NavigKid (recherche guidee)
@@ -322,6 +323,11 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 ---
 
 ## 10. Roadmap
+
+### Fait (v3.4)
+- [x] **Travaux corriges cote eleve** : section "Travaux corriges" dans `/activites` quand `corrigeDisponible` OU `correction.visibleParEleve` — endpoint `/api/corrections/mine`
+- [x] **PlanDraft drag & drop** : reordonner idees principales (bloc entier) et sous-idees (y compris entre blocs differents)
+- [x] **NavigKid v1.3** : suppression restriction domaine `cnddinant.be`, tous comptes Google acceptes
 
 ### Fait (v3.3)
 - [x] **Page admin — stats par prof** : clic sur une fiche prof → panel avec classes, devoirs, grilles, usage IA (fix profId = Firebase UID, pas email)

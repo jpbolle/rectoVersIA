@@ -130,7 +130,11 @@ export default function DevoirCard({
 
       {variant === 'student' && (
         <div className={styles.statusWrapper}>
-          <span className={styles.statusBadge}>À réaliser</span>
+          {devoir.corrigeDisponible ? (
+            <span className={`${styles.statusBadge} ${styles.statusBadgeCorrige}`}>Corrigé disponible</span>
+          ) : (
+            <span className={styles.statusBadge}>À réaliser</span>
+          )}
         </div>
       )}
 

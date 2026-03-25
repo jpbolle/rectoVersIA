@@ -70,8 +70,6 @@ $("#btn-google-login").addEventListener("click", async () => {
     authUrl.searchParams.set("response_type", "token");
     authUrl.searchParams.set("redirect_uri", redirectUrl);
     authUrl.searchParams.set("scope", "openid email profile");
-    authUrl.searchParams.set("hd", "cnddinant.be");
-    authUrl.searchParams.set("login_hint", "@cnddinant.be");
 
     const responseUrl = await chrome.identity.launchWebAuthFlow({
       url: authUrl.toString(),

@@ -71,6 +71,11 @@
   box-shadow: var(--c-shadow-card);
 }
 
+.corrigeesSection {
+  margin-top: 30px;
+  border-left: 4px solid var(--c-accent);
+}
+
 .sectionTitle {
   color: var(--c-primary);
   font-size: 24px;

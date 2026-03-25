@@ -4,7 +4,7 @@
 NavigKid!
 
 ## Version
-1.1
+1.3
 
 ## Resume (132 caracteres max)
 Extension de recherche guidee pour les eleves. Questionnaires, surlignage de sources et aide IA integres a Recto-versIA.
@@ -15,7 +15,7 @@ NavigKid! est une extension Chrome conçue pour accompagner les élèves dans le
 
 **Fonctionnalités principales :**
 
-• Connexion sécurisée avec le compte Google de l'école
+• Connexion sécurisée avec n'importe quel compte Google
 • Liste des activités de recherche assignées par le professeur
 • Questionnaire interactif avec questions ouvertes et QCM
 • Surlignage et sélection de passages sur les pages web visitées
@@ -67,7 +67,7 @@ Injecter le script de surlignage sur les pages web visitées afin que l'élève 
 Afficher le questionnaire de recherche dans un panneau latéral de Chrome, permettant à l'élève de consulter les questions et répondre tout en naviguant sur le web.
 
 ### identity
-Authentifier l'élève via Google OAuth avec son compte scolaire Google Workspace, pour identifier ses réponses et les transmettre à son professeur.
+Authentifier l'utilisateur via Google OAuth avec n'importe quel compte Google, pour identifier ses réponses et les transmettre au professeur.
 
 ### Autorisation d'acces a l'hote
 L'extension communique avec l'API de la plateforme pédagogique Recto-versIA (rectoversia.edukids.pedagokit.be) pour récupérer les questionnaires assignés, envoyer les réponses de l'élève et accéder à l'aide IA. Le content script s'exécute sur toutes les pages pour permettre le surlignage de passages sur n'importe quel site web visité lors de la recherche.

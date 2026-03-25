@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import type { DraftContent, PlanItem } from '@/types/travail';
 import type { DraftItemAnnotation } from '@/types/correction';
 import { createPlanItem } from '@/lib/draft-utils';
@@ -41,7 +41,12 @@ export default function PlanDraft({
   const showAnnotations = !!draftAnnotations && (!!onAnnotationChange || readOnlyAnnotations);
   const plan = draft.plan || [createPlanItem()];
 
-  // Mise a jour recursive d'un item dans l'arbre
+  // État drag & drop
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<{ id: string; position: 'before' | 'after' } | null>(null);
+
+  // --- Helpers arbre existants ---
+
   const updateItemInTree = useCallback((
     items: PlanItem[],
     targetId: string,
@@ -52,7 +57,6 @@ export default function PlanDraft({
       if (item.id === targetId) {
         const updated = updater(item);
         if (updated) result.push(updated);
-        // null = suppression
       } else {
         result.push({
           ...item,
@@ -80,7 +84,6 @@ export default function PlanDraft({
   const handleAddSibling = useCallback((id: string) => {
     const newItem = createPlanItem();
 
-    // Chercher au niveau racine
     const rootIndex = plan.findIndex(item => item.id === id);
     if (rootIndex !== -1) {
       const updated = [...plan];
@@ -89,7 +92,6 @@ export default function PlanDraft({
       return;
     }
 
-    // Chercher dans l'arbre : ajouter apres l'item dans le parent
     const addSiblingInTree = (items: PlanItem[]): PlanItem[] => {
       const result: PlanItem[] = [];
       for (const item of items) {
@@ -109,7 +111,6 @@ export default function PlanDraft({
   }, [draft, onChange, plan]);
 
   const handleRemove = useCallback((id: string) => {
-    // Empecher de supprimer le dernier item racine
     if (plan.length === 1 && plan[0].id === id) return;
 
     const rootIndex = plan.findIndex(item => item.id === id);
@@ -123,7 +124,6 @@ export default function PlanDraft({
     onChange({ ...draft, plan: updated });
   }, [draft, onChange, plan, updateItemInTree]);
 
-  // Calcul de profondeur d'un item
   const getDepth = useCallback((id: string, items: PlanItem[] = plan, depth: number = 0): number => {
     for (const item of items) {
       if (item.id === id) return depth;
@@ -133,7 +133,6 @@ export default function PlanDraft({
     return -1;
   }, [plan]);
 
-  // Generer le numero hierarchique (1, 1.1, 1.1.1, ...)
   const getItemNumber = useCallback((id: string, items: PlanItem[] = plan, prefix: string = ''): string => {
     for (let i = 0; i < items.length; i++) {
       const num = prefix ? `${prefix}.${i + 1}` : `${i + 1}`;
@@ -144,17 +143,171 @@ export default function PlanDraft({
     return '';
   }, [plan]);
 
-  // Rendu d'une idee secondaire (depth >= 1)
+  // --- Drag & drop ---
+
+  // Retourne l'id du parent de l'item (null = racine, undefined = introuvable)
+  const findParentId = useCallback((
+    items: PlanItem[],
+    targetId: string,
+    parentId: string | null = null
+  ): string | null | undefined => {
+    for (const item of items) {
+      if (item.id === targetId) return parentId;
+      const found = findParentId(item.children, targetId, item.id);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }, []);
+
+  const handleDragStart = useCallback((e: React.DragEvent, id: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    // Timeout pour que le navigateur capture l'image de drag avant le re-render
+    setTimeout(() => setDraggedId(id), 0);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedId(null);
+    setDragOver(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!draggedId || draggedId === id) return;
+
+    const draggedParent = findParentId(plan, draggedId);
+    const targetParent = findParentId(plan, id);
+
+    // Idée principale (root) ↔ idée principale uniquement
+    // Sous-idée ↔ n'importe quelle autre sous-idée (même parent ou non)
+    const draggedIsRoot = draggedParent === null;
+    const targetIsRoot = targetParent === null;
+    if (draggedIsRoot !== targetIsRoot) return;
+
+    e.dataTransfer.dropEffect = 'move';
+
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const position: 'before' | 'after' = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+
+    if (dragOver?.id !== id || dragOver?.position !== position) {
+      setDragOver({ id, position });
+    }
+  }, [draggedId, findParentId, plan, dragOver]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.stopPropagation();
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOver(null);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const cleanup = () => { setDraggedId(null); setDragOver(null); };
+
+    if (!draggedId || draggedId === targetId || !dragOver) { cleanup(); return; }
+
+    const draggedParent = findParentId(plan, draggedId);
+    const targetParent = findParentId(plan, targetId);
+    const draggedIsRoot = draggedParent === null;
+    const targetIsRoot = targetParent === null;
+    if (draggedIsRoot !== targetIsRoot) { cleanup(); return; }
+
+    // 1. Extraire l'item dragué de l'arbre
+    let extracted: PlanItem | null = null;
+    const extract = (items: PlanItem[]): PlanItem[] => {
+      const result: PlanItem[] = [];
+      for (const item of items) {
+        if (item.id === draggedId) {
+          extracted = item;
+        } else {
+          result.push({ ...item, children: extract(item.children) });
+        }
+      }
+      return result;
+    };
+
+    const treeWithout = extract(plan);
+    if (!extracted) { cleanup(); return; }
+
+    // 2. Insérer avant/après le target (à n'importe quel niveau)
+    const insert = (items: PlanItem[]): PlanItem[] => {
+      const result: PlanItem[] = [];
+      for (const item of items) {
+        if (item.id === targetId) {
+          if (dragOver.position === 'before') {
+            result.push(extracted!);
+            result.push({ ...item, children: insert(item.children) });
+          } else {
+            result.push({ ...item, children: insert(item.children) });
+            result.push(extracted!);
+          }
+        } else {
+          result.push({ ...item, children: insert(item.children) });
+        }
+      }
+      return result;
+    };
+
+    onChange({ ...draft, plan: insert(treeWithout) });
+    cleanup();
+  }, [draggedId, dragOver, findParentId, plan, draft, onChange]);
+
+  // Style de l'indicateur de drop (ligne avant/après)
+  const dropIndicatorStyle = (id: string): React.CSSProperties => {
+    if (dragOver?.id !== id) return {};
+    return dragOver.position === 'before'
+      ? { borderTop: '2px solid var(--c-primary)' }
+      : { borderBottom: '2px solid var(--c-primary)' };
+  };
+
+  // --- Rendu ---
+
+  const renderDragHandle = (id: string) => {
+    if (disabled) return null;
+    return (
+      <span
+        draggable
+        onDragStart={(e) => handleDragStart(e, id)}
+        onDragEnd={handleDragEnd}
+        title="Déplacer"
+        style={{
+          cursor: 'grab',
+          padding: '0 6px 0 0',
+          color: 'var(--c-border, #ccc)',
+          userSelect: 'none',
+          fontSize: '16px',
+          lineHeight: 1,
+          flexShrink: 0,
+        }}
+      >
+        ⠿
+      </span>
+    );
+  };
+
   const renderChild = (item: PlanItem, depth: number) => {
     const number = getItemNumber(item.id);
     const canAddChild = depth < MAX_DEPTH - 1;
-
     const depthClass = styles[`depth${depth}` as keyof typeof styles] || '';
 
     return (
-      <div key={item.id} className={`${styles.childContainer} ${depthClass}`}>
-        <div className={styles.itemRow}>
+      <div
+        key={item.id}
+        className={`${styles.childContainer} ${depthClass}`}
+        style={draggedId === item.id ? { opacity: 0.4 } : {}}
+      >
+        <div
+          className={styles.itemRow}
+          onDragOver={(e) => handleDragOver(e, item.id)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, item.id)}
+          style={dropIndicatorStyle(item.id)}
+        >
           <div className={styles.childItem}>
+            {renderDragHandle(item.id)}
             <span className={`${styles.number} ${depthClass ? styles[`number${depth}` as keyof typeof styles] || '' : ''}`}>
               {number}
             </span>
@@ -198,14 +351,12 @@ export default function PlanDraft({
           )}
         </div>
 
-        {/* Sous-enfants */}
         {item.children.length > 0 && (
           <div className={styles.subChildren}>
             {item.children.map(child => renderChild(child, depth + 1))}
           </div>
         )}
 
-        {/* Bouton ajouter sous-idee */}
         {!disabled && canAddChild && (
           <button
             type="button"
@@ -219,15 +370,24 @@ export default function PlanDraft({
     );
   };
 
-  // Rendu d'un bloc idee principale (depth 0)
   const renderMainItem = (item: PlanItem) => {
     const number = getItemNumber(item.id);
 
     return (
-      <div key={item.id} className={styles.mainBlock}>
-        {/* Encadre idee principale */}
-        <div className={styles.itemRow}>
+      <div
+        key={item.id}
+        className={styles.mainBlock}
+        style={draggedId === item.id ? { opacity: 0.4 } : {}}
+      >
+        <div
+          className={styles.itemRow}
+          onDragOver={(e) => handleDragOver(e, item.id)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, item.id)}
+          style={dropIndicatorStyle(item.id)}
+        >
           <div className={styles.mainItem}>
+            {renderDragHandle(item.id)}
             <span className={`${styles.number} ${styles.numberMain}`}>
               {number}
             </span>
@@ -271,14 +431,12 @@ export default function PlanDraft({
           )}
         </div>
 
-        {/* Idees secondaires */}
         {item.children.length > 0 && (
           <div className={styles.children}>
             {item.children.map(child => renderChild(child, 1))}
           </div>
         )}
 
-        {/* Bouton ajouter idee secondaire */}
         {!disabled && (
           <button
             type="button"
@@ -307,7 +465,6 @@ export default function PlanDraft({
           <div key={item.id}>
             {renderMainItem(item)}
 
-            {/* Encadre pointille pour ajouter une idee principale */}
             {!disabled && (
               <button
                 type="button"
