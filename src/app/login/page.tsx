@@ -101,8 +101,9 @@ export default function LoginPage() {
     }
   }, [classes.length, blocked]);
 
-  // Si déjà authentifié ou en cours de redirection → ne rien rendre (évite le flash de la page login)
-  if (isAuthenticated || redirecting) return null;
+  // En cours de redirection → ne rien rendre (évite le flash de la page login)
+  // Ne pas bloquer le rendu si authentifié sans classe (élève doit voir le modal)
+  if (redirecting) return null;
 
   if (isLoading) {
     return (
