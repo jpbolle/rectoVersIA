@@ -56,6 +56,8 @@ export async function GET(request: NextRequest) {
         typeTravail: data.typeTravail || 'ecrire',
         questionnaireId: data.questionnaireId || undefined,
         codeAcces: data.codeAcces || undefined,
+        vocabulaireThemes: data.vocabulaireThemes || undefined,
+        vocabulaireDiagnostic: data.vocabulaireDiagnostic ?? undefined,
       };
     });
 
@@ -126,10 +128,12 @@ export async function POST(request: NextRequest) {
       disponible,
       typeTravail,
       questionnaire,
+      vocabulaireConfig,
     } = body;
 
-    // Validation des champs requis
-    if (!Array.isArray(classes) || !dateRemise || !grille || !intitule) {
+    // Validation des champs requis (grille non requise pour vocabulaire)
+    const grilleRequired = typeTravail !== 'vocabulaire';
+    if (!Array.isArray(classes) || !dateRemise || (grilleRequired && !grille) || !intitule) {
       return NextResponse.json(
         { success: false, message: 'Date de remise, grille et intitulé requis' },
         { status: 400 }
@@ -158,6 +162,12 @@ export async function POST(request: NextRequest) {
       profId: auth.uid,
       typeTravail: typeTravail || 'ecrire',
     };
+
+    // Si type "vocabulaire", stocker la config
+    if (typeTravail === 'vocabulaire' && vocabulaireConfig) {
+      devoirData.vocabulaireThemes = vocabulaireConfig.themes || [];
+      devoirData.vocabulaireDiagnostic = vocabulaireConfig.diagnostic ?? false;
+    }
 
     // Si type "rechercher", créer le questionnaire dans Firestore
     if (typeTravail === 'rechercher' && questionnaire) {

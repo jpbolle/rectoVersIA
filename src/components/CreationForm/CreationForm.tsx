@@ -6,6 +6,7 @@ import DatePicker from '@/components/DatePicker/DatePicker';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
 import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/QuestionnaireBuilder';
 import { getTodayString } from '@/lib/devoir-utils';
+import { useVocabulaireThemes } from '@/hooks/useVocabulaireThemes';
 import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail } from '@/types/devoir';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import styles from './CreationForm.module.css';
@@ -48,12 +49,18 @@ export default function CreationForm({
   const [nkQuestions, setNkQuestions] = useState<NavigKidQuestion[]>([]);
   const [nkThemes, setNkThemes] = useState<string[]>([]);
 
+  // Vocabulaire (type vocabulaire)
+  const [vocabDiagnostic, setVocabDiagnostic] = useState(false);
+  const { themes: vocabThemes } = useVocabulaireThemes();
+
   // Toggles (initialement à false)
   const [accesIA, setAccesIA] = useState(false);
   const [disponible, setDisponible] = useState(false);
 
-  const baseValid = selectedClasses.length > 0 && dateRemise && grille && intitule.trim();
-  const isValid = baseValid && (typeTravail !== 'rechercher' || nkQuestions.some(q => q.texte.trim()));
+  const baseValid = selectedClasses.length > 0 && dateRemise && intitule.trim();
+  const grilleValid = typeTravail === 'vocabulaire' || grille;
+  const isValid = baseValid && grilleValid
+    && (typeTravail !== 'rechercher' || nkQuestions.some(q => q.texte.trim()));
 
   const handleClassToggle = (classe: Classe) => {
     setSelectedClasses((prev) =>
@@ -77,6 +84,7 @@ export default function CreationForm({
     setTypeTravail('ecrire');
     setNkQuestions([]);
     setNkThemes([]);
+    setVocabDiagnostic(false);
   }, []);
 
   async function handleSubmit() {
@@ -102,6 +110,13 @@ export default function CreationForm({
       };
     }
 
+    if (typeTravail === 'vocabulaire') {
+      data.vocabulaireConfig = {
+        themes: [intitule.trim()],
+        diagnostic: vocabDiagnostic,
+      };
+    }
+
     await onSubmit(data);
 
     resetForm();
@@ -123,8 +138,8 @@ export default function CreationForm({
         )}
       </div>
 
-      {/* Ligne 1: Classes + Date + Type travail + Grille */}
-      <div className={styles.formRowFour}>
+      {/* Ligne 1: Classes + Date + Type travail + (Grille si pas vocabulaire) */}
+      <div className={typeTravail === 'vocabulaire' ? styles.formRowThree : styles.formRowFour}>
         <div className={styles.formGroup}>
           <label className={styles.label}>
             Classe(s) <span className={styles.required}>*</span>
@@ -166,41 +181,88 @@ export default function CreationForm({
             <option value="ecrire">Écrire</option>
             <option value="lire">Lire</option>
             <option value="rechercher">Rechercher</option>
+            <option value="vocabulaire">Vocabulaire</option>
           </select>
         </div>
 
+        {typeTravail !== 'vocabulaire' && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Type de grille <span className={styles.required}>*</span>
+            </label>
+            <select
+              className={styles.select}
+              value={grille}
+              onChange={(e) => setGrille(e.target.value)}
+            >
+              <option value="">Sélectionnez...</option>
+              {grilleTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* Ligne 2: Intitulé (+ mode si vocabulaire) */}
+      {typeTravail === 'vocabulaire' ? (
+        <div className={styles.formRowIntituleVocab}>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Série lexicale <span className={styles.required}>*</span>
+            </label>
+            <select
+              className={styles.select}
+              value={intitule}
+              onChange={(e) => setIntitule(e.target.value)}
+              disabled={isSubmitting}
+            >
+              <option value="">Sélectionnez une série...</option>
+              {vocabThemes.map((theme) => (
+                <option key={theme.id} value={theme.id}>
+                  {theme.name.charAt(0).toUpperCase() + theme.name.slice(1)} ({theme.wordCount} mots)
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Mode</label>
+            <div className={styles.modeSelector}>
+              <button
+                type="button"
+                className={`${styles.modeBtn} ${!vocabDiagnostic ? styles.modeBtnActive : ''}`}
+                onClick={() => setVocabDiagnostic(false)}
+                disabled={isSubmitting}
+              >
+                Apprendre
+              </button>
+              <button
+                type="button"
+                className={`${styles.modeBtn} ${vocabDiagnostic ? styles.modeBtnActive : ''}`}
+                onClick={() => setVocabDiagnostic(true)}
+                disabled={isSubmitting}
+              >
+                Diagnostic
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
         <div className={styles.formGroup}>
           <label className={styles.label}>
-            Type de grille <span className={styles.required}>*</span>
+            Intitulé du devoir <span className={styles.required}>*</span>
           </label>
-          <select
-            className={styles.select}
-            value={grille}
-            onChange={(e) => setGrille(e.target.value)}
-          >
-            <option value="">Sélectionnez...</option>
-            {grilleTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
+          <input
+            className={styles.input}
+            type="text"
+            value={intitule}
+            onChange={(e) => setIntitule(e.target.value)}
+            placeholder="Ex : Dissertation sur Molière"
+          />
         </div>
-      </div>
-
-      {/* Ligne 2: Intitulé */}
-      <div className={styles.formGroup}>
-        <label className={styles.label}>
-          Intitulé du devoir <span className={styles.required}>*</span>
-        </label>
-        <input
-          className={styles.input}
-          type="text"
-          value={intitule}
-          onChange={(e) => setIntitule(e.target.value)}
-          placeholder="Ex : Dissertation sur Molière"
-        />
-      </div>
+      )}
 
       {/* Consignes particulières (optionnel avec checkbox) */}
       <div className={styles.optionalSection}>
@@ -256,6 +318,8 @@ export default function CreationForm({
           getAuthHeaders={getAuthHeaders}
         />
       )}
+
+      {/* Config Vocabulaire supprimee — integree dans l'intitule + mode */}
 
       {/* Toggles */}
       <div className={styles.toggleSection}>

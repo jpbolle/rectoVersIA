@@ -1,5 +1,5 @@
 export type Classe = string;
-export type TypeTravail = 'ecrire' | 'lire' | 'rechercher';
+export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
 
 export interface DevoirRessource {
   type: 'text';
@@ -27,6 +27,8 @@ export interface Devoir {
   typeTravail: TypeTravail;
   questionnaireId?: string;       // Référence vers questionnaires/{id} (type rechercher)
   codeAcces?: string;             // Code 6 chars pour l'extension Chrome (type rechercher)
+  vocabulaireThemes?: string[];   // Séries lexicales imposées (type vocabulaire)
+  vocabulaireDiagnostic?: boolean; // Mode diagnostic activé (type vocabulaire)
 }
 
 export interface CreateDevoirData {
@@ -43,5 +45,10 @@ export interface CreateDevoirData {
   questionnaire?: {
     themes: string;
     questions: import('./navigkid').NavigKidQuestion[];
+  };
+  // Vocabulaire (type vocabulaire uniquement)
+  vocabulaireConfig?: {
+    themes: string[];
+    diagnostic: boolean;
   };
 }

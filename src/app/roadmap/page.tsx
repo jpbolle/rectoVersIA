@@ -31,6 +31,21 @@ interface RoadmapData {
 const DEFAULT_DATA: RoadmapData = {
   nouveautes: [
     {
+      date: '1er mai 2026',
+      items: [
+        'Page « Mes Ressources » : onglets Grilles d\'évaluation + Listes de vocabulaire',
+        'CRUD complet des listes de vocabulaire : cards, tableau éditable (terme, définition, exemple, synonymes, antonymes, proxémie)',
+        'Séparation Mes listes / Listes des professeurs (duplication, lecture seule)',
+        'Popup formulaire pour l\'ajout de mots',
+        'Bouton « Créer avec l\'IA » : suggestions de mots par thème + import sélectif avec enrichissement automatique',
+        'En-tête de tableau fixe au scroll',
+        'Script d\'enrichissement IA des 326 mots existants (synonymes, antonymes, proxémie, exemples pour ados de 15 ans)',
+        'Vocabulaire v2 : création simplifiée (dropdown série lexicale + mode Apprendre/Diagnostic)',
+        'Interface recto/verso avec flip 3D : mots en étiquettes au recto, exercices IA au verso',
+        '5 types d\'exercices IA + mode diagnostic optionnel',
+      ],
+    },
+    {
       date: '21 mars 2026',
       items: [
         'Tableau de bord des travaux : statistiques de classe en temps réel (taux de remise, réussites, échecs, moyenne, médiane)',

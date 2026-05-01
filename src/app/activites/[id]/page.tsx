@@ -18,6 +18,7 @@ import type { DraftContent } from '@/types/travail';
 import type { AiSuggestionType } from '@/types/ai-suggestions';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
 import RechercheResponseViewer from '@/components/RechercheResponseViewer/RechercheResponseViewer';
+import VocabulaireActivity from '@/components/VocabulaireActivity/VocabulaireActivity';
 import ResizableSplit from '@/components/ResizableSplit/ResizableSplit';
 import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
 import styles from './travail.module.css';
@@ -365,6 +366,7 @@ export default function TravailPage() {
   const isSubmitted = travail?.status === 'submitted';
   const isDisabled = isPreviewMode || isSubmitted;
   const isRecherche = devoir?.typeTravail === 'rechercher';
+  const isVocabulaire = devoir?.typeTravail === 'vocabulaire';
   const correctionVisible = correction?.visibleParEleve === true;
 
   return (
@@ -392,7 +394,28 @@ export default function TravailPage() {
         <ResizableSplit
           storageKey="activite-split"
           left={
-            isRecherche ? (
+            isVocabulaire ? (
+              <div className={styles.editorSection}>
+                <div className={styles.editorHeader}>
+                  <h2>{devoir?.vocabulaireDiagnostic ? 'Diagnostic de vocabulaire' : 'Apprentissage du vocabulaire'}</h2>
+                </div>
+                <VocabulaireActivity
+                  forcedThemes={devoir?.vocabulaireThemes}
+                  diagnosticMode={devoir?.vocabulaireDiagnostic}
+                  savedState={
+                    travail?.content
+                      ? (() => { try { return JSON.parse(travail.content); } catch { return null; } })()
+                      : null
+                  }
+                  onStateChange={
+                    isDisabled
+                      ? undefined
+                      : (state) => updateContent(JSON.stringify(state))
+                  }
+                  disabled={isDisabled}
+                />
+              </div>
+            ) : isRecherche ? (
               <div className={styles.editorSection}>
                 <div className={styles.editorHeader}>
                   <h2>Questionnaire de recherche</h2>

@@ -5,7 +5,7 @@
 | Champ | Valeur |
 |-------|--------|
 | **Nom** | Recto-versIA — Assistant de correction pedagogique avec IA |
-| **Version** | 3.3 (mars 2026) |
+| **Version** | 3.6 (mai 2026) |
 | **Domaine** | EdTech — correction de productions ecrites d'eleves |
 | **Ecole** | College Notre-Dame de Dinant (Belgique) |
 | **Utilisateur principal** | Jean-Philippe Bolle (professeur) |
@@ -73,9 +73,11 @@ interface Devoir {
   profId: string;
   anneeScolaire: string;         // "2025-2026" (calcul auto)
   createdAt: Timestamp;
-  typeTravail: 'ecrire' | 'lire' | 'rechercher';
+  typeTravail: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
   questionnaireId?: string;       // ref questionnaires/{id} (type rechercher)
   codeAcces?: string;             // code 6 chars extension Chrome (type rechercher)
+  vocabulaireThemes?: string[];   // serie lexicale imposee (type vocabulaire)
+  vocabulaireDiagnostic?: boolean; // mode diagnostic (type vocabulaire)
 }
 ```
 
@@ -227,6 +229,11 @@ interface Grille {
 | `/api/navigkid/reponse` | GET | Reponse eleve par questionnaireId + eleveId |
 | `/api/navigkid/activites-eleve` | GET | Activites recherche disponibles pour l'eleve |
 | `/api/navigkid/aide-ia` | POST | Aide IA : verification sources, mots-cles, reponses |
+| `/api/vocabulaire/themes` | GET, POST, PUT, DELETE | CRUD series lexicales (profId, profName, mots) |
+| `/api/vocabulaire/words` | GET | Mots par theme (?themes=x,y) |
+| `/api/vocabulaire/generate` | POST | Generation exercices IA (apprentissage/diagnostic) |
+| `/api/vocabulaire/validate` | POST | Validation production eleve par IA |
+| `/api/vocabulaire/suggest` | POST | IA : suggestion de mots pour un theme + enrichissement (def, exemple, syn, ant, proxemie) |
 
 ---
 
@@ -240,7 +247,7 @@ interface Grille {
 | `/dashboard/travaux/[devoirId]` | prof | Travaux par devoir (3 colonnes) |
 | `/dashboard/travaux/[devoirId]/[travailId]` | prof | Correction + annotations |
 | `/classes` | prof | Gestion classes et eleves |
-| `/grilles` | prof | Consultation grilles |
+| `/grilles` | prof | Mes Ressources : onglets Grilles + Listes de vocabulaire (CRUD, tableau editable, IA) |
 | `/archives` | prof | Devoirs archives |
 | `/admin` | admin | Gestion professeurs + stats |
 | `/roadmap` | tous | Nouveautes + fonctionnalites a venir |
@@ -250,7 +257,7 @@ interface Grille {
 | `/profil` | eleve | Profil d'ecrilecteur (stats) |
 
 ### Header prof
-Mes Activités → `/dashboard` | Mes Classes → `/classes` | Mes Grilles → `/grilles` | Vue eleve (oeil) → `/activites` | Avatar menu
+Mes Activités → `/dashboard` | Mes Classes → `/classes` | Mes Ressources → `/grilles` | Vue eleve (oeil) → `/activites` | Avatar menu
 
 ### Header eleve
 Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil → `/profil` | Avatar menu
@@ -301,7 +308,13 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 | `usePreferences` | Preferences editeur |
 | `useAudioRecorder` | MediaRecorder pour annotations vocales |
 | `useAiSuggestions` | Suggestions IA redaction |
+| `useVocabulaireThemes` | CRUD themes vocab (myThemes, otherThemes, create, update, delete, duplicate) |
+| `useVocabulaireWords` | Mots par theme |
+| `useVocabulaireExercises` | Generation exercices IA vocab |
 | `useAiGridEvaluation` | Evaluation IA grille |
+| `useVocabulaireThemes` | Liste des series lexicales |
+| `useVocabulaireWords(themes)` | Mots par serie lexicale |
+| `useVocabulaireExercises` | Generation exercices IA + validation production |
 
 ---
 
@@ -323,6 +336,11 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 ---
 
 ## 10. Roadmap
+
+### Fait (v3.5)
+- [x] **Vocabulaire v2** : refonte formulaire creation (dropdown serie lexicale + selecteur Apprendre/Diagnostic, pas de grille)
+- [x] **Vocabulaire recto/verso** : mots en tags avec tooltips au recto, exercices IA au verso, flip 3D
+- [x] **Fix boucle infinie useTravail** : travailRef pattern pour saveNow/saveWithDebounce/updateRessource*
 
 ### Fait (v3.4)
 - [x] **Travaux corriges cote eleve** : section "Travaux corriges" dans `/activites` quand `corrigeDisponible` OU `correction.visibleParEleve` — endpoint `/api/corrections/mine`

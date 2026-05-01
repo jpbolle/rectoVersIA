@@ -1,0 +1,173 @@
+/* Liste de vocabulaire — Tags avec tooltips */
+
+.container {
+  padding: 16px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}
+
+.counter {
+  text-align: center;
+  padding: 6px;
+  font-size: 13px;
+  color: var(--c-text-muted);
+  margin-bottom: 12px;
+}
+
+.counterHighlight {
+  color: var(--c-primary);
+  font-weight: 600;
+}
+
+/* Grille de tags */
+.tagGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Wrapper pour positionner le tooltip */
+.tagWrapper {
+  position: relative;
+}
+
+/* Tag mot */
+.wordTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 20px;
+  background: var(--c-bg-card);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--c-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.wordTag:hover {
+  border-color: var(--c-primary-light);
+  box-shadow: 0 2px 8px rgba(45, 106, 90, 0.12);
+  transform: translateY(-1px);
+}
+
+.tagSelected {
+  border-color: var(--c-primary);
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+}
+
+.tagSelected:hover {
+  background: var(--c-primary-light);
+  border-color: var(--c-primary-light);
+}
+
+/* Mode diagnostic */
+.tagKnown {
+  border-color: var(--c-success);
+  background: var(--c-success);
+  color: white;
+}
+
+.tagUnknown {
+  border-color: var(--c-warning);
+  background: var(--c-warning);
+  color: white;
+}
+
+.tagMisconceived {
+  border-color: var(--c-danger);
+  background: var(--c-danger);
+  color: white;
+}
+
+.tagBadge {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Tooltip */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 220px;
+  max-width: 300px;
+  padding: 12px 14px;
+  background: var(--c-text);
+  color: var(--c-bg);
+  border-radius: var(--c-radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateX(-50%) translateY(4px);
+  z-index: 100;
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--c-text);
+}
+
+.tagWrapper:hover .tooltip {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tooltipWord {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: var(--c-accent);
+}
+
+.tooltipDefinition {
+  margin-bottom: 4px;
+}
+
+.tooltipExample {
+  font-style: italic;
+  opacity: 0.8;
+  font-size: 12px;
+}
+
+/* Etats */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--c-text-muted);
+  font-size: 14px;
+}
+
+.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}

@@ -1,0 +1,447 @@
+/* Recto : exercices vocabulaire generes par IA */
+
+.container {
+  padding: 16px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.emptyDescription {
+  font-size: 14px;
+  color: var(--c-text-muted);
+  max-width: 300px;
+}
+
+.generateBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: var(--c-gradient-btn);
+  color: var(--c-text-on-primary);
+  border: none;
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.generateBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.generateBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Carousel */
+.carousel {
+  position: relative;
+}
+
+.carouselHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.carouselTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.carouselNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.carouselBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  color: var(--c-text);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.carouselBtn:hover:not(:disabled) {
+  background: var(--c-bg-element);
+}
+
+.carouselBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.carouselDots {
+  display: flex;
+  gap: 4px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-border);
+  cursor: pointer;
+}
+
+.dotActive {
+  background: var(--c-primary);
+}
+
+/* Exercice generique */
+.exercise {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 16px;
+}
+
+.exerciseTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin-bottom: 4px;
+}
+
+.exerciseInstructions {
+  font-size: 13px;
+  color: var(--c-text-muted);
+  margin-bottom: 16px;
+}
+
+/* Exercice 1: Texte avec definitions */
+.textContent {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--c-text);
+}
+
+.highlightedWord {
+  background: rgba(45, 106, 90, 0.12);
+  padding: 1px 4px;
+  border-radius: 3px;
+  cursor: help;
+  border-bottom: 2px solid var(--c-primary);
+  position: relative;
+}
+
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--c-text);
+  color: white;
+  padding: 6px 10px;
+  border-radius: var(--c-radius);
+  font-size: 12px;
+  white-space: nowrap;
+  max-width: 280px;
+  white-space: normal;
+  z-index: 10;
+  box-shadow: var(--c-shadow-popup);
+}
+
+/* Exercice 2: Drag and drop */
+.dndContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dndRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dndDefinition {
+  flex: 1;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  padding: 8px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+}
+
+.dndSelect {
+  width: 160px;
+  padding: 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-size: 13px;
+}
+
+.dndCorrect {
+  border-color: var(--c-success);
+  background: rgba(45, 138, 78, 0.05);
+}
+
+.dndIncorrect {
+  border-color: var(--c-danger);
+  background: rgba(180, 64, 64, 0.05);
+}
+
+/* Exercice 3: Familles de mots */
+.familyContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.familyGroup {
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 12px;
+}
+
+.familyCentralWord {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--c-primary);
+  margin-bottom: 12px;
+  padding: 8px;
+  background: rgba(45, 106, 90, 0.08);
+  border-radius: var(--c-radius);
+}
+
+.familyBranches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.familyBranch {
+  text-align: center;
+}
+
+.familyBranchTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.familyBranchWords {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.familyWord {
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  padding: 2px 4px;
+}
+
+/* Exercice 4: Texte a trous */
+.fillBlanksText {
+  font-size: 14px;
+  line-height: 2;
+  color: var(--c-text);
+}
+
+.blankInput {
+  display: inline-block;
+  width: 120px;
+  padding: 2px 6px;
+  border: none;
+  border-bottom: 2px solid var(--c-primary);
+  background: rgba(45, 106, 90, 0.05);
+  font-size: 14px;
+  text-align: center;
+  outline: none;
+}
+
+.blankInput:focus {
+  border-bottom-color: var(--c-accent);
+}
+
+.blankCorrect {
+  border-bottom-color: var(--c-success);
+  background: rgba(45, 138, 78, 0.08);
+}
+
+.blankIncorrect {
+  border-bottom-color: var(--c-danger);
+  background: rgba(180, 64, 64, 0.05);
+}
+
+/* Exercice 5: Production personnelle */
+.productionContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.productionWords {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.productionWord {
+  padding: 6px 12px;
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.productionConstraint {
+  padding: 8px 12px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  font-style: italic;
+}
+
+.productionTextarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  font-family: var(--c-font-body);
+  resize: vertical;
+}
+
+.productionTextarea:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.validateBtn {
+  align-self: flex-end;
+  padding: 8px 16px;
+  background: var(--c-gradient-btn-accent);
+  color: white;
+  border: none;
+  border-radius: var(--c-radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.validateBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.feedback {
+  padding: 12px;
+  border-radius: var(--c-radius);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.feedbackValid {
+  background: rgba(45, 138, 78, 0.08);
+  border: 1px solid var(--c-success);
+  color: var(--c-text);
+}
+
+.feedbackInvalid {
+  background: rgba(212, 148, 76, 0.08);
+  border: 1px solid var(--c-warning);
+  color: var(--c-text);
+}
+
+/* Bouton correction */
+.checkBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  margin-top: 16px;
+  background: var(--c-gradient-btn-accent);
+  color: white;
+  border: none;
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.checkBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.generating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--c-text-muted);
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--c-border);
+  border-top-color: var(--c-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error {
+  padding: 12px;
+  background: rgba(180, 64, 64, 0.08);
+  border: 1px solid var(--c-danger);
+  border-radius: var(--c-radius);
+  color: var(--c-danger);
+  font-size: 13px;
+  text-align: center;
+}

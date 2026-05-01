@@ -42,7 +42,7 @@ export default function Header({ variant, topOffset = 0 }: HeaderProps) {
               className={styles.navBtn}
               onClick={() => router.push('/grilles')}
             >
-              Mes Grilles
+              Mes Ressources
             </button>
           </nav>
         ) : (

@@ -16,6 +16,8 @@ export function useTravail(devoirId: string | null) {
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const pendingUpdate = useRef<UpdateTravailData | null>(null);
+  const travailRef = useRef<Travail | null>(null);
+  travailRef.current = travail;
 
   // Fetch le travail de l'eleve connecte
   const fetchTravail = useCallback(async () => {
@@ -55,7 +57,7 @@ export function useTravail(devoirId: string | null) {
 
   // Sauvegarde immediate
   const saveNow = useCallback(async (data: UpdateTravailData) => {
-    if (!travail) return false;
+    if (!travailRef.current) return false;
 
     const headers = await getAuthHeaders();
     if (!headers) return false;
@@ -63,7 +65,7 @@ export function useTravail(devoirId: string | null) {
     setIsSaving(true);
 
     try {
-      const res = await fetch(`/api/travaux/${travail.id}`, {
+      const res = await fetch(`/api/travaux/${travailRef.current.id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify(data),
@@ -87,12 +89,12 @@ export function useTravail(devoirId: string | null) {
     } finally {
       setIsSaving(false);
     }
-  }, [travail, getAuthHeaders]);
+  }, [getAuthHeaders]);
 
   // Sauvegarde avec debounce
   const saveWithDebounce = useCallback((data: UpdateTravailData) => {
     // Ne pas sauvegarder si le travail est deja soumis
-    if (travail?.status === 'submitted') {
+    if (travailRef.current?.status === 'submitted') {
       return;
     }
 
@@ -114,7 +116,7 @@ export function useTravail(devoirId: string | null) {
         pendingUpdate.current = null;
       }
     }, DEBOUNCE_DELAY);
-  }, [saveNow, travail]);
+  }, [saveNow]);
 
   // Mise a jour du contenu (avec debounce)
   const updateContent = useCallback((content: string) => {
@@ -128,7 +130,7 @@ export function useTravail(devoirId: string | null) {
 
   // Mise a jour des annotations de ressource (avec debounce, autorise meme apres soumission)
   const updateRessourceAnnotations = useCallback((ressourceAnnotations: string) => {
-    if (!travail) return;
+    if (!travailRef.current) return;
 
     // Fusionner avec les mises a jour en attente
     pendingUpdate.current = { ...pendingUpdate.current, ressourceAnnotations };
@@ -148,7 +150,7 @@ export function useTravail(devoirId: string | null) {
         pendingUpdate.current = null;
       }
     }, DEBOUNCE_DELAY);
-  }, [saveNow, travail]);
+  }, [saveNow]);
 
   // Mise a jour du brouillon (avec debounce)
   const updateDraftContent = useCallback((draftContent: import('@/types/travail').DraftContent) => {
@@ -157,7 +159,7 @@ export function useTravail(devoirId: string | null) {
 
   // Mise a jour des notes de ressource (avec debounce, autorise meme apres soumission)
   const updateRessourceNotes = useCallback((ressourceNotes: Record<string, string>) => {
-    if (!travail) return;
+    if (!travailRef.current) return;
 
     pendingUpdate.current = { ...pendingUpdate.current, ressourceNotes };
     setTravail(prev => prev ? { ...prev, ressourceNotes } : null);
@@ -172,7 +174,7 @@ export function useTravail(devoirId: string | null) {
         pendingUpdate.current = null;
       }
     }, DEBOUNCE_DELAY);
-  }, [saveNow, travail]);
+  }, [saveNow]);
 
   // Soumission du travail (immediate)
   const submit = useCallback(async () => {

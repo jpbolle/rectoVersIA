@@ -191,6 +191,54 @@
   font-weight: 500;
 }
 
+/* Ligne intitule vocabulaire : dropdown + mode */
+.formRowIntituleVocab {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: end;
+}
+
+.modeSelector {
+  display: flex;
+  gap: 0;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  overflow: hidden;
+  background: var(--c-bg-card);
+}
+
+.modeBtn {
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.modeBtn:first-child {
+  border-right: 1px solid var(--c-border);
+}
+
+.modeBtnActive {
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+}
+
+.modeBtn:not(.modeBtnActive):hover {
+  background: var(--c-bg-element);
+}
+
+.modeBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .optionalSection .textarea {
   margin-top: 15px;
 }
@@ -312,6 +360,11 @@
 }
 
 @media (max-width: 480px) {
+  .formRowIntituleVocab {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
   .form {
     padding: 20px 15px;
     border-radius: var(--c-radius-lg);

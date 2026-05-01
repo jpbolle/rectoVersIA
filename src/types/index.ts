@@ -17,3 +17,4 @@ export interface ApiResponse<T = unknown> {
 // Re-export devoir types
 export * from './devoir';
 export * from './navigkid';
+export * from './vocabulaire';

@@ -60,6 +60,8 @@ export async function GET(
       typeTravail: data.typeTravail || 'ecrire',
       questionnaireId: data.questionnaireId || null,
       codeAcces: data.codeAcces || null,
+      vocabulaireThemes: data.vocabulaireThemes || undefined,
+      vocabulaireDiagnostic: data.vocabulaireDiagnostic ?? undefined,
     };
 
     return NextResponse.json({ success: true, data: devoir });
