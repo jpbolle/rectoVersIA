@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
         profName: createdBy && createdBy !== auth.uid
           ? (profNames[createdBy] || 'Professeur')
           : undefined,
+        targetLevels: data.targetLevels || undefined,
       };
     });
 
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, words } = body as { name: string; words?: VocabulaireWord[] };
+    const { name, words, targetLevels } = body as { name: string; words?: VocabulaireWord[]; targetLevels?: string[] };
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
       words: words || [],
       createdBy: auth.uid,
       createdAt: new Date().toISOString(),
+      ...(targetLevels && { targetLevels }),
     });
 
     return NextResponse.json({ success: true, id: docId });
@@ -109,11 +111,15 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { id, words } = body as { id: string; words: VocabulaireWord[] };
+    const { id, words, meta } = body as {
+      id: string;
+      words?: VocabulaireWord[];
+      meta?: { targetLevels?: string[] };
+    };
 
-    if (!id || !Array.isArray(words)) {
+    if (!id) {
       return NextResponse.json(
-        { success: false, message: 'ID et tableau de mots requis' },
+        { success: false, message: 'ID requis' },
         { status: 400 }
       );
     }
@@ -127,10 +133,15 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    await docRef.update({
-      words,
-      updatedAt: new Date().toISOString(),
-    });
+    const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+    if (words && Array.isArray(words)) {
+      updateData.words = words;
+    }
+    if (meta) {
+      if (meta.targetLevels !== undefined) updateData.targetLevels = meta.targetLevels;
+    }
+
+    await docRef.update(updateData);
 
     return NextResponse.json({ success: true });
   } catch (error) {

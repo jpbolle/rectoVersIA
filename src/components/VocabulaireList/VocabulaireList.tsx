@@ -1,19 +1,22 @@
 'use client';
 
-import type { VocabulaireWord, VocabulaireProgress, WordMastery } from '@/types/vocabulaire';
+import type { VocabulaireWord, WordMasteryEntry } from '@/types/vocabulaire';
+import { getWordCategory } from '@/types/vocabulaire';
 import styles from './VocabulaireList.module.css';
 
 interface VocabulaireListProps {
-  words: Record<string, VocabulaireWord[]>;
+  words: VocabulaireWord[];
   selectedTheme: string;
-  // Mode apprentissage
-  selectedWords: VocabulaireWord[];
-  onWordSelect: (word: VocabulaireWord) => void;
-  maxSelection?: number;
-  // Mode diagnostic
-  diagnosticMode?: boolean;
-  diagnosticProgress?: VocabulaireProgress[];
-  onDiagnosticMark?: (word: string, status: WordMastery) => void;
+  // Phase courante
+  phase: 'diagnostic' | 'learning' | 'evaluation';
+  // Diagnostic : mots que l'eleve pense connaitre
+  diagnosticSelections: string[];
+  onDiagnosticSelect?: (wordText: string) => void;
+  // Learning : mots choisis pour la session
+  currentSelection: string[];
+  onLearningSelect?: (wordText: string) => void;
+  // Suivi de maitrise
+  wordMastery: WordMasteryEntry[];
   // Etat
   disabled?: boolean;
   isLoading?: boolean;
@@ -21,109 +24,234 @@ interface VocabulaireListProps {
 
 export default function VocabulaireList({
   words,
-  selectedTheme,
-  selectedWords,
-  onWordSelect,
-  maxSelection = 6,
-  diagnosticMode = false,
-  diagnosticProgress = [],
-  onDiagnosticMark,
+  phase,
+  diagnosticSelections,
+  onDiagnosticSelect,
+  currentSelection,
+  onLearningSelect,
+  wordMastery,
   disabled = false,
   isLoading = false,
 }: VocabulaireListProps) {
-  const currentWords = words[selectedTheme] || [];
-  const isSelected = (word: VocabulaireWord) =>
-    selectedWords.some((w) => w.word === word.word);
-
-  const getDiagnosticStatus = (wordText: string): WordMastery | null => {
-    const progress = diagnosticProgress.find((p) => p.word === wordText);
-    return progress?.status || null;
-  };
+  const masteryMap = new Map(wordMastery.map((m) => [m.word, m]));
+  const unknownWords = words.filter((w) => getWordCategory(masteryMap.get(w.word)) === 'unknown');
+  const misconceivedWords = words.filter((w) => getWordCategory(masteryMap.get(w.word)) === 'misconceived');
+  const knownWords = words.filter((w) => getWordCategory(masteryMap.get(w.word)) === 'known');
 
   if (isLoading) {
     return <div className={styles.loading}>Chargement des mots...</div>;
   }
 
-  if (currentWords.length === 0) {
+  if (words.length === 0) {
     return <div className={styles.loading}>Aucun mot dans cette série</div>;
   }
 
-  return (
-    <div className={`${styles.container} ${disabled ? styles.disabled : ''}`}>
-      {/* Info */}
-      <div className={styles.info}>
-        {diagnosticMode ? (
-          <>Cliquez sur les mots pour indiquer votre niveau de connaissance</>
-        ) : (
-          <>
-            Sélectionnez jusqu&apos;à {maxSelection} mots pour générer des exercices
-          </>
+  // --- Phase diagnostic initial (premier diagnostic, cliquable) ---
+  if (phase === 'diagnostic' && onDiagnosticSelect) {
+    return (
+      <div className={`${styles.container} ${disabled ? styles.disabled : ''}`}>
+        <div className={styles.info}>
+          Clique sur les mots que tu penses connaître
+        </div>
+        <div className={styles.counter}>
+          <span className={styles.counterHighlight}>{diagnosticSelections.length}</span>
+          {' '} mot{diagnosticSelections.length > 1 ? 's' : ''} sélectionné{diagnosticSelections.length > 1 ? 's' : ''}
+        </div>
+        <div className={styles.tagGrid}>
+          {words.map((word, idx) => {
+            const selected = diagnosticSelections.includes(word.word);
+            const tagClass = `${styles.wordTag} ${selected ? styles.tagSelected : ''}`;
+
+            return (
+              <div key={`${word.word}-${idx}`} className={styles.tagWrapper}>
+                <button
+                  type="button"
+                  className={tagClass}
+                  onClick={() => !disabled && onDiagnosticSelect(word.word)}
+                  disabled={disabled}
+                >
+                  {word.word}
+                  {selected && <span className={styles.tagBadge}>✓</span>}
+                </button>
+                <div className={styles.tooltip}>
+                  <div className={styles.tooltipWord}>{word.word}</div>
+                  <div className={styles.tooltipDefinition}>{word.definition}</div>
+                  {word.example && (
+                    <div className={styles.tooltipExample}>{word.example}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // --- Phase diagnostic intermediaire (3 sections, non cliquable) ---
+  if (phase === 'diagnostic' && !onDiagnosticSelect) {
+    return (
+      <div className={`${styles.container} ${disabled ? styles.disabled : ''}`}>
+        <div className={styles.info}>
+          Diagnostic intermédiaire — état actuel de tes connaissances
+        </div>
+
+        {unknownWords.length > 0 && (
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>
+              <span className={styles.sectionDot} style={{ background: 'var(--c-text-dim)' }} />
+              Inconnus ({unknownWords.length})
+            </h4>
+            <div className={styles.tagGrid}>
+              {unknownWords.map((w, i) => (
+                <div key={`${w.word}-${i}`} className={styles.tagWrapper}>
+                  <span className={`${styles.wordTag} ${styles.tagDisabled}`}>{w.word}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {misconceivedWords.length > 0 && (
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>
+              <span className={styles.sectionDot} style={{ background: '#e67e22' }} />
+              Méconnus ({misconceivedWords.length})
+            </h4>
+            <div className={styles.tagGrid}>
+              {misconceivedWords.map((w, i) => (
+                <div key={`${w.word}-${i}`} className={styles.tagWrapper}>
+                  <span className={`${styles.wordTag} ${styles.tagMisconceived}`}>{w.word}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {knownWords.length > 0 && (
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>
+              <span className={styles.sectionDot} style={{ background: '#27ae60' }} />
+              Connus ({knownWords.length})
+            </h4>
+            <div className={styles.tagGrid}>
+              {knownWords.map((w, i) => (
+                <div key={`${w.word}-${i}`} className={styles.tagWrapper}>
+                  <span className={`${styles.wordTag} ${styles.tagKnown}`}>{w.word}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
+    );
+  }
 
-      {/* Compteur */}
-      {!diagnosticMode && (
-        <div className={styles.counter}>
-          <span className={styles.counterHighlight}>{selectedWords.length}</span>
-          {' / '}{maxSelection} mots sélectionnés
+  // --- Phase evaluation ---
+  if (phase === 'evaluation') {
+    return (
+      <div className={`${styles.container} ${disabled ? styles.disabled : ''}`}>
+        <div className={styles.info}>
+          Évaluation complète : tous les mots seront testés.
+        </div>
+        <div className={styles.tagGrid}>
+          {words.map((word, idx) => (
+            <div key={`${word.word}-${idx}`} className={styles.tagWrapper}>
+              <span className={`${styles.wordTag} ${styles.tagEvaluation}`}>
+                {word.word}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // --- Phase learning : 3 sections ---
+
+  const renderWordTag = (word: VocabulaireWord, idx: number) => {
+    const selected = currentSelection.includes(word.word);
+    const category = getWordCategory(masteryMap.get(word.word));
+    const canSelect = category !== 'known'; // On ne selectionne pas les mots deja connus
+
+    let tagClass = styles.wordTag;
+    if (selected) tagClass += ` ${styles.tagSelected}`;
+    if (category === 'known') tagClass += ` ${styles.tagKnown}`;
+    if (category === 'misconceived' && !selected) tagClass += ` ${styles.tagMisconceived}`;
+
+    return (
+      <div key={`${word.word}-${idx}`} className={styles.tagWrapper}>
+        <button
+          type="button"
+          className={tagClass}
+          onClick={() => {
+            if (disabled || !canSelect) return;
+            onLearningSelect?.(word.word);
+          }}
+          disabled={disabled || !canSelect}
+        >
+          {word.word}
+          {selected && <span className={styles.tagBadge}>✓</span>}
+        </button>
+        <div className={styles.tooltip}>
+          <div className={styles.tooltipWord}>{word.word}</div>
+          <div className={styles.tooltipDefinition}>{word.definition}</div>
+          {word.example && (
+            <div className={styles.tooltipExample}>{word.example}</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className={`${styles.container} ${disabled ? styles.disabled : ''}`}>
+      <div className={styles.info}>
+        Sélectionne 6 à 10 mots à apprendre pour cette session.
+      </div>
+      <div className={styles.counter}>
+        <span className={styles.counterHighlight}>{currentSelection.length}</span>
+        {' / 6-10 mots sélectionnés'}
+      </div>
+
+      {/* Section Inconnus */}
+      {unknownWords.length > 0 && (
+        <div className={styles.section}>
+          <h4 className={styles.sectionTitle}>
+            <span className={styles.sectionDot} style={{ background: 'var(--c-text-dim)' }} />
+            Inconnus ({unknownWords.length})
+          </h4>
+          <div className={styles.tagGrid}>
+            {unknownWords.map((w, i) => renderWordTag(w, i))}
+          </div>
         </div>
       )}
 
-      {/* Grille de tags */}
-      <div className={styles.tagGrid}>
-        {currentWords.map((word, idx) => {
-          const selected = isSelected(word);
-          const diagStatus = diagnosticMode ? getDiagnosticStatus(word.word) : null;
+      {/* Section Meconnus */}
+      {misconceivedWords.length > 0 && (
+        <div className={styles.section}>
+          <h4 className={styles.sectionTitle}>
+            <span className={styles.sectionDot} style={{ background: '#e67e22' }} />
+            Méconnus ({misconceivedWords.length})
+          </h4>
+          <div className={styles.tagGrid}>
+            {misconceivedWords.map((w, i) => renderWordTag(w, i))}
+          </div>
+        </div>
+      )}
 
-          let tagClass = styles.wordTag;
-          if (diagnosticMode) {
-            if (diagStatus === 'known') tagClass += ` ${styles.tagKnown}`;
-            else if (diagStatus === 'unknown') tagClass += ` ${styles.tagUnknown}`;
-            else if (diagStatus === 'misconceived') tagClass += ` ${styles.tagMisconceived}`;
-          } else if (selected) {
-            tagClass += ` ${styles.tagSelected}`;
-          }
-
-          return (
-            <div
-              key={`${word.word}-${idx}`}
-              className={styles.tagWrapper}
-            >
-              <button
-                type="button"
-                className={tagClass}
-                onClick={() => {
-                  if (disabled) return;
-                  if (diagnosticMode && onDiagnosticMark) {
-                    const next: WordMastery =
-                      diagStatus === null ? 'known' : diagStatus === 'known' ? 'unknown' : 'known';
-                    onDiagnosticMark(word.word, next);
-                  } else {
-                    if (!selected && selectedWords.length >= maxSelection) return;
-                    onWordSelect(word);
-                  }
-                }}
-                disabled={disabled}
-              >
-                {word.word}
-                {diagnosticMode && diagStatus && (
-                  <span className={styles.tagBadge}>
-                    {diagStatus === 'known' ? '\u2713' : '\u2717'}
-                  </span>
-                )}
-              </button>
-              {/* Tooltip au survol */}
-              <div className={styles.tooltip}>
-                <div className={styles.tooltipWord}>{word.word}</div>
-                <div className={styles.tooltipDefinition}>{word.definition}</div>
-                {word.example && (
-                  <div className={styles.tooltipExample}>{word.example}</div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* Section Connus */}
+      {knownWords.length > 0 && (
+        <div className={styles.section}>
+          <h4 className={styles.sectionTitle}>
+            <span className={styles.sectionDot} style={{ background: '#27ae60' }} />
+            Connus ({knownWords.length})
+          </h4>
+          <div className={styles.tagGrid}>
+            {knownWords.map((w, i) => renderWordTag(w, i))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

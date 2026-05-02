@@ -215,6 +215,74 @@
   cursor: not-allowed;
 }
 
+/* ── Phase info ── */
+.phaseInfo {
+  padding: 12px 16px;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0;
+}
+
+.phaseDescription {
+  margin: 0;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  font-style: italic;
+}
+
+/* ── Barre d'actions ── */
+.actionBar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-bg-element);
+  flex-shrink: 0;
+}
+
+.actionBtn {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1.5px solid var(--c-primary);
+  border-radius: var(--c-radius);
+  background: transparent;
+  color: var(--c-primary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionBtnSecondary {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: transparent;
+  color: var(--c-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionBtnSecondary:hover {
+  background: var(--c-bg-card);
+  border-color: var(--c-text-secondary);
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .flipBar {

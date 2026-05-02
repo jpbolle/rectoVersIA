@@ -397,11 +397,10 @@ export default function TravailPage() {
             isVocabulaire ? (
               <div className={styles.editorSection}>
                 <div className={styles.editorHeader}>
-                  <h2>{devoir?.vocabulaireDiagnostic ? 'Diagnostic de vocabulaire' : 'Apprentissage du vocabulaire'}</h2>
+                  <h2>Vocabulaire</h2>
                 </div>
                 <VocabulaireActivity
                   forcedThemes={devoir?.vocabulaireThemes}
-                  diagnosticMode={devoir?.vocabulaireDiagnostic}
                   savedState={
                     travail?.content
                       ? (() => { try { return JSON.parse(travail.content); } catch { return null; } })()
@@ -497,6 +496,7 @@ export default function TravailPage() {
                   navigkidQuestions={nkQuestions.length > 0 ? nkQuestions : undefined}
                   navigkidReponse={nkReponse}
                   rechercheMode={isRecherche}
+                  vocabState={isVocabulaire && travail?.content ? (() => { try { return JSON.parse(travail.content); } catch { return null; } })() : undefined}
                 />
               </div>
             </div>

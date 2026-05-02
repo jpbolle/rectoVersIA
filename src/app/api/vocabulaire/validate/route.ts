@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/api-auth';
 import Anthropic from '@anthropic-ai/sdk';
 
-const client = new Anthropic();
+const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
 export async function POST(request: NextRequest) {
   const auth = await verifyAuth(request);

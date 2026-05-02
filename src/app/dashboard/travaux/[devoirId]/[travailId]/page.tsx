@@ -19,6 +19,7 @@ import type { Devoir } from '@/types/devoir';
 import type { DraftType } from '@/types/travail';
 import type { DraftItemAnnotation } from '@/types/correction';
 import RechercheResponseViewer from '@/components/RechercheResponseViewer/RechercheResponseViewer';
+import VocabulaireListReadOnly from '@/components/VocabulaireListReadOnly/VocabulaireListReadOnly';
 import ResizableSplit from '@/components/ResizableSplit/ResizableSplit';
 import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
 import styles from './travail-detail.module.css';
@@ -498,7 +499,17 @@ export default function TravailDetailPage() {
         <ResizableSplit
           storageKey="correction-split"
           left={
-            devoir.typeTravail === 'rechercher' ? (
+            devoir.typeTravail === 'vocabulaire' ? (
+              <div className={styles.contentSection}>
+                <div className={styles.sectionHeader}>
+                  <h2>Progression vocabulaire</h2>
+                </div>
+                <VocabulaireListReadOnly
+                  travailContent={travail.content}
+                  themes={devoir.vocabulaireThemes}
+                />
+              </div>
+            ) : devoir.typeTravail === 'rechercher' ? (
               <div className={styles.contentSection}>
                 <div className={styles.sectionHeader}>
                   <h2>Réponses de recherche</h2>
@@ -667,6 +678,7 @@ export default function TravailDetailPage() {
                   studentRessourceNotes={travail.ressourceNotes}
                   navigkidQuestions={nkQuestions.length > 0 ? nkQuestions : undefined}
                   navigkidReponse={nkReponse}
+                  vocabState={devoir.typeTravail === 'vocabulaire' && travail?.content ? (() => { try { return JSON.parse(travail.content); } catch { return null; } })() : undefined}
                 />
               </div>
 

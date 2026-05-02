@@ -50,7 +50,6 @@ export default function CreationForm({
   const [nkThemes, setNkThemes] = useState<string[]>([]);
 
   // Vocabulaire (type vocabulaire)
-  const [vocabDiagnostic, setVocabDiagnostic] = useState(false);
   const { themes: vocabThemes } = useVocabulaireThemes();
 
   // Toggles (initialement à false)
@@ -84,7 +83,6 @@ export default function CreationForm({
     setTypeTravail('ecrire');
     setNkQuestions([]);
     setNkThemes([]);
-    setVocabDiagnostic(false);
   }, []);
 
   async function handleSubmit() {
@@ -113,7 +111,6 @@ export default function CreationForm({
     if (typeTravail === 'vocabulaire') {
       data.vocabulaireConfig = {
         themes: [intitule.trim()],
-        diagnostic: vocabDiagnostic,
       };
     }
 
@@ -226,27 +223,6 @@ export default function CreationForm({
                 </option>
               ))}
             </select>
-          </div>
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Mode</label>
-            <div className={styles.modeSelector}>
-              <button
-                type="button"
-                className={`${styles.modeBtn} ${!vocabDiagnostic ? styles.modeBtnActive : ''}`}
-                onClick={() => setVocabDiagnostic(false)}
-                disabled={isSubmitting}
-              >
-                Apprendre
-              </button>
-              <button
-                type="button"
-                className={`${styles.modeBtn} ${vocabDiagnostic ? styles.modeBtnActive : ''}`}
-                onClick={() => setVocabDiagnostic(true)}
-                disabled={isSubmitting}
-              >
-                Diagnostic
-              </button>
-            </div>
           </div>
         </div>
       ) : (

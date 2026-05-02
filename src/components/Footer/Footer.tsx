@@ -5,7 +5,7 @@ interface FooterProps {
   version?: string;
 }
 
-export default function Footer({ version = '2.1' }: FooterProps) {
+export default function Footer({ version = '2.2' }: FooterProps) {
   return (
     <footer className={styles.footer}>
       <div className={styles.footerLeft}>Version {version}</div>

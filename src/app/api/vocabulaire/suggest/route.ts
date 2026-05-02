@@ -13,10 +13,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { action, themeName, words } = body as {
+    const { action, themeName, words, existingWords } = body as {
       action: 'suggest' | 'enrich';
       themeName?: string;
       words?: string[];
+      existingWords?: string[];
     };
 
     if (action === 'suggest') {
@@ -28,6 +29,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const existingContext = existingWords && existingWords.length > 0
+        ? `\n\nLa liste contient déjà ces mots : ${existingWords.join(', ')}.\nPropose des mots COMPLÉMENTAIRES qui enrichissent cette liste (pas de doublons, pas de simples variantes). Privilégie des mots qui couvrent d'autres aspects du thème, d'autres registres ou d'autres catégories grammaticales.`
+        : '';
+
       const response = await client.messages.create({
         model: 'claude-sonnet-4-5-20250929',
         max_tokens: 2048,
@@ -38,7 +43,7 @@ export async function POST(request: NextRequest) {
 Pour le champ lexical / thème "${themeName}", propose une liste de 20 à 30 mots et expressions françaises pertinents et variés. Inclus :
 - Des mots courants et soutenus
 - Des expressions idiomatiques
-- Des termes littéraires si pertinent
+- Des termes littéraires si pertinent${existingContext}
 
 Réponds UNIQUEMENT en JSON : un tableau de strings (les mots/expressions).
 Pas de markdown, pas d'explication, juste le JSON.`,

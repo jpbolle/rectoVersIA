@@ -7,6 +7,8 @@ import GrilleTab from '@/components/GrilleTab';
 import RemarquesTab from '@/components/RemarquesTab';
 import AiTab from '@/components/AiTab/AiTab';
 import RechercheStatsTab from '@/components/RechercheStatsTab/RechercheStatsTab';
+import VocabulaireStats from '@/components/VocabulaireStats/VocabulaireStats';
+import type { VocabulaireActivityState } from '@/types/vocabulaire';
 import type { Devoir } from '@/types/devoir';
 import type { Grille } from '@/types/grille';
 import type { Correction } from '@/types/correction';
@@ -59,6 +61,9 @@ interface AssistancePanelProps {
   navigkidReponse?: NavigKidReponse | null;
   // Mode recherche élève : restreint les onglets à Consignes / Remarques / Statistiques
   rechercheMode?: boolean;
+  // Vocabulaire : state pour l'onglet stats
+  vocabState?: VocabulaireActivityState | null;
+  vocabAllWords?: string[];
 }
 
 export default function AssistancePanel({
@@ -98,6 +103,8 @@ export default function AssistancePanel({
   navigkidQuestions,
   navigkidReponse,
   rechercheMode = false,
+  vocabState,
+  vocabAllWords,
 }: AssistancePanelProps) {
   // Mode contrôlé vs interne
   const [internalTab, setInternalTab] = useState<TabType>('consignes');
@@ -181,7 +188,7 @@ export default function AssistancePanel({
           className={`${styles.tab} ${currentTab === 'grille' ? styles.tabActive : ''}`}
           onClick={() => handleTabChange('grille')}
         >
-          Grille d&apos;évaluation
+          Évaluation
         </button>
       </div>
 
@@ -200,7 +207,14 @@ export default function AssistancePanel({
             studentRessourceNotes={studentRessourceNotes}
           />
         )}
-        {currentTab === 'grille' && (
+        {currentTab === 'grille' && devoir.typeTravail === 'vocabulaire' && (
+          <VocabulaireStats
+            state={vocabState ?? null}
+            allWords={vocabAllWords}
+            themes={devoir.vocabulaireThemes}
+          />
+        )}
+        {currentTab === 'grille' && devoir.typeTravail !== 'vocabulaire' && (
           <GrilleTab
             grille={grille}
             isLoading={grilleLoading}

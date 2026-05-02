@@ -129,7 +129,52 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
+}
+
+/* Niveaux cibles */
+.vocabTargetLevels {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 8px 0;
+}
+
+.vocabTargetLabel {
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.vocabTargetChips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.vocabTargetChip {
+  padding: 4px 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 16px;
+  background: var(--c-bg-card);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--c-text);
+}
+
+.vocabTargetChip:hover {
+  border-color: var(--c-primary);
+}
+
+.vocabTargetChipActive {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: white;
 }
 
 .vocabEditorTitle {

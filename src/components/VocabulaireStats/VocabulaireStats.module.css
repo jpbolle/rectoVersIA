@@ -1,0 +1,250 @@
+.container {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.empty {
+  color: var(--c-text-dim);
+  text-align: center;
+  padding: 2rem;
+}
+
+/* Stats grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.statCard {
+  text-align: center;
+  padding: 0.75rem 0.5rem;
+  border-radius: 8px;
+  background: var(--c-surface, #f5f2ec);
+}
+
+.statValue {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: var(--c-text-dim);
+  margin-top: 2px;
+}
+
+.statCount {
+  font-size: 0.7rem;
+  color: var(--c-text-dim);
+}
+
+/* Compteurs */
+.counters {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.counter {
+  font-size: 0.75rem;
+  color: var(--c-text-dim);
+  background: var(--c-surface, #f5f2ec);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+/* Barre de progression */
+.progressBar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--c-border, #e0dcd6);
+}
+
+.progressKnown {
+  background: #27ae60;
+  transition: width 0.3s;
+}
+
+.progressMisconceived {
+  background: #e67e22;
+  transition: width 0.3s;
+}
+
+.progressUnknown {
+  background: #bdc3c7;
+  transition: width 0.3s;
+}
+
+/* Tableau */
+.tableWrapper {
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  background: var(--c-bg, #faf6f0);
+  padding: 0.5rem 0.4rem;
+  text-align: left;
+  border-bottom: 1px solid var(--c-border, #e0dcd6);
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+}
+
+.thWord {
+  width: 40%;
+}
+
+.thStatus {
+  width: 20%;
+}
+
+.thAttempts {
+  width: 40%;
+}
+
+.row {
+  border-bottom: 1px solid var(--c-border, #e0dcd6);
+}
+
+.row:hover {
+  background: var(--c-surface, #f5f2ec);
+}
+
+.tdWord {
+  padding: 0.4rem;
+  font-weight: 500;
+}
+
+.tdStatus {
+  padding: 0.4rem;
+}
+
+.tdAttempts {
+  padding: 0.4rem;
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.badge_known {
+  background: #d4edda;
+  color: #155724;
+}
+
+.badge_misconceived {
+  background: #fde8d0;
+  color: #8a4b08;
+}
+
+.badge_unknown {
+  background: #e9ecef;
+  color: #6c757d;
+}
+
+/* Tentatives (dots) */
+.attemptDots {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.attemptDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.dotCorrect {
+  background: #27ae60;
+}
+
+.dotIncorrect {
+  background: #e74c3c;
+}
+
+.noAttempt {
+  color: var(--c-text-dim);
+  font-size: 0.7rem;
+}
+
+/* Section diagnostics */
+.diagnosticSection {
+  margin-top: 0.5rem;
+}
+
+.sectionTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0 0 0.5rem 0;
+}
+
+.diagnosticResults {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diagResult {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  padding: 8px 10px;
+  background: var(--c-surface, #f5f2ec);
+  border-radius: 6px;
+  align-items: center;
+}
+
+.diagLabel {
+  font-size: 0.75rem;
+  color: var(--c-text);
+  font-weight: 500;
+}
+
+.diagScore {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--c-primary);
+}
+
+.diagBar {
+  grid-column: 1 / -1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--c-border, #e0dcd6);
+  overflow: hidden;
+}
+
+.diagBarFill {
+  height: 100%;
+  background: var(--c-primary);
+  border-radius: 2px;
+  transition: width 0.3s;
+}

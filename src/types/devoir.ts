@@ -49,6 +49,6 @@ export interface CreateDevoirData {
   // Vocabulaire (type vocabulaire uniquement)
   vocabulaireConfig?: {
     themes: string[];
-    diagnostic: boolean;
+    diagnostic?: boolean;
   };
 }

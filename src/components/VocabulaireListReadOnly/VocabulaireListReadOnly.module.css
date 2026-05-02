@@ -1,0 +1,133 @@
+.container {
+  padding: 16px;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loading, .empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--c-text-dim);
+  font-size: 14px;
+}
+
+/* Resume */
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+}
+
+.summaryItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--c-text);
+}
+
+.dotKnown, .dotMisconceived, .dotUnknown {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dotKnown { background: #27ae60; }
+.dotMisconceived { background: #e67e22; }
+.dotUnknown { background: var(--c-text-dim); }
+
+/* Barre de progression */
+.progressBar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--c-border);
+}
+
+.progressKnown {
+  background: #27ae60;
+  transition: width 0.3s;
+}
+
+.progressMisconceived {
+  background: #e67e22;
+  transition: width 0.3s;
+}
+
+/* Sections */
+.section {
+  margin-bottom: 4px;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+  margin: 0 0 8px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.sectionDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.tagGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tagKnown {
+  background: #ecfdf5;
+  color: #155724;
+  border: 1px solid #27ae60;
+}
+
+.tagMisconceived {
+  background: #fef5ec;
+  color: #8a4b08;
+  border: 1px solid #e67e22;
+}
+
+.tagUnknown {
+  background: var(--c-bg-element);
+  color: var(--c-text-dim);
+  border: 1px solid var(--c-border);
+}
+
+/* Infos activite */
+.activityInfo {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--c-text-dim);
+  padding-top: 8px;
+  border-top: 1px solid var(--c-border);
+}

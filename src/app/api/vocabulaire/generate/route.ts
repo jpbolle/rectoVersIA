@@ -3,12 +3,18 @@ import { verifyAuth } from '@/lib/api-auth';
 import Anthropic from '@anthropic-ai/sdk';
 import type { VocabulaireWord } from '@/types/vocabulaire';
 
-const client = new Anthropic();
+const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
-// --- Prompt apprentissage (5 exercices) ---
-function buildApprentissagePrompt(words: VocabulaireWord[], themes: string[]): string {
+// --- Prompt apprentissage (4 exercices — word_families construit cote client) ---
+function buildApprentissagePrompt(
+  words: VocabulaireWord[],
+  themes: string[],
+  spacedWords: VocabulaireWord[]
+): string {
   const themesText = themes.join(', ');
-  const wordsList = words.map((w) => w.word);
+  const mainWords = words.map((w) => w.word);
+  const spacedList = spacedWords.map((w) => w.word);
+  const allWords = [...mainWords, ...spacedList];
   const constraints = [
     'Ta phrase doit parler de ton quotidien',
     'Ta phrase doit être une question',
@@ -19,11 +25,17 @@ function buildApprentissagePrompt(words: VocabulaireWord[], themes: string[]): s
     'Ta phrase doit raconter un souvenir',
   ];
 
+  const spacedContext = spacedWords.length > 0
+    ? `\n\nMOTS DE RÉVISION (espacement régulé) à intégrer dans les exercices : ${spacedList.join(', ')}`
+    : '';
+
   return `Tu es un professeur de français expérimenté. Tu DOIS créer une séquence pédagogique pour élèves de 15 ans.
 
-CONTRAINTE ABSOLUE : Tu DOIS utiliser EXACTEMENT ces ${wordsList.length} mots dans l'exercice 1 : ${wordsList.join(', ')}
+CONTRAINTE ABSOLUE : Tu DOIS utiliser EXACTEMENT ces ${allWords.length} mots dans l'exercice 1 : ${allWords.join(', ')}
 
-AUCUN mot ne doit être oublié. TOUS les ${wordsList.length} mots DOIVENT apparaître dans le texte ET dans highlighted_words.
+Mots principaux à apprendre : ${mainWords.join(', ')}${spacedContext}
+
+AUCUN mot ne doit être oublié. TOUS les ${allWords.length} mots DOIVENT apparaître dans le texte ET dans highlighted_words.
 
 Génère une réponse au format JSON suivant:
 {
@@ -35,16 +47,16 @@ Génère une réponse au format JSON suivant:
       "instructions": "Lisez le texte et survolez les mots soulignés pour voir leur définition",
       "text": "Un texte informatif de 250-300 mots contenant TOUS les mots.",
       "highlighted_words": [
-        ${words.map((w) => `{ "word": "${w.word}", "definition": "${w.definition}" }`).join(',\n        ')}
+        ${[...words, ...spacedWords].map((w) => `{ "word": "${w.word}", "definition": "${w.definition}" }`).join(',\n        ')}
       ]
     },
     {
       "type": "drag_and_drop",
       "title": "Exercice 2 : Associez les mots à leur définition",
       "instructions": "Glissez chaque mot vers sa définition correspondante",
-      "words": [${wordsList.map((w) => `"${w}"`).join(', ')}],
+      "words": [${allWords.map((w) => `"${w}"`).join(', ')}],
       "definitions": [
-        ${words.map((w, i) => `{ "id": ${i + 1}, "definition": "${w.definition}", "correct_word": "${w.word}" }`).join(',\n        ')}
+        ${[...words, ...spacedWords].map((w, i) => `{ "id": ${i + 1}, "definition": "${w.definition}", "correct_word": "${w.word}" }`).join(',\n        ')}
       ],
       "distractors": [
         { "definition": "Définition fausse mais plausible 1", "correct_term": "terme_1" },
@@ -53,104 +65,205 @@ Génère une réponse au format JSON suivant:
       ]
     },
     {
-      "type": "word_families",
-      "title": "Exercice 3 : Familles de mots et relations",
-      "instructions": "Explorez les liens entre les mots : familles, synonymes et antonymes",
-      "word_schemas": [
-        ${wordsList.slice(0, Math.min(3, wordsList.length)).map((w) => `{ "central_word": "${w}", "family_branch": ["..."], "synonyms_branch": ["..."], "antonyms_branch": ["..."] }`).join(',\n        ')}
-      ]
-    },
-    {
       "type": "fill_in_blanks",
-      "title": "Exercice 4 : Complétez le texte",
+      "title": "Exercice 3 : Complétez le texte",
       "instructions": "Tapez les mots manquants dans les espaces vides",
       "text_with_blanks": "Texte avec espaces à combler...",
       "answers": ["réponses..."]
     },
     {
       "type": "production_challenge",
-      "title": "Exercice 5 : Défi de production personnelle",
+      "title": "Exercice 4 : Défi de production personnelle",
       "instructions": "Écris une phrase originale en utilisant les 2 mots imposés",
-      "selected_words": ["Choisis 2 mots parmi : ${wordsList.join(', ')}"],
+      "selected_words": ["Choisis 2 mots parmi : ${allWords.join(', ')}"],
       "constraint": "Choisis UNE contrainte parmi : ${constraints.join(' | ')}"
     }
   ]
 }
 
 REGLES :
-1. L'exercice 1 DOIT contenir les ${wordsList.length} mots : ${wordsList.join(', ')}
+1. L'exercice 1 DOIT contenir les ${allWords.length} mots : ${allWords.join(', ')}
 2. TOUS les mots DOIVENT être dans highlighted_words
-3. Pour l'exercice 5 : EXACTEMENT 2 mots différents et UNE contrainte
+3. Pour l'exercice 4 : EXACTEMENT 2 mots différents et UNE contrainte
 4. JSON valide uniquement, aucun texte supplémentaire`;
 }
 
-// --- Prompt diagnostic (3 exercices) ---
+// --- Prompt diagnostic (5 exercices diversifies) ---
 function buildDiagnosticPrompt(words: VocabulaireWord[], theme: string): string {
   const wordsList = words.map((w) => w.word);
+  const wordCount = Math.min(10, wordsList.length);
 
-  return `Tu es un professeur de français expert en évaluation. Crée un diagnostic de vocabulaire pour ces mots du thème "${theme}":
+  return `Tu es un professeur de français expert en évaluation pour des élèves de 15 ans. Crée un diagnostic de vocabulaire pour ces mots du thème "${theme}":
 
-Mots disponibles: ${wordsList.join(', ')}
+Mots à tester: ${wordsList.join(', ')}
 
-Génère une évaluation au format JSON avec exactement ces 3 exercices :
+Génère une évaluation au format JSON avec exactement ces 5 exercices :
 
-1. DÉFINITIONS-TERMES (5 questions, 3 points) :
-   - 5 définitions à associer à 5 termes choisis parmi 15 termes proposés
-   - Les 15 termes incluent les 5 bons + 10 distracteurs plausibles
+1. APPARIEMENT DÉFINITIONS (${wordCount} questions, 4 points) :
+   - ${wordCount} mots à associer à ${wordCount} définitions
+   - Proposer ${wordCount} termes et ${wordCount} définitions (pas de distracteurs, appariement 1-pour-1)
+   - Utiliser un maximum de mots de la liste
 
-2. SYNONYMES (3 questions, 4 points) :
-   - 3 paires de synonymes à reconstituer
-   - 20 étiquettes au total (6 mots corrects + 14 distracteurs)
+2. SYNONYMES (4 paires, 3 points) :
+   - L'élève doit trouver EXACTEMENT 4 paires de synonymes
+   - Proposer 16 étiquettes au total (8 mots corrects formant 4 paires + 8 distracteurs)
+   - IMPORTANT : identifier TOUTES les paires valides possibles dans les réponses (ex: si "rationnel" est proposé, "irrationnel" en est l'antonyme, pas un distracteur). Ne PAS mettre un mot et son contraire évident dans les distracteurs.
 
-3. ANTONYMES (2 questions, 3 points) :
-   - 2 paires d'antonymes à former
-   - 20 étiquettes au total (4 mots corrects + 16 distracteurs)
+3. ANTONYMES (3 paires, 3 points) :
+   - L'élève doit trouver EXACTEMENT 3 paires d'antonymes
+   - Proposer 14 étiquettes au total (6 mots corrects formant 3 paires + 8 distracteurs)
+   - IMPORTANT : même règle — ne jamais placer un antonyme évident d'un mot de la liste dans les distracteurs
+
+4. TEXTE À TROUS AVEC CHOIX (5 points) :
+   - Un texte cohérent de 4-5 phrases contenant des espaces numérotés {0}, {1}, {2}, etc.
+   - Pour chaque espace, proposer 3-4 options (dont la bonne réponse)
+   - Utiliser au moins 5 mots de la liste
+
+5. EMPLOI EN CONTEXTE (5 points) :
+   - 5 phrases utilisant chacune un mot de la liste
+   - Certaines phrases utilisent le mot CORRECTEMENT, d'autres INCORRECTEMENT (sens détourné)
+   - L'élève doit juger si l'emploi est correct ou non
+   - Fournir une explication pour les emplois incorrects
 
 FORMAT JSON EXACT :
 {
   "title": "Diagnostic de vocabulaire - ${theme}",
-  "totalPoints": 10,
+  "totalPoints": 20,
   "exercises": [
     {
       "type": "definitions",
-      "title": "Exercice 1 : Associez chaque définition au bon terme (3 points)",
-      "instructions": "Glissez chaque terme vers sa définition correspondante",
-      "points": 3,
+      "title": "Exercice 1 : Associez chaque mot à sa définition (4 points)",
+      "instructions": "Associez chaque définition au terme correspondant. ${wordCount} associations à trouver.",
+      "points": 4,
       "definitions": [
-        { "id": 1, "definition": "...", "correctTerm": "mot_correct" }
+        { "id": 1, "definition": "définition claire", "correctTerm": "mot" }
       ],
-      "terms": ["terme1", "terme2", "...15 termes..."],
+      "terms": ["mot1", "mot2", "...${wordCount} termes..."],
       "answers": [
-        { "definitionId": 1, "correctTerm": "mot_correct" }
+        { "definitionId": 1, "correctTerm": "mot" }
       ]
     },
     {
       "type": "synonyms",
-      "title": "Exercice 2 : Trouvez les paires de synonymes (4 points)",
-      "instructions": "Associez les mots qui ont des sens similaires",
-      "points": 4,
-      "words": ["...20 étiquettes..."],
+      "title": "Exercice 2 : Trouvez les 4 paires de synonymes (3 points)",
+      "instructions": "Sélectionnez deux mots pour former une paire de synonymes. Vous devez trouver 4 paires.",
+      "points": 3,
+      "words": ["...16 étiquettes..."],
       "answers": [
         { "pair": ["mot1", "synonyme1"] }
       ]
     },
     {
       "type": "antonyms",
-      "title": "Exercice 3 : Trouvez les paires d'antonymes (3 points)",
-      "instructions": "Associez les mots qui ont des sens opposés",
+      "title": "Exercice 3 : Trouvez les 3 paires d'antonymes (3 points)",
+      "instructions": "Sélectionnez deux mots pour former une paire d'antonymes. Vous devez trouver 3 paires.",
       "points": 3,
-      "words": ["...20 étiquettes..."],
+      "words": ["...14 étiquettes..."],
       "answers": [
         { "pair": ["mot1", "antonyme1"] }
+      ]
+    },
+    {
+      "type": "fill_in_blanks_dropdown",
+      "title": "Exercice 4 : Complétez le texte (5 points)",
+      "instructions": "Choisissez le bon mot dans chaque menu déroulant.",
+      "points": 5,
+      "text": "Texte avec {0} des espaces {1} numérotés...",
+      "blanks": [
+        { "correctAnswer": "mot_juste", "options": ["mot_juste", "distracteur1", "distracteur2"] }
+      ]
+    },
+    {
+      "type": "context_sentences",
+      "title": "Exercice 5 : L'emploi est-il correct ? (5 points)",
+      "instructions": "Pour chaque phrase, indiquez si le mot entre crochets est utilisé avec le bon sens.",
+      "points": 5,
+      "sentences": [
+        { "word": "mot", "sentence": "Phrase utilisant le mot.", "isCorrect": true, "explanation": "" },
+        { "word": "mot2", "sentence": "Phrase avec mauvais usage.", "isCorrect": false, "explanation": "Explication du bon sens" }
       ]
     }
   ]
 }
 
+REGLES CRITIQUES :
+- Définitions précises, pas d'ambiguïté
+- Distracteurs plausibles mais JAMAIS un vrai synonyme/antonyme d'un mot de la liste
+- Pour les synonymes/antonymes : TOUTES les associations valides doivent être dans answers (si plusieurs paires sont possibles, les inclure)
+- Les phrases de l'exercice 5 : environ 2-3 correctes et 2-3 incorrectes, de manière aléatoire
+- JSON valide uniquement, aucun texte supplémentaire`;
+}
+
+// --- Prompt evaluation (interro complete) ---
+function buildEvaluationPrompt(words: VocabulaireWord[], theme: string): string {
+  const wordsList = words.map((w) => w.word);
+
+  return `Tu es un professeur de français. Crée une évaluation complète de vocabulaire (style interro) sur ces ${wordsList.length} mots du thème "${theme}":
+
+Mots: ${wordsList.join(', ')}
+
+Génère une évaluation au format JSON avec ces 4 exercices :
+
+1. DÉFINITIONS (${Math.min(10, wordsList.length)} questions, 5 points) :
+   - ${Math.min(10, wordsList.length)} définitions à associer aux bons termes
+   - Proposer ${Math.min(20, wordsList.length + 10)} termes (bons + distracteurs)
+
+2. SYNONYMES (5 questions, 5 points) :
+   - 5 paires de synonymes à reconstituer
+   - 20 étiquettes au total
+
+3. ANTONYMES (4 questions, 5 points) :
+   - 4 paires d'antonymes à former
+   - 20 étiquettes au total
+
+4. TEXTE À TROUS (5 points) :
+   - Un texte cohérent avec ${Math.min(8, wordsList.length)} mots à replacer
+
+FORMAT JSON EXACT :
+{
+  "title": "Évaluation de vocabulaire - ${theme}",
+  "totalPoints": 20,
+  "exercises": [
+    {
+      "type": "definitions",
+      "title": "Exercice 1 : Associez chaque définition au bon terme (5 points)",
+      "instructions": "Associez chaque définition à son terme",
+      "points": 5,
+      "definitions": [{ "id": 1, "definition": "...", "correctTerm": "..." }],
+      "terms": ["..."],
+      "answers": [{ "definitionId": 1, "correctTerm": "..." }]
+    },
+    {
+      "type": "synonyms",
+      "title": "Exercice 2 : Paires de synonymes (5 points)",
+      "instructions": "Associez les mots qui ont des sens similaires",
+      "points": 5,
+      "words": ["..."],
+      "answers": [{ "pair": ["mot", "synonyme"] }]
+    },
+    {
+      "type": "antonyms",
+      "title": "Exercice 3 : Paires d'antonymes (5 points)",
+      "instructions": "Associez les mots qui ont des sens opposés",
+      "points": 5,
+      "words": ["..."],
+      "answers": [{ "pair": ["mot", "antonyme"] }]
+    },
+    {
+      "type": "fill_in_blanks",
+      "title": "Exercice 4 : Complétez le texte (5 points)",
+      "instructions": "Tapez les mots manquants",
+      "points": 5,
+      "text_with_blanks": "...",
+      "answers": ["..."]
+    }
+  ]
+}
+
 REGLES :
-- Définitions précises et sans ambiguïté
-- Distracteurs plausibles mais incorrects
-- Synonymes et antonymes authentiques
+- Évaluation exigeante mais juste
+- Couvrir un maximum de mots de la liste
+- Distracteurs plausibles
 - JSON valide uniquement, aucun texte supplémentaire`;
 }
 
@@ -173,10 +286,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { words, mode, themes } = body as {
+    const { words, mode, themes, spacedWords } = body as {
       words: VocabulaireWord[];
-      mode: 'apprentissage' | 'diagnostic';
+      mode: 'apprentissage' | 'diagnostic' | 'evaluation';
       themes?: string[];
+      spacedWords?: VocabulaireWord[];
     };
 
     if (!words || !Array.isArray(words) || words.length === 0) {
@@ -186,12 +300,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt =
-      mode === 'diagnostic'
-        ? buildDiagnosticPrompt(words, themes?.[0] || 'vocabulaire')
-        : buildApprentissagePrompt(words, themes || ['vocabulaire']);
+    let prompt: string;
+    let maxTokens: number;
 
-    const maxTokens = mode === 'diagnostic' ? 3000 : 4500;
+    switch (mode) {
+      case 'diagnostic':
+        prompt = buildDiagnosticPrompt(words, themes?.[0] || 'vocabulaire');
+        maxTokens = 3000;
+        break;
+      case 'evaluation':
+        prompt = buildEvaluationPrompt(words, themes?.[0] || 'vocabulaire');
+        maxTokens = 4500;
+        break;
+      default:
+        prompt = buildApprentissagePrompt(words, themes || ['vocabulaire'], spacedWords || []);
+        maxTokens = 4500;
+        break;
+    }
 
     const response = await client.messages.create({
       model: 'claude-sonnet-4-5-20250929',

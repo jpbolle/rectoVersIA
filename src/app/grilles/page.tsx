@@ -54,6 +54,7 @@ export default function GrillesPage() {
     isLoading: vocabThemesLoading,
     createTheme,
     updateWords,
+    updateThemeMeta,
     deleteTheme,
     duplicateTheme,
   } = useVocabulaireThemes();
@@ -63,6 +64,7 @@ export default function GrillesPage() {
   // Viewer vocabulaire (lecture seule)
   const [viewingVocab, setViewingVocab] = useState<VocabulaireThemeSummary | null>(null);
   const [newListName, setNewListName] = useState('');
+  const [editingTargetLevels, setEditingTargetLevels] = useState<string[]>([]);
 
   // Mots du theme en cours d'edition/visualisation
   const editingThemeId = vocabEditorMode && typeof vocabEditorMode === 'object' ? vocabEditorMode.id : null;
@@ -245,6 +247,7 @@ export default function GrillesPage() {
 
   const handleVocabEditClick = useCallback((theme: VocabulaireThemeSummary) => {
     setVocabEditorMode(theme);
+    setEditingTargetLevels(theme.targetLevels || []);
     setViewingVocab(null);
   }, []);
 
@@ -321,7 +324,11 @@ export default function GrillesPage() {
       const res = await fetch('/api/vocabulaire/suggest', {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'suggest', themeName: vocabEditorMode.name }),
+        body: JSON.stringify({
+          action: 'suggest',
+          themeName: vocabEditorMode.name,
+          existingWords: editingWords.map((w) => w.word),
+        }),
       });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
@@ -593,6 +600,36 @@ export default function GrillesPage() {
                       ✕
                     </button>
                   </div>
+
+                  {/* Eleves cibles */}
+                  {!isViewOnly && (
+                    <div className={styles.vocabTargetLevels}>
+                      <label className={styles.vocabTargetLabel}>Élèves ciblés :</label>
+                      <div className={styles.vocabTargetChips}>
+                        {['1', '2', '3', '4', '5', '6', 'daspa'].map((level) => {
+                          const active = editingTargetLevels.includes(level);
+                          return (
+                            <button
+                              key={level}
+                              type="button"
+                              className={`${styles.vocabTargetChip} ${active ? styles.vocabTargetChipActive : ''}`}
+                              onClick={() => {
+                                const updated = active
+                                  ? editingTargetLevels.filter((l) => l !== level)
+                                  : [...editingTargetLevels, level];
+                                setEditingTargetLevels(updated);
+                                if (vocabEditorMode && typeof vocabEditorMode === 'object') {
+                                  updateThemeMeta(vocabEditorMode.id, { targetLevels: updated });
+                                }
+                              }}
+                            >
+                              {level}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {vocabWordsLoading ? (
                     <EmptyState icon="hourglass" message="Chargement des mots..." />

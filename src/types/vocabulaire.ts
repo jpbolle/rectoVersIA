@@ -1,4 +1,4 @@
-// Types pour l'activite vocabulaire (migration vocab4ever)
+// Types pour l'activite vocabulaire — flux unifie Diagnostic → Apprentissage → Evaluation
 
 export interface VocabulaireWord {
   word: string;
@@ -90,6 +90,33 @@ export interface AntonymsExercise {
   answers: { pair: [string, string] }[];
 }
 
+// Exercice : phrases en contexte (l'emploi est-il correct ?)
+export interface ContextSentencesExercise {
+  type: 'context_sentences';
+  title: string;
+  instructions: string;
+  points: number;
+  sentences: {
+    word: string;
+    sentence: string;
+    isCorrect: boolean;
+    explanation?: string;
+  }[];
+}
+
+// Exercice : texte a trous avec menus deroulants
+export interface FillInBlanksDropdownExercise {
+  type: 'fill_in_blanks_dropdown';
+  title: string;
+  instructions: string;
+  points: number;
+  text: string;            // contient {0}, {1}, etc. pour les blancs
+  blanks: {
+    correctAnswer: string;
+    options: string[];     // 3-4 choix dont le bon
+  }[];
+}
+
 export type VocabulaireExercise =
   | TextWithDefinitionsExercise
   | DragAndDropExercise
@@ -98,15 +125,41 @@ export type VocabulaireExercise =
   | ProductionChallengeExercise
   | DefinitionsExercise
   | SynonymsExercise
-  | AntonymsExercise;
+  | AntonymsExercise
+  | ContextSentencesExercise
+  | FillInBlanksDropdownExercise;
 
-// --- Etat de l'activite stocke dans travail.content ---
+// --- Suivi de maitrise par mot ---
 
-export type WordMastery = 'known' | 'misconceived' | 'unknown';
+export interface WordAttempt {
+  date: string;           // ISO
+  context: 'diagnostic' | 'learning' | 'evaluation';
+  correct: boolean;
+}
 
-export interface VocabulaireProgress {
+export interface WordMasteryEntry {
   word: string;
-  status: WordMastery;
+  attempts: WordAttempt[];
+}
+
+// Categorie calculee a partir des attempts
+export type WordCategory = 'unknown' | 'misconceived' | 'known';
+
+// Calcul du niveau de maitrise d'un mot
+export function getWordCategory(entry: WordMasteryEntry | undefined): WordCategory {
+  if (!entry || entry.attempts.length === 0) return 'unknown';
+  // Dernieres 3 tentatives (ou moins)
+  const recent = entry.attempts.slice(-3);
+  const correctCount = recent.filter((a) => a.correct).length;
+  if (correctCount >= 2) return 'known';
+  return 'misconceived';
+}
+
+// Resultat d'exercice pour le tracking
+export interface ExerciseResult {
+  exerciseIndex: number;
+  wordsTested: string[];
+  results: { word: string; correct: boolean }[];
 }
 
 export interface ProductionValidation {
@@ -117,21 +170,69 @@ export interface ProductionValidation {
   feedback: string;
 }
 
+// --- Etat de l'activite stocke dans travail.content ---
+
+// Score d'un diagnostic complet (serie d'exercices)
+export interface DiagnosticScore {
+  date: string;           // ISO
+  correct: number;
+  total: number;
+  wordsTested: string[];
+}
+
 export interface VocabulaireActivityState {
-  // Theme et mots selectionnes
-  selectedTheme: string;
-  selectedWords: VocabulaireWord[];
-  // Mode diagnostic : auto-evaluation
-  diagnosticProgress?: VocabulaireProgress[];
-  // Exercices generes
+  // Phase courante
+  phase: 'diagnostic' | 'learning' | 'evaluation';
+
+  // Diagnostic
+  diagnosticSelections: string[];          // mots cliques "je pense connaitre" (premier diagnostic)
+  diagnosticCount: number;                 // nb de diagnostics passes
+  diagnosticScores: DiagnosticScore[];     // score de chaque diagnostic passe
+
+  // Suivi de maitrise (unifie diagnostic + learning + evaluation)
+  wordMastery: WordMasteryEntry[];
+
+  // Apprentissage
+  learningSessions: number;                // nb de sessions d'exercices generes
+  currentSelection: string[];             // mots choisis pour la session en cours
+
+  // Exercices en cours
   exercises?: VocabulaireExercise[];
-  // Reponses de l'eleve aux exercices
-  exerciseResponses?: Record<number, unknown>;
-  // Validation production personnelle (exercice 5)
+  exerciseResults?: ExerciseResult[];
+
+  // Stats
+  activityOpened: number;                  // nb de fois que l'activite est ouverte
+
+  // Production validation
   productionValidation?: ProductionValidation;
-  // Score
-  score?: number;
-  totalPoints?: number;
-  // Timestamp
+
   lastUpdated: string;
+}
+
+// Helper : obtenir les mots par categorie
+export function categorizeWords(
+  allWords: string[],
+  mastery: WordMasteryEntry[]
+): { unknown: string[]; misconceived: string[]; known: string[] } {
+  const masteryMap = new Map(mastery.map((m) => [m.word, m]));
+  const result = { unknown: [] as string[], misconceived: [] as string[], known: [] as string[] };
+  for (const word of allWords) {
+    const category = getWordCategory(masteryMap.get(word));
+    result[category].push(word);
+  }
+  return result;
+}
+
+// Helper : selectionner les mots meconnus pour l'espacement
+export function getSpacedRepetitionWords(
+  mastery: WordMasteryEntry[],
+  exclude: string[],
+  count: number = 5
+): string[] {
+  const excludeSet = new Set(exclude);
+  // Mots meconnus tries par nombre de tentatives (les moins exerces d'abord)
+  const misconceived = mastery
+    .filter((m) => !excludeSet.has(m.word) && getWordCategory(m) === 'misconceived')
+    .sort((a, b) => a.attempts.length - b.attempts.length);
+  return misconceived.slice(0, count).map((m) => m.word);
 }

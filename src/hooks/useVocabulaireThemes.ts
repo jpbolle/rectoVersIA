@@ -10,6 +10,7 @@ export interface VocabulaireThemeSummary {
   wordCount: number;
   profId: string | null;
   profName?: string;
+  targetLevels?: string[];  // ex: ['1', '2', '3', 'daspa']
 }
 
 export function useVocabulaireThemes() {
@@ -100,6 +101,20 @@ export function useVocabulaireThemes() {
     await fetchThemes();
   }, [getAuthHeaders, fetchThemes]);
 
+  const updateThemeMeta = useCallback(async (id: string, meta: { targetLevels?: string[] }) => {
+    const headers = await getAuthHeaders();
+    if (!headers) return;
+
+    const res = await fetch('/api/vocabulaire/themes', {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, meta }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Erreur');
+    await fetchThemes();
+  }, [getAuthHeaders, fetchThemes]);
+
   const duplicateTheme = useCallback(async (source: VocabulaireThemeSummary): Promise<string | null> => {
     const headers = await getAuthHeaders();
     if (!headers) return null;
@@ -133,6 +148,7 @@ export function useVocabulaireThemes() {
     refetch: fetchThemes,
     createTheme,
     updateWords,
+    updateThemeMeta,
     deleteTheme,
     duplicateTheme,
   };
