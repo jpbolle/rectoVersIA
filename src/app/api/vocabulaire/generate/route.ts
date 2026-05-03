@@ -51,17 +51,13 @@ Génère une réponse au format JSON suivant:
       ]
     },
     {
-      "type": "drag_and_drop",
-      "title": "Exercice 2 : Associez les mots à leur définition",
-      "instructions": "Glissez chaque mot vers sa définition correspondante",
-      "words": [${allWords.map((w) => `"${w}"`).join(', ')}],
-      "definitions": [
-        ${[...words, ...spacedWords].map((w, i) => `{ "id": ${i + 1}, "definition": "${w.definition}", "correct_word": "${w.word}" }`).join(',\n        ')}
-      ],
-      "distractors": [
-        { "definition": "Définition fausse mais plausible 1", "correct_term": "terme_1" },
-        { "definition": "Définition fausse mais plausible 2", "correct_term": "terme_2" },
-        { "definition": "Définition fausse mais plausible 3", "correct_term": "terme_3" }
+      "type": "fill_in_blanks_dropdown",
+      "title": "Exercice 2 : Complétez avec le bon mot",
+      "instructions": "Choisissez le bon mot dans chaque menu déroulant.",
+      "points": 5,
+      "text": "Un texte cohérent de 4-5 phrases contenant des espaces numérotés {0}, {1}, {2}, etc. utilisant au moins 5 mots de la liste.",
+      "blanks": [
+        { "correctAnswer": "mot_juste", "options": ["mot_juste", "distracteur1", "distracteur2", "distracteur3"] }
       ]
     },
     {
@@ -84,8 +80,9 @@ Génère une réponse au format JSON suivant:
 REGLES :
 1. L'exercice 1 DOIT contenir les ${allWords.length} mots : ${allWords.join(', ')}
 2. TOUS les mots DOIVENT être dans highlighted_words
-3. Pour l'exercice 4 : EXACTEMENT 2 mots différents et UNE contrainte
-4. JSON valide uniquement, aucun texte supplémentaire`;
+3. L'exercice 2 (fill_in_blanks_dropdown) : texte avec {0}, {1}, {2}... et pour chaque blanc, 3-4 options dont la bonne réponse. Utiliser au moins 5 mots de la liste.
+4. Pour l'exercice 4 : EXACTEMENT 2 mots différents et UNE contrainte
+5. JSON valide uniquement, aucun texte supplémentaire`;
 }
 
 // --- Prompt diagnostic (5 exercices diversifies) ---
@@ -194,76 +191,56 @@ REGLES CRITIQUES :
 - JSON valide uniquement, aucun texte supplémentaire`;
 }
 
-// --- Prompt evaluation (interro complete) ---
+// --- Prompt evaluation (interro complete — 2 exercices generes par IA) ---
 function buildEvaluationPrompt(words: VocabulaireWord[], theme: string): string {
-  const wordsList = words.map((w) => w.word);
+  const wordsList = words.map((w) => `${w.word} (syn: ${w.synonyms || '—'}, ant: ${w.antonyms || '—'})`);
 
-  return `Tu es un professeur de français. Crée une évaluation complète de vocabulaire (style interro) sur ces ${wordsList.length} mots du thème "${theme}":
+  return `Tu es un professeur de français pour des élèves de 15 ans. Crée 2 exercices d'évaluation sur le thème "${theme}".
 
-Mots: ${wordsList.join(', ')}
+MOTS À UTILISER (avec synonymes/antonymes connus) :
+${wordsList.join('\n')}
 
-Génère une évaluation au format JSON avec ces 4 exercices :
+EXERCICE 1 — TEXTE AVEC MOTS À REMPLACER :
+Rédige un texte narratif cohérent de 150-200 mots adapté à des adolescents de 15 ans.
+Dans ce texte, intègre des mots de la liste (minimum 6, maximum 10).
+Certains devront être remplacés par un SYNONYME (marqués {syn:mot}), d'autres par un ANTONYME (marqués {ant:mot}).
+Mélange environ 50/50 synonymes et antonymes.
+IMPORTANT : pour chaque mot marqué, fournis PLUSIEURS réponses acceptées (synonymes ou antonymes selon le cas).
+RÈGLE CRUCIALE POUR LES ANTONYMES : quand tu marques un mot {ant:mot}, le remplacement par un antonyme DOIT rester cohérent et grammaticalement correct dans la phrase. L'élève doit pouvoir substituer l'antonyme et obtenir une phrase qui a du sens (même si le sens est inversé). Par exemple, si la phrase dit "Ce paysage est {ant:magnifique}", les antonymes "laid", "horrible" doivent fonctionner dans la phrase. Ne choisis JAMAIS un mot à remplacer par un antonyme si le remplacement produit une phrase absurde ou incohérente.
 
-1. DÉFINITIONS (${Math.min(10, wordsList.length)} questions, 5 points) :
-   - ${Math.min(10, wordsList.length)} définitions à associer aux bons termes
-   - Proposer ${Math.min(20, wordsList.length + 10)} termes (bons + distracteurs)
-
-2. SYNONYMES (5 questions, 5 points) :
-   - 5 paires de synonymes à reconstituer
-   - 20 étiquettes au total
-
-3. ANTONYMES (4 questions, 5 points) :
-   - 4 paires d'antonymes à former
-   - 20 étiquettes au total
-
-4. TEXTE À TROUS (5 points) :
-   - Un texte cohérent avec ${Math.min(8, wordsList.length)} mots à replacer
+EXERCICE 2 — COMPOSITION :
+Invente un sujet de rédaction lié au thème "${theme}" adapté à des ados de 15 ans.
+Choisis 5 mots de la liste que l'élève devra utiliser dans son texte.
+Donne une contrainte d'écriture claire (nombre de lignes, type de texte, etc.).
 
 FORMAT JSON EXACT :
 {
-  "title": "Évaluation de vocabulaire - ${theme}",
-  "totalPoints": 20,
   "exercises": [
     {
-      "type": "definitions",
-      "title": "Exercice 1 : Associez chaque définition au bon terme (5 points)",
-      "instructions": "Associez chaque définition à son terme",
-      "points": 5,
-      "definitions": [{ "id": 1, "definition": "...", "correctTerm": "..." }],
-      "terms": ["..."],
-      "answers": [{ "definitionId": 1, "correctTerm": "..." }]
+      "type": "synonym_antonym_text",
+      "title": "Activité 2 : Remplace par un synonyme ou un antonyme",
+      "instructions": "Dans le texte ci-dessous, certains mots sont encadrés en couleur. Clique sur chaque mot encadré et remplace-le : en AMBRE → par un synonyme, en BLEU → par un antonyme.",
+      "text": "Texte avec des balises {syn:mot} et {ant:mot} intégrées naturellement.",
+      "replacements": [
+        { "original": "mot", "type": "synonym", "acceptedAnswers": ["synonyme1", "synonyme2"] },
+        { "original": "mot2", "type": "antonym", "acceptedAnswers": ["antonyme1", "antonyme2"] }
+      ]
     },
     {
-      "type": "synonyms",
-      "title": "Exercice 2 : Paires de synonymes (5 points)",
-      "instructions": "Associez les mots qui ont des sens similaires",
-      "points": 5,
-      "words": ["..."],
-      "answers": [{ "pair": ["mot", "synonyme"] }]
-    },
-    {
-      "type": "antonyms",
-      "title": "Exercice 3 : Paires d'antonymes (5 points)",
-      "instructions": "Associez les mots qui ont des sens opposés",
-      "points": 5,
-      "words": ["..."],
-      "answers": [{ "pair": ["mot", "antonyme"] }]
-    },
-    {
-      "type": "fill_in_blanks",
-      "title": "Exercice 4 : Complétez le texte (5 points)",
-      "instructions": "Tapez les mots manquants",
-      "points": 5,
-      "text_with_blanks": "...",
-      "answers": ["..."]
+      "type": "evaluation_composition",
+      "title": "Activité 3 : Rédaction",
+      "instructions": "Rédige un texte en utilisant les mots imposés ci-dessous.",
+      "theme": "Un thème précis lié à ${theme}",
+      "requiredWords": ["mot1", "mot2", "mot3", "mot4", "mot5"],
+      "constraint": "Contrainte d'écriture claire (ex: 10-15 lignes, texte argumentatif, etc.)"
     }
   ]
 }
 
-REGLES :
-- Évaluation exigeante mais juste
-- Couvrir un maximum de mots de la liste
-- Distracteurs plausibles
+RÈGLES CRITIQUES :
+- Le texte de l'exercice 1 doit être NATUREL et FLUIDE — les mots marqués doivent s'intégrer parfaitement
+- Pour les acceptedAnswers, sois GÉNÉREUX : inclus toutes les formes valides (ex: pour remplacer "beau" par un antonyme, accepter "laid", "vilain", "horrible", "moche", etc.)
+- L'exercice 2 doit être stimulant pour des ados (pas de sujet ennuyeux)
 - JSON valide uniquement, aucun texte supplémentaire`;
 }
 
@@ -286,12 +263,119 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { words, mode, themes, spacedWords } = body as {
+    const { words, mode, themes, spacedWords, compositionText, requiredWords, compositionTheme, synAntChecks } = body as {
       words: VocabulaireWord[];
-      mode: 'apprentissage' | 'diagnostic' | 'evaluation';
+      mode: 'apprentissage' | 'diagnostic' | 'evaluation' | 'evaluate_composition' | 'validate_syn_ant';
       themes?: string[];
       spacedWords?: VocabulaireWord[];
+      compositionText?: string;
+      requiredWords?: string[];
+      compositionTheme?: string;
+      // Pour mode validate_syn_ant
+      synAntChecks?: { original: string; type: 'synonym' | 'antonym'; userAnswer: string }[];
     };
+
+    // Mode validation synonymes/antonymes par Claude
+    if (mode === 'validate_syn_ant') {
+      if (!synAntChecks || synAntChecks.length === 0) {
+        return NextResponse.json({ success: true, data: { results: [] } });
+      }
+
+      const checkList = synAntChecks.map((c) =>
+        `- "${c.userAnswer}" est-il un ${c.type === 'synonym' ? 'SYNONYME' : 'ANTONYME'} valide de "${c.original}" ?`
+      ).join('\n');
+
+      const synAntPrompt = `Tu es un expert en langue française. Pour chaque paire ci-dessous, indique si la réponse de l'élève est un synonyme/antonyme valide du mot original.
+Sois TOLÉRANT : accepte les formes dérivées, les registres différents (familier, soutenu), les mots proches en sens.
+
+${checkList}
+
+FORMAT JSON EXACT :
+{
+  "results": [
+    { "original": "mot", "userAnswer": "reponse", "valid": true }
+  ]
+}
+
+RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
+
+      const synAntResponse = await client.messages.create({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: synAntPrompt }],
+      });
+
+      const synAntBlock = synAntResponse.content.find((b) => b.type === 'text');
+      if (!synAntBlock || synAntBlock.type !== 'text') {
+        return NextResponse.json({ success: true, data: { results: [] } });
+      }
+
+      const synAntParsed = JSON.parse(cleanJsonResponse(synAntBlock.text));
+      return NextResponse.json({ success: true, data: synAntParsed, mode });
+    }
+
+    // Mode correction composition (pas besoin de words)
+    if (mode === 'evaluate_composition') {
+      if (!compositionText || !requiredWords || requiredWords.length === 0) {
+        return NextResponse.json(
+          { success: false, message: 'compositionText et requiredWords requis' },
+          { status: 400 }
+        );
+      }
+      const evalPrompt = `Tu es un professeur de français qui évalue l'emploi du vocabulaire dans le texte d'un élève de 15 ans.
+
+MOTS IMPOSÉS que l'élève devait utiliser dans son texte : ${requiredWords.join(', ')}
+
+TEXTE DE L'ÉLÈVE :
+"""
+${compositionText}
+"""
+
+OBJECTIF UNIQUE DE CETTE CORRECTION :
+Vérifier que l'élève a utilisé les mots imposés de manière PERTINENTE et COHÉRENTE dans son texte.
+Ce n'est PAS un exercice d'écriture créative ni de rédaction — on ne juge PAS la qualité littéraire, l'originalité, le respect du thème ou la structure du texte.
+On évalue UNIQUEMENT :
+- Est-ce que chaque mot imposé est présent ?
+- Est-ce que chaque mot est employé dans un contexte qui a du sens (pas juste "collé" dans une phrase absurde) ?
+
+TOLÉRANCE MORPHOLOGIQUE :
+Accepte TOUTES les formes dérivées du mot ! Si le mot imposé est "beau", les formes suivantes sont TOUTES VALIDES : "belle", "beauté", "embellir", "bellement", "beaux", etc.
+De même pour les conjugaisons, les pluriels, les féminins, les formes adverbiales, adjectivales, verbales ou nominales.
+Ne sois PAS rigide sur la forme exacte du mot.
+
+NOTATION sur 10 :
+- 2 points par mot correctement utilisé (trouvé ET employé de façon pertinente)
+- Si un mot est trouvé mais employé de manière absurde/incohérente : 0 point pour ce mot
+- Maximum ${requiredWords.length * 2} points, ramenés sur 10
+
+FORMAT JSON EXACT :
+{
+  "wordsUsed": [
+    { "word": "mot_imposé", "found": true, "form": "forme_trouvée_dans_le_texte" }
+  ],
+  "qualityScore": 8,
+  "feedback": "Commentaire bienveillant de 2-3 phrases sur l'emploi des mots (pertinence, cohérence du contexte). Ne PAS commenter la qualité littéraire."
+}
+
+RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
+
+      const evalResponse = await client.messages.create({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: evalPrompt }],
+      });
+
+      const evalBlock = evalResponse.content.find((b) => b.type === 'text');
+      if (!evalBlock || evalBlock.type !== 'text') {
+        return NextResponse.json(
+          { success: false, message: 'Pas de reponse textuelle de Claude' },
+          { status: 500 }
+        );
+      }
+
+      const evalParsed = JSON.parse(cleanJsonResponse(evalBlock.text));
+      return NextResponse.json({ success: true, data: evalParsed, mode });
+    }
 
     if (!words || !Array.isArray(words) || words.length === 0) {
       return NextResponse.json(
@@ -310,7 +394,7 @@ export async function POST(request: NextRequest) {
         break;
       case 'evaluation':
         prompt = buildEvaluationPrompt(words, themes?.[0] || 'vocabulaire');
-        maxTokens = 4500;
+        maxTokens = 6000;
         break;
       default:
         prompt = buildApprentissagePrompt(words, themes || ['vocabulaire'], spacedWords || []);

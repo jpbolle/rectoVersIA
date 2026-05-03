@@ -1,0 +1,775 @@
+/* VocabulaireEvaluation — Interro complete */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* ── En-tete evaluation ── */
+.header {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #2d6a5a 0%, #3a8b76 100%);
+  color: #fff;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.headerTitle {
+  margin: 0;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.headerSub {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+/* ── Navigation activites ── */
+.activityNav {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--c-border, #e0dcd6);
+  flex-shrink: 0;
+  background: var(--c-bg, #faf6f0);
+}
+
+.activityTab {
+  flex: 1;
+  padding: 10px 8px;
+  border: none;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--c-text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 3px solid transparent;
+  text-align: center;
+}
+
+.activityTab:hover {
+  color: var(--c-text);
+  background: var(--c-surface, #f5f2ec);
+}
+
+.activityTabActive {
+  color: var(--c-primary, #2d6a5a);
+  border-bottom-color: var(--c-primary, #2d6a5a);
+}
+
+.activityTabDone {
+  color: #27ae60;
+}
+
+.tabIcon {
+  display: block;
+  font-size: 1.1rem;
+  margin-bottom: 2px;
+}
+
+/* ── Contenu exercice ── */
+.activityContent {
+  flex: 1;
+  padding: 16px;
+  min-height: 0;
+}
+
+/* ── Mots croises ── */
+.crosswordContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.crosswordLayout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.crosswordGrid {
+  display: inline-grid;
+  gap: 1px;
+  background: #333;
+  border: 2px solid #333;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.crosswordCell {
+  width: 32px;
+  height: 32px;
+  position: relative;
+}
+
+.cellBlack {
+  background: #333;
+}
+
+.cellWhite {
+  background: #fff;
+}
+
+.cellNumbered {
+  cursor: pointer;
+}
+
+.cellInput {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  text-transform: uppercase;
+  color: var(--c-text, #3d3832);
+  outline: none;
+  padding: 0;
+}
+
+.cellInput:focus {
+  background: #e8f4fd;
+}
+
+.cellNumber {
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  font-size: 8px;
+  font-weight: 600;
+  color: #666;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Panneau definition a droite de la grille */
+.crosswordCluePanel {
+  flex: 1;
+  min-width: 160px;
+  min-height: 80px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.activeClue {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  animation: clueSlideIn 0.2s ease-out;
+}
+
+@keyframes clueSlideIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.activeClueItem {
+  padding: 10px 12px;
+  background: var(--c-surface, #f5f2ec);
+  border-radius: 8px;
+  border-left: 4px solid var(--c-border, #e0dcd6);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  opacity: 0.6;
+}
+
+.activeClueItem:hover {
+  opacity: 0.85;
+}
+
+.activeClueItemSelected {
+  border-left-color: var(--c-primary, #2d6a5a);
+  opacity: 1;
+  background: #edf5f2;
+}
+
+.activeClueHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.activeClueNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--c-primary, #2d6a5a);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.activeClueDir {
+  font-size: 0.68rem;
+  color: var(--c-text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.activeClueText {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--c-text);
+  line-height: 1.4;
+}
+
+.cluePlaceholder {
+  padding: 16px;
+  color: var(--c-text-dim);
+  font-size: 0.82rem;
+  font-style: italic;
+  text-align: center;
+  width: 100%;
+}
+
+/* ── Texte synonymes/antonymes ── */
+.synAntText {
+  line-height: 1.8;
+  font-size: 0.95rem;
+  color: var(--c-text);
+}
+
+.synAntWord {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.synAntWordSyn {
+  border: 2px solid var(--c-accent, #d4944c);
+  background: rgba(212, 148, 76, 0.08);
+  color: #8a5a1e;
+}
+
+.synAntWordAnt {
+  border: 2px solid #5dade2;
+  background: rgba(93, 173, 226, 0.08);
+  color: #1a5276;
+}
+
+.synAntWordAnswered {
+  opacity: 0.7;
+}
+
+.synAntInput {
+  display: inline-block;
+  width: 140px;
+  padding: 3px 8px;
+  border: 2px solid var(--c-border);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  margin: 0 4px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.synAntInput:focus {
+  border-color: var(--c-primary);
+}
+
+.synAntInputSyn {
+  border-color: var(--c-accent, #d4944c);
+}
+
+.synAntInputAnt {
+  border-color: #5dade2;
+}
+
+.synAntLegend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 0.78rem;
+  color: var(--c-text-dim);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.legendDotSyn {
+  background: var(--c-accent, #d4944c);
+}
+
+.legendDotAnt {
+  background: #5dade2;
+}
+
+/* ── Composition ── */
+.compositionContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.compositionTheme {
+  padding: 12px;
+  background: var(--c-surface, #f5f2ec);
+  border-radius: 8px;
+  border-left: 4px solid var(--c-primary, #2d6a5a);
+}
+
+.compositionThemeLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--c-text-dim);
+  margin: 0 0 4px;
+}
+
+.compositionThemeText {
+  font-size: 0.9rem;
+  color: var(--c-text);
+  margin: 0;
+  font-weight: 500;
+}
+
+.compositionWords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.compositionWordTag {
+  padding: 4px 10px;
+  background: var(--c-primary, #2d6a5a);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.compositionConstraint {
+  font-size: 0.82rem;
+  color: var(--c-text-dim);
+  font-style: italic;
+  margin: 0;
+}
+
+.compositionTextarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 12px;
+  border: 1.5px solid var(--c-border, #e0dcd6);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+  background: #fff;
+}
+
+.compositionTextarea:focus {
+  border-color: var(--c-primary, #2d6a5a);
+}
+
+.compositionCounter {
+  font-size: 0.72rem;
+  color: var(--c-text-dim);
+  text-align: right;
+}
+
+/* ── Bouton soumettre ── */
+.submitSection {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--c-border, #e0dcd6);
+}
+
+.submitBtn {
+  padding: 12px 32px;
+  border: none;
+  border-radius: var(--c-radius, 6px);
+  background: var(--c-primary, #2d6a5a);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #245a4c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.submitHint {
+  font-size: 0.72rem;
+  color: var(--c-text-dim);
+}
+
+.submitting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--c-text-dim);
+  font-size: 0.85rem;
+}
+
+.submitSpinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--c-border);
+  border-top-color: var(--c-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Resultats ── */
+.resultsContainer {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.resultCard {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--c-surface, #f5f2ec);
+}
+
+.resultTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--c-text);
+  margin: 0 0 8px;
+}
+
+.resultScore {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--c-primary);
+}
+
+.resultDetails {
+  font-size: 0.78rem;
+  color: var(--c-text-dim);
+  margin-top: 4px;
+}
+
+.resultTotal {
+  text-align: center;
+  padding: 16px;
+  background: linear-gradient(135deg, #2d6a5a 0%, #3a8b76 100%);
+  border-radius: 8px;
+  color: #fff;
+}
+
+.resultTotalLabel {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  margin: 0;
+}
+
+.resultTotalScore {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 4px 0;
+}
+
+.resultTotalPct {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.resultActions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.resultBtnPrimary {
+  padding: 8px 20px;
+  border: none;
+  border-radius: var(--c-radius, 6px);
+  background: var(--c-primary, #2d6a5a);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.resultBtnPrimary:hover {
+  background: #245a4c;
+}
+
+.resultBtnSecondary {
+  padding: 8px 20px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius, 6px);
+  background: transparent;
+  color: var(--c-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.resultBtnSecondary:hover {
+  background: var(--c-surface, #f5f2ec);
+}
+
+/* ── Corrections affichees ── */
+.correctionCorrect {
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.correctionIncorrect {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+.correctionExpected {
+  color: #27ae60;
+  font-size: 0.78rem;
+  margin-left: 4px;
+}
+
+.compositionFeedback {
+  padding: 12px;
+  background: var(--c-surface, #f5f2ec);
+  border-radius: 8px;
+  border-left: 4px solid var(--c-primary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--c-text);
+}
+
+.wordCheckList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.wordCheckItem {
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Popup blocage ── */
+.popupOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.popupCard {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.popupIcon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.popupTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--c-text);
+  margin: 0 0 8px;
+}
+
+.popupText {
+  font-size: 0.85rem;
+  color: var(--c-text-dim);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.popupStats {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.popupStat {
+  text-align: center;
+}
+
+.popupStatValue {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.popupStatLabel {
+  font-size: 0.7rem;
+  color: var(--c-text-dim);
+}
+
+.popupStatOk {
+  color: #27ae60;
+}
+
+.popupStatKo {
+  color: #e74c3c;
+}
+
+.popupBtn {
+  padding: 8px 24px;
+  border: none;
+  border-radius: var(--c-radius, 6px);
+  background: var(--c-primary, #2d6a5a);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.popupBtn:hover {
+  background: #245a4c;
+}
+
+/* ── Etat de chargement ── */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 16px;
+  color: var(--c-text-dim);
+}
+
+.loadingSpinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--c-border);
+  border-top-color: var(--c-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ── Score inline par activite (apres correction) ── */
+.activityScoreBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--c-surface, #f5f2ec);
+  border-radius: 6px;
+  border-left: 4px solid var(--c-primary, #2d6a5a);
+}
+
+.activityScoreLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--c-text-dim);
+}
+
+.activityScoreValue {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--c-primary, #2d6a5a);
+}
+
+/* ── Exercice title/instructions communs ── */
+.exerciseTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--c-text);
+  margin: 0 0 4px;
+}
+
+.exerciseInstructions {
+  font-size: 0.82rem;
+  color: var(--c-text-dim);
+  margin: 0 0 16px;
+  font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .crosswordLayout {
+    flex-direction: column;
+  }
+
+  .crosswordGrid {
+    align-self: center;
+  }
+
+  .crosswordCell {
+    width: 28px;
+    height: 28px;
+  }
+
+  .cellInput {
+    font-size: 14px;
+  }
+
+  .cellNumber {
+    font-size: 7px;
+  }
+}

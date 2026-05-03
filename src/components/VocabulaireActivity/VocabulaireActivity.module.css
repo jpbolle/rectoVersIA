@@ -183,20 +183,34 @@
 }
 
 /* ── Bouton generer ── */
-.generateBar {
-  padding: 12px 16px;
-  border-top: 1px solid var(--c-border);
-  background: var(--c-bg-element);
+.generateAction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 16px 0;
   flex-shrink: 0;
 }
 
+.generateSpinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--c-border);
+  border-top-color: var(--c-accent);
+  border-radius: 50%;
+  animation: generateSpin 0.8s linear infinite;
+}
+
+@keyframes generateSpin {
+  to { transform: rotate(360deg); }
+}
+
 .generateBtn {
-  width: 100%;
-  padding: 12px 20px;
+  padding: 10px 28px;
   border: none;
   border-radius: var(--c-radius);
-  background: var(--c-primary);
-  color: var(--c-text-on-primary);
+  background: var(--c-accent);
+  color: #fff;
   font-size: 14px;
   font-weight: 600;
   font-family: inherit;
@@ -205,9 +219,9 @@
 }
 
 .generateBtn:hover:not(:disabled) {
-  background: var(--c-primary-light);
+  background: #c4843c;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
+  box-shadow: 0 4px 12px rgba(212, 148, 76, 0.4);
 }
 
 .generateBtn:disabled {
@@ -215,9 +229,9 @@
   cursor: not-allowed;
 }
 
-/* ── Phase info ── */
-.phaseInfo {
-  padding: 12px 16px;
+/* ── Bandeau consigne + actions ── */
+.phaseBar {
+  padding: 8px 16px;
   background: var(--c-bg-element);
   border-bottom: 1px solid var(--c-border);
   flex-shrink: 0;
@@ -230,57 +244,178 @@
   font-style: italic;
 }
 
-/* ── Barre d'actions ── */
-.actionBar {
+.topActions {
   display: flex;
+  justify-content: flex-end;
   gap: 8px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--c-border);
-  background: var(--c-bg-element);
+  padding: 14px 16px 0;
   flex-shrink: 0;
 }
 
-.actionBtn {
-  flex: 1;
-  padding: 10px 14px;
-  border: 1.5px solid var(--c-primary);
+.topActionBtn {
+  padding: 6px 14px;
+  border: none;
   border-radius: var(--c-radius);
-  background: transparent;
-  color: var(--c-primary);
-  font-size: 13px;
-  font-weight: 500;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
-.actionBtn:hover:not(:disabled) {
-  background: var(--c-primary);
-  color: var(--c-text-on-primary);
+.topActionBtn:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(45, 106, 90, 0.3);
 }
 
-.actionBtn:disabled {
+.topActionBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.actionBtnSecondary {
-  flex: 1;
-  padding: 10px 14px;
+.topActionBtnSecondary {
+  padding: 6px 14px;
   border: 1.5px solid var(--c-border);
   border-radius: var(--c-radius);
   background: transparent;
   color: var(--c-text-secondary);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
-.actionBtnSecondary:hover {
+.topActionBtnSecondary:hover {
   background: var(--c-bg-card);
   border-color: var(--c-text-secondary);
+}
+
+/* ── Hint de selection ── */
+.selectionHint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 16px 0;
+  padding: 8px 12px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: var(--c-radius);
+  font-size: 0.8rem;
+  color: #856404;
+  animation: hintSlideIn 0.25s ease-out;
+}
+
+.selectionHintClose {
+  border: none;
+  background: none;
+  color: #856404;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+@keyframes hintSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Popup blocage evaluation ── */
+.evalPopupOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.evalPopupCard {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.evalPopupIcon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.evalPopupTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--c-text);
+  margin: 0 0 8px;
+}
+
+.evalPopupText {
+  font-size: 0.85rem;
+  color: var(--c-text-dim);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.evalPopupStats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.evalPopupStat {
+  text-align: center;
+}
+
+.evalPopupStatValue {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.evalPopupStatLabel {
+  font-size: 0.7rem;
+  color: var(--c-text-dim);
+}
+
+.evalPopupStatOk {
+  color: #27ae60;
+}
+
+.evalPopupStatKo {
+  color: #e74c3c;
+}
+
+.evalPopupBtn {
+  padding: 8px 24px;
+  border: none;
+  border-radius: var(--c-radius);
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.evalPopupBtn:hover {
+  background: #245a4c;
 }
 
 /* ── Responsive ── */

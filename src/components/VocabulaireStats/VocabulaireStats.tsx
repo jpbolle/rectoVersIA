@@ -109,6 +109,36 @@ export default function VocabulaireStats({ state, allWords: allWordsProp, themes
         </div>
       )}
 
+      {/* Resultats des evaluations */}
+      {state.evaluationScores && state.evaluationScores.length > 0 && (
+        <div className={styles.diagnosticSection}>
+          <h4 className={styles.sectionTitle}>Résultats des évaluations</h4>
+          <div className={styles.diagnosticResults}>
+            {state.evaluationScores.map((score, i) => {
+              const date = new Date(score.date);
+              return (
+                <div key={i} className={styles.diagResult}>
+                  <span className={styles.diagLabel}>
+                    Évaluation {i + 1} — {date.toLocaleDateString()}
+                  </span>
+                  <span className={styles.diagScore}>
+                    {score.totalCorrect}/{score.totalPossible} ({score.percentage}%)
+                  </span>
+                  <div className={styles.diagBar}>
+                    <div className={styles.diagBarFill} style={{ width: `${score.percentage}%` }} />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '12px', fontSize: '0.7rem', color: 'var(--c-text-dim)' }}>
+                    <span>Mots croisés : {score.crosswordScore.correct}/{score.crosswordScore.total}</span>
+                    <span>Syn/Ant : {score.synonymAntonymScore.correct}/{score.synonymAntonymScore.total}</span>
+                    <span>Rédaction : {score.compositionScore.score}/{score.compositionScore.total}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Tableau de mots avec tentatives */}
       <div className={styles.tableWrapper}>
         <table className={styles.table}>

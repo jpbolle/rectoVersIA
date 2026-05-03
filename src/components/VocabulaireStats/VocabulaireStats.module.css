@@ -86,8 +86,6 @@
 /* Tableau */
 .tableWrapper {
   overflow-x: auto;
-  max-height: 400px;
-  overflow-y: auto;
 }
 
 .table {

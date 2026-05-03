@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type {
   VocabulaireExercise,
   TextWithDefinitionsExercise,
@@ -59,7 +59,7 @@ function TextWithDefinitions({ exercise }: { exercise: TextWithDefinitionsExerci
     <div className={styles.exercise}>
       <h3 className={styles.exerciseTitle}>{exercise.title}</h3>
       <p className={styles.exerciseInstructions}>{exercise.instructions}</p>
-      <div className={styles.textContent}>{renderText()}</div>
+      <div className={styles.textContentQuote}>{renderText()}</div>
     </div>
   );
 }
@@ -72,48 +72,65 @@ function DragAndDrop({
   onResult?: (results: { word: string; correct: boolean }[]) => void;
 }) {
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [checked, setChecked] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [locked, setLocked] = useState<Set<number>>(new Set());
+  const revealed = attempts >= 3;
 
   const handleCheck = () => {
-    setChecked(true);
-    if (onResult) {
-      const results = exercise.definitions.map((def) => ({
-        word: def.correct_word,
-        correct: (answers[def.id] || '').toLowerCase() === def.correct_word.toLowerCase(),
-      }));
-      onResult(results);
+    const newAttempt = attempts + 1;
+    setAttempts(newAttempt);
+    const newLocked = new Set(locked);
+    let allCorrect = true;
+    for (const def of exercise.definitions) {
+      if ((answers[def.id] || '').toLowerCase() === def.correct_word.toLowerCase()) {
+        newLocked.add(def.id);
+      } else {
+        allCorrect = false;
+      }
+    }
+    setLocked(newLocked);
+    // Notifier des la 1re tentative (handleResult ignore les doublons)
+    {
+      if (onResult) {
+        onResult(exercise.definitions.map((def) => ({
+          word: def.correct_word,
+          correct: newLocked.has(def.id),
+        })));
+      }
     }
   };
+
+  const done = revealed || locked.size === exercise.definitions.length;
 
   return (
     <div className={styles.exercise}>
       <h3 className={styles.exerciseTitle}>{exercise.title}</h3>
       <p className={styles.exerciseInstructions}>{exercise.instructions}</p>
 
-      <div className={styles.dndContainer}>
+      <div className={styles.dndContainerIndented}>
         {exercise.definitions.map((def) => {
           const selected = answers[def.id] || '';
-          const isCorrect = checked && selected.toLowerCase() === def.correct_word.toLowerCase();
-          const isWrong = checked && selected && !isCorrect;
+          const isLocked = locked.has(def.id);
+          const isWrong = attempts > 0 && !isLocked && selected;
 
           return (
-            <div key={def.id} className={styles.dndRow}>
+            <div key={def.id} className={styles.dndRowCompact}>
               <div className={styles.dndDefinition}>{def.definition}</div>
               <select
-                className={`${styles.dndSelect} ${isCorrect ? styles.dndCorrect : ''} ${isWrong ? styles.dndIncorrect : ''}`}
+                className={`${styles.dndSelect} ${isLocked ? styles.dndCorrect : ''} ${isWrong ? styles.dndIncorrect : ''}`}
                 value={selected}
                 onChange={(e) => {
-                  if (checked) return;
+                  if (isLocked || done) return;
                   setAnswers((prev) => ({ ...prev, [def.id]: e.target.value }));
                 }}
-                disabled={checked}
+                disabled={isLocked || done}
               >
                 <option value="">Choisir...</option>
                 {exercise.words.map((w) => (
                   <option key={w} value={w}>{w}</option>
                 ))}
               </select>
-              {checked && isWrong && (
+              {revealed && !isLocked && (
                 <span className={styles.correction}>{def.correct_word}</span>
               )}
             </div>
@@ -121,13 +138,13 @@ function DragAndDrop({
         })}
       </div>
 
-      {!checked && (
+      {!done && (
         <button
           className={styles.checkBtn}
           onClick={handleCheck}
           disabled={Object.keys(answers).length === 0}
         >
-          Vérifier mes réponses
+          {attempts === 0 ? 'Vérifier mes réponses' : `Réessayer (${3 - attempts} tentative${3 - attempts > 1 ? 's' : ''} restante${3 - attempts > 1 ? 's' : ''})`}
         </button>
       )}
     </div>
@@ -142,18 +159,35 @@ function DiagnosticDefinitions({
   onResult?: (results: { word: string; correct: boolean }[]) => void;
 }) {
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [checked, setChecked] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [locked, setLocked] = useState<Set<number>>(new Set());
+  const revealed = attempts >= 3;
 
   const handleCheck = () => {
-    setChecked(true);
-    if (onResult) {
-      const results = exercise.answers.map((ans) => ({
-        word: ans.correctTerm,
-        correct: (answers[ans.definitionId] || '').toLowerCase() === ans.correctTerm.toLowerCase(),
-      }));
-      onResult(results);
+    const newAttempt = attempts + 1;
+    setAttempts(newAttempt);
+    const newLocked = new Set(locked);
+    let allCorrect = true;
+    for (const def of exercise.definitions) {
+      if ((answers[def.id] || '').toLowerCase() === def.correctTerm.toLowerCase()) {
+        newLocked.add(def.id);
+      } else {
+        allCorrect = false;
+      }
+    }
+    setLocked(newLocked);
+    // Notifier des la 1re tentative (handleResult ignore les doublons)
+    {
+      if (onResult) {
+        onResult(exercise.answers.map((ans) => ({
+          word: ans.correctTerm,
+          correct: newLocked.has(ans.definitionId),
+        })));
+      }
     }
   };
+
+  const done = revealed || locked.size === exercise.definitions.length;
 
   return (
     <div className={styles.exercise}>
@@ -163,27 +197,27 @@ function DiagnosticDefinitions({
       <div className={styles.dndContainer}>
         {exercise.definitions.map((def) => {
           const selected = answers[def.id] || '';
-          const isCorrect = checked && selected.toLowerCase() === def.correctTerm.toLowerCase();
-          const isWrong = checked && selected && !isCorrect;
+          const isLocked = locked.has(def.id);
+          const isWrong = attempts > 0 && !isLocked && selected;
 
           return (
             <div key={def.id} className={styles.dndRow}>
               <div className={styles.dndDefinition}>{def.definition}</div>
               <select
-                className={`${styles.dndSelect} ${isCorrect ? styles.dndCorrect : ''} ${isWrong ? styles.dndIncorrect : ''}`}
+                className={`${styles.dndSelect} ${isLocked ? styles.dndCorrect : ''} ${isWrong ? styles.dndIncorrect : ''}`}
                 value={selected}
                 onChange={(e) => {
-                  if (checked) return;
+                  if (isLocked || done) return;
                   setAnswers((prev) => ({ ...prev, [def.id]: e.target.value }));
                 }}
-                disabled={checked}
+                disabled={isLocked || done}
               >
                 <option value="">Choisir...</option>
                 {exercise.terms.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
-              {checked && isWrong && (
+              {revealed && !isLocked && (
                 <span className={styles.correction}>{def.correctTerm}</span>
               )}
             </div>
@@ -191,13 +225,13 @@ function DiagnosticDefinitions({
         })}
       </div>
 
-      {!checked && (
+      {!done && (
         <button
           className={styles.checkBtn}
           onClick={handleCheck}
           disabled={Object.keys(answers).length === 0}
         >
-          Vérifier mes réponses
+          {attempts === 0 ? 'Vérifier mes réponses' : `Réessayer (${3 - attempts} tentative${3 - attempts > 1 ? 's' : ''} restante${3 - attempts > 1 ? 's' : ''})`}
         </button>
       )}
     </div>
@@ -215,12 +249,22 @@ function DiagnosticPairs({
 }) {
   const [selections, setSelections] = useState<string[]>([]);
   const [pairs, setPairs] = useState<[string, string][]>([]);
-  const [checked, setChecked] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [lockedPairs, setLockedPairs] = useState<Set<number>>(new Set());
+  const revealed = attempts >= 3;
 
   const expectedCount = exercise.answers.length;
 
+  const isPairCorrect = (pair: [string, string]) => {
+    return exercise.answers.some(
+      (ans) =>
+        (ans.pair[0].toLowerCase() === pair[0].toLowerCase() && ans.pair[1].toLowerCase() === pair[1].toLowerCase()) ||
+        (ans.pair[0].toLowerCase() === pair[1].toLowerCase() && ans.pair[1].toLowerCase() === pair[0].toLowerCase())
+    );
+  };
+
   const handleWordClick = (word: string) => {
-    if (checked) return;
+    if (revealed) return;
     if (selections.includes(word)) {
       setSelections((prev) => prev.filter((w) => w !== word));
       return;
@@ -234,31 +278,59 @@ function DiagnosticPairs({
     }
   };
 
-  const isPairCorrect = (pair: [string, string]) => {
-    return exercise.answers.some(
-      (ans) =>
-        (ans.pair[0].toLowerCase() === pair[0].toLowerCase() && ans.pair[1].toLowerCase() === pair[1].toLowerCase()) ||
-        (ans.pair[0].toLowerCase() === pair[1].toLowerCase() && ans.pair[1].toLowerCase() === pair[0].toLowerCase())
-    );
-  };
-
   const handleCheck = () => {
-    setChecked(true);
-    if (onResult) {
-      const results: { word: string; correct: boolean }[] = [];
-      for (const ans of exercise.answers) {
-        const found = pairs.some(
-          (p) =>
+    const newAttempt = attempts + 1;
+    setAttempts(newAttempt);
+    const newLocked = new Set(lockedPairs);
+    let allCorrect = true;
+    const wrongIndices: number[] = [];
+    for (let i = 0; i < pairs.length; i++) {
+      if (lockedPairs.has(i)) continue;
+      if (isPairCorrect(pairs[i])) {
+        newLocked.add(i);
+      } else {
+        allCorrect = false;
+        wrongIndices.push(i);
+      }
+    }
+    setLockedPairs(newLocked);
+    // Retirer les paires fausses pour laisser l'eleve recommencer
+    if (!allCorrect && newAttempt < 3) {
+      setPairs((prev) => prev.filter((_, i) => !wrongIndices.includes(i)));
+      // Recalculer locked indices apres filtrage
+      const keptPairs = pairs.filter((_, i) => !wrongIndices.includes(i));
+      const newLockedAfterFilter = new Set<number>();
+      keptPairs.forEach((_, i) => { if (newLocked.has(pairs.indexOf(keptPairs[i]))) newLockedAfterFilter.add(i); });
+      // Simplifier : marquer les paires restantes comme locked si elles etaient locked
+      const finalLocked = new Set<number>();
+      let idx = 0;
+      for (let i = 0; i < pairs.length; i++) {
+        if (wrongIndices.includes(i)) continue;
+        if (newLocked.has(i)) finalLocked.add(idx);
+        idx++;
+      }
+      setLockedPairs(finalLocked);
+    }
+    // Notifier des la 1re tentative (handleResult ignore les doublons)
+    {
+      if (onResult) {
+        const results: { word: string; correct: boolean }[] = [];
+        for (const ans of exercise.answers) {
+          const found = pairs.some((p) =>
             (p[0].toLowerCase() === ans.pair[0].toLowerCase() && p[1].toLowerCase() === ans.pair[1].toLowerCase()) ||
             (p[0].toLowerCase() === ans.pair[1].toLowerCase() && p[1].toLowerCase() === ans.pair[0].toLowerCase())
-        );
-        results.push({ word: ans.pair[0], correct: found });
+          );
+          results.push({ word: ans.pair[0], correct: found });
+        }
+        onResult(results);
       }
-      onResult(results);
     }
   };
 
+  const done = revealed || lockedPairs.size === expectedCount;
   const usedWords = pairs.flat();
+  // Mots utilises par des paires locked (pas re-utilisables)
+  const lockedWords = pairs.filter((_, i) => lockedPairs.has(i)).flat();
 
   return (
     <div className={styles.exercise}>
@@ -271,6 +343,7 @@ function DiagnosticPairs({
         <div className={styles.pairsWords}>
           {exercise.words.map((w) => {
             const used = usedWords.includes(w);
+            const isLocked = lockedWords.includes(w);
             const isSelecting = selections.includes(w);
             return (
               <button
@@ -278,7 +351,7 @@ function DiagnosticPairs({
                 type="button"
                 className={`${styles.pairWord} ${used ? styles.pairWordUsed : ''} ${isSelecting ? styles.pairWordSelecting : ''}`}
                 onClick={() => handleWordClick(w)}
-                disabled={used || checked}
+                disabled={isLocked || done || (used && !isLocked)}
               >
                 {w}
               </button>
@@ -289,14 +362,14 @@ function DiagnosticPairs({
         {pairs.length > 0 && (
           <div className={styles.pairsList}>
             {pairs.map((pair, i) => {
-              const correct = checked ? isPairCorrect(pair) : null;
+              const isLocked = lockedPairs.has(i);
               return (
                 <div
                   key={i}
-                  className={`${styles.pairItem} ${correct === true ? styles.pairCorrect : correct === false ? styles.pairIncorrect : ''}`}
+                  className={`${styles.pairItem} ${isLocked ? styles.pairCorrect : (attempts > 0 ? styles.pairIncorrect : '')}`}
                 >
                   {pair[0]} ↔ {pair[1]}
-                  {!checked && (
+                  {!done && !isLocked && (
                     <button
                       className={styles.pairRemove}
                       onClick={() => {
@@ -313,17 +386,19 @@ function DiagnosticPairs({
         )}
       </div>
 
-      {!checked && (
+      {!done && (
         <button
           className={styles.checkBtn}
           onClick={handleCheck}
           disabled={pairs.length === 0}
         >
-          Vérifier mes {type === 'synonyms' ? 'synonymes' : 'antonymes'}
+          {attempts === 0
+            ? `Vérifier mes ${type === 'synonyms' ? 'synonymes' : 'antonymes'}`
+            : `Réessayer (${3 - attempts} tentative${3 - attempts > 1 ? 's' : ''} restante${3 - attempts > 1 ? 's' : ''})`}
         </button>
       )}
 
-      {checked && (
+      {revealed && (
         <div className={styles.answersReveal}>
           <strong>Réponses attendues :</strong>
           {exercise.answers.map((ans, i) => (
@@ -347,18 +422,35 @@ function ContextSentences({
   const [answers, setAnswers] = useState<Record<number, boolean | null>>(
     () => Object.fromEntries(exercise.sentences.map((_, i) => [i, null]))
   );
-  const [checked, setChecked] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [locked, setLocked] = useState<Set<number>>(new Set());
+  const revealed = attempts >= 3;
 
   const handleCheck = () => {
-    setChecked(true);
-    if (onResult) {
-      const results = exercise.sentences.map((s, i) => ({
-        word: s.word,
-        correct: answers[i] === s.isCorrect,
-      }));
-      onResult(results);
+    const newAttempt = attempts + 1;
+    setAttempts(newAttempt);
+    const newLocked = new Set(locked);
+    let allCorrect = true;
+    for (let i = 0; i < exercise.sentences.length; i++) {
+      if (answers[i] === exercise.sentences[i].isCorrect) {
+        newLocked.add(i);
+      } else {
+        allCorrect = false;
+      }
+    }
+    setLocked(newLocked);
+    // Notifier des la 1re tentative (handleResult ignore les doublons)
+    {
+      if (onResult) {
+        onResult(exercise.sentences.map((s, i) => ({
+          word: s.word,
+          correct: newLocked.has(i),
+        })));
+      }
     }
   };
+
+  const done = revealed || locked.size === exercise.sentences.length;
 
   return (
     <div className={styles.exercise}>
@@ -368,11 +460,11 @@ function ContextSentences({
       <div className={styles.sentencesContainer}>
         {exercise.sentences.map((s, i) => {
           const userAnswer = answers[i];
-          const isRight = checked && userAnswer === s.isCorrect;
-          const isWrongAnswer = checked && userAnswer !== null && userAnswer !== s.isCorrect;
+          const isLocked = locked.has(i);
+          const isWrong = attempts > 0 && !isLocked && userAnswer !== null;
 
           return (
-            <div key={i} className={`${styles.sentenceRow} ${isRight ? styles.sentenceCorrect : ''} ${isWrongAnswer ? styles.sentenceIncorrect : ''}`}>
+            <div key={i} className={`${styles.sentenceRow} ${isLocked ? styles.sentenceCorrect : ''} ${isWrong ? styles.sentenceIncorrect : ''}`}>
               <div className={styles.sentenceText}>
                 <span className={styles.sentenceWord}>[{s.word}]</span> {s.sentence}
               </div>
@@ -380,21 +472,21 @@ function ContextSentences({
                 <button
                   type="button"
                   className={`${styles.sentenceBtn} ${userAnswer === true ? styles.sentenceBtnActive : ''}`}
-                  onClick={() => !checked && setAnswers((prev) => ({ ...prev, [i]: true }))}
-                  disabled={checked}
+                  onClick={() => !(isLocked || done) && setAnswers((prev) => ({ ...prev, [i]: true }))}
+                  disabled={isLocked || done}
                 >
                   Correct
                 </button>
                 <button
                   type="button"
                   className={`${styles.sentenceBtn} ${userAnswer === false ? styles.sentenceBtnActive : ''}`}
-                  onClick={() => !checked && setAnswers((prev) => ({ ...prev, [i]: false }))}
-                  disabled={checked}
+                  onClick={() => !(isLocked || done) && setAnswers((prev) => ({ ...prev, [i]: false }))}
+                  disabled={isLocked || done}
                 >
                   Incorrect
                 </button>
               </div>
-              {checked && isWrongAnswer && (
+              {revealed && !isLocked && (
                 <div className={styles.sentenceFeedback}>
                   {s.isCorrect ? 'Cet emploi est correct.' : `Emploi incorrect. ${s.explanation || ''}`}
                 </div>
@@ -404,13 +496,13 @@ function ContextSentences({
         })}
       </div>
 
-      {!checked && (
+      {!done && (
         <button
           className={styles.checkBtn}
           onClick={handleCheck}
           disabled={Object.values(answers).some((a) => a === null)}
         >
-          Vérifier mes réponses
+          {attempts === 0 ? 'Vérifier mes réponses' : `Réessayer (${3 - attempts} tentative${3 - attempts > 1 ? 's' : ''} restante${3 - attempts > 1 ? 's' : ''})`}
         </button>
       )}
     </div>
@@ -427,20 +519,35 @@ function FillInBlanksDropdown({
   const [answers, setAnswers] = useState<Record<number, string>>(
     () => Object.fromEntries(exercise.blanks.map((_, i) => [i, '']))
   );
-  const [checked, setChecked] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [locked, setLocked] = useState<Set<number>>(new Set());
+  const revealed = attempts >= 3;
 
   const handleCheck = () => {
-    setChecked(true);
-    if (onResult) {
-      const results = exercise.blanks.map((blank, i) => ({
-        word: blank.correctAnswer,
-        correct: (answers[i] || '').toLowerCase() === blank.correctAnswer.toLowerCase(),
-      }));
-      onResult(results);
+    const newAttempt = attempts + 1;
+    setAttempts(newAttempt);
+    const newLocked = new Set(locked);
+    let allCorrect = true;
+    for (let i = 0; i < exercise.blanks.length; i++) {
+      if ((answers[i] || '').toLowerCase() === exercise.blanks[i].correctAnswer.toLowerCase()) {
+        newLocked.add(i);
+      } else {
+        allCorrect = false;
+      }
+    }
+    setLocked(newLocked);
+    // Notifier des la 1re tentative (handleResult ignore les doublons)
+    {
+      if (onResult) {
+        onResult(exercise.blanks.map((blank, i) => ({
+          word: blank.correctAnswer,
+          correct: newLocked.has(i),
+        })));
+      }
     }
   };
 
-  // Construire le texte avec les blancs
+  const done = revealed || locked.size === exercise.blanks.length;
   const parts = exercise.text.split(/\{(\d+)\}/g);
 
   return (
@@ -450,42 +557,45 @@ function FillInBlanksDropdown({
 
       <div className={styles.fillBlanksText}>
         {parts.map((part, i) => {
-          // Les indices impairs sont les numeros de blancs
           if (i % 2 === 1) {
             const blankIndex = parseInt(part, 10);
             const blank = exercise.blanks[blankIndex];
             if (!blank) return <span key={i}>{part}</span>;
-            const isCorrect = checked && (answers[blankIndex] || '').toLowerCase() === blank.correctAnswer.toLowerCase();
-            const isWrong = checked && answers[blankIndex] && !isCorrect;
+            const isLocked = locked.has(blankIndex);
+            const isWrong = attempts > 0 && !isLocked && answers[blankIndex];
             return (
-              <select
-                key={i}
-                className={`${styles.blankDropdown} ${isCorrect ? styles.blankCorrect : ''} ${isWrong ? styles.blankIncorrect : ''}`}
-                value={answers[blankIndex] || ''}
-                onChange={(e) => {
-                  if (checked) return;
-                  setAnswers((prev) => ({ ...prev, [blankIndex]: e.target.value }));
-                }}
-                disabled={checked}
-              >
-                <option value="">...</option>
-                {blank.options.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
+              <span key={i} className={styles.blankInline}>
+                <select
+                  className={`${styles.blankDropdown} ${isLocked ? styles.blankCorrect : ''} ${isWrong ? styles.blankIncorrect : ''}`}
+                  value={answers[blankIndex] || ''}
+                  onChange={(e) => {
+                    if (isLocked || done) return;
+                    setAnswers((prev) => ({ ...prev, [blankIndex]: e.target.value }));
+                  }}
+                  disabled={isLocked || done}
+                >
+                  <option value="">...</option>
+                  {blank.options.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+                {revealed && !isLocked && (
+                  <span className={styles.blankCorrectionInline}>→ {blank.correctAnswer}</span>
+                )}
+              </span>
             );
           }
           return <span key={i}>{part}</span>;
         })}
       </div>
 
-      {!checked && (
+      {!done && (
         <button
           className={styles.checkBtn}
           onClick={handleCheck}
           disabled={Object.values(answers).some((a) => !a)}
         >
-          Vérifier mes réponses
+          {attempts === 0 ? 'Vérifier mes réponses' : `Réessayer (${3 - attempts} tentative${3 - attempts > 1 ? 's' : ''} restante${3 - attempts > 1 ? 's' : ''})`}
         </button>
       )}
     </div>
@@ -493,43 +603,69 @@ function FillInBlanksDropdown({
 }
 
 function WordFamilies({ exercise }: { exercise: WordFamiliesExercise }) {
+  const [openWord, setOpenWord] = useState<string | null>(
+    exercise.word_schemas[0]?.central_word || null
+  );
+
   return (
     <div className={styles.exercise}>
       <h3 className={styles.exerciseTitle}>{exercise.title}</h3>
       <p className={styles.exerciseInstructions}>{exercise.instructions}</p>
 
       <div className={styles.familyContainer}>
-        {exercise.word_schemas.map((schema) => (
-          <div key={schema.central_word} className={styles.familyGroup}>
-            <div className={styles.familyCentralWord}>{schema.central_word}</div>
-            <div className={styles.familyBranches}>
-              <div className={styles.familyBranch}>
-                <div className={styles.familyBranchTitle}>Famille</div>
-                <div className={styles.familyBranchWords}>
-                  {schema.family_branch.map((w, i) => (
-                    <div key={i} className={styles.familyWord}>{w}</div>
-                  ))}
+        {exercise.word_schemas.map((schema) => {
+          const isOpen = openWord === schema.central_word;
+          return (
+            <div key={schema.central_word} className={styles.familyAccordion}>
+              <button
+                type="button"
+                className={`${styles.familyCentralWord} ${isOpen ? styles.familyCentralWordOpen : ''}`}
+                onClick={() => setOpenWord(isOpen ? null : schema.central_word)}
+              >
+                <span>{schema.central_word}</span>
+                <span className={styles.familyChevron}>{isOpen ? '▾' : '▸'}</span>
+              </button>
+              {isOpen && (
+                <div className={styles.familyTree}>
+                  {/* Noeud racine */}
+                  <div className={styles.treeRoot}>{schema.central_word}</div>
+                  {/* Tronc */}
+                  <div className={styles.treeTrunk} />
+                  {/* 3 branches */}
+                  <div className={styles.treeBranches}>
+                    {/* Famille */}
+                    <div className={`${styles.treeBranch} ${styles.treeBranchFamily}`}>
+                      <div className={`${styles.treeBranchTitle} ${styles.treeTitleFamily}`}>Famille</div>
+                      <div className={styles.treeBranchWords}>
+                        {schema.family_branch.map((w, i) => (
+                          <span key={i} className={`${styles.treeWord} ${styles.treeWordFamily}`}>{w}</span>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Synonymes */}
+                    <div className={`${styles.treeBranch} ${styles.treeBranchSynonyms}`}>
+                      <div className={`${styles.treeBranchTitle} ${styles.treeTitleSynonyms}`}>Synonymes</div>
+                      <div className={styles.treeBranchWords}>
+                        {schema.synonyms_branch.map((w, i) => (
+                          <span key={i} className={`${styles.treeWord} ${styles.treeWordSynonyms}`}>{w}</span>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Antonymes */}
+                    <div className={`${styles.treeBranch} ${styles.treeBranchAntonyms}`}>
+                      <div className={`${styles.treeBranchTitle} ${styles.treeTitleAntonyms}`}>Antonymes</div>
+                      <div className={styles.treeBranchWords}>
+                        {schema.antonyms_branch.map((w, i) => (
+                          <span key={i} className={`${styles.treeWord} ${styles.treeWordAntonyms}`}>{w}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className={styles.familyBranch}>
-                <div className={styles.familyBranchTitle}>Synonymes</div>
-                <div className={styles.familyBranchWords}>
-                  {schema.synonyms_branch.map((w, i) => (
-                    <div key={i} className={styles.familyWord}>{w}</div>
-                  ))}
-                </div>
-              </div>
-              <div className={styles.familyBranch}>
-                <div className={styles.familyBranchTitle}>Antonymes</div>
-                <div className={styles.familyBranchWords}>
-                  {schema.antonyms_branch.map((w, i) => (
-                    <div key={i} className={styles.familyWord}>{w}</div>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -545,20 +681,48 @@ function FillInBlanks({
   const [answers, setAnswers] = useState<string[]>(
     new Array(exercise.answers.length).fill('')
   );
-  const [checked, setChecked] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [locked, setLocked] = useState<Set<number>>(new Set());
+  const [hints, setHints] = useState<Set<number>>(new Set());
+  const revealed = attempts >= 3;
 
   const parts = exercise.text_with_blanks.split(/_{3,}|___/);
 
   const handleCheck = () => {
-    setChecked(true);
-    if (onResult) {
-      const results = exercise.answers.map((correctAnswer, i) => ({
-        word: correctAnswer,
-        correct: (answers[i] || '').toLowerCase().trim() === correctAnswer.toLowerCase().trim(),
-      }));
-      onResult(results);
+    const newAttempt = attempts + 1;
+    setAttempts(newAttempt);
+    const newLocked = new Set(locked);
+    let allCorrect = true;
+    for (let i = 0; i < exercise.answers.length; i++) {
+      if ((answers[i] || '').toLowerCase().trim() === exercise.answers[i].toLowerCase().trim()) {
+        newLocked.add(i);
+      } else {
+        allCorrect = false;
+      }
+    }
+    setLocked(newLocked);
+    // Notifier des la 1re tentative (handleResult ignore les doublons)
+    {
+      if (onResult) {
+        onResult(exercise.answers.map((correctAnswer, i) => ({
+          word: correctAnswer,
+          correct: newLocked.has(i),
+        })));
+      }
     }
   };
+
+  const showHint = (index: number) => {
+    if (hints.has(index)) return;
+    setHints((prev) => new Set([...prev, index]));
+    if (!answers[index]) {
+      const newAnswers = [...answers];
+      newAnswers[index] = exercise.answers[index][0];
+      setAnswers(newAnswers);
+    }
+  };
+
+  const done = revealed || locked.size === exercise.answers.length;
 
   return (
     <div className={styles.exercise}>
@@ -570,48 +734,49 @@ function FillInBlanks({
           <span key={i}>
             {part}
             {i < parts.length - 1 && i < exercise.answers.length && (
-              <input
-                type="text"
-                className={`${styles.blankInput} ${
-                  checked
-                    ? answers[i]?.toLowerCase().trim() === exercise.answers[i]?.toLowerCase().trim()
-                      ? styles.blankCorrect
-                      : styles.blankIncorrect
-                    : ''
-                }`}
-                value={answers[i] || ''}
-                onChange={(e) => {
-                  if (checked) return;
-                  const newAnswers = [...answers];
-                  newAnswers[i] = e.target.value;
-                  setAnswers(newAnswers);
-                }}
-                disabled={checked}
-                placeholder="..."
-              />
+              <span className={styles.blankGroup}>
+                <input
+                  type="text"
+                  className={`${styles.blankInput} ${
+                    locked.has(i) ? styles.blankCorrect :
+                    (attempts > 0 && !locked.has(i) && answers[i]?.trim()) ? styles.blankIncorrect : ''
+                  }`}
+                  value={answers[i] || ''}
+                  onChange={(e) => {
+                    if (locked.has(i) || done) return;
+                    const newAnswers = [...answers];
+                    newAnswers[i] = e.target.value;
+                    setAnswers(newAnswers);
+                  }}
+                  disabled={locked.has(i) || done}
+                  placeholder="..."
+                />
+                {!done && !locked.has(i) && !hints.has(i) && (
+                  <button
+                    type="button"
+                    className={styles.hintBtn}
+                    onClick={() => showHint(i)}
+                    title="Indice : première lettre"
+                  >
+                    i
+                  </button>
+                )}
+                {revealed && !locked.has(i) && (
+                  <span className={styles.blankCorrectionInline}>→ {exercise.answers[i]}</span>
+                )}
+              </span>
             )}
           </span>
         ))}
       </div>
 
-      {checked && (
-        <div className={styles.answersReveal}>
-          {exercise.answers.map((ans, i) => (
-            <span key={i} className={styles.answerItem}>
-              {i + 1}. <strong>{ans}</strong>
-              {answers[i]?.toLowerCase().trim() === ans.toLowerCase().trim() ? ' ✓' : ' ✗'}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {!checked && (
+      {!done && (
         <button
           className={styles.checkBtn}
           onClick={handleCheck}
           disabled={answers.every((a) => !a.trim())}
         >
-          Vérifier mes réponses
+          {attempts === 0 ? 'Vérifier mes réponses' : `Réessayer (${3 - attempts} tentative${3 - attempts > 1 ? 's' : ''} restante${3 - attempts > 1 ? 's' : ''})`}
         </button>
       )}
     </div>
@@ -692,6 +857,10 @@ interface VocabulaireExercisesProps {
   onExerciseResult?: (result: ExerciseResult) => void;
   onDiagnosticComplete?: () => void;
   phase: 'diagnostic' | 'learning' | 'evaluation';
+  onAllCompleted?: (completed: boolean) => void;
+  onBackToRecto?: () => void;
+  onIntermediateDiagnostic?: () => void;
+  onEvaluation?: () => void;
 }
 
 export default function VocabulaireExercises({
@@ -706,9 +875,23 @@ export default function VocabulaireExercises({
   onExerciseResult,
   onDiagnosticComplete,
   phase,
+  onAllCompleted,
+  onBackToRecto,
+  onIntermediateDiagnostic,
+  onEvaluation,
 }: VocabulaireExercisesProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set());
+
+  // Reset quand les exercices changent (regeneration = nouvelle reference)
+  const exercisesRef = useRef(exercises);
+  useEffect(() => {
+    if (exercises !== exercisesRef.current) {
+      exercisesRef.current = exercises;
+      setCompletedExercises(new Set());
+      setCurrentIndex(0);
+    }
+  }, [exercises]);
 
   const handleResult = useCallback((exerciseIndex: number, results: { word: string; correct: boolean }[]) => {
     if (completedExercises.has(exerciseIndex)) return;
@@ -724,7 +907,7 @@ export default function VocabulaireExercises({
     });
   }, [exercises, onExerciseResult, completedExercises]);
 
-  // Exercices qui necessitent une verification (pas lecture seule)
+  // Exercices qui necessitent une action (pas lecture seule)
   const gradableExercises = exercises.filter(
     (e) => e.type !== 'text_with_definitions' && e.type !== 'word_families'
   );
@@ -733,6 +916,21 @@ export default function VocabulaireExercises({
       const realIndex = exercises.indexOf(gradableExercises[i]);
       return completedExercises.has(realIndex);
     });
+
+  // Marquer production_challenge comme complete quand validation recue
+  useEffect(() => {
+    if (productionValidation) {
+      const prodIndex = exercises.findIndex((e) => e.type === 'production_challenge');
+      if (prodIndex >= 0 && !completedExercises.has(prodIndex)) {
+        setCompletedExercises((prev) => new Set([...prev, prodIndex]));
+      }
+    }
+  }, [productionValidation, exercises, completedExercises]);
+
+  // Notifier le parent quand tous les exercices sont completes
+  useEffect(() => {
+    onAllCompleted?.(allCompleted);
+  }, [allCompleted, onAllCompleted]);
 
   // Etat vide
   if (exercises.length === 0 && !isGenerating) {
@@ -782,7 +980,7 @@ export default function VocabulaireExercises({
     const wrapperStyle = { display: isVisible ? 'block' : 'none' };
 
     return (
-      <div key={index} style={wrapperStyle}>
+      <div key={index} style={wrapperStyle} className={styles.exerciseSlide}>
         {exercise.type === 'text_with_definitions' && (
           <TextWithDefinitions exercise={exercise} />
         )}
@@ -847,60 +1045,96 @@ export default function VocabulaireExercises({
 
   return (
     <div className={styles.container}>
-      {/* Tous les exercices montes (pour conserver les reponses) */}
       <div className={styles.exercisesWrapper}>
-        {exercises.map((exercise, index) => renderExercise(exercise, index))}
+        {/* Exercice visible avec bordure + nav au milieu du bas */}
+        <div className={styles.exerciseFrame}>
+          {exercises.map((exercise, index) => renderExercise(exercise, index))}
+
+          {/* Nav qui brise la bordure basse au centre */}
+          <div className={styles.borderNav}>
+            <button
+              className={styles.navBtn}
+              onClick={() => setCurrentIndex((i) => i - 1)}
+              disabled={currentIndex === 0}
+            >
+              ‹
+            </button>
+            <div className={styles.carouselDots}>
+              {exercises.map((_, i) => (
+                <div
+                  key={i}
+                  className={`${styles.dot} ${i === currentIndex ? styles.dotActive : ''} ${completedExercises.has(i) ? styles.dotCompleted : ''}`}
+                  onClick={() => setCurrentIndex(i)}
+                />
+              ))}
+            </div>
+            <span className={styles.navCounter}>
+              {currentIndex + 1} / {exercises.length}
+            </span>
+            <button
+              className={styles.navBtn}
+              onClick={() => setCurrentIndex((i) => i + 1)}
+              disabled={currentIndex === exercises.length - 1}
+            >
+              ›
+            </button>
+          </div>
+        </div>
+
+        {/* Actions apres completion de tous les exercices */}
+        {allCompleted && (
+          <div className={styles.completionActions}>
+            {onDiagnosticComplete ? (
+              <button
+                type="button"
+                className={styles.completionBtnPrimary}
+                onClick={onDiagnosticComplete}
+              >
+                Début de l&apos;apprentissage
+              </button>
+            ) : (
+              <>
+                {onBackToRecto && (
+                  <button
+                    type="button"
+                    className={styles.completionBtnSecondary}
+                    onClick={onBackToRecto}
+                  >
+                    Retour à la liste
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={styles.completionBtnPrimary}
+                  onClick={onGenerate}
+                >
+                  Régénérer les exercices
+                </button>
+                {onIntermediateDiagnostic && (
+                  <button
+                    type="button"
+                    className={styles.completionBtnAccent}
+                    onClick={onIntermediateDiagnostic}
+                  >
+                    Diagnostic
+                  </button>
+                )}
+                {onEvaluation && (
+                  <button
+                    type="button"
+                    className={styles.completionBtnAccent}
+                    onClick={onEvaluation}
+                  >
+                    Évaluation
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {error && <div className={styles.error}>{error}</div>}
       </div>
-
-      {/* Navigation en bas */}
-      <div className={styles.bottomNav}>
-        {/* Dots */}
-        <div className={styles.carouselDots}>
-          {exercises.map((_, i) => (
-            <div
-              key={i}
-              className={`${styles.dot} ${i === currentIndex ? styles.dotActive : ''} ${completedExercises.has(i) ? styles.dotCompleted : ''}`}
-              onClick={() => setCurrentIndex(i)}
-            />
-          ))}
-        </div>
-
-        {/* Fleches + compteur */}
-        <div className={styles.navRight}>
-          <span className={styles.navCounter}>
-            {currentIndex + 1} / {exercises.length}
-          </span>
-          <button
-            className={styles.navBtn}
-            onClick={() => setCurrentIndex((i) => i - 1)}
-            disabled={currentIndex === 0}
-          >
-            ‹
-          </button>
-          <button
-            className={styles.navBtn}
-            onClick={() => setCurrentIndex((i) => i + 1)}
-            disabled={currentIndex === exercises.length - 1}
-          >
-            ›
-          </button>
-        </div>
-      </div>
-
-      {/* Bouton fin de diagnostic */}
-      {allCompleted && onDiagnosticComplete && (
-        <div className={styles.diagnosticCompleteBar}>
-          <button
-            type="button"
-            className={styles.diagnosticCompleteBtn}
-            onClick={onDiagnosticComplete}
-          >
-            Début de l&apos;apprentissage
-          </button>
-        </div>
-      )}
-
-      {error && <div className={styles.error}>{error}</div>}
     </div>
   );
 }

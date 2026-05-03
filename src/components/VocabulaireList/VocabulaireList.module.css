@@ -205,13 +205,19 @@
   color: #8a4b08;
 }
 
-/* Mode learning — connus (non selectionnables) */
+/* Mode learning — connus */
 .tagKnown {
-  border-color: #27ae60;
-  background: #ecfdf5;
-  color: #155724;
-  opacity: 0.7;
-  cursor: default;
+  border-color: #a3d9b1;
+  background: #f0f7f2;
+  color: #3d6b4a;
+  cursor: pointer;
+}
+
+/* Connu + selectionne → vert fonce distinct */
+.tagKnown.tagSelected {
+  border-color: #1e8449;
+  background: #1e8449;
+  color: #fff;
 }
 
 /* Etats */

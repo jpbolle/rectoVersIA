@@ -125,11 +125,8 @@
   background: var(--c-primary);
 }
 
-/* Exercice generique */
+/* Exercice generique — bordure portee par exerciseFrame */
 .exercise {
-  background: var(--c-bg-card);
-  border: 1px solid var(--c-border);
-  border-radius: var(--c-radius-lg);
   padding: 16px;
 }
 
@@ -151,6 +148,18 @@
   font-size: 14px;
   line-height: 1.7;
   color: var(--c-text);
+}
+
+.textContentQuote {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--c-text);
+  margin-top: 16px;
+  margin-left: 20px;
+  padding: 16px 20px;
+  border-left: 3px solid var(--c-primary);
+  background: rgba(45, 106, 90, 0.03);
+  border-radius: 0 var(--c-radius) var(--c-radius) 0;
 }
 
 .highlightedWord {
@@ -186,17 +195,32 @@
   gap: 12px;
 }
 
+.dndContainerIndented {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
 .dndRow {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
+.dndRowCompact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 80%;
+  max-width: 600px;
+}
+
 .dndDefinition {
-  flex: 1;
+  flex: 0 1 55%;
   font-size: 13px;
   color: var(--c-text-secondary);
-  padding: 8px;
+  padding: 6px 8px;
   background: var(--c-bg-element);
   border-radius: var(--c-radius);
 }
@@ -219,59 +243,172 @@
   background: rgba(180, 64, 64, 0.05);
 }
 
-/* Exercice 3: Familles de mots */
+/* Exercice 3: Familles de mots — arbre avec ramifications */
 .familyContainer {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.familyGroup {
-  border: 1px solid var(--c-border);
-  border-radius: var(--c-radius-lg);
-  padding: 12px;
-}
-
-.familyCentralWord {
-  text-align: center;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--c-primary);
-  margin-bottom: 12px;
-  padding: 8px;
-  background: rgba(45, 106, 90, 0.08);
-  border-radius: var(--c-radius);
-}
-
-.familyBranches {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
-.familyBranch {
-  text-align: center;
+.familyAccordion {
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  overflow: hidden;
 }
 
-.familyBranchTitle {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--c-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
+.familyCentralWord {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-primary);
+  padding: 10px 14px;
+  background: rgba(45, 106, 90, 0.06);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease;
 }
 
-.familyBranchWords {
+.familyCentralWord:hover {
+  background: rgba(45, 106, 90, 0.12);
+}
+
+.familyCentralWordOpen {
+  border-bottom: 1px solid var(--c-border);
+}
+
+.familyChevron {
+  font-size: 14px;
+  color: var(--c-text-dim);
+}
+
+/* ── Arbre avec tronc et ramifications ── */
+.familyTree {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  padding: 16px 14px 20px;
 }
 
-.familyWord {
-  font-size: 13px;
-  color: var(--c-text-secondary);
-  padding: 2px 4px;
+/* Noeud racine (le mot central, repete visuellement) */
+.treeRoot {
+  padding: 6px 20px;
+  background: var(--c-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Tronc vertical sous la racine */
+.treeTrunk {
+  width: 2px;
+  height: 24px;
+  background: var(--c-text-dim);
+}
+
+/* Conteneur des 3 branches */
+.treeBranches {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+  width: 100%;
+}
+
+/* Ligne horizontale reliant les branches */
+.treeBranches::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: calc(100% / 6);
+  right: calc(100% / 6);
+  height: 2px;
+  background: var(--c-text-dim);
+}
+
+/* Chaque branche */
+.treeBranch {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding-top: 0;
+}
+
+/* Tige verticale de chaque branche */
+.treeBranch::before {
+  content: '';
+  width: 2px;
+  height: 20px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.treeBranchFamily::before { background: var(--c-primary); }
+.treeBranchSynonyms::before { background: #3498db; }
+.treeBranchAntonyms::before { background: #e74c3c; }
+
+/* Titre de la branche */
+.treeBranchTitle {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  padding: 3px 10px;
+  border-radius: 10px;
+}
+
+.treeTitleFamily {
+  color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.1);
+}
+
+.treeTitleSynonyms {
+  color: #3498db;
+  background: rgba(52, 152, 219, 0.1);
+}
+
+.treeTitleAntonyms {
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.1);
+}
+
+/* Mots de la branche */
+.treeBranchWords {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.treeWord {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.treeWordFamily {
+  background: rgba(45, 106, 90, 0.08);
+  color: var(--c-primary);
+}
+
+.treeWordSynonyms {
+  background: rgba(52, 152, 219, 0.08);
+  color: #2980b9;
+}
+
+.treeWordAntonyms {
+  background: rgba(231, 76, 60, 0.08);
+  color: #c0392b;
 }
 
 /* Exercice 4: Texte a trous */
@@ -297,14 +434,75 @@
   border-bottom-color: var(--c-accent);
 }
 
+.blankGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+}
+
+.hintBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-accent);
+  background: transparent;
+  color: var(--c-accent);
+  font-size: 11px;
+  font-weight: 700;
+  font-style: italic;
+  font-family: serif;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  vertical-align: middle;
+}
+
+.hintBtn:hover {
+  background: var(--c-accent);
+  color: #fff;
+}
+
 .blankCorrect {
-  border-bottom-color: var(--c-success);
-  background: rgba(45, 138, 78, 0.08);
+  border-color: #27ae60 !important;
+  border-bottom-color: #27ae60 !important;
+  background: rgba(39, 174, 96, 0.12) !important;
+  color: #1e8449;
+  font-weight: 600;
 }
 
 .blankIncorrect {
-  border-bottom-color: var(--c-danger);
-  background: rgba(180, 64, 64, 0.05);
+  border-color: #e74c3c !important;
+  border-bottom-color: #e74c3c !important;
+  background: rgba(231, 76, 60, 0.12) !important;
+  color: #c0392b;
+  font-weight: 600;
+}
+
+.blankInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.blankCorrectionInline {
+  font-size: 13px;
+  font-weight: 600;
+  color: #27ae60;
+  white-space: nowrap;
+}
+
+.answerCorrect {
+  background: rgba(39, 174, 96, 0.12);
+  color: #27ae60;
+}
+
+.answerIncorrect {
+  background: rgba(231, 76, 60, 0.1);
+  color: #c0392b;
 }
 
 /* Exercice 5: Production personnelle */
@@ -563,15 +761,63 @@
   padding: 16px;
 }
 
-/* Navigation bas */
-.bottomNav {
+/* Cadre avec bordure autour de l'exercice visible */
+.exerciseFrame {
+  position: relative;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding-bottom: 16px;
+}
+
+/* Navigation centree qui brise la bordure basse */
+.borderNav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-top: 1px solid var(--c-border);
-  background: var(--c-bg-element);
-  flex-shrink: 0;
+  justify-content: center;
+  gap: 10px;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  background: var(--c-bg);
+  padding: 4px 14px;
+  border-radius: 20px;
+  z-index: 2;
+}
+
+/* Bouton regenerer sous le cadre */
+.regenerateAction {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+}
+
+.regenerateBtn {
+  padding: 10px 28px;
+  border: none;
+  border-radius: var(--c-radius);
+  background: var(--c-accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.regenerateBtn:hover:not(:disabled) {
+  background: #c4843c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 148, 76, 0.4);
+}
+
+.regenerateBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.exerciseSlide {
 }
 
 .navRight {
@@ -612,17 +858,72 @@
   cursor: not-allowed;
 }
 
-/* Diagnostic complete bar */
-.diagnosticCompleteBar {
-  padding: 12px 16px;
-  border-top: 1px solid var(--c-border);
+/* Actions apres completion */
+.completionActions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 30px;
+  padding: 0 16px;
+}
+
+.completionBtnPrimary {
+  padding: 9px 20px;
+  border: none;
+  border-radius: var(--c-radius);
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.completionBtnPrimary:hover {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+}
+
+.completionBtnSecondary {
+  padding: 9px 20px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: transparent;
+  color: var(--c-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.completionBtnSecondary:hover {
+  border-color: var(--c-text-secondary);
   background: var(--c-bg-element);
-  flex-shrink: 0;
+}
+
+.completionBtnAccent {
+  padding: 9px 20px;
+  border: none;
+  border-radius: var(--c-radius);
+  background: var(--c-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.completionBtnAccent:hover {
+  background: #c4843c;
+  transform: translateY(-1px);
 }
 
 .diagnosticCompleteBtn {
-  width: 100%;
-  padding: 12px 20px;
+  padding: 10px 28px;
   border: none;
   border-radius: var(--c-radius);
   background: var(--c-primary);

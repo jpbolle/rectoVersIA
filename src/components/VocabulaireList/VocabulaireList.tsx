@@ -20,6 +20,8 @@ interface VocabulaireListProps {
   // Etat
   disabled?: boolean;
   isLoading?: boolean;
+  // Bouton generer (injecte par le parent)
+  generateButton?: React.ReactNode;
 }
 
 export default function VocabulaireList({
@@ -32,6 +34,7 @@ export default function VocabulaireList({
   wordMastery,
   disabled = false,
   isLoading = false,
+  generateButton,
 }: VocabulaireListProps) {
   const masteryMap = new Map(wordMastery.map((m) => [m.word, m]));
   const unknownWords = words.filter((w) => getWordCategory(masteryMap.get(w.word)) === 'unknown');
@@ -50,9 +53,6 @@ export default function VocabulaireList({
   if (phase === 'diagnostic' && onDiagnosticSelect) {
     return (
       <div className={`${styles.container} ${disabled ? styles.disabled : ''}`}>
-        <div className={styles.info}>
-          Clique sur les mots que tu penses connaître
-        </div>
         <div className={styles.counter}>
           <span className={styles.counterHighlight}>{diagnosticSelections.length}</span>
           {' '} mot{diagnosticSelections.length > 1 ? 's' : ''} sélectionné{diagnosticSelections.length > 1 ? 's' : ''}
@@ -84,6 +84,7 @@ export default function VocabulaireList({
             );
           })}
         </div>
+        {generateButton}
       </div>
     );
   }
@@ -143,6 +144,7 @@ export default function VocabulaireList({
             </div>
           </div>
         )}
+        {generateButton}
       </div>
     );
   }
@@ -151,9 +153,6 @@ export default function VocabulaireList({
   if (phase === 'evaluation') {
     return (
       <div className={`${styles.container} ${disabled ? styles.disabled : ''}`}>
-        <div className={styles.info}>
-          Évaluation complète : tous les mots seront testés.
-        </div>
         <div className={styles.tagGrid}>
           {words.map((word, idx) => (
             <div key={`${word.word}-${idx}`} className={styles.tagWrapper}>
@@ -163,6 +162,7 @@ export default function VocabulaireList({
             </div>
           ))}
         </div>
+        {generateButton}
       </div>
     );
   }
@@ -172,7 +172,7 @@ export default function VocabulaireList({
   const renderWordTag = (word: VocabulaireWord, idx: number) => {
     const selected = currentSelection.includes(word.word);
     const category = getWordCategory(masteryMap.get(word.word));
-    const canSelect = category !== 'known'; // On ne selectionne pas les mots deja connus
+    const canSelect = true; // Tous les mots sont selectionnables (y compris connus, pour consolider)
 
     let tagClass = styles.wordTag;
     if (selected) tagClass += ` ${styles.tagSelected}`;
@@ -206,9 +206,6 @@ export default function VocabulaireList({
 
   return (
     <div className={`${styles.container} ${disabled ? styles.disabled : ''}`}>
-      <div className={styles.info}>
-        Sélectionne 6 à 10 mots à apprendre pour cette session.
-      </div>
       <div className={styles.counter}>
         <span className={styles.counterHighlight}>{currentSelection.length}</span>
         {' / 6-10 mots sélectionnés'}
@@ -252,6 +249,7 @@ export default function VocabulaireList({
           </div>
         </div>
       )}
+      {generateButton}
     </div>
   );
 }

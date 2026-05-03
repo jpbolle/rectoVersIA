@@ -231,7 +231,7 @@ interface Grille {
 | `/api/navigkid/aide-ia` | POST | Aide IA : verification sources, mots-cles, reponses |
 | `/api/vocabulaire/themes` | GET, POST, PUT, DELETE | CRUD series lexicales (profId, profName, mots) |
 | `/api/vocabulaire/words` | GET | Mots par theme (?themes=x,y) |
-| `/api/vocabulaire/generate` | POST | Generation exercices IA (apprentissage/diagnostic) |
+| `/api/vocabulaire/generate` | POST | Generation exercices IA (modes: apprentissage, diagnostic, evaluation, evaluate_composition, validate_syn_ant) |
 | `/api/vocabulaire/validate` | POST | Validation production eleve par IA |
 | `/api/vocabulaire/suggest` | POST | IA : suggestion de mots pour un theme + enrichissement (def, exemple, syn, ant, proxemie) |
 
@@ -282,8 +282,16 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 - `RechercheResponseViewer` — vue reponses eleve (sources, passages, mots-cles)
 - `RechercheStatsTab` — onglet stats recherche dans AssistancePanel
 
+### Vocabulaire
+- `VocabulaireActivity` — activite complete : flip recto (mots) / verso (exercices), phases diagnostic → apprentissage → evaluation
+- `VocabulaireList` — liste de mots avec tags selectionnables, 3 sections (inconnus, meconnus, connus)
+- `VocabulaireExercises` — carousel d'exercices d'apprentissage (texte, dropdown, definitions, familles, trous, production)
+- `VocabulaireEvaluation` — interro : mots croises (crossword-layout-generator) + texte syn/ant (Claude) + composition (Claude)
+- `VocabulaireStats` — stats prof : progression, diagnostics, evaluations
+- `VocabulaireListReadOnly` — vue prof colonne gauche, flip recto (progression) / verso (evaluations avec onglets)
+
 ### Panels
-- `AssistancePanel` — panel lateral avec onglets (Consignes, Ressources, Grille, Remarques, Aide IA, Recherche)
+- `AssistancePanel` — panel lateral avec onglets (Consignes, Ressources, Grille/Evaluation, Remarques, Aide IA, Recherche)
 - `GrilleTab` — grille interactive avec 3 evaluations (eleve, IA, prof)
 
 ### UI
