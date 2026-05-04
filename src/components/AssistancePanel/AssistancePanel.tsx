@@ -64,6 +64,9 @@ interface AssistancePanelProps {
   // Vocabulaire : state pour l'onglet stats
   vocabState?: VocabulaireActivityState | null;
   vocabAllWords?: string[];
+  // Vocabulaire : selection d'une evaluation passee a revoir (gere par le parent)
+  onSelectVocabEvalAttempt?: (index: number) => void;
+  selectedVocabEvalIndex?: number | null;
 }
 
 export default function AssistancePanel({
@@ -105,6 +108,8 @@ export default function AssistancePanel({
   rechercheMode = false,
   vocabState,
   vocabAllWords,
+  onSelectVocabEvalAttempt,
+  selectedVocabEvalIndex,
 }: AssistancePanelProps) {
   // Mode contrôlé vs interne
   const [internalTab, setInternalTab] = useState<TabType>('consignes');
@@ -212,6 +217,8 @@ export default function AssistancePanel({
             state={vocabState ?? null}
             allWords={vocabAllWords}
             themes={devoir.vocabulaireThemes}
+            onSelectEvalAttempt={onSelectVocabEvalAttempt}
+            selectedEvalIndex={selectedVocabEvalIndex}
           />
         )}
         {currentTab === 'grille' && devoir.typeTravail !== 'vocabulaire' && (

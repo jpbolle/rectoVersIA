@@ -192,7 +192,72 @@
   font-size: 0.7rem;
 }
 
-/* Section diagnostics */
+/* Sections collapsibles (diagnostics / evaluations) */
+.collapsible {
+  background: var(--c-surface, #f5f2ec);
+  border-radius: 8px;
+  border: 1px solid var(--c-border, #e0dcd6);
+  overflow: hidden;
+}
+
+.collapsibleSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.collapsibleSummary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsibleSummary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 0.8rem;
+  color: var(--c-text-dim);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.collapsible[open] > .collapsibleSummary::before {
+  transform: rotate(90deg);
+}
+
+.collapsibleTitle {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--c-text);
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.collapsibleCount {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--c-text-dim);
+}
+
+.collapsibleLastScore {
+  font-size: 0.72rem;
+  color: var(--c-primary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.collapsible[open] > .diagnosticResults {
+  padding: 0 12px 12px;
+}
+
+/* Section diagnostics (legacy, conserve si jamais reutilise) */
 .diagnosticSection {
   margin-top: 0.5rem;
 }
@@ -202,6 +267,28 @@
   font-weight: 600;
   color: var(--c-text);
   margin: 0 0 0.5rem 0;
+}
+
+/* Cartes d'evaluation cliquables */
+.evalClickable {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  border: 1px solid transparent;
+}
+
+.evalClickable:hover {
+  background: var(--c-bg-card, #fff);
+  border-color: var(--c-primary);
+}
+
+.evalClickable:active {
+  transform: scale(0.99);
+}
+
+.evalSelected {
+  background: var(--c-bg-card, #fff);
+  border: 1.5px solid var(--c-primary);
+  box-shadow: 0 0 0 2px rgba(45, 106, 90, 0.12);
 }
 
 .diagnosticResults {

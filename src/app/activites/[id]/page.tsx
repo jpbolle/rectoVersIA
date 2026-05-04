@@ -72,6 +72,8 @@ export default function TravailPage() {
   const showAiData = !isPreviewMode && devoir?.accesIA === true;
   const [activeTab, setActiveTab] = useState<TabType>('consignes');
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+  // Vocabulaire : index de l'evaluation passee a revoir dans la colonne de gauche (null = vue normale)
+  const [viewingVocabEvalIndex, setViewingVocabEvalIndex] = useState<number | null>(null);
 
   const {
     suggestions: aiSuggestions,
@@ -412,6 +414,17 @@ export default function TravailPage() {
                       : (state) => updateContent(JSON.stringify(state))
                   }
                   disabled={isDisabled}
+                  viewingEvalAttempt={(() => {
+                    if (viewingVocabEvalIndex === null || !travail?.content) return null;
+                    try {
+                      const parsed = JSON.parse(travail.content);
+                      return parsed.evaluationAttempts?.[viewingVocabEvalIndex] ?? null;
+                    } catch {
+                      return null;
+                    }
+                  })()}
+                  viewingEvalIndex={viewingVocabEvalIndex}
+                  onCloseEvalView={() => setViewingVocabEvalIndex(null)}
                 />
               </div>
             ) : isRecherche ? (
@@ -497,6 +510,8 @@ export default function TravailPage() {
                   navigkidReponse={nkReponse}
                   rechercheMode={isRecherche}
                   vocabState={isVocabulaire && travail?.content ? (() => { try { return JSON.parse(travail.content); } catch { return null; } })() : undefined}
+                  onSelectVocabEvalAttempt={isVocabulaire ? (i) => setViewingVocabEvalIndex(i) : undefined}
+                  selectedVocabEvalIndex={viewingVocabEvalIndex}
                 />
               </div>
             </div>

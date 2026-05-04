@@ -22,6 +22,8 @@ interface VocabulaireListProps {
   isLoading?: boolean;
   // Bouton generer (injecte par le parent)
   generateButton?: React.ReactNode;
+  // Flashcards (injecte par le parent, affiche au dessus des sections)
+  flashcardsSlot?: React.ReactNode;
 }
 
 export default function VocabulaireList({
@@ -35,6 +37,7 @@ export default function VocabulaireList({
   disabled = false,
   isLoading = false,
   generateButton,
+  flashcardsSlot,
 }: VocabulaireListProps) {
   const masteryMap = new Map(wordMastery.map((m) => [m.word, m]));
   const unknownWords = words.filter((w) => getWordCategory(masteryMap.get(w.word)) === 'unknown');
@@ -210,6 +213,9 @@ export default function VocabulaireList({
         <span className={styles.counterHighlight}>{currentSelection.length}</span>
         {' / 6-10 mots sélectionnés'}
       </div>
+
+      {/* Flashcards (affichage des mots difficiles) — au-dessus des 3 sections */}
+      {flashcardsSlot}
 
       {/* Section Inconnus */}
       {unknownWords.length > 0 && (

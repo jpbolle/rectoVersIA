@@ -157,9 +157,15 @@
   font-size: 12px;
 }
 
-/* Sections (learning mode) */
+/* Sections (learning mode) — separateur entre sections consecutives */
 .section {
-  margin-bottom: 16px;
+  padding-top: 16px;
+}
+
+.section + .section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--c-border);
 }
 
 .sectionTitle {
@@ -170,14 +176,14 @@
   font-weight: 600;
   text-transform: uppercase;
   color: var(--c-text-secondary);
-  margin: 0 0 8px 0;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--c-border);
+  margin: 0 0 14px 0;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .sectionDot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   display: inline-block;
 }

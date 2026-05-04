@@ -283,7 +283,7 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 - `RechercheStatsTab` — onglet stats recherche dans AssistancePanel
 
 ### Vocabulaire
-- `VocabulaireActivity` — activite complete : flip recto (mots) / verso (exercices), phases diagnostic → apprentissage → evaluation
+- `VocabulaireActivity` — activite complete : flip recto (mots) / verso (exercices), phases diagnostic → apprentissage → evaluation. Inclut le panneau "mots difficiles" (flashcards persistantes via `difficultWords` + preference `flashcardsDefinitionFirst` dans `VocabulaireActivityState`) avec mode popup grand format navigable au clavier. Boutons d'action gates : Diagnostic intermediaire (>=50% mots etudies), Evaluation (>=70% etudies + >=50% connus parmi etudies)
 - `VocabulaireList` — liste de mots avec tags selectionnables, 3 sections (inconnus, meconnus, connus)
 - `VocabulaireExercises` — carousel d'exercices d'apprentissage (texte, dropdown, definitions, familles, trous, production)
 - `VocabulaireEvaluation` — interro : mots croises (crossword-layout-generator) + texte syn/ant (Claude) + composition (Claude)

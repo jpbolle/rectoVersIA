@@ -4,7 +4,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 28px;
 }
 
 .loading, .empty {
@@ -20,8 +20,8 @@
 .summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 16px;
+  padding: 12px 14px;
   background: var(--c-bg-element);
   border-radius: var(--c-radius);
 }
@@ -29,7 +29,7 @@
 .summaryItem {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 13px;
   color: var(--c-text);
 }
@@ -64,9 +64,15 @@
   transition: width 0.3s;
 }
 
-/* Sections */
+/* Sections — separateur uniquement entre sections consecutives */
 .section {
-  margin-bottom: 4px;
+  padding-top: 16px;
+}
+
+.section + .section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--c-border);
 }
 
 .sectionTitle {
@@ -77,14 +83,14 @@
   font-weight: 600;
   text-transform: uppercase;
   color: var(--c-text-secondary);
-  margin: 0 0 8px 0;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--c-border);
+  margin: 0 0 14px 0;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .sectionDot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   display: inline-block;
 }
@@ -92,15 +98,17 @@
 .tagGrid {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
+  row-gap: 10px;
 }
 
 .tag {
   display: inline-block;
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: 16px;
   font-size: 13px;
   font-weight: 500;
+  line-height: 1.4;
 }
 
 .tagKnown {
@@ -121,12 +129,13 @@
   border: 1px solid var(--c-border);
 }
 
-/* ── Barre flip recto/verso (vue prof) ── */
+/* ── Barre flip recto/verso (vue prof) — aligne sur la vue eleve ── */
 .flipBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  gap: 12px;
+  padding: 8px 12px;
   background: linear-gradient(135deg, #f0f4f9 0%, #e8ecf1 100%);
   border-bottom: 1px solid var(--c-border);
   margin: -16px -16px 0;
@@ -145,16 +154,16 @@
 .flipBtn {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
+  gap: 6px;
+  padding: 7px 16px;
   border: none;
   background: transparent;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   font-family: inherit;
-  color: var(--c-text-dim);
+  color: var(--c-text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
@@ -167,24 +176,30 @@
   color: #fff;
 }
 
+.flipBtn:not(.flipBtnActive):hover {
+  background: #f0f4f9;
+}
+
 .flipAction {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
+  gap: 6px;
+  padding: 6px 14px;
   border: 1.5px solid var(--c-border);
   border-radius: var(--c-radius, 6px);
   background: var(--c-bg-card, #fff);
-  font-size: 0.72rem;
+  font-size: 13px;
   font-weight: 500;
   font-family: inherit;
-  color: var(--c-text-dim);
+  color: var(--c-text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .flipAction:hover {
   background: #dce4ec;
+  border-color: #8da5bd;
+  color: #416286;
 }
 
 /* Animation flip */
@@ -213,21 +228,23 @@
 
 /* ── Evaluations (vue prof) ── */
 .evalSection {
-  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .evalTabs {
   display: flex;
   gap: 0;
   border-bottom: 2px solid var(--c-border);
-  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .evalTab {
   padding: 6px 12px;
   border: none;
   background: transparent;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 600;
   font-family: inherit;
   color: var(--c-text-dim);
@@ -370,13 +387,47 @@
   margin-top: 4px;
 }
 
-/* Infos activite */
+/* Infos activite — cartes stats */
 .activityInfo {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: var(--c-text-dim);
-  padding-top: 8px;
+  margin-top: 20px;
+  padding-top: 28px;
   border-top: 1px solid var(--c-border);
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  text-align: center;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.statCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.statValue {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--c-primary);
+  line-height: 1.1;
+}
+
+.statLabel {
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--c-text-dim);
+  margin-top: 4px;
 }

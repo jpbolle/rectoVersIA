@@ -585,8 +585,25 @@ export default function VocabulaireEvaluation({
     let correct = 0;
     let total = 0;
 
+    // Extraire la phrase contenant la balise {syn:original} ou {ant:original}
+    // pour donner du contexte a Claude lors de la validation tolerante
+    const extractContextSentence = (original: string): string => {
+      const escaped = original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const tagRegex = new RegExp(`\\{(?:syn|ant):${escaped}\\}`);
+      const match = tagRegex.exec(synonymAntonymText.text);
+      if (!match) return '';
+      const idx = match.index;
+      let start = idx;
+      while (start > 0 && !/[.!?\n]/.test(synonymAntonymText.text[start - 1])) start--;
+      let end = idx + match[0].length;
+      while (end < synonymAntonymText.text.length && !/[.!?\n]/.test(synonymAntonymText.text[end])) end++;
+      if (end < synonymAntonymText.text.length) end++;
+      // Remplacer la balise par le mot original simple pour la lisibilite
+      return synonymAntonymText.text.slice(start, end).replace(/\{(?:syn|ant):([^}]+)\}/g, '$1').trim();
+    };
+
     // 1. Verification client (liste acceptedAnswers)
-    const needsClaudeCheck: { original: string; type: 'synonym' | 'antonym'; userAnswer: string }[] = [];
+    const needsClaudeCheck: { original: string; type: 'synonym' | 'antonym'; userAnswer: string; context: string }[] = [];
 
     for (const replacement of synonymAntonymText.replacements) {
       total++;
@@ -604,8 +621,13 @@ export default function VocabulaireEvaluation({
         correct++;
         corrections[replacement.original] = { correct: true, expected: replacement.acceptedAnswers[0] };
       } else {
-        // Reponse pas dans la liste — demander a Claude
-        needsClaudeCheck.push({ original: replacement.original, type: replacement.type, userAnswer });
+        // Reponse pas dans la liste — demander a Claude avec le contexte de la phrase
+        needsClaudeCheck.push({
+          original: replacement.original,
+          type: replacement.type,
+          userAnswer,
+          context: extractContextSentence(replacement.original),
+        });
         corrections[replacement.original] = { correct: false, expected: replacement.acceptedAnswers[0] };
       }
     }

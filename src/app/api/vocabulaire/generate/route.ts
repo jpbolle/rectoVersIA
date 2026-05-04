@@ -193,19 +193,35 @@ REGLES CRITIQUES :
 
 // --- Prompt evaluation (interro complete — 2 exercices generes par IA) ---
 function buildEvaluationPrompt(words: VocabulaireWord[], theme: string): string {
-  const wordsList = words.map((w) => `${w.word} (syn: ${w.synonyms || '—'}, ant: ${w.antonyms || '—'})`);
+  // Filtrer : un mot ne peut servir de {syn:...} que s'il a un synonyme dans Firestore,
+  // et de {ant:...} que s'il a un antonyme. Sinon Claude invente des reponses qu'on ne peut pas valider.
+  const hasField = (v?: string) => !!v && v.trim() !== '' && v.trim() !== '—';
+  const wordsWithSyn = words.filter((w) => hasField(w.synonyms));
+  const wordsWithAnt = words.filter((w) => hasField(w.antonyms));
+
+  const synList = wordsWithSyn.map((w) => `- ${w.word} → synonymes connus : ${w.synonyms}`);
+  const antList = wordsWithAnt.map((w) => `- ${w.word} → antonymes connus : ${w.antonyms}`);
 
   return `Tu es un professeur de français pour des élèves de 15 ans. Crée 2 exercices d'évaluation sur le thème "${theme}".
 
-MOTS À UTILISER (avec synonymes/antonymes connus) :
-${wordsList.join('\n')}
+MOTS UTILISABLES POUR UN REMPLACEMENT PAR SYNONYME (UNIQUEMENT ceux-ci) :
+${synList.length > 0 ? synList.join('\n') : '(aucun)'}
+
+MOTS UTILISABLES POUR UN REMPLACEMENT PAR ANTONYME (UNIQUEMENT ceux-ci) :
+${antList.length > 0 ? antList.join('\n') : '(aucun)'}
 
 EXERCICE 1 — TEXTE AVEC MOTS À REMPLACER :
 Rédige un texte narratif cohérent de 150-200 mots adapté à des adolescents de 15 ans.
-Dans ce texte, intègre des mots de la liste (minimum 6, maximum 10).
-Certains devront être remplacés par un SYNONYME (marqués {syn:mot}), d'autres par un ANTONYME (marqués {ant:mot}).
-Mélange environ 50/50 synonymes et antonymes.
-IMPORTANT : pour chaque mot marqué, fournis PLUSIEURS réponses acceptées (synonymes ou antonymes selon le cas).
+Dans ce texte, intègre 6 à 10 mots des listes ci-dessus (au total).
+Certains seront marqués {syn:mot} (à remplacer par un synonyme), d'autres {ant:mot} (par un antonyme).
+Mélange environ 50/50 synonymes et antonymes (ou ajuste si une des deux listes est vide).
+
+RÈGLES ABSOLUES — INTERDICTION DE LES VIOLER :
+1. Tu peux marquer {syn:mot} UNIQUEMENT si "mot" apparaît dans la liste SYNONYMES ci-dessus. AUCUNE exception.
+2. Tu peux marquer {ant:mot} UNIQUEMENT si "mot" apparaît dans la liste ANTONYMES ci-dessus. AUCUNE exception.
+3. Si un mot n'est dans aucune liste, tu peux l'utiliser dans le texte mais SANS balise — il ne sera pas testé.
+4. Pour acceptedAnswers : commence par les synonymes/antonymes connus listés ci-dessus, puis ajoute toutes les autres formes valides que tu connais (familier, soutenu, formes dérivées).
+
 RÈGLE CRUCIALE POUR LES ANTONYMES : quand tu marques un mot {ant:mot}, le remplacement par un antonyme DOIT rester cohérent et grammaticalement correct dans la phrase. L'élève doit pouvoir substituer l'antonyme et obtenir une phrase qui a du sens (même si le sens est inversé). Par exemple, si la phrase dit "Ce paysage est {ant:magnifique}", les antonymes "laid", "horrible" doivent fonctionner dans la phrase. Ne choisis JAMAIS un mot à remplacer par un antonyme si le remplacement produit une phrase absurde ou incohérente.
 
 EXERCICE 2 — COMPOSITION :
@@ -272,7 +288,7 @@ export async function POST(request: NextRequest) {
       requiredWords?: string[];
       compositionTheme?: string;
       // Pour mode validate_syn_ant
-      synAntChecks?: { original: string; type: 'synonym' | 'antonym'; userAnswer: string }[];
+      synAntChecks?: { original: string; type: 'synonym' | 'antonym'; userAnswer: string; context?: string }[];
     };
 
     // Mode validation synonymes/antonymes par Claude
@@ -281,16 +297,36 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, data: { results: [] } });
       }
 
-      const checkList = synAntChecks.map((c) =>
-        `- "${c.userAnswer}" est-il un ${c.type === 'synonym' ? 'SYNONYME' : 'ANTONYME'} valide de "${c.original}" ?`
-      ).join('\n');
+      const checkList = synAntChecks.map((c, i) => {
+        const typeLabel = c.type === 'synonym' ? 'SYNONYME' : 'ANTONYME';
+        const contextPart = c.context
+          ? `\n  Phrase d'origine : « ${c.context} »`
+          : '';
+        return `Cas ${i + 1} :
+  Mot à remplacer : "${c.original}"
+  Type attendu : ${typeLabel}
+  Réponse de l'élève : "${c.userAnswer}"${contextPart}`;
+      }).join('\n\n');
 
-      const synAntPrompt = `Tu es un expert en langue française. Pour chaque paire ci-dessous, indique si la réponse de l'élève est un synonyme/antonyme valide du mot original.
-Sois TOLÉRANT : accepte les formes dérivées, les registres différents (familier, soutenu), les mots proches en sens.
+      const synAntPrompt = `Tu es un professeur de français BIENVEILLANT et TOLÉRANT qui valide les réponses d'élèves de 15 ans à un exercice de remplacement par synonyme ou antonyme.
+
+CRITÈRE D'ACCEPTATION (sois TRÈS TOLÉRANT — en cas de doute, ACCEPTE) :
+1. La substitution du mot original par la réponse dans la phrase d'origine doit produire un énoncé COHÉRENT et SENSÉ.
+2. Pour un SYNONYME : sens proche suffit. Le registre peut différer (familier, soutenu, courant). Une PÉRIPHRASE qui exprime la même idée est ACCEPTÉE. Les formes dérivées (féminin, pluriel, etc.) sont acceptées si elles s'accordent.
+3. Pour un ANTONYME : l'opposition n'a PAS besoin d'être parfaite. Un sens éloigné, contraire, ou opposé même imparfaitement suffit. Une PÉRIPHRASE qui exprime l'opposition est ACCEPTÉE.
+   EXEMPLE TYPIQUE À ACCEPTER : "rationnel" comme antonyme de "intuition" — c'est valide car les deux notions s'opposent dans l'usage courant, même si "intuition" a aussi d'autres antonymes plus directs ("réflexion", "raisonnement").
+4. Refuse UNIQUEMENT si la réponse :
+   - n'a aucun rapport sémantique avec le sens demandé
+   - rendrait la phrase totalement absurde ou contradictoire
+   - est manifestement hors-sujet ou copie/colle un mot quelconque
+
+RAPPEL : tu corriges des élèves de 15 ans, pas un dictionnaire académique. La nuance, l'effort de réflexion et la cohérence en contexte priment sur la précision lexicale parfaite.
+
+CAS À ÉVALUER :
 
 ${checkList}
 
-FORMAT JSON EXACT :
+FORMAT JSON EXACT (un objet par cas, dans le même ordre) :
 {
   "results": [
     { "original": "mot", "userAnswer": "reponse", "valid": true }

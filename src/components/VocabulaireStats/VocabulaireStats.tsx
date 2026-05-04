@@ -9,9 +9,17 @@ interface VocabulaireStatsProps {
   state: VocabulaireActivityState | null;
   allWords?: string[];
   themes?: string[];
+  onSelectEvalAttempt?: (index: number) => void;
+  selectedEvalIndex?: number | null;
 }
 
-export default function VocabulaireStats({ state, allWords: allWordsProp, themes }: VocabulaireStatsProps) {
+export default function VocabulaireStats({
+  state,
+  allWords: allWordsProp,
+  themes,
+  onSelectEvalAttempt,
+  selectedEvalIndex,
+}: VocabulaireStatsProps) {
   const themesToLoad = themes && themes.length > 0 ? themes : null;
   const { allWords: themeWords } = useVocabulaireWords(themesToLoad);
 
@@ -48,6 +56,24 @@ export default function VocabulaireStats({ state, allWords: allWordsProp, themes
   const misconceivedPct = Math.round((misconceivedCount / total) * 100);
   const unknownPct = Math.round((unknownCount / total) * 100);
 
+  // Dernier diagnostic et derniere evaluation pour les titres collapsibles
+  const diagScores = state.diagnosticScores || [];
+  const lastDiag = diagScores.length > 0 ? diagScores[diagScores.length - 1] : null;
+  const lastDiagPct = lastDiag && lastDiag.total > 0
+    ? Math.round((lastDiag.correct / lastDiag.total) * 100)
+    : null;
+
+  // Source de verite pour les evaluations : evaluationAttempts (qui contiennent leur score).
+  // Fallback sur evaluationScores pour rétrocompat (anciennes evals sans attempt) — non cliquables.
+  const evalAttempts = state.evaluationAttempts || [];
+  const legacyScores = state.evaluationScores || [];
+  // Construire la liste affichee : { score, attemptIndex (si cliquable) }
+  const evalEntries: Array<{ score: import('@/types/vocabulaire').EvaluationScore; attemptIndex: number | null }> =
+    evalAttempts.length > 0
+      ? evalAttempts.map((a, i) => ({ score: a.score, attemptIndex: i }))
+      : legacyScores.map((s) => ({ score: s, attemptIndex: null }));
+  const lastEval = evalEntries.length > 0 ? evalEntries[evalEntries.length - 1].score : null;
+
   return (
     <div className={styles.container}>
       {/* Stats generales */}
@@ -83,12 +109,22 @@ export default function VocabulaireStats({ state, allWords: allWordsProp, themes
         <div className={styles.progressUnknown} style={{ width: `${unknownPct}%` }} />
       </div>
 
-      {/* Résultats des diagnostics */}
-      {state.diagnosticScores && state.diagnosticScores.length > 0 && (
-        <div className={styles.diagnosticSection}>
-          <h4 className={styles.sectionTitle}>Résultats des diagnostics</h4>
+      {/* Résultats des diagnostics — collapsible */}
+      {diagScores.length > 0 && (
+        <details className={styles.collapsible}>
+          <summary className={styles.collapsibleSummary}>
+            <span className={styles.collapsibleTitle}>
+              Résultats des diagnostics
+              <span className={styles.collapsibleCount}>({diagScores.length})</span>
+            </span>
+            {lastDiagPct !== null && (
+              <span className={styles.collapsibleLastScore}>
+                Dernier : {lastDiag!.correct}/{lastDiag!.total} ({lastDiagPct}%)
+              </span>
+            )}
+          </summary>
           <div className={styles.diagnosticResults}>
-            {state.diagnosticScores.map((score, i) => {
+            {diagScores.map((score, i) => {
               const pct = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
               const date = new Date(score.date);
               return (
@@ -106,18 +142,44 @@ export default function VocabulaireStats({ state, allWords: allWordsProp, themes
               );
             })}
           </div>
-        </div>
+        </details>
       )}
 
-      {/* Resultats des evaluations */}
-      {state.evaluationScores && state.evaluationScores.length > 0 && (
-        <div className={styles.diagnosticSection}>
-          <h4 className={styles.sectionTitle}>Résultats des évaluations</h4>
+      {/* Résultats des évaluations — collapsible */}
+      {evalEntries.length > 0 && (
+        <details className={styles.collapsible} open={selectedEvalIndex != null}>
+          <summary className={styles.collapsibleSummary}>
+            <span className={styles.collapsibleTitle}>
+              Résultats des évaluations
+              <span className={styles.collapsibleCount}>({evalEntries.length})</span>
+            </span>
+            {lastEval && (
+              <span className={styles.collapsibleLastScore}>
+                Dernière : {lastEval.totalCorrect}/{lastEval.totalPossible} ({lastEval.percentage}%)
+              </span>
+            )}
+          </summary>
           <div className={styles.diagnosticResults}>
-            {state.evaluationScores.map((score, i) => {
+            {evalEntries.map((entry, i) => {
+              const { score, attemptIndex } = entry;
               const date = new Date(score.date);
+              const isClickable = !!onSelectEvalAttempt && attemptIndex !== null;
+              const isSelected = attemptIndex !== null && selectedEvalIndex === attemptIndex;
               return (
-                <div key={i} className={styles.diagResult}>
+                <div
+                  key={i}
+                  className={`${styles.diagResult} ${isClickable ? styles.evalClickable : ''} ${isSelected ? styles.evalSelected : ''}`}
+                  onClick={isClickable ? () => onSelectEvalAttempt!(attemptIndex!) : undefined}
+                  role={isClickable ? 'button' : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
+                  onKeyDown={isClickable ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectEvalAttempt!(attemptIndex!);
+                    }
+                  } : undefined}
+                  title={isClickable ? 'Voir le détail de cette évaluation' : 'Détail non disponible (évaluation antérieure)'}
+                >
                   <span className={styles.diagLabel}>
                     Évaluation {i + 1} — {date.toLocaleDateString()}
                   </span>
@@ -136,7 +198,7 @@ export default function VocabulaireStats({ state, allWords: allWordsProp, themes
               );
             })}
           </div>
-        </div>
+        </details>
       )}
 
       {/* Tableau de mots avec tentatives */}

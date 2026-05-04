@@ -295,6 +295,12 @@ export interface VocabulaireActivityState {
   evaluationScores?: EvaluationScore[];
   evaluationAttempts?: EvaluationAttempt[];
 
+  // Mots marques comme difficiles par l'eleve — persistant entre sessions
+  difficultWords?: string[];
+
+  // Preference d'affichage des flashcards : true = definition d'abord, false = mot d'abord
+  flashcardsDefinitionFirst?: boolean;
+
   lastUpdated: string;
 }
 

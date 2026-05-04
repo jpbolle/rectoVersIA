@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import VocabulaireList from '@/components/VocabulaireList/VocabulaireList';
 import VocabulaireExercises from '@/components/VocabulaireExercises/VocabulaireExercises';
 import VocabulaireEvaluation from '@/components/VocabulaireEvaluation/VocabulaireEvaluation';
+import EvalAttemptView from '@/components/VocabulaireEvaluation/EvalAttemptView';
 import { useVocabulaireWords } from '@/hooks/useVocabulaireWords';
 import { useVocabulaireExercises } from '@/hooks/useVocabulaireExercises';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +36,10 @@ interface VocabulaireActivityProps {
   savedState?: VocabulaireActivityState | null;
   onStateChange?: (state: VocabulaireActivityState) => void;
   disabled?: boolean;
+  // Visualisation d'une evaluation passee (declenche depuis la colonne de droite)
+  viewingEvalAttempt?: import('@/types/vocabulaire').EvaluationAttempt | null;
+  viewingEvalIndex?: number | null;
+  onCloseEvalView?: () => void;
 }
 
 // --- Helpers pour construire des exercices SANS IA ---
@@ -214,6 +219,9 @@ export default function VocabulaireActivity({
   savedState,
   onStateChange,
   disabled = false,
+  viewingEvalAttempt = null,
+  viewingEvalIndex = null,
+  onCloseEvalView,
 }: VocabulaireActivityProps) {
   const selectedTheme = forcedThemes?.[0] || '';
   const themesToLoad = forcedThemes && forcedThemes.length > 0 ? forcedThemes : null;
@@ -259,6 +267,15 @@ export default function VocabulaireActivity({
   // Exercices construits localement (diagnostic) ou via IA
   const [localExercises, setLocalExercises] = useState<VocabulaireExercise[]>([]);
 
+  // Flashcards d'etude
+  // difficultWords = liste persistante des mots mis en favoris par l'eleve
+  // showFlashcards = visibilite (transitoire) du panneau
+  const [difficultWords, setDifficultWords] = useState<string[]>(savedState?.difficultWords || []);
+  const [showFlashcards, setShowFlashcards] = useState((savedState?.difficultWords || []).length > 0);
+  const [flashcardsDefinitionFirst, setFlashcardsDefinitionFirst] = useState(savedState?.flashcardsDefinitionFirst ?? true);
+  const [flashcardsLarge, setFlashcardsLarge] = useState(false);
+  const [flashcardIndex, setFlashcardIndex] = useState(0);
+
   // Incrementer activityOpened au premier montage
   const hasOpenedRef = useRef(false);
   useEffect(() => {
@@ -274,6 +291,37 @@ export default function VocabulaireActivity({
       setPhase('diagnostic');
     }
   }, [diagnosticCount, phase]);
+
+  // Auto-fermer les flashcards et la popup quand la liste des favoris devient vide
+  useEffect(() => {
+    if (difficultWords.length === 0) {
+      if (showFlashcards) setShowFlashcards(false);
+      if (flashcardsLarge) setFlashcardsLarge(false);
+    }
+  }, [difficultWords.length, showFlashcards, flashcardsLarge]);
+
+  // Clamp l'index si la liste de favoris retrecit
+  useEffect(() => {
+    if (flashcardIndex >= difficultWords.length && difficultWords.length > 0) {
+      setFlashcardIndex(0);
+    }
+  }, [difficultWords.length, flashcardIndex]);
+
+  // Navigation clavier en mode popup
+  useEffect(() => {
+    if (!flashcardsLarge) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setFlashcardsLarge(false);
+      } else if (e.key === 'ArrowLeft') {
+        setFlashcardIndex((i) => Math.max(0, i - 1));
+      } else if (e.key === 'ArrowRight') {
+        setFlashcardIndex((i) => Math.min(difficultWords.length - 1, i + 1));
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [flashcardsLarge, difficultWords.length]);
 
   // Exercices IA (pour fill_in_blanks_dropdown + context_sentences)
   const {
@@ -335,6 +383,8 @@ export default function VocabulaireActivity({
       productionValidation: productionValidation || undefined,
       evaluationScores: evaluationScores.length > 0 ? evaluationScores : undefined,
       evaluationAttempts: evaluationAttempts.length > 0 ? evaluationAttempts : undefined,
+      difficultWords: difficultWords.length > 0 ? difficultWords : undefined,
+      flashcardsDefinitionFirst,
       lastUpdated: new Date().toISOString(),
     };
     const stateStr = JSON.stringify({ ...state, lastUpdated: undefined });
@@ -342,7 +392,7 @@ export default function VocabulaireActivity({
       prevStateStrRef.current = stateStr;
       onStateChangeRef.current(state);
     }
-  }, [phase, diagnosticSelections, diagnosticCount, diagnosticScores, wordMastery, learningSessions, currentSelection, displayedExercises, exerciseResults, activityOpened, productionValidation, evaluationScores, evaluationAttempts]);
+  }, [phase, diagnosticSelections, diagnosticCount, diagnosticScores, wordMastery, learningSessions, currentSelection, displayedExercises, exerciseResults, activityOpened, productionValidation, evaluationScores, evaluationAttempts, difficultWords, flashcardsDefinitionFirst]);
 
   // --- Handlers diagnostic initial ---
   const handleDiagnosticSelect = useCallback((wordText: string) => {
@@ -374,6 +424,29 @@ export default function VocabulaireActivity({
     setLocalExercises([]);
     resetExercises();
   }, [resetExercises]);
+
+  // Retrait d'une flashcard = retrait du mot des favoris persistants
+  const handleRemoveFlashcard = useCallback((wordText: string) => {
+    setDifficultWords((prev) => prev.filter((w) => w !== wordText));
+  }, []);
+
+  // Bouton "Afficher les mots difficiles" : promeut la selection courante en favoris persistants,
+  // vide la selection (pour ne pas melanger avec "Generer"), et ouvre le panneau.
+  const handleToggleDifficult = useCallback(() => {
+    if (currentSelection.length > 0) {
+      setDifficultWords((prev) => {
+        const next = [...prev];
+        for (const w of currentSelection) {
+          if (!next.includes(w)) next.push(w);
+        }
+        return next;
+      });
+      setCurrentSelection([]);
+      setLocalExercises([]);
+      resetExercises();
+    }
+    setShowFlashcards(true);
+  }, [currentSelection, resetExercises]);
 
   // --- Generation exercices diagnostic (principalement cote client) ---
   const generateDiagnosticExercises = useCallback(async (wordsToTest: VocabulaireWord[]) => {
@@ -643,16 +716,29 @@ export default function VocabulaireActivity({
 
   const getGenerateLabel = () => {
     if (phase === 'diagnostic') {
-      if (diagnosticCount === 0) {
-        return `Vérifier mes connaissances (${diagnosticSelections.length} mot${diagnosticSelections.length > 1 ? 's' : ''})`;
-      }
+      if (diagnosticCount === 0) return 'Vérifier mes connaissances';
       return 'Lancer le diagnostic intermédiaire';
     }
-    if (phase === 'evaluation') {
-      return `Lancer l'évaluation (${allThemeWords.length} mots)`;
-    }
-    return `Générer les exercices (${currentSelection.length} mot${currentSelection.length > 1 ? 's' : ''})`;
+    if (phase === 'evaluation') return 'Lancer l’évaluation';
+    return 'Générer une session d’apprentissage';
   };
+
+  const plural = (n: number, s = 'mot') => `${n} ${s}${n > 1 ? 's' : ''}`;
+
+  const getGenerateHint = () => {
+    if (phase === 'diagnostic') {
+      if (diagnosticCount === 0) return plural(diagnosticSelections.length) + ' sélectionné' + (diagnosticSelections.length > 1 ? 's' : '');
+      const n = categories.known.length + categories.misconceived.length;
+      return plural(n) + ' à retester';
+    }
+    return `${currentSelection.length}/6-10 mots`;
+  };
+
+  const studyCount = currentSelection.length;
+  const diagnosticAvailable = categories.known.length + categories.misconceived.length;
+  // Le diagnostic intermediaire necessite qu'au moins 50% des mots soient connus ou meconnus
+  const diagnosticPct = allThemeWords.length > 0 ? diagnosticAvailable / allThemeWords.length : 0;
+  const diagnosticReady = diagnosticPct >= 0.5;
 
   const canGenerate = () => {
     if (disabled) return false;
@@ -676,12 +762,36 @@ export default function VocabulaireActivity({
       : 0,
   };
 
+  // --- Si l'eleve clique sur une evaluation passee dans le panneau de droite ---
+  if (viewingEvalAttempt) {
+    return (
+      <div className={styles.wrapper}>
+        <div className={styles.evalReviewHeader}>
+          <button
+            type="button"
+            className={styles.evalReviewBackBtn}
+            onClick={onCloseEvalView}
+          >
+            ← Retour à la liste d&apos;apprentissage
+          </button>
+          <h3 className={styles.evalReviewTitle}>
+            Correction de l&apos;évaluation {(viewingEvalIndex ?? 0) + 1}
+            {' — '}
+            {new Date(viewingEvalAttempt.date).toLocaleDateString()}
+          </h3>
+        </div>
+        <div className={styles.evalReviewBody}>
+          <EvalAttemptView attempt={viewingEvalAttempt} />
+        </div>
+      </div>
+    );
+  }
+
   // --- Si evaluation en cours, afficher le composant dedie ---
   if (showEvaluation && evaluationExercises) {
     return (
       <div className={styles.wrapper}>
         <VocabulaireEvaluation
-          key={evaluationScores.length}
           crossword={evaluationExercises.crossword}
           synonymAntonymText={evaluationExercises.synonymAntonymText}
           composition={evaluationExercises.composition}
@@ -795,28 +905,6 @@ export default function VocabulaireActivity({
                 </p>
               </div>
 
-              {/* Boutons dans l'espace blanc, coin superieur droit */}
-              {phase === 'learning' && !disabled && (
-                <div className={styles.topActions}>
-                  <button
-                    type="button"
-                    className={styles.topActionBtn}
-                    onClick={handleIntermediateDiagnostic}
-                    disabled={isGenerating || isGeneratingEval || categories.known.length + categories.misconceived.length === 0}
-                  >
-                    Diagnostic intermédiaire
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.topActionBtn}
-                    onClick={handleEvaluation}
-                    disabled={isGenerating || isGeneratingEval}
-                  >
-                    Évaluation
-                  </button>
-                </div>
-              )}
-
               {/* Hint de selection */}
               {selectionHint && (
                 <div className={styles.selectionHint}>
@@ -836,21 +924,167 @@ export default function VocabulaireActivity({
                 wordMastery={wordMastery}
                 disabled={disabled}
                 isLoading={wordsLoading}
-                generateButton={(canGenerate() || isGenerating) && !disabled ? (
-                  <div className={styles.generateAction}>
-                    <button
-                      type="button"
-                      className={styles.generateBtn}
-                      onClick={handleGenerate}
-                      disabled={isGenerating}
-                    >
-                      {isGenerating ? 'Génération en cours...' : (
-                        exercisesAllCompleted ? 'Régénérer les exercices' : getGenerateLabel()
-                      )}
-                    </button>
-                    {isGenerating && <div className={styles.generateSpinner} />}
-                  </div>
-                ) : undefined}
+                flashcardsSlot={(() => {
+                  if (disabled || phase !== 'learning') return undefined;
+                  if (!showFlashcards || difficultWords.length === 0) return undefined;
+                  const difficultWordObjects = allThemeWords.filter((w) => difficultWords.includes(w.word));
+                  return (
+                    <div className={styles.flashcardsContainer}>
+                      <button
+                        type="button"
+                        className={styles.flashcardsContainerClose}
+                        onClick={() => setShowFlashcards(false)}
+                        aria-label="Masquer le panneau de flashcards"
+                        title="Masquer le panneau"
+                      >
+                        ×
+                      </button>
+                      <div className={styles.flashcardsGrid}>
+                        {difficultWordObjects.map((w) => (
+                          <Flashcard
+                            key={w.word}
+                            word={w}
+                            definitionFirst={flashcardsDefinitionFirst}
+                            onRemove={() => handleRemoveFlashcard(w.word)}
+                          />
+                        ))}
+                      </div>
+                      <div className={styles.flashcardsControls}>
+                        <div className={styles.flashcardsOrderToggle} role="group" aria-label="Recto par défaut">
+                          <button
+                            type="button"
+                            className={`${styles.flashcardsOrderBtn} ${flashcardsDefinitionFirst ? styles.flashcardsOrderBtnActive : ''}`}
+                            onClick={() => setFlashcardsDefinitionFirst(true)}
+                          >
+                            Définition
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.flashcardsOrderBtn} ${!flashcardsDefinitionFirst ? styles.flashcardsOrderBtnActive : ''}`}
+                            onClick={() => setFlashcardsDefinitionFirst(false)}
+                          >
+                            Mot
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          className={styles.flashcardsLargeBtn}
+                          onClick={() => { setFlashcardIndex(0); setFlashcardsLarge(true); }}
+                        >
+                          Voir en grand
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+                generateButton={(() => {
+                  if (disabled) return undefined;
+                  // En diagnostic : seulement le bouton Generer (quand canGenerate)
+                  if (phase === 'diagnostic') {
+                    if (!canGenerate() && !isGenerating) return undefined;
+                    return (
+                      <div className={styles.bottomActions}>
+                        <span className={styles.bottomActionsLine} />
+                        <div className={styles.bottomActionsRow}>
+                          <span className={styles.actionBtnWrap}>
+                            <button
+                              type="button"
+                              className={`${styles.actionBtn} ${styles.actionBtnAmber}`}
+                              onClick={handleGenerate}
+                              disabled={isGenerating}
+                            >
+                              {isGenerating ? 'Génération en cours...' : (
+                                exercisesAllCompleted ? 'Régénérer les exercices' : getGenerateLabel()
+                              )}
+                            </button>
+                            <span className={styles.actionBtnHint}>{getGenerateHint()}</span>
+                          </span>
+                          {isGenerating && <div className={styles.generateSpinner} />}
+                        </div>
+                        <span className={styles.bottomActionsLine} />
+                      </div>
+                    );
+                  }
+                  // En learning : les 4 boutons toujours visibles, disabled selon les conditions
+                  if (phase !== 'learning') return undefined;
+                  const generateDisabled = isGenerating || !canGenerate();
+                  // Le bouton est utile : (1) pour ajouter des mots, (2) pour ouvrir le panneau si ferme et qu'il existe deja des favoris.
+                  const studyDisabled = studyCount === 0 && (showFlashcards || difficultWords.length === 0);
+                  const diagnosticDisabled = isGenerating || isGeneratingEval || !diagnosticReady;
+                  const evalReady = evalBlockStats.pctKM >= 70 && evalBlockStats.pctKnown >= 50;
+                  const evaluationDisabled = isGenerating || isGeneratingEval || !evalReady;
+                  return (
+                    <div className={styles.bottomActions}>
+                      <span className={styles.bottomActionsLine} />
+                      <div className={styles.bottomActionsRow}>
+                        <span className={styles.actionBtnWrap}>
+                          <button
+                            type="button"
+                            className={`${styles.actionBtn} ${styles.actionBtnAmber}`}
+                            onClick={handleGenerate}
+                            disabled={generateDisabled}
+                          >
+                            {isGenerating ? 'Génération en cours...' : (
+                              exercisesAllCompleted ? 'Régénérer les exercices' : getGenerateLabel()
+                            )}
+                          </button>
+                          <span className={styles.actionBtnHint}>{getGenerateHint()}</span>
+                        </span>
+                        <span className={styles.actionBtnWrap}>
+                          <button
+                            type="button"
+                            className={`${styles.actionBtn} ${styles.actionBtnAmber}`}
+                            onClick={handleToggleDifficult}
+                            disabled={studyDisabled}
+                          >
+                            Afficher les mots difficiles
+                          </button>
+                          <span className={styles.actionBtnHint}>
+                            {studyCount > 0
+                              ? `Ajouter ${plural(studyCount)} aux favoris`
+                              : difficultWords.length === 0
+                                ? 'Sélectionne d’abord des mots'
+                                : showFlashcards
+                                  ? 'Déjà affichées'
+                                  : `${plural(difficultWords.length)} en favoris`}
+                          </span>
+                        </span>
+                        <span className={styles.actionBtnWrap}>
+                          <button
+                            type="button"
+                            className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+                            onClick={handleIntermediateDiagnostic}
+                            disabled={diagnosticDisabled}
+                          >
+                            Diagnostic intermédiaire
+                          </button>
+                          <span className={styles.actionBtnHint}>
+                            {diagnosticReady
+                              ? `${Math.round(diagnosticPct * 100)} % étudiés · ${plural(diagnosticAvailable)} à retester`
+                              : `${Math.round(diagnosticPct * 100)} % étudiés / 50 % requis`}
+                          </span>
+                        </span>
+                        <span className={styles.actionBtnWrap}>
+                          <button
+                            type="button"
+                            className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+                            onClick={handleEvaluation}
+                            disabled={evaluationDisabled}
+                          >
+                            Évaluation
+                          </button>
+                          <span className={styles.actionBtnHint}>
+                            {evalReady
+                              ? `${evalBlockStats.pctKM} % étudiés · ${evalBlockStats.pctKnown} % connus · ${plural(allThemeWords.length)}`
+                              : `${evalBlockStats.pctKM} % étudiés / 70 % requis · ${evalBlockStats.pctKnown} % connus / 50 % requis`}
+                          </span>
+                        </span>
+                        {isGenerating && <div className={styles.generateSpinner} />}
+                      </div>
+                      <span className={styles.bottomActionsLine} />
+                    </div>
+                  );
+                })()}
               />
             </div>
 
@@ -877,6 +1111,127 @@ export default function VocabulaireActivity({
           </div>
         </div>
       </div>
+
+      {/* Popup grand format pour les flashcards */}
+      {flashcardsLarge && difficultWords.length > 0 && (() => {
+        const difficultWordObjects = allThemeWords.filter((w) => difficultWords.includes(w.word));
+        if (difficultWordObjects.length === 0) return null;
+        const safeIndex = Math.min(flashcardIndex, difficultWordObjects.length - 1);
+        const currentWord = difficultWordObjects[safeIndex];
+        return (
+          <div className={styles.flashcardsModalOverlay}>
+            <div className={styles.flashcardsModalHeader}>
+              <span className={styles.flashcardsModalCounter}>
+                {safeIndex + 1} / {difficultWordObjects.length}
+              </span>
+              <button
+                type="button"
+                className={styles.flashcardsModalClose}
+                onClick={() => setFlashcardsLarge(false)}
+                aria-label="Fermer"
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.flashcardsModalBody}>
+              <button
+                type="button"
+                className={styles.flashcardsModalNav}
+                onClick={() => setFlashcardIndex((i) => Math.max(0, i - 1))}
+                disabled={safeIndex === 0}
+                aria-label="Carte précédente"
+              >
+                ‹
+              </button>
+              <div className={styles.flashcardsModalCardWrap}>
+                <Flashcard
+                  key={currentWord.word}
+                  word={currentWord}
+                  definitionFirst={flashcardsDefinitionFirst}
+                  onRemove={() => handleRemoveFlashcard(currentWord.word)}
+                  large
+                />
+              </div>
+              <button
+                type="button"
+                className={styles.flashcardsModalNav}
+                onClick={() => setFlashcardIndex((i) => Math.min(difficultWordObjects.length - 1, i + 1))}
+                disabled={safeIndex === difficultWordObjects.length - 1}
+                aria-label="Carte suivante"
+              >
+                ›
+              </button>
+            </div>
+            <div className={styles.flashcardsModalHint}>
+              Utilise les flèches ← → ou Échap pour fermer
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+// --- Flashcard avec ordre recto/verso configurable + bouton de retrait ---
+function Flashcard({
+  word,
+  definitionFirst,
+  onRemove,
+  large = false,
+}: {
+  word: VocabulaireWord;
+  definitionFirst: boolean;
+  onRemove?: () => void;
+  large?: boolean;
+}) {
+  const [flipped, setFlipped] = useState(false);
+
+  // Reinitialiser l'etat de flip quand l'ordre par defaut change
+  useEffect(() => {
+    setFlipped(false);
+  }, [definitionFirst, word.word]);
+
+  const definitionFace = (
+    <>
+      <div className={styles.flashcardLabel}>Définition</div>
+      <div className={styles.flashcardDefinition}>{word.definition}</div>
+    </>
+  );
+  const wordFace = (
+    <>
+      <div className={styles.flashcardWord}>{word.word}</div>
+      {word.example && (
+        <div className={styles.flashcardExample}>{word.example}</div>
+      )}
+    </>
+  );
+
+  const front = definitionFirst ? definitionFace : wordFace;
+  const back = definitionFirst ? wordFace : definitionFace;
+
+  return (
+    <div className={`${styles.flashcard} ${large ? styles.flashcardLarge : ''} ${flipped ? styles.flashcardFlipped : ''}`}>
+      {onRemove && (
+        <button
+          type="button"
+          className={styles.flashcardRemove}
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          aria-label={`Retirer ${word.word}`}
+        >
+          ×
+        </button>
+      )}
+      <button
+        type="button"
+        className={styles.flashcardFlip}
+        onClick={() => setFlipped((prev) => !prev)}
+        aria-label={flipped ? 'Retourner la carte' : 'Retourner la carte'}
+      >
+        <div className={styles.flashcardInner}>
+          <div className={styles.flashcardFace}>{front}</div>
+          <div className={`${styles.flashcardFace} ${styles.flashcardBack}`}>{back}</div>
+        </div>
+      </button>
     </div>
   );
 }
