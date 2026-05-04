@@ -9,6 +9,14 @@
   overflow: hidden;
 }
 
+/* Mode "sans onglets" : utilise par WorkspaceRail (cote eleve) ou
+   la navigation est geree par un rail externe. Suppression de la bordure
+   pour une integration propre dans le panneau parent. */
+.containerNoTabs {
+  border: none;
+  background: transparent;
+}
+
 .tabs {
   display: flex;
   border-bottom: 2px solid var(--c-border);

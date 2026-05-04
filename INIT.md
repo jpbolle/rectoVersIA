@@ -5,7 +5,7 @@
 | Champ | Valeur |
 |-------|--------|
 | **Nom** | Recto-versIA — Assistant de correction pedagogique avec IA |
-| **Version** | 3.6 (mai 2026) |
+| **Version** | 3.7 (mai 2026) |
 | **Domaine** | EdTech — correction de productions ecrites d'eleves |
 | **Ecole** | College Notre-Dame de Dinant (Belgique) |
 | **Utilisateur principal** | Jean-Philippe Bolle (professeur) |
@@ -291,11 +291,12 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 - `VocabulaireListReadOnly` — vue prof colonne gauche, flip recto (progression) / verso (evaluations avec onglets)
 
 ### Panels
-- `AssistancePanel` — panel lateral avec onglets (Consignes, Ressources, Grille/Evaluation, Remarques, Aide IA, Recherche)
+- `AssistancePanel` — panel lateral avec onglets (Consignes, Ressources, Grille/Evaluation, Remarques, Aide IA, Recherche). Prop `hideTabs` pour masquer la barre interne quand un parent gere la navigation (cas du `WorkspaceRail` cote eleve)
 - `GrilleTab` — grille interactive avec 3 evaluations (eleve, IA, prof)
 
 ### UI
-- `ResizableSplit` — panneau redimensionnable (divider draggable)
+- `WorkspaceRail` — pattern eleve : rail icones SVG fixe a droite (#98ADC4) + panneau redimensionnable (1/4 par defaut, 280px min, 2/3 viewport max). Largeur memorisee dans localStorage (`workspaceRail-width`). Utilise sur `/activites/[id]` pour les 3 types d'activite (ecrire, vocabulaire, rechercher)
+- `ResizableSplit` — panneau redimensionnable (divider draggable). Encore utilise cote prof (`/dashboard/travaux/[devoirId]/[travailId]`) ; remplace cote eleve par `WorkspaceRail`
 - `JoinClasseModal` — 9 cases input pour code classe
 - `BulkImportEleveModal` — import en masse CSV/texte
 
@@ -344,6 +345,10 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 ---
 
 ## 10. Roadmap
+
+### Fait (v3.7)
+- [x] **Refonte espace de travail eleve** : nouveau composant `WorkspaceRail` (rail icones SVG blanc sur fond bleu ciel #98ADC4 a droite + panneau redimensionnable). Ouverture par defaut sur Consignes a 1/4 de l'ecran, redimensionnable jusqu'a 2/3
+- [x] **AssistancePanel** : prop `hideTabs` pour le rendre compatible avec une navigation externe (rail), tout en preservant l'usage prof avec onglets internes
 
 ### Fait (v3.5)
 - [x] **Vocabulaire v2** : refonte formulaire creation (dropdown serie lexicale + selecteur Apprendre/Diagnostic, pas de grille)

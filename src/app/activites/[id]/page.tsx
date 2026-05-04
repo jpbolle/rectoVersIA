@@ -19,9 +19,48 @@ import type { AiSuggestionType } from '@/types/ai-suggestions';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
 import RechercheResponseViewer from '@/components/RechercheResponseViewer/RechercheResponseViewer';
 import VocabulaireActivity from '@/components/VocabulaireActivity/VocabulaireActivity';
-import ResizableSplit from '@/components/ResizableSplit/ResizableSplit';
+import WorkspaceRail, { type RailTab } from '@/components/WorkspaceRail';
 import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
 import styles from './travail.module.css';
+
+// ── Icones SVG du rail (blanc sur fond bleu ciel, geres par CSS via currentColor) ──
+const ICON_CONSIGNES = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="8" y="2" width="8" height="4" rx="1" />
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    <line x1="9" y1="12" x2="15" y2="12" />
+    <line x1="9" y1="16" x2="13" y2="16" />
+  </svg>
+);
+const ICON_RESSOURCES = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+const ICON_GRILLE = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11l3 3L22 4" />
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+  </svg>
+);
+const ICON_IA = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" />
+    <path d="M19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" />
+  </svg>
+);
+const ICON_REMARQUES = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+const ICON_RECHERCHE = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
 
 export default function TravailPage() {
   const params = useParams();
@@ -71,6 +110,7 @@ export default function TravailPage() {
   // showAiData : charger les résultats IA existants (même après soumission)
   const showAiData = !isPreviewMode && devoir?.accesIA === true;
   const [activeTab, setActiveTab] = useState<TabType>('consignes');
+  const [panelOpen, setPanelOpen] = useState<boolean>(true);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   // Vocabulaire : index de l'evaluation passee a revoir dans la colonne de gauche (null = vue normale)
   const [viewingVocabEvalIndex, setViewingVocabEvalIndex] = useState<number | null>(null);
@@ -369,7 +409,62 @@ export default function TravailPage() {
   const isDisabled = isPreviewMode || isSubmitted;
   const isRecherche = devoir?.typeTravail === 'rechercher';
   const isVocabulaire = devoir?.typeTravail === 'vocabulaire';
-  const correctionVisible = correction?.visibleParEleve === true;
+
+  // ── Configuration du rail : icones + visibilite par type d'activite ──
+  const hasAiSuggestions = aiSuggestions
+    ? Object.values(aiSuggestions).some(
+        (s) => s !== null && s.suggestions.some((item) => !item.dismissed)
+      )
+    : false;
+  const hasRemarques = !!correction?.annotatedContent;
+  const hasNavigkid = nkQuestions.length > 0;
+
+  const railTabs: RailTab[] = [];
+  railTabs.push({ id: 'consignes', label: 'Consignes', icon: ICON_CONSIGNES });
+  if (!isRecherche) {
+    railTabs.push({ id: 'ressources', label: 'Ressources', icon: ICON_RESSOURCES });
+  }
+  railTabs.push({ id: 'grille', label: 'Évaluation', icon: ICON_GRILLE });
+  if (!isRecherche && (accesIA || showAiData)) {
+    railTabs.push({
+      id: 'ia',
+      label: 'Aide IA à la réécriture',
+      icon: ICON_IA,
+      hasBadge: hasAiSuggestions,
+    });
+  }
+  railTabs.push({
+    id: 'remarques',
+    label: 'Remarques du professeur',
+    icon: ICON_REMARQUES,
+    highlight: hasRemarques,
+  });
+  if (hasNavigkid) {
+    railTabs.push({
+      id: 'recherche',
+      label: isRecherche ? 'Statistiques' : 'Recherche',
+      icon: ICON_RECHERCHE,
+    });
+  }
+
+  const PANEL_TITLES: Partial<Record<TabType, string>> = {
+    consignes: 'Consignes',
+    ressources: 'Ressources',
+    grille: 'Évaluation',
+    ia: 'Aide IA à la réécriture',
+    remarques: 'Remarques du professeur',
+    recherche: isRecherche ? 'Statistiques' : 'Recherche',
+  };
+  const panelTitle = PANEL_TITLES[activeTab] ?? '';
+
+  const profScoreBadge = !isPreviewMode && profScore ? (
+    <span
+      className={styles.profScoreBadge}
+      style={{ background: profScore.percent < 50 ? '#C55764' : '#2a4d73' }}
+    >
+      {profScore.pts}/{profScore.max} ({profScore.percent}%)
+    </span>
+  ) : null;
 
   return (
     <div className={`${styles.page} ${isPreviewMode ? styles.previewMode : ''}`}>
@@ -393,130 +488,123 @@ export default function TravailPage() {
       />
 
       <main className={styles.main}>
-        <ResizableSplit
-          storageKey="activite-split"
-          left={
-            isVocabulaire ? (
-              <div className={styles.editorSection}>
-                <div className={styles.editorHeader}>
-                  <h2>Vocabulaire</h2>
-                </div>
-                <VocabulaireActivity
-                  forcedThemes={devoir?.vocabulaireThemes}
-                  savedState={
-                    travail?.content
-                      ? (() => { try { return JSON.parse(travail.content); } catch { return null; } })()
-                      : null
-                  }
-                  onStateChange={
-                    isDisabled
-                      ? undefined
-                      : (state) => updateContent(JSON.stringify(state))
-                  }
-                  disabled={isDisabled}
-                  viewingEvalAttempt={(() => {
-                    if (viewingVocabEvalIndex === null || !travail?.content) return null;
-                    try {
-                      const parsed = JSON.parse(travail.content);
-                      return parsed.evaluationAttempts?.[viewingVocabEvalIndex] ?? null;
-                    } catch {
-                      return null;
-                    }
-                  })()}
-                  viewingEvalIndex={viewingVocabEvalIndex}
-                  onCloseEvalView={() => setViewingVocabEvalIndex(null)}
-                />
-              </div>
-            ) : isRecherche ? (
-              <div className={styles.editorSection}>
-                <div className={styles.editorHeader}>
-                  <h2>Questionnaire de recherche</h2>
-                </div>
-                <RechercheResponseViewer
-                  questions={nkQuestions}
-                  reponse={nkReponse}
-                  studentView={!isPreviewMode}
-                />
-              </div>
-            ) : (
-              <div className={styles.editorSection}>
-                <div className={styles.editorHeader}>
-                  <h2>Mon travail</h2>
-                </div>
-                <div className={styles.editorWrapper}>
-                  <FlipEditor
-                    content={isPreviewMode ? '' : (travail?.content || '')}
-                    onContentChange={handleContentChange}
-                    draftContent={isPreviewMode ? null : (travail?.draftContent || null)}
-                    onDraftChange={handleDraftChange}
-                    grille={grille}
-                    disabled={isDisabled}
-                    placeholder={isPreviewMode ? "Zone de redaction de l'eleve..." : "Commencez à rédiger votre travail ici..."}
-                    draftAnnotations={correction?.draftAnnotations}
-                    accesIA={showAiData}
-                    aiSuggestions={aiSuggestions}
-                    onDecorationClick={handleDecorationClick}
-                  />
-                </div>
-              </div>
-            )
-          }
-          right={
-            <div className={styles.assistanceSection}>
-              <div className={styles.assistanceHeader}>
-                <h2>Outils d&apos;évaluation et de correction</h2>
-                {!isPreviewMode && profScore && (
-                  <span
-                    className={styles.profScoreBadge}
-                    style={{ background: profScore.percent < 50 ? '#C55764' : '#2a4d73' }}
-                  >
-                    {profScore.pts}/{profScore.max} ({profScore.percent}%)
-                  </span>
-                )}
-              </div>
-              <div className={styles.assistanceWrapper}>
-                <AssistancePanel
-                  devoir={devoir}
-                  grille={grille}
-                  grilleLoading={grilleLoading}
-                  grilleError={grilleError}
-                  selfEvaluation={isPreviewMode ? null : (travail?.selfEvaluation || null)}
-                  onSelfEvaluationChange={handleSelfEvaluationChange}
-                  disabled={isDisabled}
-                  studentName={travail?.studentName}
-                  correction={correction}
-                  studentContent={travail?.content || ''}
-                  showRemarquesTab={true}
-                  ressourceAnnotations={travail?.ressourceAnnotations}
-                  onRessourceAnnotationsChange={isPreviewMode ? undefined : updateRessourceAnnotations}
-                  ressourceNotes={travail?.ressourceNotes}
-                  onRessourceNotesChange={isPreviewMode ? undefined : updateRessourceNotes}
-                  activeTab={activeTab}
-                  onTabChange={setActiveTab}
-                  accesIA={accesIA}
-                  showAiData={showAiData}
-                  aiSuggestions={aiSuggestions}
-                  aiActiveRequest={aiActiveRequest}
-                  aiError={aiError}
-                  aiUsedTypes={aiUsedTypes}
-                  onAiRequest={handleAiRequest}
-                  onAiDismiss={dismissSuggestion}
-                  highlightedItemId={highlightedItemId}
-                  aiGridResult={aiGridResult}
-                  aiGridRequesting={aiGridRequesting}
-                  aiGridError={aiGridError}
-                  onRequestAiGrid={handleRequestAiGrid}
-                  navigkidQuestions={nkQuestions.length > 0 ? nkQuestions : undefined}
-                  navigkidReponse={nkReponse}
-                  rechercheMode={isRecherche}
-                  vocabState={isVocabulaire && travail?.content ? (() => { try { return JSON.parse(travail.content); } catch { return null; } })() : undefined}
-                  onSelectVocabEvalAttempt={isVocabulaire ? (i) => setViewingVocabEvalIndex(i) : undefined}
-                  selectedVocabEvalIndex={viewingVocabEvalIndex}
-                />
-              </div>
+        {/* Colonne 1 : zone de travail (prend l'espace restant) */}
+        {isVocabulaire ? (
+          <div className={styles.editorSection}>
+            <div className={styles.editorHeader}>
+              <h2>Vocabulaire</h2>
             </div>
-          }
-        />
+            <VocabulaireActivity
+              forcedThemes={devoir?.vocabulaireThemes}
+              savedState={
+                travail?.content
+                  ? (() => { try { return JSON.parse(travail.content); } catch { return null; } })()
+                  : null
+              }
+              onStateChange={
+                isDisabled
+                  ? undefined
+                  : (state) => updateContent(JSON.stringify(state))
+              }
+              disabled={isDisabled}
+              viewingEvalAttempt={(() => {
+                if (viewingVocabEvalIndex === null || !travail?.content) return null;
+                try {
+                  const parsed = JSON.parse(travail.content);
+                  return parsed.evaluationAttempts?.[viewingVocabEvalIndex] ?? null;
+                } catch {
+                  return null;
+                }
+              })()}
+              viewingEvalIndex={viewingVocabEvalIndex}
+              onCloseEvalView={() => setViewingVocabEvalIndex(null)}
+            />
+          </div>
+        ) : isRecherche ? (
+          <div className={styles.editorSection}>
+            <div className={styles.editorHeader}>
+              <h2>Questionnaire de recherche</h2>
+            </div>
+            <RechercheResponseViewer
+              questions={nkQuestions}
+              reponse={nkReponse}
+              studentView={!isPreviewMode}
+            />
+          </div>
+        ) : (
+          <div className={styles.editorSection}>
+            <div className={styles.editorHeader}>
+              <h2>Mon travail</h2>
+            </div>
+            <div className={styles.editorWrapper}>
+              <FlipEditor
+                content={isPreviewMode ? '' : (travail?.content || '')}
+                onContentChange={handleContentChange}
+                draftContent={isPreviewMode ? null : (travail?.draftContent || null)}
+                onDraftChange={handleDraftChange}
+                grille={grille}
+                disabled={isDisabled}
+                placeholder={isPreviewMode ? "Zone de redaction de l'eleve..." : "Commencez à rédiger votre travail ici..."}
+                draftAnnotations={correction?.draftAnnotations}
+                accesIA={showAiData}
+                aiSuggestions={aiSuggestions}
+                onDecorationClick={handleDecorationClick}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Colonne 2 (panneau redimensionnable) + rail icones a droite */}
+        <WorkspaceRail
+          tabs={railTabs}
+          activeTab={activeTab}
+          onActiveTabChange={(id) => setActiveTab(id as TabType)}
+          isOpen={panelOpen}
+          onIsOpenChange={setPanelOpen}
+          panelTitle={panelTitle}
+          panelHeaderExtra={profScoreBadge}
+          storageKey="activite-rail-width"
+        >
+          <AssistancePanel
+            devoir={devoir}
+            grille={grille}
+            grilleLoading={grilleLoading}
+            grilleError={grilleError}
+            selfEvaluation={isPreviewMode ? null : (travail?.selfEvaluation || null)}
+            onSelfEvaluationChange={handleSelfEvaluationChange}
+            disabled={isDisabled}
+            studentName={travail?.studentName}
+            correction={correction}
+            studentContent={travail?.content || ''}
+            showRemarquesTab={true}
+            ressourceAnnotations={travail?.ressourceAnnotations}
+            onRessourceAnnotationsChange={isPreviewMode ? undefined : updateRessourceAnnotations}
+            ressourceNotes={travail?.ressourceNotes}
+            onRessourceNotesChange={isPreviewMode ? undefined : updateRessourceNotes}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            accesIA={accesIA}
+            showAiData={showAiData}
+            aiSuggestions={aiSuggestions}
+            aiActiveRequest={aiActiveRequest}
+            aiError={aiError}
+            aiUsedTypes={aiUsedTypes}
+            onAiRequest={handleAiRequest}
+            onAiDismiss={dismissSuggestion}
+            highlightedItemId={highlightedItemId}
+            aiGridResult={aiGridResult}
+            aiGridRequesting={aiGridRequesting}
+            aiGridError={aiGridError}
+            onRequestAiGrid={handleRequestAiGrid}
+            navigkidQuestions={nkQuestions.length > 0 ? nkQuestions : undefined}
+            navigkidReponse={nkReponse}
+            rechercheMode={isRecherche}
+            vocabState={isVocabulaire && travail?.content ? (() => { try { return JSON.parse(travail.content); } catch { return null; } })() : undefined}
+            onSelectVocabEvalAttempt={isVocabulaire ? (i) => setViewingVocabEvalIndex(i) : undefined}
+            selectedVocabEvalIndex={viewingVocabEvalIndex}
+            hideTabs={true}
+          />
+        </WorkspaceRail>
       </main>
 
       {showConfirmModal && !isPreviewMode && (

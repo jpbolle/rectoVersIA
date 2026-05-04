@@ -31,6 +31,15 @@ interface RoadmapData {
 const DEFAULT_DATA: RoadmapData = {
   nouveautes: [
     {
+      date: '4 mai 2026',
+      items: [
+        'Refonte de l\'espace de travail élève : nouvelle barre d\'icônes verticale à droite (Consignes, Ressources, Évaluation, Aide IA, Remarques, Recherche)',
+        'Panneau d\'assistance redimensionnable : ouverture par défaut sur Consignes au quart de l\'écran, élargissable jusqu\'aux deux tiers',
+        'Largeur du panneau mémorisée d\'une session à l\'autre',
+        'Le panneau peut être réduit à la simple barre d\'icônes pour maximiser la zone de rédaction',
+      ],
+    },
+    {
       date: '1er mai 2026',
       items: [
         'Page « Mes Ressources » : onglets Grilles d\'évaluation + Listes de vocabulaire',

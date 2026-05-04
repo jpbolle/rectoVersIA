@@ -62,6 +62,8 @@
 - Utiliser le skill `/deploy` pour la procedure complete
 
 ## Points d'attention
+- Espace de travail eleve (`/activites/[id]`) : utilise `WorkspaceRail` (rail icones droite + panneau redimensionnable). Espace de travail prof (`/dashboard/travaux/[devoirId]/[travailId]`) : conserve `ResizableSplit` + onglets internes — NE PAS uniformiser, les contextes sont differents
+- `AssistancePanel` : usage `hideTabs={true}` cote eleve (rail externe), defaut `false` cote prof
 - L'icone oeil est reservee a "Vue de l'eleve" (posture fictive prof) — jamais pour la visibilite des corrections
 - ContentLock : utilise `instanceof AddMarkStep/RemoveMarkStep` (pas `constructor.name` qui casse en production)
 - Student Tiptap content a du `style="line-height: X"` inline → utiliser `!important` dans le CSS de l'annotation editor

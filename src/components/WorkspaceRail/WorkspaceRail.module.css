@@ -1,0 +1,230 @@
+/* ── Wrapper : flex container pour panneau + rail ── */
+.wrapper {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  flex-shrink: 0;
+  gap: 0;
+}
+.wrapperOpen {
+  gap: 8px;
+}
+
+/* ── Panneau (colonne 2, redimensionnable) ── */
+.panel {
+  width: 0;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  box-shadow: var(--c-shadow-card);
+  overflow: hidden;
+  transition: width 0.25s ease;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.panelOpen {
+  /* width pilotee inline */
+}
+/* Pendant le drag, on coupe la transition pour suivre le pointeur */
+.resizing {
+  transition: none !important;
+}
+
+/* Poignee de redimensionnement sur le bord gauche */
+.resizer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 5;
+  transition: background 0.15s;
+  touch-action: none;
+}
+.resizer:hover {
+  background: var(--c-primary);
+  opacity: 0.35;
+}
+.panel:not(.panelOpen) .resizer {
+  display: none;
+}
+
+.panelHeader {
+  background: #98ADC4;
+  padding: 14px 18px;
+  border-bottom: 1px solid #8a9fb8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+.panelTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  font-family: var(--c-font-title);
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panelHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.panelClose {
+  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+.panelClose:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.panelBody {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ── Rail (toujours visible, fixe a l'extreme droite) ── */
+.rail {
+  width: 56px;
+  background: #98ADC4;
+  border-radius: var(--c-radius-lg);
+  box-shadow: var(--c-shadow-card);
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.railBtn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  margin: 0 8px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  padding: 0;
+}
+.railBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.railBtnActive {
+  background: rgba(255, 255, 255, 0.32);
+}
+.railBtnActive::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 22px;
+  background: #fff;
+  border-radius: 2px;
+}
+
+.railBtnHighlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  border: 2px solid var(--c-accent);
+  pointer-events: none;
+  animation: pulseHighlight 2s ease-in-out infinite;
+}
+
+@keyframes pulseHighlight {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.4; }
+}
+
+.railIcon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  color: #fff;
+}
+.railIcon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.railBadge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background: var(--c-accent);
+  border-radius: 50%;
+  border: 1.5px solid #98ADC4;
+  pointer-events: none;
+}
+
+.tooltip {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--c-text);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 100;
+}
+.railBtn:hover .tooltip {
+  opacity: 1;
+}
+
+/* ── Responsive : sur petit ecran on cache le rail (a affiner plus tard) ── */
+@media (max-width: 768px) {
+  .rail {
+    width: 48px;
+  }
+  .railBtn {
+    width: 36px;
+    height: 36px;
+    margin: 0 6px;
+  }
+}

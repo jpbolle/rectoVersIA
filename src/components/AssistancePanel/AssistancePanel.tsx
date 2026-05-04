@@ -67,6 +67,9 @@ interface AssistancePanelProps {
   // Vocabulaire : selection d'une evaluation passee a revoir (gere par le parent)
   onSelectVocabEvalAttempt?: (index: number) => void;
   selectedVocabEvalIndex?: number | null;
+  // Cache la barre d'onglets interne (utilise quand un parent gere la navigation,
+  // ex. WorkspaceRail cote eleve)
+  hideTabs?: boolean;
 }
 
 export default function AssistancePanel({
@@ -110,6 +113,7 @@ export default function AssistancePanel({
   vocabAllWords,
   onSelectVocabEvalAttempt,
   selectedVocabEvalIndex,
+  hideTabs = false,
 }: AssistancePanelProps) {
   // Mode contrôlé vs interne
   const [internalTab, setInternalTab] = useState<TabType>('consignes');
@@ -133,69 +137,71 @@ export default function AssistancePanel({
     : false;
 
   return (
-    <div className={styles.container}>
-      <div className={styles.tabs}>
-        <button
-          type="button"
-          className={`${styles.tab} ${currentTab === 'consignes' ? styles.tabActive : ''}`}
-          onClick={() => handleTabChange('consignes')}
-        >
-          Consignes
-        </button>
-        {!rechercheMode && (
+    <div className={`${styles.container} ${hideTabs ? styles.containerNoTabs : ''}`}>
+      {!hideTabs && (
+        <div className={styles.tabs}>
           <button
             type="button"
-            className={`${styles.tab} ${currentTab === 'ressources' ? styles.tabActive : ''}`}
-            onClick={() => handleTabChange('ressources')}
+            className={`${styles.tab} ${currentTab === 'consignes' ? styles.tabActive : ''}`}
+            onClick={() => handleTabChange('consignes')}
           >
-            Ressources
+            Consignes
           </button>
-        )}
-        {!rechercheMode && !isProfessorView && (accesIA || showAiData) && (
+          {!rechercheMode && (
+            <button
+              type="button"
+              className={`${styles.tab} ${currentTab === 'ressources' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('ressources')}
+            >
+              Ressources
+            </button>
+          )}
+          {!rechercheMode && !isProfessorView && (accesIA || showAiData) && (
+            <button
+              type="button"
+              className={`${styles.tab} ${currentTab === 'ia' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('ia')}
+            >
+              Aide IA à la réécriture
+              {hasAiSuggestions && <span className={styles.badgeIa}>●</span>}
+            </button>
+          )}
+          {showRemarquesTab && (
+            <button
+              type="button"
+              className={`${styles.tab} ${currentTab === 'remarques' ? styles.tabActive : ''} ${hasRemarques ? styles.tabHighlight : ''}`}
+              onClick={() => handleTabChange('remarques')}
+            >
+              Remarques du professeur
+            </button>
+          )}
+          {rechercheMode && navigkidQuestions && navigkidQuestions.length > 0 && (
+            <button
+              type="button"
+              className={`${styles.tab} ${currentTab === 'recherche' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('recherche')}
+            >
+              Statistiques
+            </button>
+          )}
+          {!rechercheMode && navigkidQuestions && navigkidQuestions.length > 0 && (
+            <button
+              type="button"
+              className={`${styles.tab} ${currentTab === 'recherche' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('recherche')}
+            >
+              Recherche
+            </button>
+          )}
           <button
             type="button"
-            className={`${styles.tab} ${currentTab === 'ia' ? styles.tabActive : ''}`}
-            onClick={() => handleTabChange('ia')}
+            className={`${styles.tab} ${currentTab === 'grille' ? styles.tabActive : ''}`}
+            onClick={() => handleTabChange('grille')}
           >
-            Aide IA à la réécriture
-            {hasAiSuggestions && <span className={styles.badgeIa}>●</span>}
+            Évaluation
           </button>
-        )}
-        {showRemarquesTab && (
-          <button
-            type="button"
-            className={`${styles.tab} ${currentTab === 'remarques' ? styles.tabActive : ''} ${hasRemarques ? styles.tabHighlight : ''}`}
-            onClick={() => handleTabChange('remarques')}
-          >
-            Remarques du professeur
-          </button>
-        )}
-        {rechercheMode && navigkidQuestions && navigkidQuestions.length > 0 && (
-          <button
-            type="button"
-            className={`${styles.tab} ${currentTab === 'recherche' ? styles.tabActive : ''}`}
-            onClick={() => handleTabChange('recherche')}
-          >
-            Statistiques
-          </button>
-        )}
-        {!rechercheMode && navigkidQuestions && navigkidQuestions.length > 0 && (
-          <button
-            type="button"
-            className={`${styles.tab} ${currentTab === 'recherche' ? styles.tabActive : ''}`}
-            onClick={() => handleTabChange('recherche')}
-          >
-            Recherche
-          </button>
-        )}
-        <button
-          type="button"
-          className={`${styles.tab} ${currentTab === 'grille' ? styles.tabActive : ''}`}
-          onClick={() => handleTabChange('grille')}
-        >
-          Évaluation
-        </button>
-      </div>
+        </div>
+      )}
 
       <div className={styles.content}>
         {currentTab === 'consignes' && (
