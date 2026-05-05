@@ -1029,3 +1029,78 @@
   cursor: pointer;
   min-width: 120px;
 }
+
+/* ── Action bar : ligne de boutons encadree par 2 traits horizontaux ─────── */
+/* Pattern partage : fin de session d'apprentissage + fin de diagnostic intermediaire */
+.actionBar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 100px;
+  padding: 0 16px 18px;
+  flex-shrink: 0;
+}
+
+/* Modificateur : espacement vertical de 130px (fin de session d'apprentissage) */
+.actionBarSpacing130 {
+  margin-top: 130px;
+}
+
+.actionBarLine {
+  flex: 1;
+  height: 1px;
+  background: var(--c-border);
+}
+
+.actionBarRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionBarBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 22px;
+  border: none;
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.actionBarBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionBarBtnPrimary {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.actionBarBtnPrimary:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
+}
+
+.actionBarBtnAmber {
+  background: var(--c-accent);
+  color: #fff;
+}
+
+.actionBarBtnAmber:hover:not(:disabled) {
+  background: #c4843c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 148, 76, 0.4);
+}

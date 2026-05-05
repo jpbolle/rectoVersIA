@@ -419,12 +419,12 @@ export default function TravailPage() {
   const hasRemarques = !!correction?.annotatedContent;
   const hasNavigkid = nkQuestions.length > 0;
 
+  // Ordre : Consignes → Ressources → Aide IA → Remarques → Recherche → Évaluation
   const railTabs: RailTab[] = [];
   railTabs.push({ id: 'consignes', label: 'Consignes', icon: ICON_CONSIGNES });
   if (!isRecherche) {
     railTabs.push({ id: 'ressources', label: 'Ressources', icon: ICON_RESSOURCES });
   }
-  railTabs.push({ id: 'grille', label: 'Évaluation', icon: ICON_GRILLE });
   if (!isRecherche && (accesIA || showAiData)) {
     railTabs.push({
       id: 'ia',
@@ -433,12 +433,15 @@ export default function TravailPage() {
       hasBadge: hasAiSuggestions,
     });
   }
-  railTabs.push({
-    id: 'remarques',
-    label: 'Remarques du professeur',
-    icon: ICON_REMARQUES,
-    highlight: hasRemarques,
-  });
+  // En vocabulaire, le prof n'intervient que dans l'evaluation : pas d'onglet remarques
+  if (!isVocabulaire) {
+    railTabs.push({
+      id: 'remarques',
+      label: 'Remarques du professeur',
+      icon: ICON_REMARQUES,
+      highlight: hasRemarques,
+    });
+  }
   if (hasNavigkid) {
     railTabs.push({
       id: 'recherche',
@@ -446,6 +449,7 @@ export default function TravailPage() {
       icon: ICON_RECHERCHE,
     });
   }
+  railTabs.push({ id: 'grille', label: 'Évaluation', icon: ICON_GRILLE });
 
   const PANEL_TITLES: Partial<Record<TabType, string>> = {
     consignes: 'Consignes',
@@ -518,6 +522,10 @@ export default function TravailPage() {
               })()}
               viewingEvalIndex={viewingVocabEvalIndex}
               onCloseEvalView={() => setViewingVocabEvalIndex(null)}
+              onShowEvaluationTab={() => {
+                setActiveTab('grille');
+                setPanelOpen(true);
+              }}
             />
           </div>
         ) : isRecherche ? (
@@ -549,6 +557,7 @@ export default function TravailPage() {
                 accesIA={showAiData}
                 aiSuggestions={aiSuggestions}
                 onDecorationClick={handleDecorationClick}
+                inverted={devoir.flipInverted ?? false}
               />
             </div>
           </div>
@@ -576,7 +585,7 @@ export default function TravailPage() {
             studentName={travail?.studentName}
             correction={correction}
             studentContent={travail?.content || ''}
-            showRemarquesTab={true}
+            showRemarquesTab={!isVocabulaire}
             ressourceAnnotations={travail?.ressourceAnnotations}
             onRessourceAnnotationsChange={isPreviewMode ? undefined : updateRessourceAnnotations}
             ressourceNotes={travail?.ressourceNotes}

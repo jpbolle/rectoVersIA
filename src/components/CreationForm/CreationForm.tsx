@@ -56,6 +56,9 @@ export default function CreationForm({
   const [accesIA, setAccesIA] = useState(false);
   const [disponible, setDisponible] = useState(false);
 
+  // Inversion recto/verso (type ecrire uniquement)
+  const [flipInverted, setFlipInverted] = useState(false);
+
   const baseValid = selectedClasses.length > 0 && dateRemise && intitule.trim();
   const grilleValid = typeTravail === 'vocabulaire' || grille;
   const isValid = baseValid && grilleValid
@@ -83,6 +86,7 @@ export default function CreationForm({
     setTypeTravail('ecrire');
     setNkQuestions([]);
     setNkThemes([]);
+    setFlipInverted(false);
   }, []);
 
   async function handleSubmit() {
@@ -98,6 +102,7 @@ export default function CreationForm({
       accesIA,
       disponible,
       typeTravail,
+      ...(typeTravail === 'ecrire' && { flipInverted }),
     };
 
     if (typeTravail === 'rechercher') {
@@ -226,18 +231,53 @@ export default function CreationForm({
           </div>
         </div>
       ) : (
-        <div className={styles.formGroup}>
-          <label className={styles.label}>
-            Intitulé du devoir <span className={styles.required}>*</span>
-          </label>
-          <input
-            className={styles.input}
-            type="text"
-            value={intitule}
-            onChange={(e) => setIntitule(e.target.value)}
-            placeholder="Ex : Dissertation sur Molière"
-          />
-        </div>
+        <>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Intitulé de l’activité <span className={styles.required}>*</span>
+            </label>
+            <input
+              className={styles.input}
+              type="text"
+              value={intitule}
+              onChange={(e) => setIntitule(e.target.value)}
+              placeholder="Ex : Dissertation sur Molière"
+            />
+          </div>
+
+          {/* Recto / Verso (uniquement pour type ecrire) */}
+          {typeTravail === 'ecrire' && (
+            <div className={styles.flipChoice}>
+              <span className={styles.flipChoiceLabel}>Espace d’écriture</span>
+              <div className={styles.flipChoiceRow}>
+                <div className={styles.flipChoiceFace}>
+                  <span className={styles.flipChoiceTag}>Recto</span>
+                  <span className={styles.flipChoiceContent}>
+                    {flipInverted ? '📝 Espace de planification' : '✏️ Espace de rédaction'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.flipChoiceSwap}
+                  onClick={() => setFlipInverted((v) => !v)}
+                  title="Inverser recto et verso"
+                  aria-label="Inverser recto et verso"
+                >
+                  ⇄
+                </button>
+                <div className={styles.flipChoiceFace}>
+                  <span className={styles.flipChoiceTag}>Verso</span>
+                  <span className={styles.flipChoiceContent}>
+                    {flipInverted ? '✏️ Espace de rédaction' : '📝 Espace de planification'}
+                  </span>
+                </div>
+              </div>
+              <p className={styles.flipChoiceHint}>
+                Le recto est la face affichée à l’ouverture de l’activité par l’élève.
+              </p>
+            </div>
+          )}
+        </>
       )}
 
       {/* Consignes particulières (optionnel avec checkbox) */}

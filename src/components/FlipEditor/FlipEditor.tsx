@@ -32,6 +32,8 @@ interface FlipEditorProps {
   accesIA?: boolean;
   aiSuggestions?: Record<AiSuggestionType, AiSuggestion | null>;
   onDecorationClick?: (type: AiSuggestionType, itemId: string) => void;
+  // Inverse recto/verso : false = recto rédaction / verso planification ; true = inverse
+  inverted?: boolean;
 }
 
 export default function FlipEditor({
@@ -46,10 +48,23 @@ export default function FlipEditor({
   accesIA,
   aiSuggestions,
   onDecorationClick,
+  inverted = false,
 }: FlipEditorProps) {
-  const [side, setSide] = useState<FlipSide>('verso');
+  // Le recto est la face affichee a l'ouverture
+  const [side, setSide] = useState<FlipSide>('recto');
   const [animPhase, setAnimPhase] = useState<'idle' | 'out' | 'in'>('idle');
   const [isAnimating, setIsAnimating] = useState(false);
+
+  // Mapping recto/verso → contenu (selon l'orientation choisie par le prof)
+  const rectoContent: 'redaction' | 'planification' = inverted ? 'planification' : 'redaction';
+  const versoContent: 'redaction' | 'planification' = inverted ? 'redaction' : 'planification';
+  const currentContent = side === 'recto' ? rectoContent : versoContent;
+  const oppositeContent = side === 'recto' ? versoContent : rectoContent;
+
+  const labels = {
+    redaction: { icon: '✏️', label: 'Espace de rédaction' },
+    planification: { icon: '📝', label: 'Espace de planification' },
+  };
 
   // Determiner le type de brouillon
   const draftType: DraftType = useMemo(() => getDraftType(grille), [grille]);
@@ -86,26 +101,26 @@ export default function FlipEditor({
 
   return (
     <div className={styles.wrapper}>
-      {/* Barre de bascule */}
+      {/* Barre de bascule (ordre : recto a gauche, verso a droite) */}
       <div className={styles.flipBar}>
         <div className={styles.flipToggle}>
-          <button
-            type="button"
-            className={`${styles.flipButton} ${side === 'verso' ? styles.flipButtonActive : ''}`}
-            onClick={() => side !== 'verso' && handleFlip()}
-            disabled={isAnimating}
-          >
-            <span className={styles.flipIcon}>📝</span>
-            <span className={styles.flipLabel}>Espace de planification</span>
-          </button>
           <button
             type="button"
             className={`${styles.flipButton} ${side === 'recto' ? styles.flipButtonActive : ''}`}
             onClick={() => side !== 'recto' && handleFlip()}
             disabled={isAnimating}
           >
-            <span className={styles.flipIcon}>✏️</span>
-            <span className={styles.flipLabel}>Espace de rédaction</span>
+            <span className={styles.flipIcon}>{labels[rectoContent].icon}</span>
+            <span className={styles.flipLabel}>{labels[rectoContent].label}</span>
+          </button>
+          <button
+            type="button"
+            className={`${styles.flipButton} ${side === 'verso' ? styles.flipButtonActive : ''}`}
+            onClick={() => side !== 'verso' && handleFlip()}
+            disabled={isAnimating}
+          >
+            <span className={styles.flipIcon}>{labels[versoContent].icon}</span>
+            <span className={styles.flipLabel}>{labels[versoContent].label}</span>
           </button>
         </div>
 
@@ -114,7 +129,7 @@ export default function FlipEditor({
           className={styles.flipAction}
           onClick={handleFlip}
           disabled={isAnimating}
-          title={`Retourner vers ${side === 'recto' ? 'Espace de planification' : 'Espace de rédaction'}`}
+          title={`Retourner vers ${labels[oppositeContent].label}`}
         >
           <span className={`${styles.flipActionIcon} ${isAnimating ? styles.spinning : ''}`}>
             🔄
@@ -132,7 +147,7 @@ export default function FlipEditor({
             ${animPhase === 'in' ? styles.flipIn : ''}
           `}
         >
-          {side === 'recto' ? (
+          {currentContent === 'redaction' ? (
             <div className={styles.cardFace}>
               <WorkEditor
                 content={content}

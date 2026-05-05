@@ -861,6 +861,10 @@ interface VocabulaireExercisesProps {
   onBackToRecto?: () => void;
   onIntermediateDiagnostic?: () => void;
   onEvaluation?: () => void;
+  // Mode "diagnostic intermediaire termine" : remplace le bouton "Debut de l'apprentissage"
+  // par 3 boutons (Retour a la liste / Evaluation / Etat de mes connaissances)
+  intermediateDiagnosticMode?: boolean;
+  onShowKnowledgeTab?: () => void;
 }
 
 export default function VocabulaireExercises({
@@ -879,6 +883,8 @@ export default function VocabulaireExercises({
   onBackToRecto,
   onIntermediateDiagnostic,
   onEvaluation,
+  intermediateDiagnosticMode = false,
+  onShowKnowledgeTab,
 }: VocabulaireExercisesProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set());
@@ -1082,54 +1088,109 @@ export default function VocabulaireExercises({
         </div>
 
         {/* Actions apres completion de tous les exercices */}
-        {allCompleted && (
-          <div className={styles.completionActions}>
-            {onDiagnosticComplete ? (
+        {/* Convention de couleurs : VERT (primary) = genere du contenu — AMBER (accent) = affiche du contenu. */}
+        {allCompleted && intermediateDiagnosticMode && onDiagnosticComplete ? (
+          /* Fin de diagnostic intermediaire — action bar 100px */
+          <div className={styles.actionBar}>
+            <span className={styles.actionBarLine} />
+            <div className={styles.actionBarRow}>
+              {/* Verts (genere) */}
+              {onEvaluation && (
+                <button
+                  type="button"
+                  className={`${styles.actionBarBtn} ${styles.actionBarBtnPrimary}`}
+                  onClick={onEvaluation}
+                >
+                  Évaluation
+                </button>
+              )}
+              {/* Ambers (affiche / navigation) */}
               <button
                 type="button"
-                className={styles.completionBtnPrimary}
+                className={`${styles.actionBarBtn} ${styles.actionBarBtnAmber}`}
+                onClick={onDiagnosticComplete}
+              >
+                Retour à la liste
+              </button>
+              {onShowKnowledgeTab && (
+                <button
+                  type="button"
+                  className={`${styles.actionBarBtn} ${styles.actionBarBtnAmber}`}
+                  onClick={onShowKnowledgeTab}
+                >
+                  État de mes connaissances
+                </button>
+              )}
+            </div>
+            <span className={styles.actionBarLine} />
+          </div>
+        ) : allCompleted && onDiagnosticComplete ? (
+          /* Fin du diagnostic initial — bouton unique de navigation (amber) */
+          <div className={styles.actionBar}>
+            <span className={styles.actionBarLine} />
+            <div className={styles.actionBarRow}>
+              <button
+                type="button"
+                className={`${styles.actionBarBtn} ${styles.actionBarBtnAmber}`}
                 onClick={onDiagnosticComplete}
               >
                 Début de l&apos;apprentissage
               </button>
-            ) : (
-              <>
-                {onBackToRecto && (
-                  <button
-                    type="button"
-                    className={styles.completionBtnSecondary}
-                    onClick={onBackToRecto}
-                  >
-                    Retour à la liste
-                  </button>
-                )}
+            </div>
+            <span className={styles.actionBarLine} />
+          </div>
+        ) : allCompleted && (
+          /* Fin de session d'apprentissage — action bar 130px */
+          <div className={`${styles.actionBar} ${styles.actionBarSpacing130}`}>
+            <span className={styles.actionBarLine} />
+            <div className={styles.actionBarRow}>
+              {/* Verts (genere) */}
+              <button
+                type="button"
+                className={`${styles.actionBarBtn} ${styles.actionBarBtnPrimary}`}
+                onClick={onGenerate}
+              >
+                Régénérer les exercices
+              </button>
+              {onIntermediateDiagnostic && (
                 <button
                   type="button"
-                  className={styles.completionBtnPrimary}
-                  onClick={onGenerate}
+                  className={`${styles.actionBarBtn} ${styles.actionBarBtnPrimary}`}
+                  onClick={onIntermediateDiagnostic}
                 >
-                  Régénérer les exercices
+                  Diagnostic intermédiaire
                 </button>
-                {onIntermediateDiagnostic && (
-                  <button
-                    type="button"
-                    className={styles.completionBtnAccent}
-                    onClick={onIntermediateDiagnostic}
-                  >
-                    Diagnostic
-                  </button>
-                )}
-                {onEvaluation && (
-                  <button
-                    type="button"
-                    className={styles.completionBtnAccent}
-                    onClick={onEvaluation}
-                  >
-                    Évaluation
-                  </button>
-                )}
-              </>
-            )}
+              )}
+              {onEvaluation && (
+                <button
+                  type="button"
+                  className={`${styles.actionBarBtn} ${styles.actionBarBtnPrimary}`}
+                  onClick={onEvaluation}
+                >
+                  Évaluation
+                </button>
+              )}
+              {/* Ambers (affiche / navigation) */}
+              {onBackToRecto && (
+                <button
+                  type="button"
+                  className={`${styles.actionBarBtn} ${styles.actionBarBtnAmber}`}
+                  onClick={onBackToRecto}
+                >
+                  Retour à la liste
+                </button>
+              )}
+              {onShowKnowledgeTab && (
+                <button
+                  type="button"
+                  className={`${styles.actionBarBtn} ${styles.actionBarBtnAmber}`}
+                  onClick={onShowKnowledgeTab}
+                >
+                  État de mes connaissances
+                </button>
+              )}
+            </div>
+            <span className={styles.actionBarLine} />
           </div>
         )}
 

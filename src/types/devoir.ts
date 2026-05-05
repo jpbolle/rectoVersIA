@@ -29,6 +29,10 @@ export interface Devoir {
   codeAcces?: string;             // Code 6 chars pour l'extension Chrome (type rechercher)
   vocabulaireThemes?: string[];   // Séries lexicales imposées (type vocabulaire)
   vocabulaireDiagnostic?: boolean; // Mode diagnostic activé (type vocabulaire)
+  // Inverse recto/verso de la colonne 1 (type ecrire uniquement)
+  // false (defaut) : recto = espace de redaction, verso = espace de planification
+  // true           : recto = espace de planification, verso = espace de redaction
+  flipInverted?: boolean;
 }
 
 export interface CreateDevoirData {
@@ -51,4 +55,6 @@ export interface CreateDevoirData {
     themes: string[];
     diagnostic?: boolean;
   };
+  // Inversion recto/verso (type ecrire uniquement)
+  flipInverted?: boolean;
 }

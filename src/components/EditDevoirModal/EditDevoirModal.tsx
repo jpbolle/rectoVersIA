@@ -38,6 +38,7 @@ export default function EditDevoirModal({
   const [consignes, setConsignes] = useState('');
   const [accesIA, setAccesIA] = useState(false);
   const [disponible, setDisponible] = useState(false);
+  const [flipInverted, setFlipInverted] = useState(false);
 
   // Ressources
   const [showRessources, setShowRessources] = useState(false);
@@ -57,6 +58,7 @@ export default function EditDevoirModal({
       setConsignes(devoir.consignes || '');
       setAccesIA(devoir.accesIA || false);
       setDisponible(devoir.disponible || false);
+      setFlipInverted(devoir.flipInverted ?? false);
 
       // Initialiser les ressources existantes
       if (devoir.ressources) {
@@ -127,6 +129,7 @@ export default function EditDevoirModal({
       accesIA,
       disponible,
       ressources: showRessources ? ressources : null,
+      ...(devoir.typeTravail === 'ecrire' && { flipInverted }),
     });
   };
 
@@ -136,7 +139,7 @@ export default function EditDevoirModal({
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <h2 className={styles.title}>Modifier le devoir</h2>
+          <h2 className={styles.title}>Modifier l’activité</h2>
           <button className={styles.closeButton} onClick={onClose}>
             &times;
           </button>
@@ -197,7 +200,7 @@ export default function EditDevoirModal({
           {/* Intitule */}
           <div className={styles.formGroup}>
             <label className={styles.label}>
-              Intitulé du devoir <span className={styles.required}>*</span>
+              Intitulé de l’activité <span className={styles.required}>*</span>
             </label>
             <input
               className={styles.input}
@@ -207,6 +210,39 @@ export default function EditDevoirModal({
               placeholder="Ex : Dissertation sur Molière"
             />
           </div>
+
+          {/* Recto / Verso (uniquement pour type ecrire) */}
+          {devoir?.typeTravail === 'ecrire' && (
+            <div className={styles.flipChoice}>
+              <span className={styles.flipChoiceLabel}>Espace d’écriture</span>
+              <div className={styles.flipChoiceRow}>
+                <div className={styles.flipChoiceFace}>
+                  <span className={styles.flipChoiceTag}>Recto</span>
+                  <span className={styles.flipChoiceContent}>
+                    {flipInverted ? '📝 Espace de planification' : '✏️ Espace de rédaction'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.flipChoiceSwap}
+                  onClick={() => setFlipInverted((v) => !v)}
+                  title="Inverser recto et verso"
+                  aria-label="Inverser recto et verso"
+                >
+                  ⇄
+                </button>
+                <div className={styles.flipChoiceFace}>
+                  <span className={styles.flipChoiceTag}>Verso</span>
+                  <span className={styles.flipChoiceContent}>
+                    {flipInverted ? '✏️ Espace de rédaction' : '📝 Espace de planification'}
+                  </span>
+                </div>
+              </div>
+              <p className={styles.flipChoiceHint}>
+                Le recto est la face affichée à l’ouverture de l’activité par l’élève.
+              </p>
+            </div>
+          )}
 
           {/* Consignes */}
           <div className={styles.formGroup}>

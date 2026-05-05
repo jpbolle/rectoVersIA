@@ -5,7 +5,7 @@
 | Champ | Valeur |
 |-------|--------|
 | **Nom** | Recto-versIA — Assistant de correction pedagogique avec IA |
-| **Version** | 3.7 (mai 2026) |
+| **Version** | 3.8 (mai 2026) |
 | **Domaine** | EdTech — correction de productions ecrites d'eleves |
 | **Ecole** | College Notre-Dame de Dinant (Belgique) |
 | **Utilisateur principal** | Jean-Philippe Bolle (professeur) |
@@ -300,6 +300,9 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 - `JoinClasseModal` — 9 cases input pour code classe
 - `BulkImportEleveModal` — import en masse CSV/texte
 
+### Patterns CSS reutilisables
+- **Action bar (ligne de boutons encadree par 2 lignes horizontales)** — utilisee sous les sections de mots vocab (apprentissage : `bottomActions`/`actionBtn` dans `VocabulaireActivity.module.css`) et en fin d'exercices vocab (`actionBar`/`actionBarBtn` dans `VocabulaireExercises.module.css`, modificateur `actionBarSpacing130`). Structure : `<div flex gap:14px>{<line flex:1 h:1px>}{<row flex-wrap gap:12px>{boutons}}{<line flex:1 h:1px>}</div>`. Boutons : `min-height:42px / padding:0 22px / font:14px 600 / radius:var(--c-radius)`. Variantes : primary (`--c-primary` + hover `--c-primary-light`) et amber (`--c-accent` + hover `#c4843c`). Marge superieure : 100/130/136px selon le contexte. **Convention de couleurs : VERT (primary) = bouton qui GENERE du contenu (IA, exercices, evaluation, regenerer) ; AMBER (accent) = bouton qui AFFICHE du contenu existant ou NAVIGUE (retour a la liste, ouvrir panneau, basculer onglet). Boutons de meme couleur groupes ensemble — verts d'abord, ambers ensuite.**
+
 ---
 
 ## 8. Hooks
@@ -346,6 +349,14 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 
 ## 10. Roadmap
 
+### Fait (v3.8)
+- [x] **Inversion recto/verso espace d'ecriture** : champ `flipInverted` sur `Devoir` + selecteur dans formulaire de creation/modification. Le prof choisit ce qui apparait au recto (rédaction par défaut) vs verso (planification). FlipEditor swap labels + face initiale en consequence.
+- [x] **Sidebar eleve harmonisee** : ordre revu (Consignes → Ressources → Aide IA → Remarques → Recherche → Évaluation). Onglet "Remarques du professeur" masque pour `typeTravail === 'vocabulaire'`.
+- [x] **Renommage "devoir" → "activité"** dans les formulaires (label et titre du modal de modification).
+- [x] **Vocabulaire — diagnostic intermediaire fluidifie** : clic direct sur le bouton genere les exercices (suppression de la page intermediaire avec "Lancer le diagnostic"). Action bar de fin de diagnostic avec 3 boutons : Évaluation (vert), Retour à la liste (amber), Etat de mes connaissances (amber).
+- [x] **Vocabulaire — fin de session d'apprentissage** : action bar harmonisee (style identique a la liste des mots, 130px de marge sup), bouton "Diagnostic" renomme "Diagnostic intermédiaire", ajout du bouton "État de mes connaissances" qui ouvre l'onglet Évaluation.
+- [x] **Convention de couleurs CSS** pour toutes les action bars : VERT (`primary`) = genere du contenu (IA, exercices, evaluation, regenerer), AMBER (`accent`) = affiche du contenu existant ou navigue. Boutons groupes par couleur (verts d'abord, ambers ensuite).
+
 ### Fait (v3.7)
 - [x] **Refonte espace de travail eleve** : nouveau composant `WorkspaceRail` (rail icones SVG blanc sur fond bleu ciel #98ADC4 a droite + panneau redimensionnable). Ouverture par defaut sur Consignes a 1/4 de l'ecran, redimensionnable jusqu'a 2/3
 - [x] **AssistancePanel** : prop `hideTabs` pour le rendre compatible avec une navigation externe (rail), tout en preservant l'usage prof avec onglets internes
@@ -379,18 +390,23 @@ Mes Activites → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
 - [x] **Stats admin** : vue d'ensemble de l'app
 - [x] **Page roadmap** : accessible a tous via menu avatar
 
-### Priorite haute
-1. **Avis critique entre pairs (CRC)** : l'eleve lit/redige un avis sur le CRC d'un autre eleve. Attribution aleatoire et anonyme
+### Priorite haute (prochaine session)
+1. **Contraction de texte** : corriger la correction IA / resume ou plan de texte produit
+2. **Creation activite d'ecriture** : choix du type de plan propose aux eleves
+3. **Recherche** : revoir l'aide IA et l'interface
+4. **Aide IA aux plans**
+5. **Statistiques generales**
 
 ### Priorite moyenne
-3. **Grille de metacognition** : ecart auto-evaluation / correction prof, evolution du texte
-4. **Finalisation correction** : versioning, verrouillage apres envoi
-5. **Commentaires prof ameliores** : assistance IA + dictee vocale
-6. **Immersive Reader** : Microsoft Azure, synthese vocale, decoupage syllabique
+- **Avis critique entre pairs (CRC)** : l'eleve lit/redige un avis sur le CRC d'un autre eleve. Attribution aleatoire et anonyme
+- **Grille de metacognition** : ecart auto-evaluation / correction prof, evolution du texte
+- **Finalisation correction** : versioning, verrouillage apres envoi
+- **Commentaires prof ameliores** : assistance IA + dictee vocale
+- **Immersive Reader** : Microsoft Azure, synthese vocale, decoupage syllabique
 
 ### Priorite basse
-7. **Chiffrement donnees eleves** : RGPD, refonte couche d'acces
-8. **Ecart visuel prof/eleve** : comparaison detaillee dans la grille
+- **Chiffrement donnees eleves** : RGPD, refonte couche d'acces
+- **Ecart visuel prof/eleve** : comparaison detaillee dans la grille
 
 ---
 

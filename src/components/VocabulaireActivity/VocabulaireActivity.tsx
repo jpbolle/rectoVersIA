@@ -40,6 +40,9 @@ interface VocabulaireActivityProps {
   viewingEvalAttempt?: import('@/types/vocabulaire').EvaluationAttempt | null;
   viewingEvalIndex?: number | null;
   onCloseEvalView?: () => void;
+  // Permet a l'eleve de basculer vers l'onglet "Evaluation" de la sidebar
+  // (utilise par le bouton "Etat de mes connaissances" en fin de diagnostic intermediaire)
+  onShowEvaluationTab?: () => void;
 }
 
 // --- Helpers pour construire des exercices SANS IA ---
@@ -222,6 +225,7 @@ export default function VocabulaireActivity({
   viewingEvalAttempt = null,
   viewingEvalIndex = null,
   onCloseEvalView,
+  onShowEvaluationTab,
 }: VocabulaireActivityProps) {
   const selectedTheme = forcedThemes?.[0] || '';
   const themesToLoad = forcedThemes && forcedThemes.length > 0 ? forcedThemes : null;
@@ -549,16 +553,22 @@ export default function VocabulaireActivity({
     // L'evaluation n'utilise plus handleGenerate — elle a son propre flux
   }, [phase, diagnosticCount, diagnosticSelections, currentSelection, allThemeWords, wordMastery, selectedTheme, generate, flipTo, generateDiagnosticExercises]);
 
-  // --- Diagnostic intermediaire ---
-  const handleIntermediateDiagnostic = useCallback(() => {
+  // --- Diagnostic intermediaire — generation directe (pas de page intermediaire) ---
+  const handleIntermediateDiagnostic = useCallback(async () => {
     setPhase('diagnostic');
     setLocalExercises([]);
     resetExercises();
     setExerciseResults([]);
     setExercisesAllCompleted(false);
     setProductionValidation(null);
-    flipTo('recto');
-  }, [resetExercises, flipTo]);
+
+    const wordsToTest = allThemeWords.filter((w) => {
+      const cat = getWordCategory(wordMastery.find((m) => m.word === w.word));
+      return cat === 'known' || cat === 'misconceived';
+    });
+    if (wordsToTest.length === 0) return;
+    await generateDiagnosticExercises(wordsToTest);
+  }, [resetExercises, allThemeWords, wordMastery, generateDiagnosticExercises]);
 
   // --- Evaluation : verification condition d'acces puis generation ---
   const { getAuthHeaders } = useAuth();
@@ -989,7 +999,7 @@ export default function VocabulaireActivity({
                           <span className={styles.actionBtnWrap}>
                             <button
                               type="button"
-                              className={`${styles.actionBtn} ${styles.actionBtnAmber}`}
+                              className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
                               onClick={handleGenerate}
                               disabled={isGenerating}
                             >
@@ -1017,10 +1027,11 @@ export default function VocabulaireActivity({
                     <div className={styles.bottomActions}>
                       <span className={styles.bottomActionsLine} />
                       <div className={styles.bottomActionsRow}>
+                        {/* Verts (genere du contenu) */}
                         <span className={styles.actionBtnWrap}>
                           <button
                             type="button"
-                            className={`${styles.actionBtn} ${styles.actionBtnAmber}`}
+                            className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
                             onClick={handleGenerate}
                             disabled={generateDisabled}
                           >
@@ -1029,25 +1040,6 @@ export default function VocabulaireActivity({
                             )}
                           </button>
                           <span className={styles.actionBtnHint}>{getGenerateHint()}</span>
-                        </span>
-                        <span className={styles.actionBtnWrap}>
-                          <button
-                            type="button"
-                            className={`${styles.actionBtn} ${styles.actionBtnAmber}`}
-                            onClick={handleToggleDifficult}
-                            disabled={studyDisabled}
-                          >
-                            Afficher les mots difficiles
-                          </button>
-                          <span className={styles.actionBtnHint}>
-                            {studyCount > 0
-                              ? `Ajouter ${plural(studyCount)} aux favoris`
-                              : difficultWords.length === 0
-                                ? 'Sélectionne d’abord des mots'
-                                : showFlashcards
-                                  ? 'Déjà affichées'
-                                  : `${plural(difficultWords.length)} en favoris`}
-                          </span>
                         </span>
                         <span className={styles.actionBtnWrap}>
                           <button
@@ -1079,6 +1071,26 @@ export default function VocabulaireActivity({
                               : `${evalBlockStats.pctKM} % étudiés / 70 % requis · ${evalBlockStats.pctKnown} % connus / 50 % requis`}
                           </span>
                         </span>
+                        {/* Ambers (affiche du contenu) */}
+                        <span className={styles.actionBtnWrap}>
+                          <button
+                            type="button"
+                            className={`${styles.actionBtn} ${styles.actionBtnAmber}`}
+                            onClick={handleToggleDifficult}
+                            disabled={studyDisabled}
+                          >
+                            Afficher les mots difficiles
+                          </button>
+                          <span className={styles.actionBtnHint}>
+                            {studyCount > 0
+                              ? `Ajouter ${plural(studyCount)} aux favoris`
+                              : difficultWords.length === 0
+                                ? 'Sélectionne d’abord des mots'
+                                : showFlashcards
+                                  ? 'Déjà affichées'
+                                  : `${plural(difficultWords.length)} en favoris`}
+                          </span>
+                        </span>
                         {isGenerating && <div className={styles.generateSpinner} />}
                       </div>
                       <span className={styles.bottomActionsLine} />
@@ -1105,7 +1117,13 @@ export default function VocabulaireActivity({
                 onAllCompleted={setExercisesAllCompleted}
                 onBackToRecto={() => flipTo('recto')}
                 onIntermediateDiagnostic={phase === 'learning' ? handleIntermediateDiagnostic : undefined}
-                onEvaluation={phase === 'learning' ? handleEvaluation : undefined}
+                onEvaluation={
+                  phase === 'learning' || (phase === 'diagnostic' && diagnosticCount > 0)
+                    ? handleEvaluation
+                    : undefined
+                }
+                intermediateDiagnosticMode={phase === 'diagnostic' && diagnosticCount > 0}
+                onShowKnowledgeTab={onShowEvaluationTab}
               />
             </div>
           </div>

@@ -115,11 +115,15 @@ export default function TravailDetailPage() {
     devoir?.accesIA ? devoirId : undefined,
   );
 
-  // Flip state (recto = texte annoté, verso = brouillon élève)
+  // Flip state (recto = face affichee a l'ouverture, swap selon devoir.flipInverted)
   type FlipSide = 'recto' | 'verso';
   const [flipSide, setFlipSide] = useState<FlipSide>('recto');
   const [flipPhase, setFlipPhase] = useState<'idle' | 'out' | 'in'>('idle');
   const [isFlipping, setIsFlipping] = useState(false);
+
+  // Selon flipInverted : false → recto = redaction / verso = planification ; true = inverse
+  const rectoIsRedaction = !(devoir?.flipInverted ?? false);
+  const showingRedaction = rectoIsRedaction ? flipSide === 'recto' : flipSide === 'verso';
 
   const draftType: DraftType = useMemo(() => getDraftType(grille), [grille]);
   const hasDraft = !!travail?.draftContent;
@@ -551,8 +555,10 @@ export default function TravailDetailPage() {
                       onClick={() => flipSide !== 'recto' && handleFlip()}
                       disabled={isFlipping}
                     >
-                      <span className={flipStyles.flipIcon}>✏️</span>
-                      <span className={flipStyles.flipLabel}>Texte de l&apos;élève</span>
+                      <span className={flipStyles.flipIcon}>{rectoIsRedaction ? '✏️' : '📝'}</span>
+                      <span className={flipStyles.flipLabel}>
+                        {rectoIsRedaction ? 'Texte de l’élève' : 'Planification de l’élève'}
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -560,8 +566,10 @@ export default function TravailDetailPage() {
                       onClick={() => flipSide !== 'verso' && handleFlip()}
                       disabled={isFlipping}
                     >
-                      <span className={flipStyles.flipIcon}>📝</span>
-                      <span className={flipStyles.flipLabel}>Planification de l&apos;élève</span>
+                      <span className={flipStyles.flipIcon}>{rectoIsRedaction ? '📝' : '✏️'}</span>
+                      <span className={flipStyles.flipLabel}>
+                        {rectoIsRedaction ? 'Planification de l’élève' : 'Texte de l’élève'}
+                      </span>
                     </button>
                   </div>
                   <button
@@ -569,7 +577,7 @@ export default function TravailDetailPage() {
                     className={flipStyles.flipAction}
                     onClick={handleFlip}
                     disabled={isFlipping}
-                    title={`Retourner vers ${flipSide === 'recto' ? 'Brouillon' : 'Texte'}`}
+                    title={`Retourner vers ${showingRedaction ? 'Brouillon' : 'Texte'}`}
                   >
                     <span className={`${flipStyles.flipActionIcon} ${isFlipping ? flipStyles.spinning : ''}`}>
                       🔄
@@ -588,7 +596,7 @@ export default function TravailDetailPage() {
                     ${flipPhase === 'in' ? flipStyles.flipIn : ''}
                   `}
                 >
-                  {flipSide === 'recto' ? (
+                  {showingRedaction ? (
                     <div className={flipStyles.cardFace}>
                       {travail.content ? (
                         <AnnotationEditor

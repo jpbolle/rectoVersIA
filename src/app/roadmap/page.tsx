@@ -31,6 +31,18 @@ interface RoadmapData {
 const DEFAULT_DATA: RoadmapData = {
   nouveautes: [
     {
+      date: '5 mai 2026',
+      items: [
+        'Choix recto/verso de l\'espace d\'écriture : le prof décide ce qui apparaît au recto (rédaction par défaut) et au verso (planification), avec un sélecteur dans le formulaire de création/modification',
+        'Sidebar élève harmonisée : nouvel ordre Consignes → Ressources → Aide IA → Remarques → Recherche → Évaluation, et masquage de l\'onglet Remarques pour les activités de vocabulaire (tout y est automatisé)',
+        'Renommage « devoir » → « activité » dans les formulaires',
+        'Vocabulaire : le diagnostic intermédiaire se lance directement (suppression de l\'écran intermédiaire)',
+        'Vocabulaire : nouvelle barre d\'actions en fin de diagnostic intermédiaire avec 3 boutons (Évaluation, Retour à la liste, État de mes connaissances)',
+        'Vocabulaire : barre d\'actions en fin de session d\'apprentissage harmonisée — bouton « Diagnostic » renommé « Diagnostic intermédiaire » et ajout du bouton « État de mes connaissances »',
+        'Convention de couleurs des boutons d\'action : vert pour les boutons qui génèrent du contenu, ambre pour ceux qui affichent ou naviguent',
+      ],
+    },
+    {
       date: '4 mai 2026',
       items: [
         'Refonte de l\'espace de travail élève : nouvelle barre d\'icônes verticale à droite (Consignes, Ressources, Évaluation, Aide IA, Remarques, Recherche)',
@@ -115,14 +127,34 @@ const DEFAULT_DATA: RoadmapData = {
       priorite: 'Prochainement',
       items: [
         {
-          titre: 'Avis critique entre pairs (CRC)',
-          description: 'L\'élève lit et rédige un avis sur le CRC d\'un autre élève. Attribution aléatoire et anonyme',
+          titre: 'Contraction de texte',
+          description: 'Corriger la correction IA et le résumé / plan de texte produit par les élèves',
+        },
+        {
+          titre: 'Choix du type de plan (activité d\'écriture)',
+          description: 'À la création d\'une activité d\'écriture, le prof choisit le type de plan proposé aux élèves (CRC, plan hiérarchique, brouillon libre)',
+        },
+        {
+          titre: 'Recherche : refonte aide IA et interface',
+          description: 'Auditer et améliorer l\'aide IA dans les activités de recherche guidée (NavigKid) ainsi que l\'interface élève',
+        },
+        {
+          titre: 'Aide IA aux plans',
+          description: 'Étendre l\'aide IA à la génération et à la correction de plans d\'écriture',
+        },
+        {
+          titre: 'Statistiques générales',
+          description: 'Tableau de bord prof avec métriques transverses (usage IA, progression élèves, mots difficiles récurrents)',
         },
       ],
     },
     {
       priorite: 'Planifié',
       items: [
+        {
+          titre: 'Avis critique entre pairs (CRC)',
+          description: 'L\'élève lit et rédige un avis sur le CRC d\'un autre élève. Attribution aléatoire et anonyme',
+        },
         {
           titre: 'Grille de métacognition',
           description: 'Écart auto-évaluation / correction prof, évolution du texte entre versions',

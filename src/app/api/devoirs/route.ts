@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
       typeTravail,
       questionnaire,
       vocabulaireConfig,
+      flipInverted,
     } = body;
 
     // Validation des champs requis (grille non requise pour vocabulaire)
@@ -161,6 +162,7 @@ export async function POST(request: NextRequest) {
       anneeScolaire,
       profId: auth.uid,
       typeTravail: typeTravail || 'ecrire',
+      flipInverted: flipInverted ?? false,
     };
 
     // Si type "vocabulaire", stocker la config

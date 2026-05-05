@@ -145,6 +145,9 @@ export async function PATCH(
     if (body.corrigeDisponible !== undefined) {
       updateData.corrigeDisponible = body.corrigeDisponible;
     }
+    if (body.flipInverted !== undefined) {
+      updateData.flipInverted = body.flipInverted;
+    }
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
