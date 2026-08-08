@@ -25,6 +25,7 @@ export interface Devoir {
   anneeScolaire: string;
   profId: string;
   typeTravail: TypeTravail;
+  uaa?: number[];                 // UAA de la grille liée (enrichi côté serveur, lecture seule)
   questionnaireId?: string;       // Référence vers questionnaires/{id} (type rechercher)
   codeAcces?: string;             // Code 6 chars pour l'extension Chrome (type rechercher)
   vocabulaireThemes?: string[];   // Séries lexicales imposées (type vocabulaire)

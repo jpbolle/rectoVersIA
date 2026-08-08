@@ -231,8 +231,12 @@ export default function VocabulaireStats({
                       {attempts.map((a, i) => (
                         <span
                           key={i}
-                          className={`${styles.attemptDot} ${a.correct ? styles.dotCorrect : styles.dotIncorrect}`}
-                          title={`${a.context} — ${new Date(a.date).toLocaleDateString()}`}
+                          className={`${styles.attemptDot} ${
+                            a.correct
+                              ? (a.credit === 0.5 ? styles.dotHalf : styles.dotCorrect)
+                              : styles.dotIncorrect
+                          }`}
+                          title={`${a.context} — ${new Date(a.date).toLocaleDateString()}${a.credit === 0.5 ? ' — trouvé avec indice (½ point)' : ''}`}
                         />
                       ))}
                     </div>

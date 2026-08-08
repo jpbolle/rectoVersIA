@@ -100,12 +100,51 @@ $("#btn-deconnexion").addEventListener("click", async () => {
   chrome.storage.local.clear();
 });
 
+// ─── Vocabulaire personnel ───
+// Envoyer à l'app les mots cliqués via l'aide dictionnaire (file remplie par
+// le background) — ils rejoignent vocabulairePersonnel/{uid} côté Firestore.
+async function envoyerMotsDictionnaire() {
+  if (!state.user) return;
+  try {
+    const { motsDictionnaireEnAttente = [] } = await chrome.storage.local.get(
+      "motsDictionnaireEnAttente"
+    );
+    if (motsDictionnaireEnAttente.length === 0) return;
+
+    const token = await state.user.getIdToken();
+    const res = await fetch(`${API_BASE}/api/vocabulaire/personnel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ words: motsDictionnaireEnAttente }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      await chrome.storage.local.set({ motsDictionnaireEnAttente: [] });
+    }
+  } catch (e) {
+    console.error("Envoi vocabulaire personnel:", e);
+  }
+}
+
+// Vider la file dès qu'un nouveau mot arrive pendant que la sidebar est ouverte
+chrome.storage.local.onChanged.addListener((changes) => {
+  if (changes.motsDictionnaireEnAttente?.newValue?.length) {
+    envoyerMotsDictionnaire();
+  }
+});
+
 // ─── Listener Auth State ───
 auth.onAuthStateChanged(async (user) => {
   if (user) {
     state.user = user;
     state.eleveId = user.uid;
     state.eleveNom = user.displayName || user.email;
+
+    // Envoyer les mots cliqués en attente (aide dictionnaire)
+    envoyerMotsDictionnaire();
 
     // Tenter de restaurer une session en cours
     await restaurerSession();

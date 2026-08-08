@@ -80,6 +80,10 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Le surlignage fluo ::highlight(dict-word) est injecté en JS par
+   DictionaryClickLayer — le parseur CSS de Turbopack ne connaît pas
+   ce pseudo-élément. */
+
 @media (max-width: 768px) {
   body {
     font-size: 15px;

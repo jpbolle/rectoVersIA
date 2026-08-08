@@ -33,7 +33,7 @@
 | Grilles legacy | Google Sheets API (lecture seule) — les grilles vivent désormais dans Firestore |
 | IA | Claude `claude-sonnet-4-5-20250929` + OpenAI Whisper — API Routes serveur uniquement |
 | Éditeur riche | Tiptap 3 + extensions custom (LineHeight, Indent, ContentLock, annotations) |
-| Extension Chrome | NavigKid — `rechercheNavigChrome/eleve-extension` (recherche guidée) |
+| Extension Chrome | NavigKid — `rechercheNavigChrome/eleve-extension` (recherche guidée + popup aides dictionnaire/traducteur + visionneuse PDF) — état de référence dans `rechercheNavigChrome/init/` |
 
 ### Variables d'environnement
 `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_SHEETS_ID`, `FIREBASE_*` (client + admin) —
@@ -205,6 +205,11 @@ interface Questionnaire {
 
 ### Autres collections
 - `professeurs` : doc ID = email, géré par admin via `/admin` (supporte `expiresAt`)
+- `dictionaryCache` : doc ID = mot — cache des consultations dictionnaire (accès serveur uniquement)
+- `vocabulairePersonnel/{uid}` : mots dont l'élève a demandé la définition (app + NavigKid),
+  format `VocabulaireWord` — accès serveur uniquement, pas de règle Firestore
+- `devoirs` : le champ `uaa` affiché sur les cards est **enrichi à la lecture** par
+  `/api/devoirs` (jointure grille par nom) — pas stocké dans le document
 - `users/{uid}` : profil + préférences éditeur (`font`, `fontSize`, `lineHeight`, `theme`)
 - `aiGridEvaluations` : ID = `AIGRID-{travailId}`, évaluation IA par critère
 - Vocabulaire : séries lexicales (`profId`, `profName`, `mots`)
@@ -271,12 +276,16 @@ interface Questionnaire {
 | `/api/professeurs`, `/api/admin/stats`, `/api/admin/prof-stats/[profId]` | — | Admin (profId = email encodé) |
 | `/api/roadmap` | GET, POST | Roadmap Firestore (POST admin) |
 | `/api/ai/writing-help`, `/api/ai/grid-eval` | POST / GET+POST | Aide rédaction + évaluation IA grille |
+| `/api/dictionary` | GET | Dictionnaire élève : définition/synonymes/antonymes (Wiktionnaire, suivi de flexion) + proxémie (Claude) ; cache Firestore `dictionaryCache` ; enregistre les définitions demandées par un élève dans `vocabulairePersonnel/{uid}` |
+| `/api/vocabulaire/personnel` | GET, POST | Vocabulaire personnel élève (mots cliqués) — POST utilisé par NavigKid ; GET prof avec `?studentId=` |
 | `/api/navigkid/*` | — | Questionnaires, réponses, activités élève, aide IA recherche |
 | `/api/vocabulaire/*` | — | Thèmes, mots, génération/validation exercices IA, suggestions |
 
 ### Composants clés
-- Éditeurs Tiptap : `WorkEditor` (élève), `RessourceEditor` (annotation ressources),
-  `AnnotationEditor` (prof : 3 types textuels + audio + IA), `FlipEditor` (recto/verso)
+- Éditeurs Tiptap : `WorkEditor` (élève — collage externe bloqué, seul le texte copié
+  dans l'espace de travail est recollable via `internal-clipboard.ts`), `RessourceEditor`
+  (annotation ressources), `AnnotationEditor` (prof : 3 types textuels + audio + IA),
+  `FlipEditor` (recto/verso)
 - Brouillons : `CrcDraft` (compte rendu critique), `PlanDraft` (plan drag & drop), `FreeDraft`
 - Vocabulaire : `VocabulaireActivity` (diagnostic → apprentissage → évaluation, mots
   difficiles/flashcards), `VocabulaireList`, `VocabulaireExercises`,
@@ -286,13 +295,17 @@ interface Questionnaire {
 - Panels : `AssistancePanel` (onglets Consignes/Ressources/Évaluation/Remarques/Aide
   IA/Recherche — prop `hideTabs` quand un parent gère la navigation), `GrilleTab`
   (3 évaluations : élève, IA, prof)
+- Dictionnaire élève : `DictionaryPanel` (bloc permanent en tête de l'onglet Ressources :
+  toggle + champ + 4 actions), `DictionaryPopup` (popup partagée, portal),
+  `DictionaryClickLayer` (mots cliquables dans le panneau latéral, surlignage CSS Custom
+  Highlight), clic-mot dans `WorkEditor` (surlignage fluo via `tiptap-dictionary.ts`)
 - UI : `WorkspaceRail`, `ResizableSplit`, `JoinClasseModal`, `BulkImportEleveModal`
 
 ### Hooks
 `useAuth`, `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,
 `useTravail` (auto-save 2,5 s), `useCorrection`, `usePreferences`, `useAudioRecorder`,
 `useAiSuggestions`, `useAiGridEvaluation`, `useVocabulaireThemes`, `useVocabulaireWords`,
-`useVocabulaireExercises`
+`useVocabulaireExercises`, `useDictionaryLookup` (cache client partagé du dictionnaire)
 
 ---
 
@@ -300,6 +313,11 @@ interface Questionnaire {
 
 > Les gotchas **critiques** (boucles de hooks, redirections, ContentLock, échelle des
 > grilles) sont dans `AGENTS.md`. Ici : les pièges opérationnels.
+
+### Pseudo-élément ::highlight non parsé par Turbopack
+Le parseur CSS de Turbopack rejette `::highlight(...)` (API CSS Custom Highlight) dans
+les fichiers CSS → **build cassé**. **Remède** : injecter la règle en JavaScript
+(`document.createElement('style')`) — voir `DictionaryClickLayer.tsx`.
 
 ### Cache Turbopack corrompu
 **Symptôme** : comportement bizarre en dev, fichiers `.sst` manquants, erreurs 500
@@ -351,6 +369,7 @@ prof.
 - `src/lib/firebase/config.ts` — Firebase client
 - `src/lib/editor-constants.ts` — FONTS, FONT_SIZES, PAGE_THEMES, LINE_HEIGHT
 - `src/lib/classe-utils.ts` — generateClasseId, generateClasseCode
+- `src/lib/internal-clipboard.ts` — presse-papiers interne (anti-triche collage élève)
 - `src/lib/tiptap-extensions.ts` — LineHeight, Indent, FontSize
 - `src/lib/tiptap-annotations.ts` — ContentLock, SpellingMark, SyntaxMark, LexicalMark,
   PunctuationMark

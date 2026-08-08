@@ -5,8 +5,8 @@
   "description": "Extension de recherche guidée par IA pour les élèves",
   "permissions": ["storage", "activeTab", "scripting", "sidePanel", "identity"],
   "host_permissions": [
-    "https://rectoversia.edukids.pedagokit.be/*",
-    "http://localhost:3000/*"
+    "https://*/*",
+    "http://*/*"
   ],
   "background": {
     "service_worker": "background/index.js"
@@ -26,7 +26,14 @@
     "48": "assets/icon48.png",
     "128": "assets/icon128.png"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["pdfviewer/index.html", "assets/icon48.png"],
+      "matches": ["https://*/*", "http://*/*"]
+    }
+  ],
   "action": {
-    "default_title": "Ouvrir NavigKid!"
+    "default_title": "NavigKid!",
+    "default_popup": "popup/index.html"
   }
 }

@@ -61,6 +61,25 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Enrichir chaque devoir avec les UAA de sa grille (jointure par nom de grille)
+    const grilleNames = [...new Set(devoirs.map((d) => d.grille).filter(Boolean))];
+    if (grilleNames.length > 0) {
+      const grillesSnap = await adminDb.collection('grilles').get();
+      const grillesByName = grillesSnap.docs.map((doc) => ({
+        name: doc.data().name || '',
+        profId: doc.data().profId || '',
+        uaa: (doc.data().uaa || []) as number[],
+      }));
+      devoirs = devoirs.map((d) => {
+        if (!d.grille) return d;
+        // Priorite a la grille du meme prof (les noms peuvent se repeter entre profs)
+        const match =
+          grillesByName.find((g) => g.name === d.grille && g.profId === d.profId) ||
+          grillesByName.find((g) => g.name === d.grille);
+        return { ...d, uaa: match?.uaa || [] };
+      });
+    }
+
     // Les eleves ne voient que les devoirs disponibles ET assignes a leur(s) classe(s)
     if (auth.role === 'eleve') {
       const email = auth.email.toLowerCase().trim();

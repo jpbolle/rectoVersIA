@@ -76,11 +76,12 @@
   font-size: 16px;
 }
 
-/* Toggle "vue prof seul" */
+/* Toggle "traces" (aides IA et réécritures) — ON = traces affichées */
 .profViewOnlyToggle {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
   margin-left: 8px;
   cursor: pointer;
   user-select: none;
@@ -127,9 +128,10 @@
 }
 
 .profViewOnlyLabel {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 10px;
+  font-weight: 600;
   color: var(--c-text-secondary);
+  line-height: 1;
   white-space: nowrap;
 }
 

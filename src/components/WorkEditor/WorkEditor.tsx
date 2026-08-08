@@ -10,8 +10,17 @@ import Link from '@tiptap/extension-link';
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { LineHeight, Indent, FontSize } from '@/lib/tiptap-extensions';
 import { AiDecorationsExtension, updateAllAiDecorations } from '@/lib/tiptap-ai-decorations';
+import {
+  DictHighlightExtension,
+  addDictHighlight,
+  findWordAtCoords,
+} from '@/lib/tiptap-dictionary';
 import { FONTS, FONT_SIZES, PAGE_THEMES, LINE_HEIGHT_MIN, LINE_HEIGHT_MAX, LINE_HEIGHT_STEP } from '@/lib/editor-constants';
 import { usePreferences } from '@/hooks/usePreferences';
+import { setInternalClip, getInternalClip, normalizeClipText } from '@/lib/internal-clipboard';
+import { useDictionaryLookup } from '@/hooks/useDictionaryLookup';
+import Toggle from '@/components/Toggle/Toggle';
+import DictionaryPopup from '@/components/DictionaryPopup';
 import type { AiSuggestion, AiSuggestionType } from '@/types/ai-suggestions';
 import styles from './WorkEditor.module.css';
 
@@ -24,6 +33,17 @@ interface WorkEditorProps {
   // Props IA (décorations inline uniquement)
   aiSuggestions?: Record<AiSuggestionType, AiSuggestion | null>;
   onDecorationClick?: (type: AiSuggestionType, itemId: string) => void;
+  // Aide dictionnaire : clic sur un mot → surlignage + popup définition
+  dictionaryEnabled?: boolean;
+}
+
+interface DictPopupState {
+  word: string;
+  x: number;
+  y: number;
+  loading: boolean;
+  items: string[];
+  error: string | null;
 }
 
 const DEFAULT_SUGGESTIONS: Record<AiSuggestionType, AiSuggestion | null> = {
@@ -33,6 +53,7 @@ const DEFAULT_SUGGESTIONS: Record<AiSuggestionType, AiSuggestion | null> = {
   lex: null,
 };
 
+
 export default function WorkEditor({
   content,
   onChange,
@@ -41,8 +62,10 @@ export default function WorkEditor({
   accesIA = false,
   aiSuggestions = DEFAULT_SUGGESTIONS,
   onDecorationClick,
+  dictionaryEnabled = false,
 }: WorkEditorProps) {
   const { preferences } = usePreferences();
+  const { lookup: dictLookup } = useDictionaryLookup();
   const [currentFont, setCurrentFont] = useState(preferences.font);
   const [currentFontSize, setCurrentFontSize] = useState(preferences.fontSize);
   const [lineSpacing, setLineSpacing] = useState(preferences.lineHeight);
@@ -50,6 +73,22 @@ export default function WorkEditor({
   const [linkUrl, setLinkUrl] = useState('');
   const [pageTheme, setPageTheme] = useState(preferences.theme);
   const [showThemePicker, setShowThemePicker] = useState(false);
+  // Afficher/masquer les bulles d'aide IA (cercles O/P/S/L) dans le texte
+  const [showAiBubbles, setShowAiBubbles] = useState(true);
+
+  // Dictionnaire : popup de définition
+  const [dictPopup, setDictPopup] = useState<DictPopupState | null>(null);
+  const dictionaryEnabledRef = useRef(dictionaryEnabled);
+  dictionaryEnabledRef.current = dictionaryEnabled;
+
+  // Anti-triche : seul le texte copié/coupé dans l'espace de travail
+  // (rédaction ou planification, via internal-clipboard) peut être recollé ici
+  const [pasteBlocked, setPasteBlocked] = useState(false);
+  const pasteBlockedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (pasteBlockedTimerRef.current) clearTimeout(pasteBlockedTimerRef.current);
+  }, []);
   const themePickerRef = useRef<HTMLDivElement>(null);
   const editorAreaRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +143,9 @@ export default function WorkEditor({
       base.push(AiDecorationsExtension);
     }
 
+    // Surlignage dictionnaire : toujours chargé, activé par la prop dictionaryEnabled
+    base.push(DictHighlightExtension);
+
     return base;
   }, [accesIA, placeholderText]);
 
@@ -114,6 +156,42 @@ export default function WorkEditor({
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
+    },
+    editorProps: {
+      handleDOMEvents: {
+        // Mémoriser ce que l'élève copie/coupe dans sa rédaction
+        copy: (view) => {
+          const { from, to } = view.state.selection;
+          setInternalClip(view.state.doc.textBetween(from, to, '\n', ' '));
+          return false;
+        },
+        cut: (view) => {
+          const { from, to } = view.state.selection;
+          setInternalClip(view.state.doc.textBetween(from, to, '\n', ' '));
+          return false;
+        },
+      },
+      // Collage autorisé uniquement si le texte vient de l'espace de travail
+      handlePaste: (view, event) => {
+        const pasted = normalizeClipText(event.clipboardData?.getData('text/plain') || '');
+        if (pasted && pasted === getInternalClip()) {
+          return false; // texte copié dans la rédaction ou la planification : collage normal
+        }
+        event.preventDefault();
+        setPasteBlocked(true);
+        if (pasteBlockedTimerRef.current) clearTimeout(pasteBlockedTimerRef.current);
+        pasteBlockedTimerRef.current = setTimeout(() => setPasteBlocked(false), 3500);
+        return true;
+      },
+      // Même règle pour le glisser-déposer : seul le déplacement interne passe
+      handleDrop: (view, event, _slice, moved) => {
+        if (moved) return false;
+        event.preventDefault();
+        setPasteBlocked(true);
+        if (pasteBlockedTimerRef.current) clearTimeout(pasteBlockedTimerRef.current);
+        pasteBlockedTimerRef.current = setTimeout(() => setPasteBlocked(false), 3500);
+        return true;
+      },
     },
   });
 
@@ -251,21 +329,64 @@ export default function WorkEditor({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleLinkToggle]);
 
-  // Clic sur une bulle IA → déléguer au parent
+  // ── Dictionnaire : ouvrir la popup et chercher la définition ──
+  const openDictPopup = useCallback(async (word: string, clientX: number, clientY: number) => {
+    setDictPopup({ word, x: clientX, y: clientY, loading: true, items: [], error: null });
+    try {
+      const items = await dictLookup(word, 'definition');
+      setDictPopup((prev) =>
+        prev && prev.word === word ? { ...prev, loading: false, items } : prev
+      );
+    } catch {
+      setDictPopup((prev) =>
+        prev && prev.word === word
+          ? { ...prev, loading: false, error: 'Impossible de consulter le dictionnaire.' }
+          : prev
+      );
+    }
+  }, [dictLookup]);
+
+  // Clic sur une bulle IA → déléguer au parent ; clic sur un mot → dictionnaire
   const handleEditorClick = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
 
     const bubble = target.closest('[data-ai-bubble-item]') as HTMLElement | null;
-    if (!bubble) return;
-
-    e.stopPropagation();
-    e.preventDefault();
-    const bubbleType = bubble.getAttribute('data-ai-bubble-type') as AiSuggestionType | null;
-    const itemId = bubble.getAttribute('data-ai-bubble-item');
-    if (bubbleType && itemId) {
-      onDecorationClick?.(bubbleType, itemId);
+    if (bubble) {
+      e.stopPropagation();
+      e.preventDefault();
+      const bubbleType = bubble.getAttribute('data-ai-bubble-type') as AiSuggestionType | null;
+      const itemId = bubble.getAttribute('data-ai-bubble-item');
+      if (bubbleType && itemId) {
+        onDecorationClick?.(bubbleType, itemId);
+      }
+      return;
     }
-  }, [onDecorationClick]);
+
+    if (!dictionaryEnabledRef.current || !editor) return;
+
+    // Clic sur un mot déjà surligné → rouvrir la popup
+    const highlighted = target.closest('[data-dict-word]') as HTMLElement | null;
+    if (highlighted) {
+      const word = highlighted.getAttribute('data-dict-word');
+      if (word) openDictPopup(word, e.clientX, e.clientY);
+      return;
+    }
+
+    // Clic dans le texte → identifier le mot, le surligner, ouvrir la popup
+    if (!target.closest('.tiptap')) return;
+    const found = findWordAtCoords(editor.view, { left: e.clientX, top: e.clientY });
+    if (!found) {
+      setDictPopup(null);
+      return;
+    }
+    addDictHighlight(editor, found.from, found.to, found.word);
+    openDictPopup(found.word, e.clientX, e.clientY);
+  }, [editor, onDecorationClick, openDictPopup]);
+
+  // Fermer la popup quand le dictionnaire est désactivé
+  useEffect(() => {
+    if (!dictionaryEnabled) setDictPopup(null);
+  }, [dictionaryEnabled]);
 
   if (!editor) {
     return <div className={styles.loading}>Chargement de l&apos;editeur...</div>;
@@ -513,6 +634,20 @@ export default function WorkEditor({
           )}
         </div>
 
+        {/* Affichage des bulles d'aide IA */}
+        {accesIA && (
+          <>
+            <span className={styles.separator} />
+            <div
+              className={styles.aiBubblesToggle}
+              title={showAiBubbles ? 'Masquer les aides' : 'Afficher les aides'}
+            >
+              <span className={styles.aiBubblesToggleLabel}>Aide IA</span>
+              <Toggle checked={showAiBubbles} onChange={setShowAiBubbles} />
+            </div>
+          </>
+        )}
+
       </div>
 
       {/* Barre d'input pour lien */}
@@ -540,7 +675,11 @@ export default function WorkEditor({
       )}
 
       {/* Zone éditeur */}
-      <div className={styles.editorArea} ref={editorAreaRef} onClick={handleEditorClick}>
+      <div
+        className={`${styles.editorArea}${showAiBubbles ? '' : ` ${styles.hideAiBubbles}`}${dictionaryEnabled ? ` ${styles.dictMode}` : ''}`}
+        ref={editorAreaRef}
+        onClick={handleEditorClick}
+      >
         <EditorContent
           editor={editor}
           className={`${styles.editor} ${accesIA && Object.values(aiSuggestions).some(s => s !== null) ? styles.editorWithBubbles : ''}`}
@@ -549,6 +688,27 @@ export default function WorkEditor({
             '--editor-text': PAGE_THEMES.find(t => t.id === pageTheme)?.text ?? '#202124',
           } as React.CSSProperties}
         />
+
+        {/* Avertissement collage externe bloqué */}
+        {pasteBlocked && (
+          <div className={styles.pasteBlockedNotice}>
+            ✋ Le collage de texte extérieur n&apos;est pas autorisé. Tu peux uniquement recoller
+            du texte copié dans ta rédaction ou ta planification.
+          </div>
+        )}
+
+        {/* Popup de définition (dictionnaire) */}
+        {dictPopup && (
+          <DictionaryPopup
+            word={dictPopup.word}
+            x={dictPopup.x}
+            y={dictPopup.y}
+            loading={dictPopup.loading}
+            items={dictPopup.items}
+            error={dictPopup.error}
+            onClose={() => setDictPopup(null)}
+          />
+        )}
       </div>
     </div>
   );

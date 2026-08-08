@@ -9,12 +9,14 @@ const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 function buildApprentissagePrompt(
   words: VocabulaireWord[],
   themes: string[],
-  spacedWords: VocabulaireWord[]
+  spacedWords: VocabulaireWord[],
+  personalWords: VocabulaireWord[]
 ): string {
   const themesText = themes.join(', ');
   const mainWords = words.map((w) => w.word);
   const spacedList = spacedWords.map((w) => w.word);
-  const allWords = [...mainWords, ...spacedList];
+  const personalList = personalWords.map((w) => w.word);
+  const allWords = [...mainWords, ...spacedList, ...personalList];
   const constraints = [
     'Ta phrase doit parler de ton quotidien',
     'Ta phrase doit être une question',
@@ -28,12 +30,15 @@ function buildApprentissagePrompt(
   const spacedContext = spacedWords.length > 0
     ? `\n\nMOTS DE RÉVISION (espacement régulé) à intégrer dans les exercices : ${spacedList.join(', ')}`
     : '';
+  const personalContext = personalWords.length > 0
+    ? `\n\nMOTS DU DICTIONNAIRE PERSONNEL de l'élève (rencontrés dans ses lectures) à intégrer dans les exercices : ${personalList.join(', ')}`
+    : '';
 
   return `Tu es un professeur de français expérimenté. Tu DOIS créer une séquence pédagogique pour élèves de 15 ans.
 
 CONTRAINTE ABSOLUE : Tu DOIS utiliser EXACTEMENT ces ${allWords.length} mots dans l'exercice 1 : ${allWords.join(', ')}
 
-Mots principaux à apprendre : ${mainWords.join(', ')}${spacedContext}
+Mots principaux à apprendre : ${mainWords.join(', ')}${spacedContext}${personalContext}
 
 AUCUN mot ne doit être oublié. TOUS les ${allWords.length} mots DOIVENT apparaître dans le texte ET dans highlighted_words.
 
@@ -47,7 +52,7 @@ Génère une réponse au format JSON suivant:
       "instructions": "Lisez le texte et survolez les mots soulignés pour voir leur définition",
       "text": "Un texte informatif de 250-300 mots contenant TOUS les mots.",
       "highlighted_words": [
-        ${[...words, ...spacedWords].map((w) => `{ "word": "${w.word}", "definition": "${w.definition}" }`).join(',\n        ')}
+        ${[...words, ...spacedWords, ...personalWords].map((w) => `{ "word": "${w.word}", "definition": "${w.definition}" }`).join(',\n        ')}
       ]
     },
     {
@@ -80,7 +85,7 @@ Génère une réponse au format JSON suivant:
 REGLES :
 1. L'exercice 1 DOIT contenir les ${allWords.length} mots : ${allWords.join(', ')}
 2. TOUS les mots DOIVENT être dans highlighted_words
-3. L'exercice 2 (fill_in_blanks_dropdown) : texte avec {0}, {1}, {2}... et pour chaque blanc, 3-4 options dont la bonne réponse. Utiliser au moins 5 mots de la liste.
+3. L'exercice 2 (fill_in_blanks_dropdown) : texte avec {0}, {1}, {2}... et pour chaque blanc, 3-4 options dont la bonne réponse. Utiliser au moins 5 mots de la liste.${spacedList.length > 0 ? `\n   Les exercices 2 et 3 DOIVENT tester 2-3 mots de révision parmi : ${spacedList.join(', ')}` : ''}${personalList.length > 0 ? `\n   Les exercices 2 et 3 DOIVENT tester au moins 1-2 mots du dictionnaire personnel parmi : ${personalList.join(', ')}` : ''}
 4. Pour l'exercice 4 : EXACTEMENT 2 mots différents et UNE contrainte
 5. JSON valide uniquement, aucun texte supplémentaire`;
 }
@@ -279,11 +284,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { words, mode, themes, spacedWords, compositionText, requiredWords, compositionTheme, synAntChecks } = body as {
+    const { words, mode, themes, spacedWords, personalWords, compositionText, requiredWords, compositionTheme, synAntChecks } = body as {
       words: VocabulaireWord[];
       mode: 'apprentissage' | 'diagnostic' | 'evaluation' | 'evaluate_composition' | 'validate_syn_ant';
       themes?: string[];
       spacedWords?: VocabulaireWord[];
+      personalWords?: VocabulaireWord[];
       compositionText?: string;
       requiredWords?: string[];
       compositionTheme?: string;
@@ -433,7 +439,7 @@ RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
         maxTokens = 6000;
         break;
       default:
-        prompt = buildApprentissagePrompt(words, themes || ['vocabulaire'], spacedWords || []);
+        prompt = buildApprentissagePrompt(words, themes || ['vocabulaire'], spacedWords || [], personalWords || []);
         maxTokens = 4500;
         break;
     }

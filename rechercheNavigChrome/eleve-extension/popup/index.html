@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>NavigKid!</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="entete">
+    <img src="../assets/icon48.png" alt="" class="logo" />
+    <h1>NavigKid!</h1>
+  </header>
+
+  <main>
+    <!-- Dictionnaire -->
+    <section class="aide" id="carte-dictionnaire">
+      <div class="aide-ligne">
+        <span class="aide-icone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          </svg>
+        </span>
+        <div class="aide-textes">
+          <span class="aide-titre">Dictionnaire</span>
+          <span class="aide-detail">Clique sur un mot de la page pour voir sa définition</span>
+        </div>
+        <label class="interrupteur" title="Activer le dictionnaire">
+          <input type="checkbox" id="toggle-dictionnaire" />
+          <span class="glissiere"></span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Traducteur -->
+    <section class="aide" id="carte-traducteur">
+      <div class="aide-ligne">
+        <span class="aide-icone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 8l6 6" />
+            <path d="M4 14l6-6 2-3" />
+            <path d="M2 5h12" />
+            <path d="M7 2h1" />
+            <path d="M22 22l-5-10-5 10" />
+            <path d="M14 18h6" />
+          </svg>
+        </span>
+        <div class="aide-textes">
+          <span class="aide-titre">Traducteur</span>
+          <span class="aide-detail">Clique sur un mot pour le traduire dans ta langue</span>
+        </div>
+        <label class="interrupteur" title="Activer le traducteur">
+          <input type="checkbox" id="toggle-traducteur" />
+          <span class="glissiere"></span>
+        </label>
+      </div>
+      <div class="langue" id="bloc-langue" hidden>
+        <label for="choix-langue">Ma langue :</label>
+        <select id="choix-langue">
+          <option value="fr">Français</option>
+          <option value="ar">Arabe</option>
+          <option value="es">Espagnol</option>
+          <option value="uk">Ukrainien</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- PDF (visible seulement quand l'onglet actif est un PDF) -->
+    <button type="button" class="bouton-pdf" id="ouvrir-pdf" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+      </svg>
+      Lire ce PDF avec NavigKid!
+    </button>
+
+    <!-- Sidebar -->
+    <button type="button" class="bouton-sidebar" id="ouvrir-sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <line x1="15" y1="3" x2="15" y2="21" />
+      </svg>
+      Ouvrir ma recherche NavigKid!
+    </button>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>

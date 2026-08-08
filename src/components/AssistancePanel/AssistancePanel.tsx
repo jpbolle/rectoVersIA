@@ -38,6 +38,9 @@ interface AssistancePanelProps {
   onRessourceNotesChange?: (notes: Record<string, string>) => void;
   studentRessourceAnnotations?: string;
   studentRessourceNotes?: Record<string, string>;
+  // Aide dictionnaire permanente (élève)
+  dictionaryEnabled?: boolean;
+  onDictionaryEnabledChange?: (value: boolean) => void;
   // Mode contrôlé (optionnel — fallback interne si non fourni)
   activeTab?: TabType;
   onTabChange?: (tab: TabType) => void;
@@ -91,6 +94,8 @@ export default function AssistancePanel({
   onRessourceNotesChange,
   studentRessourceAnnotations,
   studentRessourceNotes,
+  dictionaryEnabled,
+  onDictionaryEnabledChange,
   activeTab: controlledTab,
   onTabChange,
   accesIA = false,
@@ -216,6 +221,8 @@ export default function AssistancePanel({
             onRessourceNotesChange={onRessourceNotesChange}
             studentRessourceAnnotations={studentRessourceAnnotations}
             studentRessourceNotes={studentRessourceNotes}
+            dictionaryEnabled={dictionaryEnabled}
+            onDictionaryEnabledChange={onDictionaryEnabledChange}
           />
         )}
         {currentTab === 'grille' && devoir.typeTravail === 'vocabulaire' && (

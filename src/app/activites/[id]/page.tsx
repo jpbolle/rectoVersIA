@@ -20,6 +20,7 @@ import { LEVEL_PERCENTAGES } from '@/types/grille';
 import RechercheResponseViewer from '@/components/RechercheResponseViewer/RechercheResponseViewer';
 import VocabulaireActivity from '@/components/VocabulaireActivity/VocabulaireActivity';
 import WorkspaceRail, { type RailTab } from '@/components/WorkspaceRail';
+import DictionaryClickLayer from '@/components/DictionaryClickLayer';
 import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
 import styles from './travail.module.css';
 
@@ -112,6 +113,8 @@ export default function TravailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('consignes');
   const [panelOpen, setPanelOpen] = useState<boolean>(true);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+  // Aide dictionnaire permanente (toggle dans l'onglet Ressources)
+  const [dictionaryEnabled, setDictionaryEnabled] = useState(false);
   // Vocabulaire : index de l'evaluation passee a revoir dans la colonne de gauche (null = vue normale)
   const [viewingVocabEvalIndex, setViewingVocabEvalIndex] = useState<number | null>(null);
 
@@ -557,6 +560,7 @@ export default function TravailPage() {
                 accesIA={showAiData}
                 aiSuggestions={aiSuggestions}
                 onDecorationClick={handleDecorationClick}
+                dictionaryEnabled={dictionaryEnabled}
                 inverted={devoir.flipInverted ?? false}
               />
             </div>
@@ -574,6 +578,7 @@ export default function TravailPage() {
           panelHeaderExtra={profScoreBadge}
           storageKey="activite-rail-width"
         >
+          <DictionaryClickLayer enabled={dictionaryEnabled}>
           <AssistancePanel
             devoir={devoir}
             grille={grille}
@@ -590,6 +595,8 @@ export default function TravailPage() {
             onRessourceAnnotationsChange={isPreviewMode ? undefined : updateRessourceAnnotations}
             ressourceNotes={travail?.ressourceNotes}
             onRessourceNotesChange={isPreviewMode ? undefined : updateRessourceNotes}
+            dictionaryEnabled={dictionaryEnabled}
+            onDictionaryEnabledChange={setDictionaryEnabled}
             activeTab={activeTab}
             onTabChange={setActiveTab}
             accesIA={accesIA}
@@ -613,6 +620,7 @@ export default function TravailPage() {
             selectedVocabEvalIndex={viewingVocabEvalIndex}
             hideTabs={true}
           />
+          </DictionaryClickLayer>
         </WorkspaceRail>
       </main>
 

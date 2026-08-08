@@ -183,6 +183,10 @@
   background: #27ae60;
 }
 
+.dotHalf {
+  background: linear-gradient(90deg, #27ae60 50%, #f0a94b 50%);
+}
+
 .dotIncorrect {
   background: #e74c3c;
 }

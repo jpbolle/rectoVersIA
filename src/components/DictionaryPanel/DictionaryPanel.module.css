@@ -1,0 +1,236 @@
+/* Bloc « Dictionnaire » permanent — en tête de l'onglet Ressources (élève) */
+
+.panel {
+  background: var(--c-bg-card, #fff);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.headerIcon {
+  display: flex;
+  width: 18px;
+  height: 18px;
+  color: var(--c-primary);
+  flex-shrink: 0;
+}
+
+.headerIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--c-primary);
+  flex: 1;
+}
+
+.toggleWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.body {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--c-text-secondary);
+}
+
+.input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  color: var(--c-text);
+  background: var(--c-bg-element);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.12);
+  background: var(--c-bg-card, #fff);
+}
+
+.input::placeholder {
+  color: var(--c-text-secondary);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.actionButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.06);
+}
+
+.actionButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.actionButtonActive {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.08);
+}
+
+.actionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+.actionIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.actionLabel {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--c-border);
+  border-top-color: var(--c-primary);
+  border-radius: 50%;
+  animation: dictPanelSpin 0.7s linear infinite;
+}
+
+@keyframes dictPanelSpin {
+  to { transform: rotate(360deg); }
+}
+
+.error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--c-danger, #b44040);
+}
+
+.result {
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  padding: 10px 12px 8px;
+  background: var(--c-bg-element);
+  animation: dictResultIn 0.14s ease-out;
+}
+
+@keyframes dictResultIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.resultHeader {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.resultWord {
+  font-family: var(--c-font-title);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-primary);
+}
+
+.resultAction {
+  font-size: 11px;
+  color: var(--c-text-secondary);
+}
+
+.resultList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--c-text);
+}
+
+.resultList li + li {
+  margin-top: 5px;
+}
+
+.resultChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 3px 10px;
+  background: var(--c-bg-card, #fff);
+  border: 1px solid var(--c-border);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--c-text);
+}
+
+.resultEmpty {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--c-text-secondary);
+}
+
+.resultSource {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--c-border);
+  font-size: 10px;
+  color: var(--c-text-secondary);
+}

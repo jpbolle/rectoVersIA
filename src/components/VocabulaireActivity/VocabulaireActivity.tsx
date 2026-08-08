@@ -230,6 +230,7 @@ export default function VocabulaireActivity({
   const selectedTheme = forcedThemes?.[0] || '';
   const themesToLoad = forcedThemes && forcedThemes.length > 0 ? forcedThemes : null;
   const { allWords: allThemeWords, isLoading: wordsLoading } = useVocabulaireWords(themesToLoad);
+  const { getAuthHeaders } = useAuth();
 
   // State persistant
   // Au retour, toujours repartir en learning (sauf si diagnostic initial jamais fait)
@@ -517,9 +518,34 @@ export default function VocabulaireActivity({
       const selectedWordObjects = allThemeWords.filter((w) => currentSelection.includes(w.word));
       const spacedWordTexts = getSpacedRepetitionWords(wordMastery, currentSelection, 5);
       const spacedWordObjects = allThemeWords.filter((w) => spacedWordTexts.includes(w.word));
-      const allLearningWords = [...selectedWordObjects, ...spacedWordObjects];
 
-      const result = await generate(selectedWordObjects, 'apprentissage', [selectedTheme], spacedWordObjects);
+      // Mots du dictionnaire personnel de l'eleve : 3 a 5 au hasard, hors doublons.
+      // Liste vide ou indisponible : on genere sans.
+      let personalWordObjects: VocabulaireWord[] = [];
+      try {
+        const headers = await getAuthHeaders();
+        if (headers) {
+          const res = await fetch('/api/vocabulaire/personnel', { headers });
+          const json = await res.json();
+          if (json.success) {
+            const alreadyUsed = new Set(
+              [...currentSelection, ...spacedWordTexts].map((w) => w.toLowerCase())
+            );
+            const candidates = ((json.data?.words || []) as { word?: string; definition?: string; example?: string }[])
+              .filter((w) => w.word && w.definition && !alreadyUsed.has(w.word.toLowerCase()));
+            const target = 3 + Math.floor(Math.random() * 3); // 3 a 5
+            personalWordObjects = shuffle(candidates)
+              .slice(0, target)
+              .map((w) => ({ word: w.word!, definition: w.definition!, example: w.example || '' }));
+          }
+        }
+      } catch (err) {
+        console.error('Vocabulaire personnel indisponible:', err);
+      }
+
+      const allLearningWords = [...selectedWordObjects, ...spacedWordObjects, ...personalWordObjects];
+
+      const result = await generate(selectedWordObjects, 'apprentissage', [selectedTheme], spacedWordObjects, personalWordObjects);
 
       // Ordre : 1. texte (IA), 2. dropdown (IA), 3. definitions (client), 4. word_families (client), 5. fill_in_blanks (IA), 6. production (IA)
       const exercises: VocabulaireExercise[] = [];
@@ -532,8 +558,10 @@ export default function VocabulaireActivity({
 
         if (textEx) exercises.push(textEx);
         if (dropdownEx) exercises.push(dropdownEx);
-        exercises.push(buildDefinitionsExercise(allLearningWords)); // client
-        exercises.push(buildWordFamiliesExercise(allLearningWords)); // client
+        // Melange avant le plafond a 10 mots, pour que revision et personnels soient testes
+        exercises.push(buildDefinitionsExercise(shuffle(allLearningWords))); // client
+        // Pas les mots personnels : ils n'ont ni famille, ni synonymes, ni antonymes
+        exercises.push(buildWordFamiliesExercise([...selectedWordObjects, ...spacedWordObjects])); // client
         if (fillEx) exercises.push(fillEx);
         if (prodEx) exercises.push(prodEx);
       }
@@ -551,7 +579,7 @@ export default function VocabulaireActivity({
       flipTo('verso');
     }
     // L'evaluation n'utilise plus handleGenerate — elle a son propre flux
-  }, [phase, diagnosticCount, diagnosticSelections, currentSelection, allThemeWords, wordMastery, selectedTheme, generate, flipTo, generateDiagnosticExercises]);
+  }, [phase, diagnosticCount, diagnosticSelections, currentSelection, allThemeWords, wordMastery, selectedTheme, generate, flipTo, generateDiagnosticExercises, getAuthHeaders]);
 
   // --- Diagnostic intermediaire — generation directe (pas de page intermediaire) ---
   const handleIntermediateDiagnostic = useCallback(async () => {
@@ -571,8 +599,6 @@ export default function VocabulaireActivity({
   }, [resetExercises, allThemeWords, wordMastery, generateDiagnosticExercises]);
 
   // --- Evaluation : verification condition d'acces puis generation ---
-  const { getAuthHeaders } = useAuth();
-
   const handleEvaluation = useCallback(async () => {
     const total = allWordTexts.length;
     if (total === 0) return;
@@ -670,8 +696,8 @@ export default function VocabulaireActivity({
 
     setWordMastery((prev) => {
       const updated = [...prev];
-      for (const { word, correct } of result.results) {
-        const attempt: WordAttempt = { date: now, context, correct };
+      for (const { word, correct, credit } of result.results) {
+        const attempt: WordAttempt = { date: now, context, correct, ...(credit !== undefined ? { credit } : {}) };
         const existing = updated.find((m) => m.word === word);
         if (existing) {
           existing.attempts = [...existing.attempts, attempt];

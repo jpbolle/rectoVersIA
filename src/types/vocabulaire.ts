@@ -220,6 +220,7 @@ export interface WordAttempt {
   date: string;           // ISO
   context: 'diagnostic' | 'learning' | 'evaluation';
   correct: boolean;
+  credit?: number;        // 0.5 si trouve avec indice (syllabe/lettre) — absent = 1
 }
 
 export interface WordMasteryEntry {
@@ -233,10 +234,10 @@ export type WordCategory = 'unknown' | 'misconceived' | 'known';
 // Calcul du niveau de maitrise d'un mot
 export function getWordCategory(entry: WordMasteryEntry | undefined): WordCategory {
   if (!entry || entry.attempts.length === 0) return 'unknown';
-  // Dernieres 3 tentatives (ou moins)
+  // Dernieres 3 tentatives (ou moins) — une reussite avec indice vaut 0.5
   const recent = entry.attempts.slice(-3);
-  const correctCount = recent.filter((a) => a.correct).length;
-  if (correctCount >= 2) return 'known';
+  const score = recent.reduce((sum, a) => sum + (a.correct ? (a.credit ?? 1) : 0), 0);
+  if (score >= 2) return 'known';
   return 'misconceived';
 }
 
@@ -244,7 +245,7 @@ export function getWordCategory(entry: WordMasteryEntry | undefined): WordCatego
 export interface ExerciseResult {
   exerciseIndex: number;
   wordsTested: string[];
-  results: { word: string; correct: boolean }[];
+  results: { word: string; correct: boolean; credit?: number }[];
 }
 
 export interface ProductionValidation {
@@ -309,6 +310,51 @@ export function removeAccents(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+// Helper : premiere syllabe d'un mot francais (regles simplifiees \u2014 sert d'indice,
+// une coupe imparfaite sur un mot rare est sans gravite)
+export function getFirstSyllable(word: string): string {
+  const w = word.trim().toLowerCase().split(/[\s-]/)[0];
+  if (w.length <= 2) return w;
+
+  const isVowel = (c: string) => 'aeiouy\u00e0\u00e2\u00e4\u00e9\u00e8\u00ea\u00eb\u00ee\u00ef\u00f4\u00f6\u00fb\u00fc\u00f9\u0153'.includes(c);
+  // Groupes de consonnes qu'on ne separe jamais (attaque de la syllabe suivante)
+  const inseparable = new Set([
+    'bl', 'cl', 'fl', 'gl', 'pl', 'br', 'cr', 'dr', 'fr', 'gr', 'pr', 'tr', 'vr',
+    'ch', 'ph', 'th', 'gn',
+  ]);
+
+  // Attaque consonantique initiale
+  let i = 0;
+  while (i < w.length && !isVowel(w[i])) i++;
+  if (i >= w.length) return w.slice(0, 2); // pas de voyelle (sigle...)
+
+  // Noyau vocalique (voyelles consecutives : eau, ou, ai...)
+  while (i < w.length && isVowel(w[i])) i++;
+
+  let syllable: string;
+  if (i >= w.length) {
+    syllable = w; // monosyllabe type "ami" tronque -> gere plus bas
+  } else {
+    // Consonnes entre ce noyau et le suivant
+    let j = i;
+    while (j < w.length && !isVowel(w[j])) j++;
+    const consCount = j - i;
+    if (j >= w.length) {
+      syllable = w; // monosyllabe a consonnes finales ("temps")
+    } else if (consCount <= 1) {
+      syllable = w.slice(0, i); // la consonne part avec la syllabe suivante ("ca-nard")
+    } else if (inseparable.has(w.slice(j - 2, j))) {
+      syllable = w.slice(0, j - 2); // "ta-bleau", "com-prendre"
+    } else {
+      syllable = w.slice(0, i + 1); // coupe entre les consonnes ("par-tir")
+    }
+  }
+
+  // Un indice ne doit jamais reveler le mot entier
+  if (syllable.length >= w.length) return w.slice(0, 2);
+  return syllable;
+}
+
 // Helper : obtenir les mots par categorie
 export function categorizeWords(
   allWords: string[],
@@ -341,8 +387,10 @@ export function getSpacedRepetitionWords(
 
   const result: string[] = [];
   result.push(...misconceived.slice(0, Math.min(4, count - 1)).map((m) => m.word));
-  if (known.length > 0) {
-    result.push(known[0].word);
+  // Completer avec des mots connus jusqu'a atteindre count (consolidation)
+  for (const k of known) {
+    if (result.length >= count) break;
+    result.push(k.word);
   }
   return result.slice(0, count);
 }

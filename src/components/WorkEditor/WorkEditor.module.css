@@ -429,6 +429,30 @@
   position: relative;
 }
 
+/* Avertissement collage externe bloqué */
+.pasteBlockedNotice {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  max-width: 90%;
+  padding: 10px 18px;
+  border-radius: 8px;
+  background: #fdf3e4;
+  border: 1px solid var(--c-accent);
+  color: #8a5a1e;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  animation: pasteNoticeIn 0.2s ease-out;
+}
+
+@keyframes pasteNoticeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* ── Bulles IA au-dessus du texte ── */
 
 /* Triple interligne quand les bulles IA sont actives */
@@ -439,6 +463,54 @@
 }
 
 /* Anchor + bubble base styles are now inline in createBubbleDOM (CSS Modules can't target ProseMirror widget DOM) */
+
+/* Masquage des bulles IA via le toggle de la barre d'outils
+   (!important requis : les styles des bulles sont inline) */
+.hideAiBubbles :global([data-ai-bubble-type]) {
+  display: none !important;
+}
+
+/* ── Dictionnaire : surlignage fluo + popup de définition ── */
+
+/* Dictionnaire actif : le curseur signale qu'un clic consulte le dictionnaire */
+.dictMode :global(.tiptap) {
+  cursor: help;
+}
+
+/* Mot cliqué : effet fluo de surligneur, lisible sur tous les thèmes de page */
+.editorArea :global(.dict-highlight) {
+  background: linear-gradient(104deg, rgba(255, 224, 102, 0) 0.9%, #ffe066 2.4%, rgba(255, 224, 102, 0.6) 5.8%, rgba(255, 224, 102, 0.35) 93%, #ffe066 96%, rgba(255, 224, 102, 0) 98%);
+  background-color: #ffe066;
+  color: #3d3832;
+  padding: 1px 2px;
+  margin: -1px -2px;
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  cursor: pointer;
+}
+
+.editorArea :global(.dict-highlight:hover) {
+  background-color: #ffd633;
+}
+
+/* (La popup de définition est le composant partagé DictionaryPopup) */
+
+.aiBubblesToggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.aiBubblesToggleLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+}
 
 .loading {
   display: flex;

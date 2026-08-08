@@ -465,6 +465,14 @@
   color: #fff;
 }
 
+.blankSyllableHint {
+  margin-left: 6px;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--c-accent);
+  white-space: nowrap;
+}
+
 .blankCorrect {
   border-color: #27ae60 !important;
   border-bottom-color: #27ae60 !important;

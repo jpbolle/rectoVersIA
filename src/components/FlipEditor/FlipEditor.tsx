@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import WorkEditor from '@/components/WorkEditor';
 import { DraftEditor } from '@/components/DraftEditor';
 import { getDraftType, createEmptyDraft } from '@/lib/draft-utils';
+import { setInternalClip, selectionTextFromEvent } from '@/lib/internal-clipboard';
 import type { Grille } from '@/types/grille';
 import type { DraftContent, DraftType } from '@/types/travail';
 import type { DraftItemAnnotation } from '@/types/correction';
@@ -32,6 +33,8 @@ interface FlipEditorProps {
   accesIA?: boolean;
   aiSuggestions?: Record<AiSuggestionType, AiSuggestion | null>;
   onDecorationClick?: (type: AiSuggestionType, itemId: string) => void;
+  // Aide dictionnaire (clic sur un mot → définition)
+  dictionaryEnabled?: boolean;
   // Inverse recto/verso : false = recto rédaction / verso planification ; true = inverse
   inverted?: boolean;
 }
@@ -48,6 +51,7 @@ export default function FlipEditor({
   accesIA,
   aiSuggestions,
   onDecorationClick,
+  dictionaryEnabled,
   inverted = false,
 }: FlipEditorProps) {
   // Le recto est la face affichee a l'ouverture
@@ -157,10 +161,16 @@ export default function FlipEditor({
                 accesIA={accesIA}
                 aiSuggestions={aiSuggestions}
                 onDecorationClick={onDecorationClick}
+                dictionaryEnabled={dictionaryEnabled}
               />
             </div>
           ) : (
-            <div className={styles.cardFace}>
+            <div
+              className={styles.cardFace}
+              // Le texte copié dans la planification peut être collé dans la rédaction
+              onCopy={(e) => setInternalClip(selectionTextFromEvent(e))}
+              onCut={(e) => setInternalClip(selectionTextFromEvent(e))}
+            >
               <DraftEditor
                 draftType={draftType}
                 draft={currentDraft}

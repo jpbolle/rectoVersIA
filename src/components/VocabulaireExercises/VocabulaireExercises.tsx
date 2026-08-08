@@ -16,6 +16,7 @@ import type {
   ContextSentencesExercise,
   FillInBlanksDropdownExercise,
 } from '@/types/vocabulaire';
+import { getFirstSyllable } from '@/types/vocabulaire';
 import styles from './VocabulaireExercises.module.css';
 
 // ── Sous-composants exercices ──
@@ -676,7 +677,7 @@ function FillInBlanks({
   onResult,
 }: {
   exercise: FillInBlanksExercise;
-  onResult?: (results: { word: string; correct: boolean }[]) => void;
+  onResult?: (results: { word: string; correct: boolean; credit?: number }[]) => void;
 }) {
   const [answers, setAnswers] = useState<string[]>(
     new Array(exercise.answers.length).fill('')
@@ -684,6 +685,8 @@ function FillInBlanks({
   const [attempts, setAttempts] = useState(0);
   const [locked, setLocked] = useState<Set<number>>(new Set());
   const [hints, setHints] = useState<Set<number>>(new Set());
+  // Trous trouves apres affichage d'un indice (syllabe ou lettre) : demi-point
+  const [halfCredit, setHalfCredit] = useState<Set<number>>(new Set());
   const revealed = attempts >= 3;
 
   const parts = exercise.text_with_blanks.split(/_{3,}|___/);
@@ -692,23 +695,27 @@ function FillInBlanks({
     const newAttempt = attempts + 1;
     setAttempts(newAttempt);
     const newLocked = new Set(locked);
-    let allCorrect = true;
+    const newHalf = new Set(halfCredit);
     for (let i = 0; i < exercise.answers.length; i++) {
+      if (newLocked.has(i)) continue;
       if ((answers[i] || '').toLowerCase().trim() === exercise.answers[i].toLowerCase().trim()) {
         newLocked.add(i);
-      } else {
-        allCorrect = false;
+        // Indice vu si bouton "i" utilise, ou des la 2e tentative (syllabe affichee apres 1 echec)
+        if (hints.has(i) || attempts >= 1) {
+          newHalf.add(i);
+        }
       }
     }
     setLocked(newLocked);
-    // Notifier des la 1re tentative (handleResult ignore les doublons)
-    {
-      if (onResult) {
-        onResult(exercise.answers.map((correctAnswer, i) => ({
-          word: correctAnswer,
-          correct: newLocked.has(i),
-        })));
-      }
+    setHalfCredit(newHalf);
+    // Notifier a la fin de l'exercice seulement, pour connaitre les demi-points
+    const nowDone = newLocked.size === exercise.answers.length || newAttempt >= 3;
+    if (nowDone && onResult) {
+      onResult(exercise.answers.map((correctAnswer, i) => ({
+        word: correctAnswer,
+        correct: newLocked.has(i),
+        ...(newLocked.has(i) && newHalf.has(i) ? { credit: 0.5 } : {}),
+      })));
     }
   };
 
@@ -760,6 +767,11 @@ function FillInBlanks({
                   >
                     i
                   </button>
+                )}
+                {attempts > 0 && !revealed && !locked.has(i) && (
+                  <span className={styles.blankSyllableHint} title="Indice : première syllabe">
+                    💡 {getFirstSyllable(exercise.answers[i])}…
+                  </span>
                 )}
                 {revealed && !locked.has(i) && (
                   <span className={styles.blankCorrectionInline}>→ {exercise.answers[i]}</span>
@@ -899,7 +911,7 @@ export default function VocabulaireExercises({
     }
   }, [exercises]);
 
-  const handleResult = useCallback((exerciseIndex: number, results: { word: string; correct: boolean }[]) => {
+  const handleResult = useCallback((exerciseIndex: number, results: { word: string; correct: boolean; credit?: number }[]) => {
     if (completedExercises.has(exerciseIndex)) return;
     setCompletedExercises((prev) => new Set([...prev, exerciseIndex]));
 

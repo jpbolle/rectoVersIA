@@ -1,0 +1,21 @@
+/* Couche transparente : laisse le layout du panneau intact */
+
+.layer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Dictionnaire actif : le curseur signale qu'un clic consulte le dictionnaire */
+.enabled {
+  cursor: help;
+}
+
+.enabled button,
+.enabled input,
+.enabled textarea,
+.enabled select,
+.enabled a {
+  cursor: pointer;
+}

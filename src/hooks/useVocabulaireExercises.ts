@@ -22,7 +22,8 @@ export function useVocabulaireExercises() {
       words: VocabulaireWord[],
       mode: 'apprentissage' | 'diagnostic' | 'evaluation',
       themes: string[],
-      spacedWords?: VocabulaireWord[]
+      spacedWords?: VocabulaireWord[],
+      personalWords?: VocabulaireWord[]
     ) => {
       const headers = await getAuthHeaders();
       if (!headers) return null;
@@ -34,7 +35,7 @@ export function useVocabulaireExercises() {
         const res = await fetch('/api/vocabulaire/generate', {
           method: 'POST',
           headers,
-          body: JSON.stringify({ words, mode, themes, spacedWords }),
+          body: JSON.stringify({ words, mode, themes, spacedWords, personalWords }),
         });
 
         const json = await res.json();

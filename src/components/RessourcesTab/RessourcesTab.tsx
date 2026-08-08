@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import DictionaryPanel from '@/components/DictionaryPanel';
 import type { Devoir } from '@/types/devoir';
 import styles from './RessourcesTab.module.css';
 
@@ -19,6 +20,9 @@ interface RessourcesTabProps {
   /** Annotations de l'élève (lecture seule pour le prof) */
   studentRessourceAnnotations?: string;
   studentRessourceNotes?: Record<string, string>;
+  /** Aide dictionnaire permanente (élève) — bloc affiché si le callback est fourni */
+  dictionaryEnabled?: boolean;
+  onDictionaryEnabledChange?: (value: boolean) => void;
 }
 
 // Fonction pour transformer les URLs en liens cliquables
@@ -134,10 +138,18 @@ export default function RessourcesTab({
   onRessourceNotesChange,
   studentRessourceAnnotations,
   studentRessourceNotes,
+  dictionaryEnabled = false,
+  onDictionaryEnabledChange,
 }: RessourcesTabProps) {
+  // Aide permanente : bloc dictionnaire au-dessus des ressources du prof
+  const dictionaryBlock = onDictionaryEnabledChange ? (
+    <DictionaryPanel enabled={dictionaryEnabled} onEnabledChange={onDictionaryEnabledChange} />
+  ) : null;
+
   if (!devoir.ressources) {
     return (
       <div className={styles.container}>
+        {dictionaryBlock}
         <div className={styles.empty}>
           <span className={styles.emptyIcon}>📚</span>
           <p className={styles.emptyText}>Aucune ressource fournie pour ce devoir.</p>
@@ -157,6 +169,7 @@ export default function RessourcesTab({
   if (!hasOutils && !hasDocument && !hasLegacy) {
     return (
       <div className={styles.container}>
+        {dictionaryBlock}
         <div className={styles.empty}>
           <span className={styles.emptyIcon}>📚</span>
           <p className={styles.emptyText}>Aucune ressource fournie pour ce devoir.</p>
@@ -172,6 +185,7 @@ export default function RessourcesTab({
 
     return (
       <div className={styles.container}>
+        {dictionaryBlock}
         {/* Outils section (read-only links) above editor */}
         {hasOutils && (
           <div className={styles.outilsSection}>
@@ -196,6 +210,7 @@ export default function RessourcesTab({
 
   return (
     <div className={styles.container}>
+      {dictionaryBlock}
       {hasOutils && (
         <div className={styles.outilsSection}>
           <h4 className={styles.outilsTitle}>🔧 Outils</h4>

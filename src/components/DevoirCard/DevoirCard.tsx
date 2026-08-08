@@ -80,6 +80,21 @@ export default function DevoirCard({
     >
       <h3 className={styles.title}>{devoir.intitule}</h3>
 
+      {devoir.typeTravail === 'vocabulaire' ? (
+        <div className={styles.uaaTags}>
+          <span className={styles.uaaTag}>Voc</span>
+        </div>
+      ) : (
+        devoir.uaa &&
+        devoir.uaa.length > 0 && (
+          <div className={styles.uaaTags}>
+            {devoir.uaa.map((n) => (
+              <span key={n} className={styles.uaaTag}>UAA {n}</span>
+            ))}
+          </div>
+        )
+      )}
+
       <div className={styles.metaRow}>
         <span className={styles.metaItem}>
           <span className={styles.metaIcon}>📚</span>

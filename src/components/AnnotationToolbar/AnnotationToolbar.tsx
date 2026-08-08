@@ -84,17 +84,22 @@ export default function AnnotationToolbar({
       </button>
 
       {onProfViewOnlyChange && (
-        <label className={`${styles.profViewOnlyToggle} ${profViewOnly ? styles.profViewOnlyActive : ''}`}>
+        <label
+          className={`${styles.profViewOnlyToggle} ${profViewOnly ? '' : styles.profViewOnlyActive}`}
+          title={
+            profViewOnly
+              ? "Afficher les traces d'aide et de réécriture"
+              : "Masquer les traces d'aide et de réécriture"
+          }
+        >
+          <span className={styles.profViewOnlyLabel}>Traces</span>
           <input
             type="checkbox"
-            checked={profViewOnly}
-            onChange={(e) => onProfViewOnlyChange(e.target.checked)}
+            checked={!profViewOnly}
+            onChange={(e) => onProfViewOnlyChange(!e.target.checked)}
             className={styles.profViewOnlyCheckbox}
           />
           <span className={styles.profViewOnlyTrack} />
-          <span className={styles.profViewOnlyLabel}>
-            {profViewOnly ? 'Masquer remarques IA et réécritures' : 'Afficher remarques IA et réécritures'}
-          </span>
         </label>
       )}
 

@@ -1,0 +1,264 @@
+/* Popup NavigKid! — design Classica (mêmes tokens que la sidebar) */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --primary: #2d6a5a;
+  --primary-dark: #1f4f43;
+  --primary-light: #e8f0ee;
+  --accent: #d4944c;
+  --accent-light: #fdf3e7;
+  --cream: #faf6f0;
+  --cream-dark: #f0ebe3;
+  --border: #d5cec4;
+  --text: #3d3832;
+  --text-light: #8a7f72;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--cream);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  width: 320px;
+}
+
+body::before {
+  content: "";
+  display: block;
+  height: 4px;
+  background: var(--accent);
+}
+
+/* ─── En-tête ─── */
+
+.entete {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 10px;
+}
+
+.logo {
+  width: 28px;
+  height: 28px;
+}
+
+.entete h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 20px;
+  color: var(--primary);
+}
+
+main {
+  padding: 0 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ─── Cartes d'aide ─── */
+
+.aide {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.aide-ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.aide-icone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--primary-light);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.aide-icone svg {
+  width: 18px;
+  height: 18px;
+}
+
+.aide-textes {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.aide-titre {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.aide-detail {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-light);
+}
+
+/* ─── Interrupteur ─── */
+
+.interrupteur {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.interrupteur input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.glissiere {
+  display: block;
+  width: 40px;
+  height: 22px;
+  background: var(--border);
+  border-radius: 11px;
+  transition: background 0.2s ease;
+}
+
+.glissiere::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.interrupteur input:checked + .glissiere {
+  background: var(--primary);
+}
+
+.interrupteur input:checked + .glissiere::before {
+  transform: translateX(18px);
+}
+
+.interrupteur input:focus-visible + .glissiere {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ─── Sélecteur de langue ─── */
+
+.langue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--cream-dark);
+}
+
+.langue label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+  white-space: nowrap;
+}
+
+.langue select {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--cream);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.langue select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* ─── Bouton PDF (affiché seulement sur un onglet PDF) ─── */
+
+.bouton-pdf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.bouton-pdf:hover {
+  background: #b87c39;
+}
+
+.bouton-pdf svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ─── Bouton sidebar ─── */
+
+.bouton-sidebar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.bouton-sidebar:hover {
+  background: var(--primary-dark);
+}
+
+.bouton-sidebar svg {
+  width: 16px;
+  height: 16px;
+}
