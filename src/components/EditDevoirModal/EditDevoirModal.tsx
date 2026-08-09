@@ -5,8 +5,9 @@ import Toggle from '@/components/Toggle/Toggle';
 import DatePicker from '@/components/DatePicker/DatePicker';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
 import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/QuestionnaireBuilder';
+import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import { getTodayString } from '@/lib/devoir-utils';
-import type { Devoir, Classe, DevoirRessource } from '@/types/devoir';
+import type { Devoir, Classe, DevoirRessource, EvaluationType } from '@/types/devoir';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import styles from './EditDevoirModal.module.css';
 
@@ -39,6 +40,7 @@ export default function EditDevoirModal({
   const [accesIA, setAccesIA] = useState(false);
   const [disponible, setDisponible] = useState(false);
   const [flipInverted, setFlipInverted] = useState(false);
+  const [evaluation, setEvaluation] = useState<EvaluationType>('formatif');
 
   // Ressources
   const [showRessources, setShowRessources] = useState(false);
@@ -59,6 +61,7 @@ export default function EditDevoirModal({
       setAccesIA(devoir.accesIA || false);
       setDisponible(devoir.disponible || false);
       setFlipInverted(devoir.flipInverted ?? false);
+      setEvaluation(devoir.evaluation ?? 'formatif');
 
       // Initialiser les ressources existantes
       if (devoir.ressources) {
@@ -92,14 +95,6 @@ export default function EditDevoirModal({
     }
   }, [devoir, getAuthHeaders]);
 
-  const handleClassToggle = (classe: Classe) => {
-    setSelectedClasses((prev) =>
-      prev.includes(classe)
-        ? prev.filter((c) => c !== classe)
-        : [...prev, classe]
-    );
-  };
-
   const isValid = selectedClasses.length > 0 && dateRemise && grille && intitule.trim();
 
   const handleSave = async () => {
@@ -129,6 +124,7 @@ export default function EditDevoirModal({
       accesIA,
       disponible,
       ressources: showRessources ? ressources : null,
+      evaluation,
       ...(devoir.typeTravail === 'ecrire' && { flipInverted }),
     });
   };
@@ -151,19 +147,12 @@ export default function EditDevoirModal({
             <label className={styles.label}>
               Classe(s) <span className={styles.required}>*</span>
             </label>
-            <div className={styles.classesGrid}>
-              {classeNames.map((c) => (
-                <label key={c} className={styles.classCheckbox}>
-                  <input
-                    type="checkbox"
-                    checked={selectedClasses.includes(c)}
-                    onChange={() => handleClassToggle(c)}
-                    className={styles.checkbox}
-                  />
-                  <span className={styles.classLabel}>{c}</span>
-                </label>
-              ))}
-            </div>
+            <ClassesDropdown
+              options={classeNames}
+              selected={selectedClasses}
+              onChange={setSelectedClasses}
+              disabled={isSaving}
+            />
           </div>
 
           {/* Date et Grille */}
@@ -195,6 +184,21 @@ export default function EditDevoirModal({
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Évaluation */}
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Évaluation <span className={styles.required}>*</span>
+            </label>
+            <select
+              className={styles.select}
+              value={evaluation}
+              onChange={(e) => setEvaluation(e.target.value as EvaluationType)}
+            >
+              <option value="formatif">Formative (entraînement)</option>
+              <option value="certificatif">Certificative (notée)</option>
+            </select>
           </div>
 
           {/* Intitule */}

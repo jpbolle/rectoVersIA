@@ -33,6 +33,8 @@ interface FlipEditorProps {
   accesIA?: boolean;
   aiSuggestions?: Record<AiSuggestionType, AiSuggestion | null>;
   onDecorationClick?: (type: AiSuggestionType, itemId: string) => void;
+  // null = pas de filtre ; tableau = seules ces bulles (ids `type:itemId`) sont visibles
+  aiBubbleFilter?: string[] | null;
   // Aide dictionnaire (clic sur un mot → définition)
   dictionaryEnabled?: boolean;
   // Inverse recto/verso : false = recto rédaction / verso planification ; true = inverse
@@ -51,6 +53,7 @@ export default function FlipEditor({
   accesIA,
   aiSuggestions,
   onDecorationClick,
+  aiBubbleFilter = null,
   dictionaryEnabled,
   inverted = false,
 }: FlipEditorProps) {
@@ -161,6 +164,7 @@ export default function FlipEditor({
                 accesIA={accesIA}
                 aiSuggestions={aiSuggestions}
                 onDecorationClick={onDecorationClick}
+                aiBubbleFilter={aiBubbleFilter}
                 dictionaryEnabled={dictionaryEnabled}
               />
             </div>

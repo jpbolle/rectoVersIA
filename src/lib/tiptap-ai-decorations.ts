@@ -156,7 +156,7 @@ const BUBBLE_LETTERS: Record<AiSuggestionType, string> = {
 
 const BUBBLE_COLORS: Record<AiSuggestionType, string> = {
   ortho: '#e53935',
-  ponctu: '#757575',
+  ponctu: '#1e88e5',
   synt: '#ff9800',
   lex: '#5d4037',
 };
@@ -165,7 +165,12 @@ const BUBBLE_COLORS: Record<AiSuggestionType, string> = {
  * Crée un élément DOM pour une bulle IA individuelle.
  * Les styles critiques (couleur, dimensions) sont en inline pour garantir la visibilité.
  */
-function createBubbleDOM(type: AiSuggestionType, itemId: string, offsetIndex: number): HTMLElement {
+function createBubbleDOM(
+  type: AiSuggestionType,
+  itemId: string,
+  offsetIndex: number,
+  focused = false,
+): HTMLElement {
   // Ancre zero-size positionnée dans le flux texte.
   // Tous les styles sont inline car CSS Modules ne ciblent pas le DOM ProseMirror.
   const anchor = document.createElement('span');
@@ -187,6 +192,8 @@ function createBubbleDOM(type: AiSuggestionType, itemId: string, offsetIndex: nu
   const el = document.createElement('span');
   el.setAttribute('data-ai-bubble-type', type);
   el.setAttribute('data-ai-bubble-item', itemId);
+  // Bulle liée au conseil affiché dans le panneau : mise en avant (pulse CSS)
+  if (focused) el.setAttribute('data-ai-bubble-focus', 'true');
   el.textContent = BUBBLE_LETTERS[type];
   el.style.cssText = [
     'position:absolute',
@@ -230,6 +237,9 @@ function createBubbleDOM(type: AiSuggestionType, itemId: string, offsetIndex: nu
 export function createAllAiDecorations(
   doc: PmNode,
   suggestions: Record<AiSuggestionType, AiSuggestion | null>,
+  // Si fourni : seules les bulles dont l'id composite `type:itemId` est dans le
+  // Set sont créées (synchro avec le conseil affiché dans le panneau Aide IA)
+  onlyIds: Set<string> | null = null,
 ): DecorationSet {
   const decorations: Decoration[] = [];
 
@@ -254,6 +264,7 @@ export function createAllAiDecorations(
     const byPara = new Map<number, AiSuggestionItem[]>();
     for (const item of suggestion.suggestions) {
       if (item.dismissed) continue;
+      if (onlyIds && !onlyIds.has(`${type}:${item.id}`)) continue;
       const list = byPara.get(item.paragraphIndex) || [];
       list.push(item);
       byPara.set(item.paragraphIndex, list);
@@ -307,10 +318,14 @@ export function createAllAiDecorations(
     const bubble = allBubbles[i];
     const offsetIdx = offsets[i];
     decorations.push(
-      Decoration.widget(bubble.pos, () => createBubbleDOM(bubble.type, bubble.itemId, offsetIdx), {
-        side: -1,
-        key: `bubble-${bubble.type}-${bubble.itemId}`,
-      })
+      Decoration.widget(
+        bubble.pos,
+        () => createBubbleDOM(bubble.type, bubble.itemId, offsetIdx, onlyIds !== null),
+        {
+          side: -1,
+          key: `bubble-${bubble.type}-${bubble.itemId}-${onlyIds !== null ? 'focus' : 'std'}`,
+        }
+      )
     );
   }
 
@@ -323,9 +338,10 @@ export function createAllAiDecorations(
 export function updateAllAiDecorations(
   editor: Editor,
   suggestions: Record<AiSuggestionType, AiSuggestion | null>,
+  onlyIds: Set<string> | null = null,
 ) {
   const { doc } = editor.state;
-  const decoSet = createAllAiDecorations(doc, suggestions);
+  const decoSet = createAllAiDecorations(doc, suggestions, onlyIds);
   const tr = editor.state.tr.setMeta(aiDecorationsKey, decoSet);
   editor.view.dispatch(tr);
 }

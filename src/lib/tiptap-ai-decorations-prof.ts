@@ -18,14 +18,14 @@ const BUBBLE_LETTERS: Record<AiSuggestionType, string> = {
 
 const BUBBLE_COLORS: Record<AiSuggestionType, string> = {
   ortho: '#e53935',
-  ponctu: '#757575',
+  ponctu: '#1e88e5',
   synt: '#ff9800',
   lex: '#5d4037',
 };
 
 const BUBBLE_COLORS_DISMISSED: Record<AiSuggestionType, string> = {
   ortho: '#ef9a9a',
-  ponctu: '#bdbdbd',
+  ponctu: '#90caf9',
   synt: '#ffcc80',
   lex: '#a1887f',
 };

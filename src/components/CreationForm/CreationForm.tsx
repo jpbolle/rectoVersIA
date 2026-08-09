@@ -5,9 +5,10 @@ import Toggle from '@/components/Toggle/Toggle';
 import DatePicker from '@/components/DatePicker/DatePicker';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
 import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/QuestionnaireBuilder';
+import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import { getTodayString } from '@/lib/devoir-utils';
 import { useVocabulaireThemes } from '@/hooks/useVocabulaireThemes';
-import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail } from '@/types/devoir';
+import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail, EvaluationType } from '@/types/devoir';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import styles from './CreationForm.module.css';
 
@@ -45,6 +46,9 @@ export default function CreationForm({
   // Type de travail
   const [typeTravail, setTypeTravail] = useState<TypeTravail>('ecrire');
 
+  // Évaluation : formative (entraînement) ou certificative (comptabilisée)
+  const [evaluation, setEvaluation] = useState<EvaluationType>('formatif');
+
   // NavigKid (type rechercher)
   const [nkQuestions, setNkQuestions] = useState<NavigKidQuestion[]>([]);
   const [nkThemes, setNkThemes] = useState<string[]>([]);
@@ -64,14 +68,6 @@ export default function CreationForm({
   const isValid = baseValid && grilleValid
     && (typeTravail !== 'rechercher' || nkQuestions.some(q => q.texte.trim()));
 
-  const handleClassToggle = (classe: Classe) => {
-    setSelectedClasses((prev) =>
-      prev.includes(classe)
-        ? prev.filter((c) => c !== classe)
-        : [...prev, classe]
-    );
-  };
-
   const resetForm = useCallback(() => {
     setSelectedClasses([]);
     setDateRemise('');
@@ -84,6 +80,7 @@ export default function CreationForm({
     setAccesIA(false);
     setDisponible(false);
     setTypeTravail('ecrire');
+    setEvaluation('formatif');
     setNkQuestions([]);
     setNkThemes([]);
     setFlipInverted(false);
@@ -102,6 +99,7 @@ export default function CreationForm({
       accesIA,
       disponible,
       typeTravail,
+      evaluation,
       ...(typeTravail === 'ecrire' && { flipInverted }),
     };
 
@@ -140,25 +138,18 @@ export default function CreationForm({
         )}
       </div>
 
-      {/* Ligne 1: Classes + Date + Type travail + (Grille si pas vocabulaire) */}
-      <div className={typeTravail === 'vocabulaire' ? styles.formRowThree : styles.formRowFour}>
+      {/* Ligne 1: Classes + Date + Type travail + Évaluation + (Grille si pas vocabulaire) */}
+      <div className={typeTravail === 'vocabulaire' ? styles.formRowFour : styles.formRowFive}>
         <div className={styles.formGroup}>
           <label className={styles.label}>
             Classe(s) <span className={styles.required}>*</span>
           </label>
-          <div className={styles.classesGrid}>
-            {classeNames.map((c) => (
-              <label key={c} className={styles.classCheckbox}>
-                <input
-                  type="checkbox"
-                  checked={selectedClasses.includes(c)}
-                  onChange={() => handleClassToggle(c)}
-                  className={styles.checkbox}
-                />
-                <span className={styles.classLabel}>{c}</span>
-              </label>
-            ))}
-          </div>
+          <ClassesDropdown
+            options={classeNames}
+            selected={selectedClasses}
+            onChange={setSelectedClasses}
+            disabled={isSubmitting}
+          />
         </div>
 
         <div className={styles.formGroup}>
@@ -184,6 +175,20 @@ export default function CreationForm({
             <option value="lire">Lire</option>
             <option value="rechercher">Rechercher</option>
             <option value="vocabulaire">Vocabulaire</option>
+          </select>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label className={styles.label}>
+            Évaluation <span className={styles.required}>*</span>
+          </label>
+          <select
+            className={styles.select}
+            value={evaluation}
+            onChange={(e) => setEvaluation(e.target.value as EvaluationType)}
+          >
+            <option value="formatif">Formative (entraînement)</option>
+            <option value="certificatif">Certificative (notée)</option>
           </select>
         </div>
 

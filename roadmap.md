@@ -51,6 +51,12 @@
 
 ## Fait
 
+- [x] **Aide IA à la réécriture refondue** — panneau à 4 onglets par catégorie, conseils
+  révélés un par un (navigation libre), synchro des bulles de l'éditeur avec le conseil
+  affiché, ponctuation passée au bleu. *(2026-08-09)*
+- [x] **Champ Évaluation sur les devoirs** — formative (entraînement) ou certificative
+  (notée), tag sur les cards prof et élève ; sélection des classes en menu déroulant à
+  cases. *(2026-08-09)*
 - [x] **Exercices de vocabulaire enrichis** — mots de révision complétés par des mots
   connus, mots personnels injectés, indice syllabique sur le texte à trous (demi-point),
   stats pondérées. *(2026-08-08)*

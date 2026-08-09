@@ -80,19 +80,29 @@ export default function DevoirCard({
     >
       <h3 className={styles.title}>{devoir.intitule}</h3>
 
-      {devoir.typeTravail === 'vocabulaire' ? (
+      {(devoir.evaluation ||
+        devoir.typeTravail === 'vocabulaire' ||
+        (devoir.uaa && devoir.uaa.length > 0)) && (
         <div className={styles.uaaTags}>
-          <span className={styles.uaaTag}>Voc</span>
-        </div>
-      ) : (
-        devoir.uaa &&
-        devoir.uaa.length > 0 && (
-          <div className={styles.uaaTags}>
-            {devoir.uaa.map((n) => (
+          {devoir.typeTravail === 'vocabulaire' ? (
+            <span className={styles.uaaTag}>Voc</span>
+          ) : (
+            devoir.uaa?.map((n) => (
               <span key={n} className={styles.uaaTag}>UAA {n}</span>
-            ))}
-          </div>
-        )
+            ))
+          )}
+          {devoir.evaluation && (
+            <span
+              className={
+                devoir.evaluation === 'certificatif'
+                  ? styles.evalTagCertificatif
+                  : styles.evalTagFormatif
+              }
+            >
+              {devoir.evaluation === 'certificatif' ? 'Certificatif' : 'Formatif'}
+            </span>
+          )}
+        </div>
       )}
 
       <div className={styles.metaRow}>

@@ -20,10 +20,19 @@ Session 2026-08-08 (**livré, non testé, non déployé**) — apprentissage enr
   l'exercice** (tout trouvé ou 3 tentatives), plus à la 1ʳᵉ vérification — un abandon
   en cours d'exercice n'enregistre plus rien.
 
+Session 2026-08-09 (retours de test JP, **livré non déployé**) :
+- Exercice 1 (texte + définitions) : popup de définition **en portal** (position fixe,
+  z-index 10000, passe devant les entêtes ; sous le mot si trop haut ; max 360 px) —
+  corrige aussi le double affichage quand un mot apparaissait deux fois.
+- Exercice 5 (texte à trous) : indice = **2 premières lettres** (`slice(0, 2)`),
+  affiché **uniquement après une vérification** et seulement sur les trous faux ou
+  vides. Bouton « i » supprimé, `getFirstSyllable` supprimé de `types/vocabulaire.ts`.
+  Demi-point conservé : trou trouvé à partir de la 2ᵉ vérification → `credit: 0.5`.
+
 ## TODOs
 
-- [ ] **Tester la session d'apprentissage enrichie** (compte élève avec liste
-  personnelle remplie) : injection des mots, indice syllabique, demi-points en stats.
+- [ ] **Finir de tester la session d'apprentissage** : injection des mots personnels,
+  demi-points en stats (les ex. 1 et 5 ont été testés le 2026-08-09, corrections faites).
 - [ ] **Vérifier le format JSON IA pour `fill_in_blanks_dropdown` et `context_sentences`**
   (exercices générés en mode `diagnostic`). Source possible de bugs silencieux si Claude
   ne respecte pas le format attendu. Test : dérouler un diagnostic complet, surveiller la

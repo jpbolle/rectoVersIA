@@ -207,6 +207,7 @@ export default function DashboardPage() {
           disponible: false,
           ressources: devoir.ressources || null,
           typeTravail: devoir.typeTravail || 'ecrire',
+          evaluation: devoir.evaluation ?? 'formatif',
           questionnaire,
         });
         setMessage({ text: 'Devoir dupliqué avec succès !', type: 'success' });

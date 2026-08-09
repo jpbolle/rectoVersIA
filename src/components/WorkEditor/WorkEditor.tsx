@@ -33,6 +33,9 @@ interface WorkEditorProps {
   // Props IA (décorations inline uniquement)
   aiSuggestions?: Record<AiSuggestionType, AiSuggestion | null>;
   onDecorationClick?: (type: AiSuggestionType, itemId: string) => void;
+  // Filtre de bulles : null = pas de filtre (le toggle « Aide IA » décide tout/rien) ;
+  // tableau = seules ces bulles (ids `type:itemId`) sont visibles, quel que soit le toggle
+  aiBubbleFilter?: string[] | null;
   // Aide dictionnaire : clic sur un mot → surlignage + popup définition
   dictionaryEnabled?: boolean;
 }
@@ -62,6 +65,7 @@ export default function WorkEditor({
   accesIA = false,
   aiSuggestions = DEFAULT_SUGGESTIONS,
   onDecorationClick,
+  aiBubbleFilter = null,
   dictionaryEnabled = false,
 }: WorkEditorProps) {
   const { preferences } = usePreferences();
@@ -210,14 +214,20 @@ export default function WorkEditor({
   }, [disabled, editor]);
 
   // ── Mettre à jour toutes les décorations IA (inline synt/lex + bulles marginales) ──
+  // Clé stable du filtre pour les dépendances de l'effet
+  const aiBubbleFilterKey = aiBubbleFilter ? aiBubbleFilter.join('|') : null;
   useEffect(() => {
     if (!editor || !accesIA) return;
 
     const hasSuggestions = Object.values(aiSuggestions).some(s => s !== null);
     if (hasSuggestions) {
-      updateAllAiDecorations(editor, aiSuggestions);
+      updateAllAiDecorations(
+        editor,
+        aiSuggestions,
+        aiBubbleFilterKey === null ? null : new Set(aiBubbleFilterKey ? aiBubbleFilterKey.split('|') : []),
+      );
     }
-  }, [editor, accesIA, aiSuggestions.ortho, aiSuggestions.ponctu, aiSuggestions.synt, aiSuggestions.lex]);
+  }, [editor, accesIA, aiSuggestions.ortho, aiSuggestions.ponctu, aiSuggestions.synt, aiSuggestions.lex, aiBubbleFilterKey]);
 
   // ── Handlers de formatage ──
 
@@ -676,7 +686,7 @@ export default function WorkEditor({
 
       {/* Zone éditeur */}
       <div
-        className={`${styles.editorArea}${showAiBubbles ? '' : ` ${styles.hideAiBubbles}`}${dictionaryEnabled ? ` ${styles.dictMode}` : ''}`}
+        className={`${styles.editorArea}${showAiBubbles || aiBubbleFilter !== null ? '' : ` ${styles.hideAiBubbles}`}${dictionaryEnabled ? ` ${styles.dictMode}` : ''}`}
         ref={editorAreaRef}
         onClick={handleEditorClick}
       >

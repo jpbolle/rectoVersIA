@@ -470,6 +470,22 @@
   display: none !important;
 }
 
+/* Bulle liée au conseil affiché dans le panneau Aide IA : pulse pour attirer l'œil */
+.editorArea :global([data-ai-bubble-focus='true']) {
+  animation: bubbleFocusPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes bubbleFocusPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editorArea :global([data-ai-bubble-focus='true']) {
+    animation: none;
+  }
+}
+
 /* ── Dictionnaire : surlignage fluo + popup de définition ── */
 
 /* Dictionnaire actif : le curseur signale qu'un clic consulte le dictionnaire */

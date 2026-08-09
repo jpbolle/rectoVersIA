@@ -171,21 +171,26 @@
   position: relative;
 }
 
-.tooltip {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+/* Popup de définition en portal : position fixe, au-dessus de tout */
+.tooltipFloating {
+  position: fixed;
+  transform: translate(-50%, -100%);
   background: var(--c-text);
   color: white;
-  padding: 6px 10px;
+  padding: 8px 12px;
   border-radius: var(--c-radius);
-  font-size: 12px;
-  white-space: nowrap;
-  max-width: 280px;
-  white-space: normal;
-  z-index: 10;
+  font-size: 12.5px;
+  line-height: 1.5;
+  width: max-content;
+  max-width: 360px;
+  z-index: 10000;
   box-shadow: var(--c-shadow-popup);
+  pointer-events: none;
+}
+
+/* Variante sous le mot quand il n'y a pas de place au-dessus */
+.tooltipBelow {
+  transform: translate(-50%, 0);
 }
 
 /* Exercice 2: Drag and drop */
@@ -439,30 +444,6 @@
   align-items: center;
   gap: 2px;
   position: relative;
-}
-
-.hintBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1.5px solid var(--c-accent);
-  background: transparent;
-  color: var(--c-accent);
-  font-size: 11px;
-  font-weight: 700;
-  font-style: italic;
-  font-family: serif;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  vertical-align: middle;
-}
-
-.hintBtn:hover {
-  background: var(--c-accent);
-  color: #fff;
 }
 
 .blankSyllableHint {

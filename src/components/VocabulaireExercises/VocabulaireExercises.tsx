@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type {
   VocabulaireExercise,
   TextWithDefinitionsExercise,
@@ -16,13 +17,32 @@ import type {
   ContextSentencesExercise,
   FillInBlanksDropdownExercise,
 } from '@/types/vocabulaire';
-import { getFirstSyllable } from '@/types/vocabulaire';
 import styles from './VocabulaireExercises.module.css';
 
 // ── Sous-composants exercices ──
 
 function TextWithDefinitions({ exercise }: { exercise: TextWithDefinitionsExercise }) {
-  const [hoveredWord, setHoveredWord] = useState<string | null>(null);
+  // Popup rendue en portal (position fixe, au-dessus de tout : entêtes, colonnes).
+  // Une seule popup à la fois, positionnée depuis le mot survolé.
+  const [tooltip, setTooltip] = useState<{
+    definition: string;
+    x: number;
+    y: number;
+    below: boolean;
+  } | null>(null);
+
+  const showTooltip = (e: React.MouseEvent<HTMLSpanElement>, definition: string) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    // Pas assez de place au-dessus du mot → afficher sous le mot
+    const below = rect.top < 190;
+    const halfWidth = 190;
+    setTooltip({
+      definition,
+      x: Math.min(Math.max(rect.left + rect.width / 2, halfWidth), window.innerWidth - halfWidth),
+      y: below ? rect.bottom + 8 : rect.top - 8,
+      below,
+    });
+  };
 
   const renderText = () => {
     const sortedWords = [...exercise.highlighted_words].sort(
@@ -42,13 +62,10 @@ function TextWithDefinitions({ exercise }: { exercise: TextWithDefinitionsExerci
         <span
           key={i}
           className={styles.highlightedWord}
-          onMouseEnter={() => setHoveredWord(seg)}
-          onMouseLeave={() => setHoveredWord(null)}
+          onMouseEnter={(e) => showTooltip(e, match.definition)}
+          onMouseLeave={() => setTooltip(null)}
         >
           {seg}
-          {hoveredWord === seg && (
-            <span className={styles.tooltip}>{match.definition}</span>
-          )}
         </span>
       ) : (
         <span key={i}>{seg}</span>
@@ -61,6 +78,16 @@ function TextWithDefinitions({ exercise }: { exercise: TextWithDefinitionsExerci
       <h3 className={styles.exerciseTitle}>{exercise.title}</h3>
       <p className={styles.exerciseInstructions}>{exercise.instructions}</p>
       <div className={styles.textContentQuote}>{renderText()}</div>
+      {tooltip &&
+        createPortal(
+          <span
+            className={`${styles.tooltipFloating} ${tooltip.below ? styles.tooltipBelow : ''}`}
+            style={{ left: tooltip.x, top: tooltip.y }}
+          >
+            {tooltip.definition}
+          </span>,
+          document.body
+        )}
     </div>
   );
 }
@@ -684,8 +711,7 @@ function FillInBlanks({
   );
   const [attempts, setAttempts] = useState(0);
   const [locked, setLocked] = useState<Set<number>>(new Set());
-  const [hints, setHints] = useState<Set<number>>(new Set());
-  // Trous trouves apres affichage d'un indice (syllabe ou lettre) : demi-point
+  // Trous trouves apres affichage de l'indice (2 premieres lettres) : demi-point
   const [halfCredit, setHalfCredit] = useState<Set<number>>(new Set());
   const revealed = attempts >= 3;
 
@@ -700,8 +726,8 @@ function FillInBlanks({
       if (newLocked.has(i)) continue;
       if ((answers[i] || '').toLowerCase().trim() === exercise.answers[i].toLowerCase().trim()) {
         newLocked.add(i);
-        // Indice vu si bouton "i" utilise, ou des la 2e tentative (syllabe affichee apres 1 echec)
-        if (hints.has(i) || attempts >= 1) {
+        // Trouve a partir de la 2e verification : l'indice etait affiche depuis la 1re
+        if (attempts >= 1) {
           newHalf.add(i);
         }
       }
@@ -716,16 +742,6 @@ function FillInBlanks({
         correct: newLocked.has(i),
         ...(newLocked.has(i) && newHalf.has(i) ? { credit: 0.5 } : {}),
       })));
-    }
-  };
-
-  const showHint = (index: number) => {
-    if (hints.has(index)) return;
-    setHints((prev) => new Set([...prev, index]));
-    if (!answers[index]) {
-      const newAnswers = [...answers];
-      newAnswers[index] = exercise.answers[index][0];
-      setAnswers(newAnswers);
     }
   };
 
@@ -758,19 +774,9 @@ function FillInBlanks({
                   disabled={locked.has(i) || done}
                   placeholder="..."
                 />
-                {!done && !locked.has(i) && !hints.has(i) && (
-                  <button
-                    type="button"
-                    className={styles.hintBtn}
-                    onClick={() => showHint(i)}
-                    title="Indice : première lettre"
-                  >
-                    i
-                  </button>
-                )}
                 {attempts > 0 && !revealed && !locked.has(i) && (
-                  <span className={styles.blankSyllableHint} title="Indice : première syllabe">
-                    💡 {getFirstSyllable(exercise.answers[i])}…
+                  <span className={styles.blankSyllableHint} title="Indice : les deux premières lettres">
+                    💡 {exercise.answers[i].slice(0, 2)}…
                   </span>
                 )}
                 {revealed && !locked.has(i) && (

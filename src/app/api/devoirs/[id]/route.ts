@@ -136,6 +136,9 @@ export async function PATCH(
     if (body.ressources !== undefined) {
       updateData.ressources = body.ressources;
     }
+    if (body.evaluation !== undefined) {
+      updateData.evaluation = body.evaluation === 'certificatif' ? 'certificatif' : 'formatif';
+    }
     if (body.archive !== undefined) {
       updateData.archive = body.archive;
     }

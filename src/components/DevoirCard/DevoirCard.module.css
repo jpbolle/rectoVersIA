@@ -57,6 +57,34 @@
   text-transform: uppercase;
 }
 
+/* Tag évaluation : certificatif = compte pour la note (accent), formatif = discret */
+.evalTagCertificatif {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.evalTagFormatif {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: var(--c-bg-element);
+  color: var(--c-text-secondary);
+  border: 1px solid var(--c-border);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
 .metaRow {
   display: flex;
   flex-wrap: wrap;

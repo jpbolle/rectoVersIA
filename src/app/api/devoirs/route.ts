@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
       accesIA,
       disponible,
       typeTravail,
+      evaluation,
       questionnaire,
       vocabulaireConfig,
       flipInverted,
@@ -181,6 +182,7 @@ export async function POST(request: NextRequest) {
       anneeScolaire,
       profId: auth.uid,
       typeTravail: typeTravail || 'ecrire',
+      evaluation: evaluation === 'certificatif' ? 'certificatif' : 'formatif',
       flipInverted: flipInverted ?? false,
     };
 

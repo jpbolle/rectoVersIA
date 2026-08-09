@@ -5,7 +5,7 @@ import ConsignesTab from '@/components/ConsignesTab';
 import RessourcesTab from '@/components/RessourcesTab';
 import GrilleTab from '@/components/GrilleTab';
 import RemarquesTab from '@/components/RemarquesTab';
-import AiTab from '@/components/AiTab/AiTab';
+import AiTab, { type AiTabUiState } from '@/components/AiTab/AiTab';
 import RechercheStatsTab from '@/components/RechercheStatsTab/RechercheStatsTab';
 import VocabulaireStats from '@/components/VocabulaireStats/VocabulaireStats';
 import type { VocabulaireActivityState } from '@/types/vocabulaire';
@@ -54,6 +54,9 @@ interface AssistancePanelProps {
   onAiRequest?: (type: AiSuggestionType) => void;
   onAiDismiss?: (type: AiSuggestionType, itemId: string) => void;
   highlightedItemId?: string | null;
+  onAiDisplayedChange?: (compositeIds: string[]) => void;
+  aiUiState?: AiTabUiState | null;
+  onAiUiStateChange?: (state: AiTabUiState) => void;
   // Props IA grille
   aiGridResult?: AiGridResult | null;
   aiGridRequesting?: boolean;
@@ -107,6 +110,9 @@ export default function AssistancePanel({
   onAiRequest,
   onAiDismiss,
   highlightedItemId,
+  onAiDisplayedChange,
+  aiUiState,
+  onAiUiStateChange,
   aiGridResult,
   aiGridRequesting,
   aiGridError,
@@ -275,6 +281,9 @@ export default function AssistancePanel({
             highlightedItemId={highlightedItemId ?? null}
             onRequest={onAiRequest ?? (() => {})}
             usedTypes={aiUsedTypes ?? new Set()}
+            onDisplayedConseilsChange={onAiDisplayedChange}
+            initialUiState={aiUiState}
+            onUiStateChange={onAiUiStateChange}
             hasContent={!!studentContent && studentContent.replace(/<[^>]*>/g, '').trim().length > 0}
             readOnly={isProfessorView}
           />

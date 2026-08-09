@@ -116,6 +116,7 @@ interface Devoir {
   anneeScolaire: string;         // "2025-2026" (calcul auto)
   createdAt: Timestamp;
   typeTravail: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
+  evaluation?: 'formatif' | 'certificatif'; // certificatif = compte pour la note (tag sur les cards) ; absent sur les devoirs antérieurs
   questionnaireId?: string;       // ref questionnaires/{id} (type rechercher)
   codeAcces?: string;             // code 6 chars extension Chrome (type rechercher)
   vocabulaireThemes?: string[];   // serie lexicale imposee (type vocabulaire)
@@ -295,11 +296,18 @@ interface Questionnaire {
 - Panels : `AssistancePanel` (onglets Consignes/Ressources/Évaluation/Remarques/Aide
   IA/Recherche — prop `hideTabs` quand un parent gère la navigation), `GrilleTab`
   (3 évaluations : élève, IA, prof)
+- Aide IA réécriture : `AiTab` — 4 onglets par catégorie (Orthographe rouge, Ponctuation
+  bleue, Syntaxe orange, Lexique brun), bouton d'analyse **dans** chaque onglet, conseils
+  « un par un » (défaut, navigation libre ‹ ›) ou « tous » ; état d'interface mémorisé au
+  niveau de la page (`AiTabUiState`) ; **synchro bulles** : sur l'onglet Aide IA, seules
+  les bulles du conseil affiché restent visibles (pulse), sinon le toggle « Aide IA » de
+  l'éditeur décide tout/rien (`aiBubbleFilter` → `updateAllAiDecorations`)
 - Dictionnaire élève : `DictionaryPanel` (bloc permanent en tête de l'onglet Ressources :
   toggle + champ + 4 actions), `DictionaryPopup` (popup partagée, portal),
   `DictionaryClickLayer` (mots cliquables dans le panneau latéral, surlignage CSS Custom
   Highlight), clic-mot dans `WorkEditor` (surlignage fluo via `tiptap-dictionary.ts`)
-- UI : `WorkspaceRail`, `ResizableSplit`, `JoinClasseModal`, `BulkImportEleveModal`
+- UI : `WorkspaceRail`, `ResizableSplit`, `JoinClasseModal`, `BulkImportEleveModal`,
+  `ClassesDropdown` (menu déroulant multi-sélection à cases — formulaires devoir)
 
 ### Hooks
 `useAuth`, `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,

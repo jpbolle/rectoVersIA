@@ -1,5 +1,7 @@
 export type Classe = string;
 export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
+// formatif : entraînement, ne compte pas — certificatif : compte pour la note
+export type EvaluationType = 'formatif' | 'certificatif';
 
 export interface DevoirRessource {
   type: 'text';
@@ -25,6 +27,7 @@ export interface Devoir {
   anneeScolaire: string;
   profId: string;
   typeTravail: TypeTravail;
+  evaluation?: EvaluationType;    // absent sur les devoirs antérieurs au champ
   uaa?: number[];                 // UAA de la grille liée (enrichi côté serveur, lecture seule)
   questionnaireId?: string;       // Référence vers questionnaires/{id} (type rechercher)
   codeAcces?: string;             // Code 6 chars pour l'extension Chrome (type rechercher)
@@ -46,6 +49,7 @@ export interface CreateDevoirData {
   accesIA: boolean;
   disponible: boolean;
   typeTravail: TypeTravail;
+  evaluation?: EvaluationType;
   // NavigKid (type rechercher uniquement)
   questionnaire?: {
     themes: string;

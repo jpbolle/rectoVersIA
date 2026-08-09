@@ -12,6 +12,7 @@ import WorkTopBar from '@/components/WorkTopBar';
 import { FlipEditor } from '@/components/FlipEditor';
 import AssistancePanel from '@/components/AssistancePanel';
 import type { TabType } from '@/components/AssistancePanel/AssistancePanel';
+import type { AiTabUiState } from '@/components/AiTab/AiTab';
 import type { Devoir } from '@/types/devoir';
 import type { Correction } from '@/types/correction';
 import type { DraftContent } from '@/types/travail';
@@ -113,6 +114,12 @@ export default function TravailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('consignes');
   const [panelOpen, setPanelOpen] = useState<boolean>(true);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+  // Conseils IA affichés dans le panneau (ids composites `type:itemId`) —
+  // quand l'onglet Aide IA est ouvert, seules leurs bulles restent visibles
+  const [aiDisplayedIds, setAiDisplayedIds] = useState<string[]>([]);
+  // État d'interface du panneau Aide IA (onglet, mode, conseil courant) —
+  // conservé ici pour survivre aux allers-retours entre onglets du rail
+  const [aiUiState, setAiUiState] = useState<AiTabUiState | null>(null);
   // Aide dictionnaire permanente (toggle dans l'onglet Ressources)
   const [dictionaryEnabled, setDictionaryEnabled] = useState(false);
   // Vocabulaire : index de l'evaluation passee a revoir dans la colonne de gauche (null = vue normale)
@@ -560,6 +567,7 @@ export default function TravailPage() {
                 accesIA={showAiData}
                 aiSuggestions={aiSuggestions}
                 onDecorationClick={handleDecorationClick}
+                aiBubbleFilter={panelOpen && activeTab === 'ia' ? aiDisplayedIds : null}
                 dictionaryEnabled={dictionaryEnabled}
                 inverted={devoir.flipInverted ?? false}
               />
@@ -608,6 +616,9 @@ export default function TravailPage() {
             onAiRequest={handleAiRequest}
             onAiDismiss={dismissSuggestion}
             highlightedItemId={highlightedItemId}
+            onAiDisplayedChange={setAiDisplayedIds}
+            aiUiState={aiUiState}
+            onAiUiStateChange={setAiUiState}
             aiGridResult={aiGridResult}
             aiGridRequesting={aiGridRequesting}
             aiGridError={aiGridError}

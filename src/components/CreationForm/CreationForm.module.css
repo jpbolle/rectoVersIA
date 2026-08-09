@@ -61,6 +61,12 @@
   gap: 20px;
 }
 
+.formRowFive {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+  gap: 16px;
+}
+
 .formGroup {
   margin-bottom: 25px;
 }
@@ -340,6 +346,11 @@
     gap: 15px;
   }
 
+  .formRowFive {
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+  }
+
   .formGroup {
     margin-bottom: 20px;
   }
@@ -383,6 +394,11 @@
   }
 
   .formRowFour {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .formRowFive {
     grid-template-columns: 1fr;
     gap: 0;
   }
