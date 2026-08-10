@@ -7,7 +7,9 @@ Pseudonymisation plutôt que chiffrement intégral : on chiffre les **champs d'i
 Casser le lien identité↔contenu suffit pour cette app. Les annotations audio du prof
 restent en clair (limite assumée, l'élève peut y être cité de vive voix).
 
-## Livré (2026-08-10) — codé, tsc OK, **non déployé, migration non exécutée**
+## Livré (2026-08-10) — déployé (VPS), **migration exécutée** : 650 documents chiffrés
+(90 eleves, 423 travaux, 94 users, 35 recherches, 7 reponses, 1 vocabulairePersonnel),
+sauvegarde en clair dans `backups/` (locale, gitignorée). Contre-passe : 0 restant.
 
 - `src/lib/crypto.ts` : AES-256-GCM (modèle KitSchool) + `hashEmail` (HMAC-SHA256) pour
   les requêtes d'identification. Serveur uniquement.
@@ -24,15 +26,20 @@ restent en clair (limite assumée, l'élève peut y être cité de vive voix).
 - `ENCRYPTION_KEY` générée et ajoutée au `.env.local` du MacBook — **à recopier sur le
   VPS et sur le Mac Studio** (même clé partout, obligatoire).
 
-## Ordre de mise en service (IMPORTANT)
+## Mise en service — faite le 2026-08-10
 
-1. Clé sur le VPS (`.env.local`) **avant** de déployer le code ;
-2. commit + push + `/deploy` ;
-3. **ensuite seulement** la migration (`--apply`) depuis un Mac — le code déployé lit
-   les deux formats, l'ancien code ne lit pas le chiffré ;
-4. clé sur le Mac Studio ;
-5. tests : login élève, listes d'élèves prof, correction, vocabulaire personnel ;
-6. vérifier en console Firebase que les champs sont au format `iv:tag:données`.
+Clé sur le VPS ✓, déploiement ✓, migration `--apply` ✓ (650 docs), vérifié en prod
+(listes d'élèves et travaux affichés en clair côté prof). La clé vit dans `.env.local`
+(MacBook + VPS — jamais dans le dépôt).
+
+## TODO restants
+
+- [ ] **Recopier `ENCRYPTION_KEY` dans le `.env.local` du Mac Studio** — sans elle, le
+  dev local y est cassé (`grep ENCRYPTION_KEY .env.local` sur le MacBook pour la lire).
+- [ ] **Publier l'extension NavigKid** sur le Chrome Web Store avant la rentrée —
+  l'ancienne version ne peut plus soumettre (règles fermées).
+- [ ] Optionnel : tester le parcours élève complet à la rentrée (login, travaux/mine,
+  soumission NavigKid via la nouvelle extension).
 
 ## NavigKid — intégré au périmètre (2026-08-10, avant publication Web Store)
 

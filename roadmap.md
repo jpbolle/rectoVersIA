@@ -46,15 +46,16 @@
 8. [ ] **Commentaires prof améliorés** — assistance IA + dictée vocale.
 9. [ ] **Immersive Reader** (Microsoft Azure) — synthèse vocale et découpage syllabique pour
    les élèves.
-10. [ ] **Chiffrement des champs d'identité** (RGPD) — pseudonymisation : chiffrer nom,
-    prénom et email des élèves partout où ils apparaissent (`eleves`, `travaux`,
-    `vocabulairePersonnel`, réponses NavigKid), via le skill `/encrypt`. Décision du
-    2026-08-10 : on ne chiffre **pas** les contenus (productions, audio) — casser le lien
-    identité↔contenu suffit pour cette app.
-11. [ ] **Écart visuel prof/élève** — comparaison détaillée dans la grille.
+10. [ ] **Écart visuel prof/élève** — comparaison détaillée dans la grille.
 
 ## Fait
 
+- [x] **Chiffrement des champs d'identité** (RGPD) — pseudonymisation : nom, prénom et
+  email chiffrés (AES-256-GCM) dans `eleves`, `travaux`, `users`, `vocabulairePersonnel`,
+  `reponses` et `recherches` NavigKid ; requêtes par empreinte HMAC ; 650 documents
+  migrés ; l'extension NavigKid ne touche plus Firestore ; règles Firestore réalignées
+  (drift console résolu). Les contenus (productions, audio) restent en clair — décision
+  assumée. *(2026-08-10)*
 - [x] **Aide IA à la réécriture refondue** — panneau à 4 onglets par catégorie, conseils
   révélés un par un (navigation libre), synchro des bulles de l'éditeur avec le conseil
   affiché, ponctuation passée au bleu. *(2026-08-09)*
