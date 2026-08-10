@@ -50,6 +50,12 @@
 
 ## Fait
 
+- [x] **Page « Données personnelles » (`/rgpd`)** — accessible à tous via le menu avatar :
+  données collectées, protection (chiffrement), services IA, droits RGPD. *(2026-08-10)*
+- [x] **Roadmap : drag « À venir » → « Nouveautés »** — déposer sur une carte de date ou
+  sur la colonne (release du jour créée au besoin). *(2026-08-10)*
+- [x] **Sous-titre unifié « Aide à l'écrilecture »** (header élève, login, metadata).
+  *(2026-08-10)*
 - [x] **Chiffrement des champs d'identité** (RGPD) — pseudonymisation : nom, prénom et
   email chiffrés (AES-256-GCM) dans `eleves`, `travaux`, `users`, `vocabulairePersonnel`,
   `reponses` et `recherches` NavigKid ; requêtes par empreinte HMAC ; 650 documents

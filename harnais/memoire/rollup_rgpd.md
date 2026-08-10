@@ -32,6 +32,12 @@ Clé sur le VPS ✓, déploiement ✓, migration `--apply` ✓ (650 docs), véri
 (listes d'élèves et travaux affichés en clair côté prof). La clé vit dans `.env.local`
 (MacBook + VPS — jamais dans le dépôt).
 
+## Page utilisateur
+
+`/rgpd` (« Données personnelles », menu avatar, tous rôles) : page statique expliquant
+données collectées, chiffrement, services IA (vérifié : aucune identité envoyée à
+Claude/Whisper), droits et contact. À tenir à jour si le périmètre de chiffrement change.
+
 ## TODO restants
 
 - [ ] **Recopier `ENCRYPTION_KEY` dans le `.env.local` du Mac Studio** — sans elle, le
