@@ -361,6 +361,53 @@ export default function RoadmapPage() {
     updateAndSave({ ...data, aVenir: newAVenir });
   };
 
+  // Convertit une tâche « À venir » en ligne de nouveauté
+  const futureItemToText = (item: FutureItemData) =>
+    item.description ? `${item.titre} : ${item.description}` : item.titre;
+
+  // Retire la tâche déplacée de sa colonne d'origine
+  const removeDraggedFromAVenir = (fromGroup: number, fromItem: number) =>
+    data.aVenir.map((g, gi) =>
+      gi === fromGroup ? { ...g, items: g.items.filter((_, ii) => ii !== fromItem) } : g
+    );
+
+  // Dépose sur une release précise des Nouveautés
+  const handleDropOnRelease = (releaseIdx: number) => {
+    if (!dragItem.current) return;
+    const { groupIdx: fromGroup, itemIdx: fromItem } = dragItem.current;
+    const text = futureItemToText(data.aVenir[fromGroup].items[fromItem]);
+
+    dragItem.current = null;
+    dragOverGroup.current = null;
+    updateAndSave({
+      ...data,
+      nouveautes: data.nouveautes.map((r, i) =>
+        i === releaseIdx ? { ...r, items: [text, ...r.items] } : r
+      ),
+      aVenir: removeDraggedFromAVenir(fromGroup, fromItem),
+    });
+  };
+
+  // Dépose sur la colonne Nouveautés (hors carte) : release du jour, créée au besoin
+  const handleDropOnNouveautes = () => {
+    if (!dragItem.current) return;
+    const { groupIdx: fromGroup, itemIdx: fromItem } = dragItem.current;
+    const text = futureItemToText(data.aVenir[fromGroup].items[fromItem]);
+    const today = formatDateFr(todayIso());
+
+    const existingIdx = data.nouveautes.findIndex((r) => r.date === today);
+    const nouveautes =
+      existingIdx >= 0
+        ? data.nouveautes.map((r, i) =>
+            i === existingIdx ? { ...r, items: [text, ...r.items] } : r
+          )
+        : [{ date: today, items: [text] }, ...data.nouveautes];
+
+    dragItem.current = null;
+    dragOverGroup.current = null;
+    updateAndSave({ ...data, nouveautes, aVenir: removeDraggedFromAVenir(fromGroup, fromItem) });
+  };
+
   if (authLoading && !isAuthenticated) return null;
 
   const headerVariant = role === 'prof' ? 'prof' : 'student';
@@ -375,7 +422,11 @@ export default function RoadmapPage() {
 
         <div className={styles.columns}>
           {/* ── Colonne gauche : Nouveautés ── */}
-          <section className={styles.column}>
+          <section
+            className={styles.column}
+            onDragOver={(e) => { if (admin && dragItem.current) e.preventDefault(); }}
+            onDrop={handleDropOnNouveautes}
+          >
             <div className={styles.columnHeader}>
               <h2 className={styles.columnTitle}>Nouveautés</h2>
               {admin && (
@@ -415,7 +466,12 @@ export default function RoadmapPage() {
             )}
 
             {data.nouveautes.map((release, releaseIdx) => (
-              <div key={releaseIdx} className={styles.releaseCard}>
+              <div
+                key={releaseIdx}
+                className={styles.releaseCard}
+                onDragOver={(e) => { if (admin && dragItem.current) e.preventDefault(); }}
+                onDrop={(e) => { e.stopPropagation(); handleDropOnRelease(releaseIdx); }}
+              >
                 <div className={styles.releaseHeader}>
                   <span className={styles.releaseDate}>{release.date}</span>
                   {admin && (
