@@ -139,7 +139,7 @@ export default function LoginPage() {
           <div className={styles.logoSection}>
             <img src="/logoRecto.png" alt="Recto-VersIA Logo" className={styles.appIcon} />
             <h1 className={styles.title}>Recto-VersIA</h1>
-            <p className={styles.subtitle}>Aide à l&#39;écriture</p>
+            <p className={styles.subtitle}>Aide à l&#39;écrilecture</p>
           </div>
 
           {blocked ? (

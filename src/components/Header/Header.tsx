@@ -21,7 +21,7 @@ export default function Header({ variant, topOffset = 0 }: HeaderProps) {
       <div className={styles.headerContent}>
         <h1 className={styles.title}>Recto-VersIA</h1>
         <p className={styles.subtitle}>
-          {variant === 'prof' ? 'Assistant de correction' : 'Aide à l\'écriture et à la réécriture'}
+          {variant === 'prof' ? 'Assistant de correction' : 'Aide à l\'écrilecture'}
         </p>
 
         {variant === 'prof' ? (

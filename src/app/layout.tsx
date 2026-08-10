@@ -5,7 +5,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Recto-VersIA',
-  description: 'Aide à l\'écriture avec assistance IA',
+  description: 'Aide à l\'écrilecture avec assistance IA',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
