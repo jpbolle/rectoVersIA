@@ -32,16 +32,24 @@ casse le prochain déploiement.
 ## Données personnelles (RGPD)
 
 Le projet stocke des données de **mineurs** (identités, emails, productions écrites,
-enregistrements audio). Le chiffrement applicatif n'est **pas encore en place** — c'est
-une dette identifiée (voir `roadmap.md`).
+enregistrements audio). Depuis le 2026-08-10, les **champs d'identité sont chiffrés**
+(pseudonymisation AES-256-GCM, `src/lib/crypto.ts`) : nom, prénom, email dans `eleves`,
+`travaux`, `users`, `vocabulairePersonnel`, `reponses` et `recherches` NavigKid. Les
+requêtes d'identification passent par une empreinte HMAC (`emailHash` /
+`studentEmailHash`). Les contenus (productions, audio) restent volontairement en clair.
 
-En attendant :
-- Toute **nouvelle** collection ou champ contenant une donnée personnelle sensible passe
-  par le skill `/encrypt` (procédure de chiffrement applicatif) — ne pas aggraver la dette.
+Règles impératives :
+- **Ne jamais chiffrer un champ utilisé dans un `where()` Firestore** — utiliser une
+  empreinte (`hashEmail`) comme pour les emails.
+- **Ne jamais importer `src/lib/crypto.ts` côté client** (clé + API Node).
+- Tout **nouveau** champ d'identité ou donnée sensible passe par le skill `/encrypt`
+  (et par une entrée dans `scripts/encrypt-existing-identities.ts` si des données
+  existent déjà).
 - Lecture/écriture de données élèves : **toujours via les routes serveur** (`adminDb`),
-  jamais en accès Firestore direct depuis le client.
-- Champs volontairement en clair : noms, prénoms et emails des élèves (affichés partout,
-  utilisés dans les filtres).
+  jamais en accès Firestore direct depuis le client. L'extension NavigKid ne touche
+  plus Firestore : elle passe par `/api/navigkid/*`.
+- `ENCRYPTION_KEY` (`.env.local`) : **même clé** sur tous les postes et le VPS ; sa
+  perte rendrait les identités illisibles — ne jamais la committer ni la régénérer.
 - **Aucune donnée personnelle réelle dans `harnais/memoire/`** (versionnée sur GitHub).
 
 ## Règles de sécurité Firestore — procédure IMPÉRATIVE
