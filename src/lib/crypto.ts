@@ -132,7 +132,7 @@ export const SENSITIVE_ELEVE_FIELDS = ["nom", "prenom", "email"] as const;
 export const SENSITIVE_TRAVAIL_FIELDS = ["studentName", "studentEmail"] as const;
 export const SENSITIVE_USER_FIELDS = ["email", "displayName"] as const;
 export const SENSITIVE_VOCAB_PERSONNEL_FIELDS = ["studentEmail"] as const;
-// NavigKid (reponses, recherches) : écrites en direct par l'extension, PAS ENCORE
-// chiffrées — sous-chantier à part (nécessite de faire passer l'extension par l'API).
+// NavigKid : depuis 2026-08-10 l'extension passe par les routes serveur
+// (/api/navigkid/reponse et /recherches), qui chiffrent ces champs.
 export const SENSITIVE_NAVIGKID_REPONSE_FIELDS = ["eleveNom", "eleveEmail"] as const;
 export const SENSITIVE_NAVIGKID_RECHERCHE_FIELDS = ["eleveNom"] as const;

@@ -379,8 +379,9 @@ prof.
   Les requêtes d'identification passent par l'empreinte (`queryElevesByEmail` dans
   `src/lib/eleve-lookup.ts`, repli sur l'email en clair pour les documents non migrés).
   Migration : `scripts/encrypt-existing-identities.ts` (sauvegarde JSON dans `backups/`,
-  ignoré par git). Hors périmètre : `reponses`/`recherches` NavigKid (écrites en direct
-  par l'extension).
+  ignoré par git). NavigKid : l'extension n'accède plus à Firestore — `reponses` et
+  `recherches` passent par `/api/navigkid/reponse` (POST) et `/api/navigkid/recherches`
+  (POST), qui chiffrent `eleveNom`/`eleveEmail`.
 - `src/context/AuthContext.tsx` — Provider auth, `getAuthHeaders` centralisé
 - `src/lib/api-auth.ts` — `verifyAuth()` côté serveur
 - `src/lib/auth-utils.ts` — `getUserRole()`, `isAdmin()`

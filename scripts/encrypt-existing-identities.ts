@@ -6,6 +6,8 @@
  *   - travaux           : studentName, studentEmail chiffrés + studentEmailHash ajouté
  *   - vocabulairePersonnel : studentEmail chiffré
  *   - users             : email, displayName chiffrés
+ *   - questionnaires/{id}/reponses : eleveNom, eleveEmail chiffrés
+ *   - recherches        : eleveNom chiffré
  *
  * Usage :
  *   npx tsx scripts/encrypt-existing-identities.ts            → simulation (dry run)
@@ -77,12 +79,15 @@ async function main() {
   const db = initFirebase();
 
   // ── 1. Sauvegarde JSON complète des collections touchées ──
-  const [elevesSnap, travauxSnap, vocabSnap, usersSnap] = await Promise.all([
-    db.collection('eleves').get(),
-    db.collection('travaux').get(),
-    db.collection('vocabulairePersonnel').get(),
-    db.collection('users').get(),
-  ]);
+  const [elevesSnap, travauxSnap, vocabSnap, usersSnap, reponsesSnap, recherchesSnap] =
+    await Promise.all([
+      db.collection('eleves').get(),
+      db.collection('travaux').get(),
+      db.collection('vocabulairePersonnel').get(),
+      db.collection('users').get(),
+      db.collectionGroup('reponses').get(), // questionnaires/{id}/reponses/{eleveId}
+      db.collection('recherches').get(),
+    ]);
 
   const backupDir = resolve('backups');
   if (!existsSync(backupDir)) mkdirSync(backupDir);
@@ -96,6 +101,8 @@ async function main() {
         travaux: travauxSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
         vocabulairePersonnel: vocabSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
         users: usersSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+        reponses: reponsesSnap.docs.map((d) => ({ path: d.ref.path, ...d.data() })),
+        recherches: recherchesSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
       },
       null,
       2
@@ -173,6 +180,41 @@ async function main() {
     }
   }
 
+  // reponses NavigKid (sous-collections) : eleveNom, eleveEmail
+  const statsReponses: MigrationStats = { total: reponsesSnap.size, toMigrate: 0, alreadyEncrypted: 0 };
+  for (const doc of reponsesSnap.docs) {
+    const data = doc.data();
+    const updates: Record<string, string> = {};
+    for (const field of ['eleveNom', 'eleveEmail'] as const) {
+      const value = data[field];
+      if (typeof value === 'string' && value.length > 0 && !isEncrypted(value)) {
+        updates[field] = encrypt(value);
+      }
+    }
+    if (Object.keys(updates).length === 0) {
+      statsReponses.alreadyEncrypted++;
+      continue;
+    }
+    statsReponses.toMigrate++;
+    batch.update(doc.ref, updates);
+    batchCount++;
+    await commitIfNeeded();
+  }
+
+  // recherches NavigKid : eleveNom
+  const statsRecherches: MigrationStats = { total: recherchesSnap.size, toMigrate: 0, alreadyEncrypted: 0 };
+  for (const doc of recherchesSnap.docs) {
+    const data = doc.data();
+    if (typeof data.eleveNom === 'string' && data.eleveNom.length > 0 && !isEncrypted(data.eleveNom)) {
+      statsRecherches.toMigrate++;
+      batch.update(doc.ref, { eleveNom: encrypt(data.eleveNom) });
+      batchCount++;
+      await commitIfNeeded();
+    } else {
+      statsRecherches.alreadyEncrypted++;
+    }
+  }
+
   // users : email, displayName
   const statsUsers: MigrationStats = { total: usersSnap.size, toMigrate: 0, alreadyEncrypted: 0 };
   for (const doc of usersSnap.docs) {
@@ -204,6 +246,8 @@ async function main() {
     ['travaux', statsTravaux],
     ['vocabulairePersonnel', statsVocab],
     ['users', statsUsers],
+    ['reponses (NavigKid)', statsReponses],
+    ['recherches (NavigKid)', statsRecherches],
   ] as const) {
     console.log(
       `${name} : ${s.total} documents — ${s.toMigrate} ${APPLY ? 'chiffrés' : 'à chiffrer'}, ${s.alreadyEncrypted} déjà chiffrés ou vides`

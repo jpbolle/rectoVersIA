@@ -6,6 +6,20 @@ const API_BASE = "https://rectoversia.edukids.pedagokit.be";
 // En dev, décommenter la ligne suivante :
 // const API_BASE = "http://localhost:3000";
 
+// ─── Appel API authentifié (toutes les données passent par le serveur — RGPD) ───
+async function apiFetch(path, options = {}) {
+  const token = await state.user.getIdToken();
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
+  return res.json();
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyClDztrPakII3I4P4CmwYpOY9wYYWo3qNg",
   authDomain: "recto-versia.firebaseapp.com",
@@ -16,7 +30,6 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
 const auth = firebase.auth();
 
 // Signaler au background que la sidebar est ouverte
@@ -164,9 +177,9 @@ async function restaurerSession() {
     ]);
 
     if (stored.questionnaireId) {
-      const doc = await db.collection("questionnaires").doc(stored.questionnaireId).get();
-      if (doc.exists) {
-        state.questionnaire = doc.data();
+      const json = await apiFetch(`/api/navigkid/questionnaire?id=${encodeURIComponent(stored.questionnaireId)}`);
+      if (json.success && json.data) {
+        state.questionnaire = json.data;
         state.questionnaireId = stored.questionnaireId;
         state.questionCourante = stored.questionCourante || 0;
         state.questions = stored.questionsData || [];
@@ -299,26 +312,23 @@ async function ouvrirActivite(activite) {
   state.activiteEnCours = activite;
 
   try {
-    const doc = await db.collection("questionnaires").doc(activite.questionnaireId).get();
-    if (!doc.exists) {
+    const json = await apiFetch(`/api/navigkid/questionnaire?id=${encodeURIComponent(activite.questionnaireId)}`);
+    if (!json.success || !json.data) {
       alert("Questionnaire introuvable.");
       return;
     }
 
-    state.questionnaire = doc.data();
+    state.questionnaire = json.data;
     state.questionnaireId = activite.questionnaireId;
 
     // Si déjà soumis, recharger les réponses
     if (activite.soumis) {
-      const repDoc = await db
-        .collection("questionnaires")
-        .doc(activite.questionnaireId)
-        .collection("reponses")
-        .doc(state.eleveId)
-        .get();
+      const repJson = await apiFetch(
+        `/api/navigkid/reponse?questionnaireId=${encodeURIComponent(activite.questionnaireId)}`
+      );
 
-      if (repDoc.exists && repDoc.data().questions) {
-        state.questions = repDoc.data().questions;
+      if (repJson.success && repJson.data?.questions?.length) {
+        state.questions = repJson.data.questions;
         state.questionCourante = 0;
         sauvegarderLocal();
         afficherQuestionnaireRestaure();
@@ -760,7 +770,7 @@ function ajouterPassage(data) {
   sauvegarderLocal();
 }
 
-// ─── Sauvegarde des recherches dans Firestore ───
+// ─── Sauvegarde des recherches (via l'API — le serveur chiffre l'identité) ───
 async function sauvegarderRecherches() {
   if (!state.eleveId) return;
   try {
@@ -772,11 +782,14 @@ async function sauvegarderRecherches() {
       }))
     }));
 
-    await db.collection("recherches").doc(state.eleveId).set({
-      eleveNom: state.eleveNom,
-      questionnaireId: state.questionnaireId,
-      parQuestion
-    }, { merge: true });
+    await apiFetch("/api/navigkid/recherches", {
+      method: "POST",
+      body: JSON.stringify({
+        eleveNom: state.eleveNom,
+        questionnaireId: state.questionnaireId,
+        parQuestion
+      })
+    });
   } catch (err) {
     console.error("Erreur sauvegarde recherches:", err);
   }
@@ -804,22 +817,21 @@ $("#btn-soumettre").addEventListener("click", async () => {
   btn.textContent = "Envoi en cours...";
 
   try {
-    await db.collection("questionnaires")
-      .doc(state.questionnaireId)
-      .collection("reponses")
-      .doc(state.eleveId)
-      .set({
+    const json = await apiFetch("/api/navigkid/reponse", {
+      method: "POST",
+      body: JSON.stringify({
+        questionnaireId: state.questionnaireId,
         eleveNom: state.eleveNom,
-        eleveEmail: state.user?.email || "",
         questions: state.questions.map((qData) => ({
           questionIndex: qData.questionIndex,
           reponse: qData.reponse,
           motsCles: qData.motsCles,
           sitesConsultes: qData.sitesConsultes,
           passages: qData.passages || []
-        })),
-        soumisLe: firebase.firestore.FieldValue.serverTimestamp()
-      });
+        }))
+      })
+    });
+    if (!json.success) throw new Error(json.message || "Échec de l'envoi");
 
     await sauvegarderRecherches();
 

@@ -34,12 +34,18 @@ restent en clair (limite assumée, l'élève peut y être cité de vive voix).
 5. tests : login élève, listes d'élèves prof, correction, vocabulaire personnel ;
 6. vérifier en console Firebase que les champs sont au format `iv:tag:données`.
 
-## Hors périmètre (à trancher plus tard)
+## NavigKid — intégré au périmètre (2026-08-10, avant publication Web Store)
 
-- **NavigKid `reponses`/`recherches`** (`eleveNom`, `eleveEmail`) : l'extension écrit
-  **directement** dans Firestore (SDK client, `sidebar/app.js`) — chiffrer exigerait de
-  faire passer l'extension par une API route (+ redéploiement Chrome Web Store).
-- **Anomalie détectée** : `firestore.rules` (versionné) ne contient **aucune règle** pour
-  `questionnaires/*/reponses` ni `recherches` — or l'extension y écrit. Soit les règles
-  déployées divergent du fichier (drift), soit ces écritures échouent en silence.
-  À vérifier en console Firebase.
+L'extension (`sidebar/app.js`) n'accède **plus du tout** à Firestore (lib
+firestore-compat retirée de `index.html`) : questionnaire lu via l'API existante,
+réponses soumises via POST `/api/navigkid/reponse`, tracking via POST
+`/api/navigkid/recherches` — le serveur chiffre `eleveNom`/`eleveEmail`. Le GET
+`reponse` déchiffre et force un élève à ne lire que sa propre réponse. Les documents
+existants sont couverts par le script de migration (collectionGroup `reponses` +
+`recherches`).
+
+**Règles Firestore — drift suspecté** : le fichier versionné n'a aucune règle pour
+`reponses`/`recherches`, or l'ancienne extension y écrivait — les règles déployées
+divergent donc probablement du fichier. Une fois la nouvelle extension publiée
+(vacances = fenêtre sûre), redéployer le fichier tel quel
+(`firebase deploy --only firestore:rules`) pour réaligner et fermer l'accès client.
