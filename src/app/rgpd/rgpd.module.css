@@ -1,0 +1,105 @@
+.pageWrapper {
+  min-height: 100vh;
+  background: var(--c-bg);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.ready {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mainContent {
+  flex: 1;
+  margin-top: 180px;
+  padding: 40px 20px 60px;
+  max-width: 860px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pageTitle {
+  color: var(--c-primary);
+  font-size: 26px;
+  font-weight: 700;
+  font-family: var(--c-font-title);
+  margin: 0 0 6px;
+}
+
+.pageSubtitle {
+  color: var(--c-text-secondary);
+  font-size: 14px;
+  margin: 0 0 30px;
+}
+
+.card {
+  background: var(--c-surface, #fff);
+  border: 1px solid var(--c-border, #e4ddd3);
+  border-radius: 12px;
+  padding: 22px 26px;
+  margin-bottom: 18px;
+}
+
+.cardTitle {
+  color: var(--c-primary);
+  font-size: 17px;
+  font-weight: 600;
+  font-family: var(--c-font-title);
+  margin: 0 0 12px;
+}
+
+.card p {
+  color: var(--c-text, #3d3832);
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 0 0 10px;
+}
+
+.card p:last-child {
+  margin-bottom: 0;
+}
+
+.card ul {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+
+.card li {
+  color: var(--c-text, #3d3832);
+  font-size: 14px;
+  line-height: 1.65;
+  margin-bottom: 6px;
+}
+
+.badge {
+  display: inline-block;
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent);
+  color: var(--c-primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.contact {
+  color: var(--c-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.contact:hover {
+  text-decoration: underline;
+}
+
+.updated {
+  color: var(--c-text-secondary);
+  font-size: 12px;
+  margin-top: 24px;
+  font-style: italic;
+}

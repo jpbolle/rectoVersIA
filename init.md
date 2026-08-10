@@ -253,7 +253,8 @@ interface Questionnaire {
 | `/grilles` | prof | Mes Ressources : onglets Grilles + Listes de vocabulaire |
 | `/archives` | prof | Devoirs archivés |
 | `/admin` | admin | Gestion professeurs + stats globales et par prof |
-| `/roadmap` | tous | Nouveautés + à venir — **pilotée par Firestore**, éditable par l'admin |
+| `/roadmap` | tous | Nouveautés + à venir — **pilotée par Firestore**, éditable par l'admin (drag « À venir » → « Nouveautés » pour marquer fait) |
+| `/rgpd` | tous | Données personnelles : quelles données, protection (chiffrement), services IA, droits RGPD — statique, menu avatar |
 | `/activites` | élève | Devoirs disponibles + travaux corrigés |
 | `/activites/[id]` | élève | Rédaction + auto-évaluation + remise (`WorkspaceRail`) |
 | `/mes-classes` | élève | Classes + rejoindre une classe |
