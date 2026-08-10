@@ -44,8 +44,10 @@ réponses soumises via POST `/api/navigkid/reponse`, tracking via POST
 existants sont couverts par le script de migration (collectionGroup `reponses` +
 `recherches`).
 
-**Règles Firestore — drift suspecté** : le fichier versionné n'a aucune règle pour
-`reponses`/`recherches`, or l'ancienne extension y écrivait — les règles déployées
-divergent donc probablement du fichier. Une fois la nouvelle extension publiée
-(vacances = fenêtre sûre), redéployer le fichier tel quel
-(`firebase deploy --only firestore:rules`) pour réaligner et fermer l'accès client.
+**Règles Firestore — drift résolu (2026-08-10)** : les règles déployées contenaient des
+blocs NavigKid (`questionnaires`, `reponses`, `recherches`) ajoutés en console sans être
+reportés dans le fichier — avec un `allow read: if isAuthenticated()` trop permissif
+(tout utilisateur connecté pouvait lire les réponses nominatives de n'importe quel
+élève). Fichier versionné republié tel quel via la console : accès client fermé,
+fichier = source de vérité à nouveau. L'ancienne extension ne peut plus écrire
+(vacances = sans impact ; la nouvelle passe par l'API).
