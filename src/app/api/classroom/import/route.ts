@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateClasseId, generateEleveId, getCurrentAnneeScolaire } from '@/lib/classe-utils';
 import { getClassroomStudents } from '@/lib/google-classroom';
+import { encryptFields, hashEmail, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
 
 interface ImportRequest {
   courseId: string;
@@ -103,9 +104,11 @@ export async function POST(request: NextRequest) {
         : `${prenom.toLowerCase()}.${(nom || student.fullName).toLowerCase().replace(/\s+/g, '')}@cnddinant.be`;
 
       batch.set(eleveRef, {
-        nom: nom || student.fullName,
-        prenom,
-        email,
+        ...encryptFields(
+          { nom: nom || student.fullName, prenom, email },
+          SENSITIVE_ELEVE_FIELDS
+        ),
+        emailHash: hashEmail(email),
         classeId,
         googleClassroomId: student.userId,
         createdAt: now,

@@ -1,5 +1,6 @@
 import { adminDb } from '@/lib/firebase/admin';
 import { generateTravailId } from '@/lib/travail-utils';
+import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
 
 /**
  * Pre-cree les travaux pour tous les eleves des classes assignees a un devoir.
@@ -37,9 +38,9 @@ export async function ensureTravaux(devoirId: string, profId: string): Promise<n
       const data = doc.data();
       allEleves.push({
         id: doc.id,
-        nom: data.nom || '',
-        prenom: data.prenom || '',
-        email: (data.email || '').toLowerCase(),
+        nom: decrypt(data.nom) || '',
+        prenom: decrypt(data.prenom) || '',
+        email: (decrypt(data.email) || '').toLowerCase(),
       });
     });
   }
@@ -57,7 +58,7 @@ export async function ensureTravaux(devoirId: string, profId: string): Promise<n
   existingSnap.docs.forEach(doc => {
     const data = doc.data();
     if (data.studentEmail) {
-      existingEmails.add(data.studentEmail.toLowerCase());
+      existingEmails.add(decrypt(data.studentEmail).toLowerCase());
     }
   });
 
@@ -77,8 +78,9 @@ export async function ensureTravaux(devoirId: string, profId: string): Promise<n
       id: travailId,
       devoirId,
       studentId: eleve.id,
-      studentEmail: eleve.email,
-      studentName: `${eleve.prenom} ${eleve.nom}`.trim(),
+      studentEmail: encrypt(eleve.email),
+      studentEmailHash: hashEmail(eleve.email),
+      studentName: encrypt(`${eleve.prenom} ${eleve.nom}`.trim()),
       content: '',
       status: 'draft',
       selfEvaluation: null,

@@ -2,7 +2,7 @@
 
 ## État actuel (session du 2026-08-08)
 
-Livré, **non déployé** (ni VPS ni Chrome Web Store) :
+Livré et **déployé le 2026-08-10** (VPS + Chrome Web Store) :
 
 ### App Recto-versIA
 - Tags UAA sur les cards d'activités (prof + élève), tag « Voc » pour le vocabulaire.

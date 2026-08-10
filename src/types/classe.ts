@@ -3,6 +3,7 @@ export interface Eleve {
   nom: string;
   prenom: string;
   email: string;
+  emailHash?: string;          // Empreinte HMAC de l'email (requêtes d'identification — RGPD)
   classeId: string;
   googleClassroomId?: string;  // Pour sync Google Classroom
   firebaseUid?: string;        // UID Firebase Auth, lié à la première connexion de l'élève

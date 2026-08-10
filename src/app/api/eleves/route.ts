@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateEleveId } from '@/lib/classe-utils';
+import { decryptFields, encryptFields, hashEmail, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
 import type { Eleve, CreateEleveData } from '@/types/classe';
 
 // GET - Liste des élèves (par classeId en query param)
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
 
       const eleves: Eleve[] = snapshot.docs
         .map((doc) => {
-          const data = doc.data();
+          const data = decryptFields(doc.data(), SENSITIVE_ELEVE_FIELDS);
           return {
             id: doc.id,
             nom: data.nom || '',
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
         .get();
 
       snapshot.docs.forEach((doc) => {
-        const data = doc.data();
+        const data = decryptFields(doc.data(), SENSITIVE_ELEVE_FIELDS);
         allEleves.push({
           id: doc.id,
           nom: data.nom || '',
@@ -169,7 +170,10 @@ export async function POST(request: NextRequest) {
       createdAt: now,
     };
 
-    await adminDb.collection('eleves').doc(eleveId).set(eleve);
+    await adminDb.collection('eleves').doc(eleveId).set({
+      ...encryptFields(eleve, SENSITIVE_ELEVE_FIELDS),
+      emailHash: hashEmail(eleve.email),
+    });
 
     return NextResponse.json({
       success: true,

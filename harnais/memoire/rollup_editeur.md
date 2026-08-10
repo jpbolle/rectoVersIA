@@ -2,7 +2,7 @@
 
 ## État actuel (session du 2026-08-08)
 
-**Anti-triche collage** — livré, **non testé, non déployé** :
+**Anti-triche collage** — livré, **testé et déployé le 2026-08-10** :
 - Collage dans l'espace de rédaction bloqué, sauf si le texte a été copié/coupé dans
   l'espace de travail lui-même (rédaction **ou** planification).
 - Mécanisme : module singleton `src/lib/internal-clipboard.ts` (texte normalisé,
@@ -20,4 +20,4 @@
 
 ## TODOs
 
-- [ ] Tester : collage interne, collage externe (bloqué), plan → rédaction, drag & drop.
+- [x] Tester : collage interne, collage externe (bloqué), plan → rédaction, drag & drop.

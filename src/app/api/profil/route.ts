@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
 import type {
   StudentProfil, CriterionStats, SectionStats,
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Trouver les docs élève
     const byUid = await adminDb.collection('eleves').where('firebaseUid', '==', auth.uid).get();
-    const byEmail = await adminDb.collection('eleves').where('email', '==', auth.email).get();
+    const byEmail = await queryElevesByEmail(auth.email);
     const eleveIds = new Set<string>();
     [...byUid.docs, ...byEmail.docs].forEach((d) => eleveIds.add(d.id));
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { decrypt, decryptFields, encrypt, hashEmail, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
 import type { Eleve } from '@/types/classe';
 
 interface RouteParams {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const data = doc.data()!;
+    const data = decryptFields(doc.data()!, SENSITIVE_ELEVE_FIELDS);
 
     // Vérifier que le prof est propriétaire de la classe
     const classeDoc = await adminDb.collection('classes').doc(data.classeId).get();
@@ -106,19 +107,27 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const updates: Record<string, unknown> = {};
+    const clearUpdates: Record<string, string> = {};
 
-    if (body.nom !== undefined) updates.nom = body.nom.trim();
-    if (body.prenom !== undefined) updates.prenom = body.prenom.trim();
-    if (body.email !== undefined) updates.email = body.email.trim().toLowerCase();
+    if (body.nom !== undefined) clearUpdates.nom = body.nom.trim();
+    if (body.prenom !== undefined) clearUpdates.prenom = body.prenom.trim();
+    if (body.email !== undefined) clearUpdates.email = body.email.trim().toLowerCase();
+
+    const updates: Record<string, unknown> = {};
+    for (const [field, value] of Object.entries(clearUpdates)) {
+      updates[field] = encrypt(value);
+    }
+    if (clearUpdates.email !== undefined) {
+      updates.emailHash = hashEmail(clearUpdates.email);
+    }
 
     await adminDb.collection('eleves').doc(id).update(updates);
 
     const updatedEleve: Eleve = {
       id,
-      nom: (updates.nom as string) ?? data.nom,
-      prenom: (updates.prenom as string) ?? data.prenom,
-      email: (updates.email as string) ?? data.email,
+      nom: clearUpdates.nom ?? decrypt(data.nom),
+      prenom: clearUpdates.prenom ?? decrypt(data.prenom),
+      email: clearUpdates.email ?? decrypt(data.email),
       classeId: data.classeId,
       googleClassroomId: data.googleClassroomId,
       createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || '',
@@ -178,13 +187,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // Supprimer le doc racine
     await adminDb.collection('eleves').doc(id).delete();
 
-    // Supprimer le doc dans la sous-collection de la classe
+    // Supprimer le doc dans la sous-collection de la classe (documents legacy, email en clair)
     if (classeId) {
       const subDocs = await adminDb
         .collection('classes')
         .doc(classeId)
         .collection('eleves')
-        .where('email', '==', data.email?.toLowerCase?.() || '')
+        .where('email', '==', decrypt(data.email)?.toLowerCase?.() || '')
         .get();
 
       const batch = adminDb.batch();

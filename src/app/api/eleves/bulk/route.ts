@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateEleveId } from '@/lib/classe-utils';
+import { encryptFields, hashEmail, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
 
 interface BulkEleveInput {
   nom: string;
@@ -81,9 +82,8 @@ export async function POST(request: NextRequest) {
       const ref = adminDb.collection('eleves').doc(eleveId);
 
       batch.set(ref, {
-        nom,
-        prenom,
-        email,
+        ...encryptFields({ nom, prenom, email }, SENSITIVE_ELEVE_FIELDS),
+        emailHash: hashEmail(email),
         classeId,
         createdAt: now,
       });

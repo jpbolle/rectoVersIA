@@ -36,8 +36,10 @@
 | Extension Chrome | NavigKid — `rechercheNavigChrome/eleve-extension` (recherche guidée + popup aides dictionnaire/traducteur + visionneuse PDF) — état de référence dans `rechercheNavigChrome/init/` |
 
 ### Variables d'environnement
-`CLAUDE_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_SHEETS_ID`, `FIREBASE_*` (client + admin) —
-**ne jamais écrire les valeurs ici.** Sur le VPS : `.env.local`.
+`CLAUDE_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_SHEETS_ID`, `FIREBASE_*` (client + admin),
+`ENCRYPTION_KEY` (chiffrement des identités élèves — **même clé sur tous les postes et
+le VPS**, sinon déchiffrement impossible) — **ne jamais écrire les valeurs ici.**
+Sur le VPS : `.env.local`.
 
 ### Développement local
 ```
@@ -370,6 +372,15 @@ prof.
 - `/encrypt` — chiffrement de données sensibles Firestore (global)
 
 ### Fichiers clés
+- `src/lib/crypto.ts` — chiffrement AES-256-GCM des identités élèves + `hashEmail`
+  (HMAC) — **serveur uniquement**, jamais d'import côté client. Champs chiffrés :
+  `eleves.nom/prenom/email` (+`emailHash`), `travaux.studentName/studentEmail`
+  (+`studentEmailHash`), `users.email/displayName`, `vocabulairePersonnel.studentEmail`.
+  Les requêtes d'identification passent par l'empreinte (`queryElevesByEmail` dans
+  `src/lib/eleve-lookup.ts`, repli sur l'email en clair pour les documents non migrés).
+  Migration : `scripts/encrypt-existing-identities.ts` (sauvegarde JSON dans `backups/`,
+  ignoré par git). Hors périmètre : `reponses`/`recherches` NavigKid (écrites en direct
+  par l'extension).
 - `src/context/AuthContext.tsx` — Provider auth, `getAuthHeaders` centralisé
 - `src/lib/api-auth.ts` — `verifyAuth()` côté serveur
 - `src/lib/auth-utils.ts` — `getUserRole()`, `isAdmin()`

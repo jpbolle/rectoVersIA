@@ -24,8 +24,9 @@
   *(fait le 2026-08-08)*
 - [ ] **Interface de consultation** — afficher les listes personnelles (côté prof :
   par élève, la route GET `?studentId=` existe déjà ; côté élève : sa liste).
-- [ ] **RGPD** — décider du chiffrement de `vocabulairePersonnel` (email + mots
-  recherchés, en clair aujourd'hui) via le skill `/encrypt`.
+- [x] **RGPD** — décision prise le 2026-08-10 : `vocabulairePersonnel` est couvert par le
+  chantier « Chiffrement des champs d'identité » (item 10 ci-dessous) — on chiffre
+  l'email, pas les mots.
 
 **Le reste, par priorité** :
 
@@ -45,8 +46,11 @@
 8. [ ] **Commentaires prof améliorés** — assistance IA + dictée vocale.
 9. [ ] **Immersive Reader** (Microsoft Azure) — synthèse vocale et découpage syllabique pour
    les élèves.
-10. [ ] **Chiffrement des données élèves** (RGPD) — refonte de la couche d'accès ; dette
-    identifiée dans `AGENTS.md`.
+10. [ ] **Chiffrement des champs d'identité** (RGPD) — pseudonymisation : chiffrer nom,
+    prénom et email des élèves partout où ils apparaissent (`eleves`, `travaux`,
+    `vocabulairePersonnel`, réponses NavigKid), via le skill `/encrypt`. Décision du
+    2026-08-10 : on ne chiffre **pas** les contenus (productions, audio) — casser le lien
+    identité↔contenu suffit pour cette app.
 11. [ ] **Écart visuel prof/élève** — comparaison détaillée dans la grille.
 
 ## Fait

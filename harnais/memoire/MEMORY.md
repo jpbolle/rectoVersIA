@@ -5,7 +5,8 @@
 > qui ne se synchronisait pas entre les deux Macs.
 
 - [rollup_vocabulaire](rollup_vocabulaire.md) — module vocabulaire : mots personnels/révision/demi-points ; fixes 2026-08-09 (popup portal, indice 2 lettres), TODO format JSON IA
-- [rollup_dictionnaire](rollup_dictionnaire.md) — aide dictionnaire (app + NavigKid), vocabulaire personnel : TODOs interface/RGPD, à déployer
-- [rollup_editeur](rollup_editeur.md) — anti-triche collage dans l'espace de rédaction (2026-08-08, à tester)
-- [rollup_aide_ia](rollup_aide_ia.md) — panneau Aide IA réécriture refondu : onglets, un par un, synchro bulles, ponctuation bleue (2026-08-09, à déployer)
-- [rollup_devoirs](rollup_devoirs.md) — création d'activités : dropdown classes + champ évaluation formatif/certificatif (2026-08-09, à tester)
+- [rollup_dictionnaire](rollup_dictionnaire.md) — aide dictionnaire (app + NavigKid), vocabulaire personnel : déployé le 2026-08-10, TODOs interface/RGPD
+- [rollup_editeur](rollup_editeur.md) — anti-triche collage dans l'espace de rédaction : testé et déployé (2026-08-10)
+- [rollup_aide_ia](rollup_aide_ia.md) — panneau Aide IA réécriture refondu : onglets, un par un, synchro bulles, ponctuation bleue — testé et déployé (2026-08-10)
+- [rollup_rgpd](rollup_rgpd.md) — chiffrement des identités élèves : codé le 2026-08-10, à déployer puis migrer (ordre impératif dedans) ; anomalie règles NavigKid à vérifier
+- [rollup_devoirs](rollup_devoirs.md) — création d'activités : dropdown classes + champ évaluation formatif/certificatif — testé et déployé (2026-08-10)

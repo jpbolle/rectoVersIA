@@ -2,7 +2,7 @@
 
 ## État actuel (session du 2026-08-09)
 
-Refonte complète du panneau `AiTab`, **livrée, testée en séance par JP, non déployée** :
+Refonte complète du panneau `AiTab`, **livrée, testée, déployée le 2026-08-10** :
 
 - **4 onglets permanents** par catégorie : libellé complet + symbole dans une pastille
   ronde + compteur de conseils restants (✓ vert quand terminé). Couleurs : Orthographe
@@ -27,9 +27,9 @@ Refonte complète du panneau `AiTab`, **livrée, testée en séance par JP, non 
 - Clic sur une bulle du texte → ouvre l'onglet Aide IA sur ce conseil (comportement
   existant conservé ; un highlight périmé n'écrase pas la position mémorisée au retour).
 
-## À tester (peu restant)
+## À tester
 
-- [ ] Vérifier la synchro bulles dans les 3 cas : masqué hors onglet, affiché hors
+- [x] Vérifier la synchro bulles dans les 3 cas : masqué hors onglet, affiché hors
   onglet, sur l'onglet (bulle unique qui suit la navigation ‹ ›).
 
 ## Gotchas

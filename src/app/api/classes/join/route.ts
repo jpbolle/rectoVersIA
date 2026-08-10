@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateEleveId } from '@/lib/classe-utils';
+import { encryptFields, hashEmail, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
+import { queryElevesByEmail } from '@/lib/eleve-lookup';
 
 // POST - Rejoindre une classe via son code
 export async function POST(request: NextRequest) {
@@ -50,13 +52,8 @@ export async function POST(request: NextRequest) {
     const classeDoc = classeSnapshot.docs[0];
     const classeId = classeDoc.id;
 
-    // Vérifier si l'élève est déjà dans cette classe
-    const existingByEmail = await adminDb
-      .collection('eleves')
-      .where('email', '==', auth.email)
-      .where('classeId', '==', classeId)
-      .limit(1)
-      .get();
+    // Vérifier si l'élève est déjà dans cette classe (empreinte puis clair)
+    const existingByEmail = await queryElevesByEmail(auth.email, classeId);
 
     if (!existingByEmail.empty) {
       // Déjà membre — s'assurer que le firebaseUid est lié
@@ -76,9 +73,11 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
 
     await adminDb.collection('eleves').doc(eleveId).set({
-      nom,
-      prenom,
-      email: auth.email,
+      ...encryptFields(
+        { nom, prenom, email: auth.email.toLowerCase() },
+        SENSITIVE_ELEVE_FIELDS
+      ),
+      emailHash: hashEmail(auth.email),
       classeId,
       firebaseUid: auth.uid,
       createdAt: now,

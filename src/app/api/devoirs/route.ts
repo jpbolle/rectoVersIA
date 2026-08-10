@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { calculateSchoolYear } from '@/lib/auth-utils';
 import { generateDevoirId } from '@/lib/devoir-utils';
+import { queryElevesByEmail } from '@/lib/eleve-lookup';
 
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -82,11 +83,7 @@ export async function GET(request: NextRequest) {
 
     // Les eleves ne voient que les devoirs disponibles ET assignes a leur(s) classe(s)
     if (auth.role === 'eleve') {
-      const email = auth.email.toLowerCase().trim();
-      const elevesSnap = await adminDb
-        .collection('eleves')
-        .where('email', '==', email)
-        .get();
+      const elevesSnap = await queryElevesByEmail(auth.email);
       const classeIds = elevesSnap.docs.map((doc) => doc.data().classeId);
 
       // devoir.classes contient des noms ("Formation"), eleve.classeId contient des IDs

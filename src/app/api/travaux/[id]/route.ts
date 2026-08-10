@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { decrypt } from '@/lib/crypto';
 import type { Travail, UpdateTravailData } from '@/types/travail';
 
 // GET - Recuperer un travail par ID
@@ -39,8 +40,8 @@ export async function GET(
       id: data.id || docSnap.id,
       devoirId: data.devoirId,
       studentId: data.studentId,
-      studentEmail: data.studentEmail,
-      studentName: data.studentName,
+      studentEmail: decrypt(data.studentEmail),
+      studentName: decrypt(data.studentName),
       content: data.content || '',
       draftContent: data.draftContent || null,
       ressourceAnnotations: data.ressourceAnnotations || '',

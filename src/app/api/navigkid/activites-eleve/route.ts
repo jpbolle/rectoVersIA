@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { queryElevesByEmail } from '@/lib/eleve-lookup';
 
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -9,13 +10,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const email = auth.email.toLowerCase().trim();
-
-    // Trouver les classes de l'élève
-    const elevesSnap = await adminDb
-      .collection('eleves')
-      .where('email', '==', email)
-      .get();
+    // Trouver les classes de l'élève (empreinte puis clair)
+    const elevesSnap = await queryElevesByEmail(auth.email);
 
     if (elevesSnap.empty) {
       return NextResponse.json({ success: true, data: [] });

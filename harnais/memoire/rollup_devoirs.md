@@ -2,7 +2,7 @@
 
 ## État actuel (session du 2026-08-09)
 
-**Livré, non testé, non déployé** :
+**Livré, testé et déployé le 2026-08-10** :
 
 - **Sélection des classes en menu déroulant à cases** : nouveau composant réutilisable
   `ClassesDropdown` (bouton avec résumé « 4A, 4B » + compteur, panneau à cocher,
@@ -19,7 +19,7 @@
 
 ## TODOs
 
-- [ ] **Tester** : création (dropdown classes + choix évaluation), modification d'un
+- [x] **Tester** : création (dropdown classes + choix évaluation), modification d'un
   ancien devoir, tags sur les cards des deux côtés, duplication.
 - [ ] À terme : exploiter `evaluation` côté stats/corrections (aujourd'hui purement
   informatif).

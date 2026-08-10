@@ -49,6 +49,7 @@ export interface Travail {
   devoirId: string;
   studentId: string;             // Firebase UID
   studentEmail: string;
+  studentEmailHash?: string;     // Empreinte HMAC de l'email (requêtes d'identification — RGPD)
   studentName: string;
   content: string;               // Contenu HTML (Tiptap)
   draftContent?: DraftContent | null; // Brouillon / plan (verso)

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateTravailId } from '@/lib/travail-utils';
+import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
 import type { Travail } from '@/types/travail';
 
 // GET - Recuperer le travail de l'eleve connecte pour un devoir specifique
@@ -51,13 +52,23 @@ export async function GET(request: NextRequest) {
     let travailSnap = await travailRef.get();
 
     // Fallback : chercher par email (travail pre-cree par ensureTravaux)
+    // — d'abord par empreinte (documents chiffrés), puis par email en clair (legacy)
     if (!travailSnap.exists) {
-      const emailQuery = await adminDb
+      let emailQuery = await adminDb
         .collection('travaux')
         .where('devoirId', '==', devoirId)
-        .where('studentEmail', '==', auth.email.toLowerCase())
+        .where('studentEmailHash', '==', hashEmail(auth.email))
         .limit(1)
         .get();
+
+      if (emailQuery.empty) {
+        emailQuery = await adminDb
+          .collection('travaux')
+          .where('devoirId', '==', devoirId)
+          .where('studentEmail', '==', auth.email.toLowerCase())
+          .limit(1)
+          .get();
+      }
 
       if (!emailQuery.empty) {
         // Reclamer le travail pre-cree : mettre a jour le studentId
@@ -97,7 +108,12 @@ export async function GET(request: NextRequest) {
         submittedAt: null,
       };
 
-      await travailRef.set(newTravail);
+      await travailRef.set({
+        ...newTravail,
+        studentEmail: encrypt(newTravail.studentEmail),
+        studentEmailHash: hashEmail(newTravail.studentEmail),
+        studentName: encrypt(newTravail.studentName),
+      });
 
       return NextResponse.json({
         success: true,
@@ -111,8 +127,8 @@ export async function GET(request: NextRequest) {
       id: data.id || travailSnap.id,
       devoirId: data.devoirId,
       studentId: data.studentId,
-      studentEmail: data.studentEmail,
-      studentName: data.studentName,
+      studentEmail: decrypt(data.studentEmail),
+      studentName: decrypt(data.studentName),
       content: data.content || '',
       draftContent: data.draftContent || null,
       ressourceAnnotations: data.ressourceAnnotations || '',

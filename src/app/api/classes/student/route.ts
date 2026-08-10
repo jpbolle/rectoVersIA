@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { queryElevesByEmail } from '@/lib/eleve-lookup';
 
 // GET - Liste des classes de l'élève connecté
 export async function GET(request: NextRequest) {
@@ -19,10 +20,7 @@ export async function GET(request: NextRequest) {
       .where('firebaseUid', '==', auth.uid)
       .get();
 
-    const byEmail = await adminDb
-      .collection('eleves')
-      .where('email', '==', auth.email)
-      .get();
+    const byEmail = await queryElevesByEmail(auth.email);
 
     // Fusionner et dédupliquer par classeId
     const classeIds = new Set<string>();

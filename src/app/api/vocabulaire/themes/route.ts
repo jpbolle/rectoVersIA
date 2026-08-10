@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { decrypt } from '@/lib/crypto';
 import type { VocabulaireWord } from '@/types/vocabulaire';
 
 export async function GET(request: NextRequest) {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
         .get();
       usersSnap.docs.forEach((doc) => {
         const d = doc.data();
-        profNames[doc.id] = d.displayName || d.email || 'Professeur';
+        profNames[doc.id] = decrypt(d.displayName) || decrypt(d.email) || 'Professeur';
       });
     }
 

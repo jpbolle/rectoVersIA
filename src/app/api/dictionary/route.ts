@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { encrypt } from '@/lib/crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import type { DictionaryAction } from '@/types/dictionary';
 
@@ -115,7 +116,7 @@ async function ajouterAuVocabulairePersonnel(
       addedAt: new Date().toISOString(),
     } as { word: string });
     await ref.set(
-      { studentEmail: email, words, updatedAt: new Date().toISOString() },
+      { studentEmail: encrypt(email), words, updatedAt: new Date().toISOString() },
       { merge: true }
     );
   } catch (err) {

@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# sauvegardes locales (donnees personnelles en clair — ne jamais committer)
+/backups/
+
 # vercel
 .vercel
 

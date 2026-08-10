@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { queryElevesByEmail } from '@/lib/eleve-lookup';
 
 // POST - Lier le firebaseUid d'un eleve connecte a son document dans la collection "eleves"
 export async function POST(request: NextRequest) {
@@ -20,11 +21,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Chercher les documents eleves avec le meme email
-    const snapshot = await adminDb
-      .collection('eleves')
-      .where('email', '==', auth.email.toLowerCase())
-      .get();
+    // Chercher les documents eleves avec le meme email (empreinte puis clair)
+    const snapshot = await queryElevesByEmail(auth.email);
 
     if (snapshot.empty) {
       // Pas de document eleve correspondant — ce n'est pas une erreur bloquante

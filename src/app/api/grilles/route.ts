@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { calculateSchoolYear } from '@/lib/auth-utils';
 import { generateGrilleId, generateCriterionId } from '@/lib/grille-utils';
+import { decrypt } from '@/lib/crypto';
 import type { Grille, GrilleCriterion } from '@/types/grille';
 
 function docToGrilleList(doc: FirebaseFirestore.DocumentSnapshot): Grille {
@@ -70,8 +71,8 @@ export async function GET(request: NextRequest) {
       // Pour chaque UID, trouver l'email dans users/{uid} puis le nom dans professeurs
       for (const uid of uidsWithoutName) {
         const userDoc = await adminDb.collection('users').doc(uid).get();
-        const email = userDoc.exists ? (userDoc.data()?.email?.toLowerCase() || '') : '';
-        const displayName = userDoc.exists ? (userDoc.data()?.displayName || '') : '';
+        const email = userDoc.exists ? (decrypt(userDoc.data()?.email)?.toLowerCase() || '') : '';
+        const displayName = userDoc.exists ? (decrypt(userDoc.data()?.displayName) || '') : '';
         const profName = nameByEmail.get(email) || displayName || email || 'Professeur';
 
         for (const g of allGrilles) {

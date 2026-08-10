@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { encrypt } from '@/lib/crypto';
 
 // ── Vocabulaire personnel de l'élève ──
 // vocabulairePersonnel/{uid} : mots dont l'élève a demandé la définition
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     if (added > 0) {
       await ref.set(
-        { studentEmail: auth.email, words, updatedAt: new Date().toISOString() },
+        { studentEmail: encrypt(auth.email), words, updatedAt: new Date().toISOString() },
         { merge: true }
       );
     }

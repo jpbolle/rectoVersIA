@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateTravailId } from '@/lib/travail-utils';
 import { ensureTravaux } from '@/lib/precreate-travaux';
+import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
 import type { Travail, CreateTravailData } from '@/types/travail';
 
 // POST - Creer un nouveau travail (eleve uniquement)
@@ -74,7 +75,12 @@ export async function POST(request: NextRequest) {
       submittedAt: null,
     };
 
-    await existingRef.set(travail);
+    await existingRef.set({
+      ...travail,
+      studentEmail: encrypt(travail.studentEmail),
+      studentEmailHash: hashEmail(travail.studentEmail),
+      studentName: encrypt(travail.studentName),
+    });
 
     return NextResponse.json({
       success: true,
@@ -131,8 +137,8 @@ export async function GET(request: NextRequest) {
         id: data.id || doc.id,
         devoirId: data.devoirId,
         studentId: data.studentId,
-        studentEmail: data.studentEmail,
-        studentName: data.studentName,
+        studentEmail: decrypt(data.studentEmail),
+        studentName: decrypt(data.studentName),
         content: data.content || '',
         status: data.status || 'draft',
         selfEvaluation: data.selfEvaluation || null,
