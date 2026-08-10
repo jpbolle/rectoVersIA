@@ -264,6 +264,7 @@ export default function AssistancePanel({
           <RemarquesTab
             correction={correction}
             studentContent={studentContent}
+            profProduction={devoir.corrigeReference?.production}
           />
         )}
         {currentTab === 'recherche' && navigkidQuestions && (

@@ -1,15 +1,37 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { useStudentProfil } from '@/hooks/useStudentProfil';
 import { useStudentClasses } from '@/hooks/useStudentClasses';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import EmptyState from '@/components/EmptyState/EmptyState';
-import type { SectionStats, CriterionStats, DevoirStat, DevoirCriterionStat } from '@/types/profil';
+import type {
+  CriterionStats, DevoirCriterionStat,
+  ProfilGeneral, ProfilSection, RechercheItem, ProfilVocabulaire, ProfilVocabGroup,
+} from '@/types/profil';
 import styles from './profil.module.css';
+
+// ─── Onglets ─────────────────────────────────────────────────────────────────
+
+type TabId = 'general' | 'lire' | 'ecrire' | 'rechercher' | 'vocabulaire';
+
+const TABS: { id: TabId; label: string; icon: string }[] = [
+  { id: 'general', label: 'Général', icon: '🏠' },
+  { id: 'lire', label: 'Lire', icon: '📖' },
+  { id: 'ecrire', label: 'Écrire', icon: '✍️' },
+  { id: 'rechercher', label: 'Rechercher', icon: '🔍' },
+  { id: 'vocabulaire', label: 'Vocabulaire', icon: '🧠' },
+];
+
+const TAB_ENDPOINTS: Record<TabId, string> = {
+  general: '/api/profil/general',
+  lire: '/api/profil/lecture',
+  ecrire: '/api/profil/ecriture',
+  rechercher: '/api/profil/recherche',
+  vocabulaire: '/api/profil/vocabulaire',
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -39,13 +61,10 @@ function scoreLabel(score: number) {
   return 'Acquis';
 }
 
-// Trouve le ou les pires critères (score < 50)
-function getPointsAttention(criteria: Array<{ name: string; score?: number; averageScore?: number }>): string[] {
-  const scored = criteria
-    .map((c) => ({ name: c.name, s: c.score ?? c.averageScore ?? 100 }))
-    .filter((c) => c.s < 50)
-    .sort((a, b) => a.s - b.s);
-  return scored.slice(0, 2).map((c) => c.name);
+function formatDate(iso: string) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit' });
 }
 
 // ─── Barre de critère avec marqueurs classe ───────────────────────────────────
@@ -132,11 +151,13 @@ function SectionContent({
   globalScore,
   classeAvg,
   classeMax,
+  totalEvaluations,
 }: {
   criteria: Array<CriterionStats | DevoirCriterionStat>;
   globalScore: number;
   classeAvg: number | null;
   classeMax: number | null;
+  totalEvaluations: number;
 }) {
   const langCriteria = criteria.filter((c) => c.languageType);
   const otherCriteria = criteria.filter((c) => !c.languageType);
@@ -156,7 +177,10 @@ function SectionContent({
           </div>
           <div>
             <div className={styles.globalScoreLabel}>Score global</div>
-            <div className={styles.globalScoreSub}>{scoreLabel(globalScore)}</div>
+            <div className={styles.globalScoreSub}>
+              {scoreLabel(globalScore)}
+              {totalEvaluations > 1 ? ` · ${totalEvaluations} évaluations` : ''}
+            </div>
           </div>
         </div>
 
@@ -272,14 +296,285 @@ function SectionContent({
   );
 }
 
+// ─── Onglet Lire / Écrire (avec filtre par activité) ─────────────────────────
+function SectionTab({ data, emptyMessage }: { data: ProfilSection; emptyMessage: string }) {
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+
+  const current = useMemo(() => {
+    if (activeFilter === 'all') {
+      if (!data.stats) return null;
+      return { ...data.stats };
+    }
+    const d = data.devoirs.find((x) => x.devoirId === activeFilter);
+    if (!d) return null;
+    return {
+      criteria: d.criteria,
+      globalScore: d.myScore,
+      classeAvg: d.classeAvg,
+      classeMax: d.classeMax,
+      totalEvaluations: 1,
+    };
+  }, [activeFilter, data]);
+
+  if (!data.stats) {
+    return <EmptyState icon="chart" message={emptyMessage} />;
+  }
+
+  return (
+    <section className={styles.section}>
+      {data.devoirs.length > 1 && (
+        <div className={styles.filterRow}>
+          <button
+            className={`${styles.filterChip} ${activeFilter === 'all' ? styles.filterChipActive : ''}`}
+            onClick={() => setActiveFilter('all')}
+          >
+            Toutes les activités
+          </button>
+          {data.devoirs.map((d) => (
+            <button
+              key={d.devoirId}
+              className={`${styles.filterChip} ${activeFilter === d.devoirId ? styles.filterChipActive : ''}`}
+              onClick={() => setActiveFilter(d.devoirId)}
+            >
+              {d.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {current && (
+        <SectionContent
+          criteria={current.criteria}
+          globalScore={current.globalScore}
+          classeAvg={current.classeAvg}
+          classeMax={current.classeMax}
+          totalEvaluations={current.totalEvaluations}
+        />
+      )}
+    </section>
+  );
+}
+
+// ─── Onglet Général ──────────────────────────────────────────────────────────
+function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab: TabId) => void }) {
+  const domains: Array<{
+    tab: TabId; icon: string; name: string;
+    value: string; unit?: string; sub: string;
+    pct: number; color: string;
+  }> = [
+    {
+      tab: 'lire', icon: '📖', name: 'Lire',
+      value: data.lire ? `${data.lire.score}%` : '—',
+      sub: data.lire
+        ? `${data.lire.evaluations} évaluation${data.lire.evaluations > 1 ? 's' : ''}`
+        : 'Aucune évaluation',
+      pct: data.lire?.score ?? 0,
+      color: data.lire ? scoreColor(data.lire.score) : 'var(--c-border)',
+    },
+    {
+      tab: 'ecrire', icon: '✍️', name: 'Écrire',
+      value: data.ecrire ? `${data.ecrire.score}%` : '—',
+      sub: data.ecrire
+        ? `${data.ecrire.evaluations} évaluation${data.ecrire.evaluations > 1 ? 's' : ''}`
+        : 'Aucune évaluation',
+      pct: data.ecrire?.score ?? 0,
+      color: data.ecrire ? scoreColor(data.ecrire.score) : 'var(--c-border)',
+    },
+    {
+      tab: 'rechercher', icon: '🔍', name: 'Rechercher',
+      value: data.rechercher ? `${data.rechercher.remises}/${data.rechercher.total}` : '—',
+      sub: data.rechercher ? 'recherches remises' : 'Aucune recherche guidée',
+      pct: data.rechercher && data.rechercher.total > 0
+        ? Math.round((data.rechercher.remises / data.rechercher.total) * 100) : 0,
+      color: 'var(--c-primary)',
+    },
+    {
+      tab: 'vocabulaire', icon: '🧠', name: 'Vocabulaire',
+      value: data.vocabulaire ? `${data.vocabulaire.connus}` : '—',
+      unit: data.vocabulaire ? `/${data.vocabulaire.total} mots` : undefined,
+      sub: data.vocabulaire ? 'mots connus' : 'Aucun mot travaillé',
+      pct: data.vocabulaire && data.vocabulaire.total > 0
+        ? Math.round((data.vocabulaire.connus / data.vocabulaire.total) * 100) : 0,
+      color: 'var(--c-primary)',
+    },
+  ];
+
+  return (
+    <>
+      <div className={styles.topStats}>
+        <div className={styles.statCard}>
+          <span className={styles.statValue}>{data.travauxRemis}</span>
+          <span className={styles.statLabel}>Travaux remis</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statValueSuccess}>{data.reussites}</span>
+          <span className={styles.statLabel}>Réussites ≥ 60%</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statValueDanger}>{data.echecs}</span>
+          <span className={styles.statLabel}>Échecs &lt; 60%</span>
+        </div>
+        <div className={`${styles.statCard} ${data.attention.length > 0 ? styles.statCardDanger : styles.statCardSuccess}`}>
+          {data.attention.length > 0 ? (
+            <>
+              <span className={styles.attentionLabel}>⚠ {data.attention.join(', ')}</span>
+              <span className={styles.statLabel}>Point d&apos;attention</span>
+            </>
+          ) : (
+            <>
+              <span className={styles.statValueSuccess}>✓</span>
+              <span className={styles.statLabel}>Aucun point d&apos;attention</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.domGrid}>
+        {domains.map((d) => (
+          <button key={d.tab} className={styles.domCard} onClick={() => onOpenTab(d.tab)}>
+            <span className={styles.domIcon}>{d.icon}</span>
+            <div className={styles.domName}>{d.name}</div>
+            <div className={styles.domScore} style={{ color: d.color }}>
+              {d.value}
+              {d.unit && <span className={styles.domScoreUnit}>{d.unit}</span>}
+            </div>
+            <div className={styles.domSub}>{d.sub}</div>
+            <div className={styles.domBarTrack}>
+              <div className={styles.domBarFill} style={{ width: `${d.pct}%`, background: d.color }} />
+            </div>
+            <span className={styles.domLink}>Voir le détail →</span>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ─── Onglet Rechercher ───────────────────────────────────────────────────────
+function RechercheTab({ items }: { items: RechercheItem[] }) {
+  if (items.length === 0) {
+    return <EmptyState icon="chart" message="Aucune recherche guidée pour le moment." />;
+  }
+  return (
+    <section className={styles.section}>
+      <h2 className={styles.sectionTitle}>Mes recherches guidées (NavigKid)</h2>
+      {items.map((item) => (
+        <div key={item.devoirId} className={styles.questCard}>
+          <div className={styles.questInfo}>
+            <div className={styles.questTitle}>{item.titre}</div>
+            <div className={styles.questMeta}>
+              {item.soumise
+                ? `Remise le ${formatDate(item.date)} · ${item.nbReponses}/${item.nbQuestions} questions répondues · ${item.sitesConsultes} sites consultés · ${item.passages} passages surlignés`
+                : `${item.nbQuestions} questions · pas encore remise`}
+            </div>
+          </div>
+          <span className={`${styles.questBadge} ${item.soumise ? styles.questBadgeDone : styles.questBadgeTodo}`}>
+            {item.soumise ? 'Remise ✓' : 'À faire'}
+          </span>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+// ─── Onglet Vocabulaire ──────────────────────────────────────────────────────
+function VocabGroupCols({ group }: { group: ProfilVocabGroup }) {
+  const cols: [string, (l: number) => boolean][] = [
+    ['inconnus', (l) => l <= 1],
+    ['fragiles', (l) => l === 2 || l === 3],
+    ['connus', (l) => l >= 4],
+  ];
+  return (
+    <div className={styles.themeGroup}>
+      <div className={styles.themeHead}>
+        {group.isPerso ? '⭐' : '📚'} {group.name}
+        <span className={styles.themeCount}>— {group.words.length} mots</span>
+      </div>
+      <div className={styles.themeCols}>
+        {cols.map(([key, match]) => (
+          <div key={key} className={styles.themeCol}>
+            {group.words
+              .filter((w) => match(w.level))
+              .sort((a, b) => (a.level - b.level) || (a.successes - b.successes))
+              .map((w) => (
+              <span
+                key={w.word}
+                className={`${styles.wordChip} ${styles[`level${w.level}`]}`}
+                data-tip={w.attempts === 0
+                  ? 'Jamais testé'
+                  : `${w.attempts} tentative${w.attempts > 1 ? 's' : ''} · ${w.successes} réussite${w.successes > 1 ? 's' : ''}`}
+              >
+                {w.word}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VocabulaireTab({ data }: { data: ProfilVocabulaire }) {
+  if (data.groups.length === 0 && data.perso.length === 0) {
+    return <EmptyState icon="chart" message="Aucun mot de vocabulaire travaillé pour le moment." />;
+  }
+  return (
+    <>
+      {data.groups.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Maîtrise lexicale</h2>
+          <div className={styles.gradientBar} />
+          <div className={styles.colHeads}>
+            <div className={styles.colHead} style={{ color: '#7b241c' }}>
+              Inconnus<span className={styles.colHeadSub}>jamais réussis ou jamais testés</span>
+            </div>
+            <div className={styles.colHead} style={{ color: '#c0522b' }}>
+              Fragiles<span className={styles.colHeadSub}>quelques réussites</span>
+            </div>
+            <div className={styles.colHead} style={{ color: '#4a9a6a' }}>
+              Connus<span className={styles.colHeadSub}>réussis régulièrement</span>
+            </div>
+          </div>
+          {data.groups.map((g) => <VocabGroupCols key={g.id} group={g} />)}
+        </section>
+      )}
+
+      {data.perso.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Liste personnelle</h2>
+          <div className={styles.persoNote}>
+            Les mots dont tu as demandé la définition, dans l&apos;app ou avec NavigKid.
+          </div>
+          <div>
+            {data.perso.map((w) => (
+              <div key={w.word} className={styles.persoItem}>
+                <span className={styles.persoWord}>{w.word}</span>
+                <span className={styles.persoDef}>{w.definition}</span>
+                {w.addedAt && <span className={styles.persoDate}>{formatDate(w.addedAt)}</span>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+
 // ─── Page principale ──────────────────────────────────────────────────────────
 export default function ProfilPage() {
-  const { isAuthenticated, isLoading: authLoading, role } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, role, getAuthHeaders } = useAuth();
   const router = useRouter();
-  const { profilData, isLoading } = useStudentProfil();
   const { classes, isLoading: classesLoading } = useStudentClasses();
   const [isReady, setIsReady] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<TabId>('general');
+
+  // Données par onglet — chargées à la première ouverture de l'onglet
+  const [general, setGeneral] = useState<ProfilGeneral | null>(null);
+  const [lecture, setLecture] = useState<ProfilSection | null>(null);
+  const [ecriture, setEcriture] = useState<ProfilSection | null>(null);
+  const [recherche, setRecherche] = useState<RechercheItem[] | null>(null);
+  const [vocabulaire, setVocabulaire] = useState<ProfilVocabulaire | null>(null);
+  const fetchedTabs = useRef(new Set<TabId>());
 
   useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 100);
@@ -294,77 +589,36 @@ export default function ProfilPage() {
     }
   }, [authLoading, isAuthenticated, role, classes, classesLoading, router]);
 
-  // Activités écriture pour le filtre — DOIT être avant tout return conditionnel
-  const ecritureDevoirs = useMemo(
-    () => profilData?.devoirStats.filter((d) => d.type === 'ecrire') ?? [],
-    [profilData]
-  );
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const tab = activeTab;
+    if (fetchedTabs.current.has(tab)) return;
+    fetchedTabs.current.add(tab);
 
-  // Données courantes selon le filtre (écriture seulement)
-  const currentEcriture = useMemo((): {
-    criteria: Array<CriterionStats | DevoirCriterionStat>;
-    globalScore: number;
-    classeAvg: number | null;
-    classeMax: number | null;
-    totalEvaluations: number;
-  } | null => {
-    if (!profilData) return null;
-    if (activeFilter === 'all') {
-      if (!profilData.ecritureStats) return null;
-      return profilData.ecritureStats;
-    }
-    const d = ecritureDevoirs.find((x) => x.devoirId === activeFilter);
-    if (!d) return null;
-    return {
-      criteria: d.criteria,
-      globalScore: d.myScore,
-      classeAvg: d.classeAvg,
-      classeMax: d.classeMax,
-      totalEvaluations: 1,
-    };
-  }, [activeFilter, profilData, ecritureDevoirs]);
-
-  // 4 encadrés de stats (dépendent du filtre)
-  const topStats = useMemo(() => {
-    if (!profilData) return null;
-
-    if (activeFilter === 'all') {
-      const attention = getPointsAttention(
-        (profilData.ecritureStats?.criteria ?? []).map((c) => ({
-          name: c.name, averageScore: c.averageScore,
-        }))
-      );
-      return {
-        box1: { value: String(profilData.travauxRemis), label: 'Travaux remis' },
-        box2: { value: String(profilData.reussites), label: 'Réussites ≥ 60%', colorClass: styles.statValueSuccess },
-        box3: { value: String(profilData.echecs), label: 'Échecs < 60%', colorClass: styles.statValueDanger },
-        attention,
-      };
-    }
-
-    const d = ecritureDevoirs.find((x) => x.devoirId === activeFilter);
-    if (!d) return null;
-    const attention = getPointsAttention(d.criteria.map((c) => ({ name: c.name, score: c.score })));
-    return {
-      box1: { value: `${d.myScore}%`, label: 'Mon score', colorClass: scoreValueClass(d.myScore) },
-      box2: {
-        value: d.classeAvg !== null ? `${d.classeAvg}%` : '—',
-        label: 'Moy. classe',
-        colorClass: d.classeAvg !== null ? scoreValueClass(d.classeAvg) : styles.statValue,
-      },
-      box3: {
-        value: d.classeMax !== null ? `${d.classeMax}%` : '—',
-        label: 'Max classe',
-        colorClass: d.classeMax !== null ? scoreValueClass(d.classeMax) : styles.statValue,
-      },
-      attention,
-    };
-  }, [activeFilter, profilData, ecritureDevoirs]);
-
-  const lectureStats = profilData?.lectureStats ?? null;
+    (async () => {
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers) return;
+        const res = await fetch(TAB_ENDPOINTS[tab], { headers });
+        const json = await res.json();
+        if (!json.success) return;
+        switch (tab) {
+          case 'general': setGeneral(json.data); break;
+          case 'lire': setLecture(json.data); break;
+          case 'ecrire': setEcriture(json.data); break;
+          case 'rechercher': setRecherche(json.data); break;
+          case 'vocabulaire': setVocabulaire(json.data); break;
+        }
+      } catch (err) {
+        console.error(`Erreur fetch profil (${tab}):`, err);
+      }
+    })();
+  }, [activeTab, isAuthenticated, getAuthHeaders]);
 
   // Guard après tous les hooks
   if (!isAuthenticated || (role === 'eleve' && classesLoading)) return null;
+
+  const loadingState = <EmptyState icon="hourglass" message="Chargement..." />;
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
@@ -376,112 +630,36 @@ export default function ProfilPage() {
           Tes résultats agrégés sur toutes les évaluations corrigées
         </p>
 
-        {isLoading ? (
-          <EmptyState icon="hourglass" message="Chargement de ton profil..." />
-        ) : !profilData || profilData.totalEvaluations === 0 ? (
-          <EmptyState
-            icon="chart"
-            message="Aucune évaluation disponible pour le moment. Tes résultats apparaîtront ici dès que ton professeur aura corrigé un de tes travaux."
-          />
-        ) : (
-          <>
-            {/* ── 4 encadrés de stats générales ── */}
-            {topStats && (
-              <div className={styles.topStats}>
-                <div className={styles.statCard}>
-                  <span className={topStats.box1.colorClass ?? styles.statValue}>
-                    {topStats.box1.value}
-                  </span>
-                  <span className={styles.statLabel}>{topStats.box1.label}</span>
-                </div>
-                <div className={styles.statCard}>
-                  <span className={topStats.box2.colorClass ?? styles.statValue}>
-                    {topStats.box2.value}
-                  </span>
-                  <span className={styles.statLabel}>{topStats.box2.label}</span>
-                </div>
-                <div className={styles.statCard}>
-                  <span className={topStats.box3.colorClass ?? styles.statValue}>
-                    {topStats.box3.value}
-                  </span>
-                  <span className={styles.statLabel}>{topStats.box3.label}</span>
-                </div>
-                {/* Point d'attention */}
-                <div className={`${styles.statCard} ${topStats.attention.length > 0 ? styles.statCardDanger : styles.statCardSuccess}`}>
-                  {topStats.attention.length > 0 ? (
-                    <>
-                      <span className={styles.attentionLabel}>
-                        ⚠ {topStats.attention.join(', ')}
-                      </span>
-                      <span className={styles.statLabel}>Point d&apos;attention</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className={styles.statValueSuccess}>✓</span>
-                      <span className={styles.statLabel}>Aucun point d&apos;attention</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
+        <div className={styles.tabsBar}>
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={`${styles.tabBtn} ${activeTab === t.id ? styles.tabBtnActive : ''}`}
+              onClick={() => setActiveTab(t.id)}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
 
-            {/* ── Section Statistiques d'écriture ── */}
-            <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>Statistiques d&apos;écriture</h2>
-
-              {/* Filtre par activité */}
-              {ecritureDevoirs.length > 1 && (
-                <div className={styles.filterRow}>
-                  <button
-                    className={`${styles.filterChip} ${activeFilter === 'all' ? styles.filterChipActive : ''}`}
-                    onClick={() => setActiveFilter('all')}
-                  >
-                    Toutes les activités
-                  </button>
-                  {ecritureDevoirs.map((d) => (
-                    <button
-                      key={d.devoirId}
-                      className={`${styles.filterChip} ${activeFilter === d.devoirId ? styles.filterChipActive : ''}`}
-                      onClick={() => setActiveFilter(d.devoirId)}
-                    >
-                      {d.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {currentEcriture ? (
-                <SectionContent
-                  criteria={currentEcriture.criteria}
-                  globalScore={currentEcriture.globalScore}
-                  classeAvg={currentEcriture.classeAvg}
-                  classeMax={currentEcriture.classeMax}
-                />
-              ) : (
-                <EmptyState icon="chart" message="Aucun travail d'écriture évalué pour le moment." />
-              )}
-            </section>
-
-            {/* ── Section Statistiques de lecture ── */}
-            <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>Statistiques de lecture</h2>
-              {lectureStats ? (
-                <SectionContent
-                  criteria={lectureStats.criteria}
-                  globalScore={lectureStats.globalScore}
-                  classeAvg={lectureStats.classeAvg}
-                  classeMax={lectureStats.classeMax}
-                />
-              ) : (
-                <div className={styles.emptySection}>
-                  <EmptyState
-                    icon="chart"
-                    message="Aucun travail de lecture évalué pour le moment."
-                  />
-                </div>
-              )}
-            </section>
-          </>
+        {activeTab === 'general' && (
+          general ? <GeneralTab data={general} onOpenTab={setActiveTab} /> : loadingState
+        )}
+        {activeTab === 'lire' && (
+          lecture
+            ? <SectionTab data={lecture} emptyMessage="Aucun travail de lecture évalué pour le moment." />
+            : loadingState
+        )}
+        {activeTab === 'ecrire' && (
+          ecriture
+            ? <SectionTab data={ecriture} emptyMessage="Aucun travail d'écriture évalué pour le moment." />
+            : loadingState
+        )}
+        {activeTab === 'rechercher' && (
+          recherche ? <RechercheTab items={recherche} /> : loadingState
+        )}
+        {activeTab === 'vocabulaire' && (
+          vocabulaire ? <VocabulaireTab data={vocabulaire} /> : loadingState
         )}
       </main>
 

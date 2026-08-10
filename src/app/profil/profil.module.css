@@ -586,3 +586,314 @@
     gap: 6px;
   }
 }
+
+/* ═══════════ Refonte en onglets (2026-08) ═══════════ */
+
+/* ─── Barre d'onglets ─── */
+.tabsBar {
+  display: flex;
+  gap: 6px;
+  border-bottom: 2px solid var(--c-border);
+  margin-bottom: 26px;
+  flex-wrap: wrap;
+}
+
+.tabBtn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--c-font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  padding: 10px 20px 12px;
+  border-radius: var(--c-radius) var(--c-radius) 0 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: background 0.15s;
+}
+
+.tabBtn:hover {
+  background: var(--c-bg-element);
+}
+
+.tabBtnActive {
+  color: var(--c-primary);
+  border-bottom-color: var(--c-primary);
+  background: var(--c-bg-card);
+}
+
+/* ─── Tuiles domaines (onglet Général) ─── */
+.domGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.domCard {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 20px 18px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+  text-align: left;
+  font-family: var(--c-font-body);
+}
+
+.domCard:hover {
+  box-shadow: 0 3px 12px rgba(61, 56, 50, 0.12);
+}
+
+.domIcon {
+  font-size: 22px;
+}
+
+.domName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 8px 0 2px;
+}
+
+.domScore {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.domScoreUnit {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--c-text-muted);
+}
+
+.domSub {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  margin-top: 3px;
+}
+
+.domBarTrack {
+  height: 6px;
+  background: var(--c-border);
+  border-radius: 3px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.domBarFill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.domLink {
+  font-size: 12px;
+  color: var(--c-accent);
+  font-weight: 600;
+  margin-top: 12px;
+  display: inline-block;
+}
+
+/* ─── Onglet Rechercher ─── */
+.questCard {
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 18px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.questInfo {
+  flex: 1;
+}
+
+.questTitle {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--c-text);
+}
+
+.questMeta {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  margin-top: 4px;
+}
+
+.questBadge {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+.questBadgeDone {
+  background: #e8f2ec;
+  color: var(--c-success);
+}
+
+.questBadgeTodo {
+  background: #f7efe4;
+  color: var(--c-accent);
+}
+
+/* ─── Onglet Vocabulaire : maîtrise lexicale ─── */
+.gradientBar {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(to right, #7b241c, #c0522b, #d4a94c, #4a9a6a, #1e5b45);
+  margin-bottom: 6px;
+}
+
+.colHeads {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 10px 0 18px;
+}
+
+.colHead {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.colHeadSub {
+  display: block;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--c-text-muted);
+  margin-top: 2px;
+}
+
+.themeGroup {
+  margin-bottom: 24px;
+}
+
+.themeHead {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-primary);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.themeCount {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--c-text-muted);
+}
+
+.themeCols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.themeCol {
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-content: flex-start;
+  min-height: 54px;
+}
+
+.wordChip {
+  padding: 7px 14px;
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  cursor: default;
+  position: relative;
+}
+
+/* Infobulle : tentatives · réussites */
+.wordChip:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--c-text);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 400;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Échelle de maîtrise : 0 jamais testé → 5 bien ancré */
+.level0 { background: #d8d2c8; color: var(--c-text-muted); }
+.level1 { background: #7b241c; }
+.level2 { background: #c0522b; }
+.level3 { background: #d4a94c; }
+.level4 { background: #4a9a6a; }
+.level5 { background: #1e5b45; }
+
+/* ─── Onglet Vocabulaire : liste personnelle ─── */
+.persoNote {
+  background: var(--c-bg-element);
+  border-left: 3px solid var(--c-accent);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--c-text-muted);
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 16px;
+}
+
+.persoItem {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 14px;
+}
+
+.persoItem:last-child {
+  border-bottom: none;
+}
+
+.persoWord {
+  font-weight: 600;
+  color: var(--c-text);
+  min-width: 130px;
+}
+
+.persoDef {
+  color: var(--c-text-muted);
+  flex: 1;
+  font-size: 13px;
+}
+
+.persoDate {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .domGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .themeCols,
+  .colHeads {
+    grid-template-columns: 1fr;
+  }
+}

@@ -93,6 +93,8 @@ export default function AnnotationEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
+        // Link est ajouté séparément ci-dessous — évite le doublon (StarterKit l'inclut)
+        link: false,
       }),
       TextStyle,
       FontFamily.configure({ types: ['textStyle'] }),

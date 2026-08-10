@@ -3,8 +3,11 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import Anthropic from '@anthropic-ai/sdk';
 import { LEVEL_LABELS, LEVEL_PERCENTAGES } from '@/types/grille';
+import { planHasContent, planToMarkdown } from '@/lib/draft-utils';
 import type { Grille, GrilleCriterion } from '@/types/grille';
 import type { AiGridResult, AiGridCriterionResult } from '@/types/ai-grid';
+import type { CorrigeReference, DevoirRessource } from '@/types/devoir';
+import type { DraftContent } from '@/types/travail';
 
 // ── Mapping pourcentage → level ──
 
@@ -189,13 +192,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Le texte est vide' }, { status: 400 });
   }
 
-  // Vérifier que le devoir autorise l'IA
+  // Vérifier que le devoir autorise l'IA (et garder ses données pour le prompt)
+  let devoirData: FirebaseFirestore.DocumentData;
   try {
     const devoirDoc = await adminDb.collection('devoirs').doc(devoirId).get();
     if (!devoirDoc.exists) {
       return NextResponse.json({ error: 'Devoir non trouvé' }, { status: 404 });
     }
-    if (!devoirDoc.data()?.accesIA) {
+    devoirData = devoirDoc.data()!;
+    if (!devoirData.accesIA) {
       return NextResponse.json({ error: "L'accès IA n'est pas activé pour ce devoir" }, { status: 403 });
     }
   } catch (err) {
@@ -242,13 +247,96 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'La grille ne contient aucun critère' }, { status: 400 });
   }
 
+  // ── Matériaux de référence fournis par le prof (texte-source + corrigé) ──
+  // Valables pour toutes les activités d'écriture : texte-source, plan de
+  // référence, production de référence — l'IA compare la copie de l'élève à eux.
+  // Chaque bloc est soumis à son toggle « corrigé IA » (défaut : activé).
+  // Ressources : seuls le texte (onglet Texte) et les images sont transmis —
+  // jamais les PDF (trop de tokens) ni les liens (l'IA ne navigue pas).
+  const ressource = devoirData.ressources as DevoirRessource | null;
+  const sendRessources = devoirData.ressourcesToIA === true;
+  const sourceText = sendRessources
+    ? stripHtml(ressource?.document || '') || stripHtml(ressource?.content || '')
+    : '';
+  const corrigeRef = (devoirData.corrigeReference || null) as CorrigeReference | null;
+  // Plan de référence = thème/thèse éventuel + plan hiérarchisé
+  let planProf = '';
+  if (corrigeRef?.planToIA === true) {
+    const themeLine = corrigeRef.theme?.trim() ? `Thème ou thèse : ${corrigeRef.theme.trim()}` : '';
+    const planText = corrigeRef.plan && planHasContent(corrigeRef.plan) ? planToMarkdown(corrigeRef.plan) : '';
+    planProf = [themeLine, planText].filter(Boolean).join('\n');
+  }
+  const productionProf = corrigeRef?.productionToIA === true
+    ? corrigeRef?.production?.trim() || ''
+    : '';
+
+  // Images-sources : lues depuis Firestore (collection ressourceImages,
+  // base64 déjà prêt) et jointes au message (max 3)
+  const MAX_IMAGES = 3;
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
+  type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
+  const imageBlocks: { type: 'image'; source: { type: 'base64'; media_type: AllowedImageType; data: string } }[] = [];
+  if (sendRessources && ressource?.files?.length) {
+    const imageFiles = ressource.files
+      .filter((f) => f.fileId && ALLOWED_IMAGE_TYPES.includes(f.mimeType as AllowedImageType))
+      .slice(0, MAX_IMAGES);
+    for (const file of imageFiles) {
+      try {
+        const imageDoc = await adminDb.collection('ressourceImages').doc(file.fileId!).get();
+        const base64 = imageDoc.data()?.data as string | undefined;
+        if (!base64) continue;
+        imageBlocks.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: file.mimeType as AllowedImageType,
+            data: base64,
+          },
+        });
+      } catch (err) {
+        console.error(`Image-source non lisible (${file.name}):`, err);
+      }
+    }
+  }
+
+  let referenceBlocks = '';
+  if (sourceText) {
+    referenceBlocks += `\nTEXTE-SOURCE (document de départ fourni par le professeur) :\n${sourceText}\n`;
+  }
+  if (imageBlocks.length > 0) {
+    referenceBlocks += `\nIMAGES-SOURCES : ${imageBlocks.length} image(s) fournie(s) par le professeur en pièce jointe de ce message (document de départ de la production).\n`;
+  }
+  if (planProf) {
+    referenceBlocks += `\nPLAN DE RÉFÉRENCE DU PROFESSEUR (corrigé — hiérarchie des idées attendue) :\n${planProf}\n`;
+  }
+  if (productionProf) {
+    referenceBlocks += `\nPRODUCTION DE RÉFÉRENCE DU PROFESSEUR (corrigé — version attendue) :\n${productionProf}\n`;
+  }
+
+  // Plan rédigé par l'élève (verso de son espace de travail), s'il existe
+  let planEleve = '';
+  try {
+    const travailDoc = await adminDb.collection('travaux').doc(travailId).get();
+    const draft = travailDoc.data()?.draftContent as DraftContent | null | undefined;
+    if (draft?.type === 'plan' && planHasContent(draft.plan)) {
+      planEleve = planToMarkdown(draft.plan!);
+    }
+  } catch (err) {
+    console.error('Erreur chargement plan élève:', err);
+  }
+
+  const hasCorrige = !!(planProf || productionProf);
+  const consignesExtra = hasCorrige
+    ? `\n8. CORRIGÉ DE RÉFÉRENCE : compare la copie${planEleve ? ' et le plan' : ''} de l'élève au corrigé du professeur — idées essentielles retenues ou manquantes, hiérarchie respectée, fidélité au texte-source. Appuie tes justifications sur cette comparaison, sans jamais recopier le corrigé dans tes réponses.`
+    : '';
+
   // Formater la grille et construire le prompt utilisateur
   const grilleFormatee = formatGrilleForAI(grille.criteria);
   const userPrompt = `GRILLE DE CORRECTION :
 
 CRITÈRES À ÉVALUER :
 ${grilleFormatee}
-
+${referenceBlocks ? `\nMATÉRIAUX DE RÉFÉRENCE :\n${referenceBlocks}` : ''}${planEleve ? `\nPLAN RÉDIGÉ PAR L'ÉLÈVE (brouillon, à comparer au plan de référence) :\n${planEleve}\n` : ''}
 COPIE DE L'ÉLÈVE À CORRIGER :
 ${textContent}
 
@@ -259,7 +347,7 @@ CONSIGNES :
 4. ORTHOGRAPHE : Même 3-4 fautes = "Suffisant" (35%) max. Beaucoup de fautes = "Insuffisant" (15%)
 5. Évalue TOUS les critères sans exception
 6. Sois HONNÊTE dans le commentaire final : ne complimente pas un travail insuffisant
-7. JUSTIFICATION : Ne répète PAS l'indicateur ! Explique POURQUOI tu as choisi cet indicateur en citant des éléments concrets du texte, et dis ce qu'il faudrait pour atteindre le niveau supérieur
+7. JUSTIFICATION : Ne répète PAS l'indicateur ! Explique POURQUOI tu as choisi cet indicateur en citant des éléments concrets du texte, et dis ce qu'il faudrait pour atteindre le niveau supérieur${consignesExtra}
 
 RAPPEL FORMAT : JSON brut uniquement. Commence par { et termine par }.`;
 
@@ -273,7 +361,10 @@ RAPPEL FORMAT : JSON brut uniquement. Commence par { et termine par }.`;
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
-        content: userPrompt,
+        // Les images-sources éventuelles précèdent le texte du prompt
+        content: imageBlocks.length > 0
+          ? [...imageBlocks, { type: 'text' as const, text: userPrompt }]
+          : userPrompt,
       }],
     });
 

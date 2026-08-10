@@ -23,6 +23,9 @@ interface PlanDraftProps {
   onStopRecording?: () => void;
   // Mode lecture seule (élève)
   readOnlyAnnotations?: boolean;
+  // Masquer le bandeau d'en-tête « Plan du texte » (ex. corrigé prof dans le
+  // formulaire de création, où le contenu n'est pas forcément un plan de texte)
+  hideHeader?: boolean;
 }
 
 export default function PlanDraft({
@@ -37,6 +40,7 @@ export default function PlanDraft({
   onStartRecording,
   onStopRecording,
   readOnlyAnnotations = false,
+  hideHeader = false,
 }: PlanDraftProps) {
   const showAnnotations = !!draftAnnotations && (!!onAnnotationChange || readOnlyAnnotations);
   const plan = draft.plan || [createPlanItem()];
@@ -452,13 +456,15 @@ export default function PlanDraft({
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <span className={styles.headerIcon}>🗂️</span>
-        <h3>Plan du texte</h3>
-        <span className={styles.headerHint}>
-          Ajoute progressivement les idées principales identifiées puis les idées secondaires
-        </span>
-      </div>
+      {!hideHeader && (
+        <div className={styles.header}>
+          <span className={styles.headerIcon}>🗂️</span>
+          <h3>Plan du texte</h3>
+          <span className={styles.headerHint}>
+            Ajoute progressivement les idées principales identifiées puis les idées secondaires
+          </span>
+        </div>
+      )}
 
       <div className={styles.tree}>
         {plan.map((item) => (

@@ -67,26 +67,30 @@
 }
 
 /* ── Bouton retourner ── */
+/* Même bouton « Retourner » que le formulaire de création (CreationForm) */
 .flipAction {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 6px 14px;
-  border: 1.5px solid var(--c-border);
-  border-radius: var(--c-radius);
+  border: 1.5px solid var(--c-primary);
+  border-radius: 9px;
   background: var(--c-bg-card);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: inherit;
-  color: var(--c-text-secondary);
+  color: var(--c-primary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.flipAction:hover {
-  background: #dce4ec;
-  border-color: #8da5bd;
-  color: #416286;
+.flipAction:hover:not(:disabled) {
+  background: var(--c-primary);
+  color: var(--c-text-on-primary, #fff);
+}
+
+.flipAction:hover:not(:disabled) .flipActionIcon {
+  transform: rotate(180deg);
 }
 
 .flipAction:disabled {

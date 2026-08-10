@@ -1,0 +1,459 @@
+// Helpers serveur du profil d'écrilecteur — partagés par les routes /api/profil/*.
+// Chargent les données de l'élève connecté (travaux, corrections, devoirs, grilles)
+// et construisent les statistiques par onglet.
+
+import { adminDb } from '@/lib/firebase/admin';
+import { queryElevesByEmail } from '@/lib/eleve-lookup';
+import { LEVEL_PERCENTAGES } from '@/types/grille';
+import {
+  getWordCategory,
+  type WordAttempt,
+  type WordMasteryEntry,
+  type VocabulaireActivityState,
+  type VocabulaireWord,
+} from '@/types/vocabulaire';
+import type {
+  SectionStats, CriterionStats, CriterionHistory,
+  DevoirStat, DevoirCriterionStat,
+  ProfilVocabGroup, ProfilVocabWord, ProfilPersoWord, ProfilVocabulaire,
+} from '@/types/profil';
+
+type LanguageType = 'ortho' | 'syntaxe' | 'lexique' | 'ponctuation';
+
+export function detectLanguageType(name: string): LanguageType | null {
+  if (/orthograph/i.test(name)) return 'ortho';
+  if (/ponctuat/i.test(name)) return 'ponctuation';
+  if (/syntaxe|syntact/i.test(name)) return 'syntaxe';
+  if (/lexiqu|vocabul/i.test(name)) return 'lexique';
+  return null;
+}
+
+export type CorrEntry = {
+  id: string;
+  travailId: string;
+  devoirId: string;
+  evaluation: Record<string, number>;
+  score: number;
+};
+
+export type ClassCorrEntry = {
+  score: number;
+  evaluation: Record<string, number>;
+};
+
+export type GrilleEntry = { criteria: { id: string; name: string; weight: number }[] };
+
+export type DevoirInfo = {
+  grille: string;
+  intitule: string;
+  date: string;
+  type: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
+  questionnaireId?: string;
+  vocabulaireThemes?: string[];
+};
+
+export type TravailInfo = {
+  id: string;
+  devoirId: string;
+  status: string;
+  content?: string;
+};
+
+export interface StudentBase {
+  travaux: TravailInfo[];
+  corrections: CorrEntry[];
+  devoirs: Map<string, DevoirInfo>;
+  grilles: Map<string, GrilleEntry>;
+}
+
+// Charge tout ce qui n'appartient qu'à l'élève : travaux, corrections visibles,
+// devoirs associés, grilles (optionnel). Aucune donnée de classe ici.
+export async function loadStudentBase(
+  uid: string,
+  email: string,
+  opts: { withGrilles?: boolean; withContent?: boolean } = {}
+): Promise<StudentBase | null> {
+  // 1. L'utilisateur est-il un élève enregistré ?
+  const [byUid, byEmail] = await Promise.all([
+    adminDb.collection('eleves').where('firebaseUid', '==', uid).get(),
+    queryElevesByEmail(email),
+  ]);
+  if (byUid.empty && byEmail.docs.length === 0) return null;
+
+  // 2. Ses travaux
+  const travauxSnapshot = await adminDb
+    .collection('travaux').where('studentId', '==', uid).get();
+  const travaux: TravailInfo[] = travauxSnapshot.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      devoirId: data.devoirId,
+      status: data.status || 'draft',
+      content: opts.withContent ? (data.content as string | undefined) : undefined,
+    };
+  });
+
+  const base: StudentBase = {
+    travaux, corrections: [], devoirs: new Map(), grilles: new Map(),
+  };
+  if (travaux.length === 0) return base;
+
+  // 3. Ses corrections visibles (par lots de 30 IDs, en parallèle)
+  const travailIds = travaux.map((t) => t.id);
+  const corrBatches = Array.from(
+    { length: Math.ceil(travailIds.length / 30) },
+    (_, i) => travailIds.slice(i * 30, (i + 1) * 30).map((id) => `CORR-${id}`)
+  );
+  await Promise.all(corrBatches.map(async (batch) => {
+    const snap = await adminDb.collection('corrections').where('__name__', 'in', batch).get();
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      if (data.visibleParEleve && data.evaluation) {
+        base.corrections.push({
+          id: doc.id, travailId: data.travailId, devoirId: data.devoirId,
+          evaluation: data.evaluation as Record<string, number>,
+          score: data.score || 0,
+        });
+      }
+    }
+  }));
+
+  // 4. Les devoirs de tous ses travaux (pas seulement les corrigés :
+  //    les onglets Rechercher et Vocabulaire n'ont pas de correction)
+  const devoirIds = [...new Set(travaux.map((t) => t.devoirId))];
+  const devBatches = Array.from(
+    { length: Math.ceil(devoirIds.length / 30) },
+    (_, i) => devoirIds.slice(i * 30, (i + 1) * 30)
+  );
+  await Promise.all(devBatches.map(async (batch) => {
+    const snap = await adminDb.collection('devoirs').where('__name__', 'in', batch).get();
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const rawDate = data.dateRemise || data.createdAt;
+      const dateStr = rawDate
+        ? (typeof rawDate === 'string' ? rawDate : rawDate.toDate().toISOString())
+        : '';
+      base.devoirs.set(doc.id, {
+        grille: data.grille || '',
+        intitule: data.intitule || '',
+        date: dateStr,
+        type: data.typeTravail || 'ecrire',
+        questionnaireId: data.questionnaireId || undefined,
+        vocabulaireThemes: data.vocabulaireThemes || undefined,
+      });
+    }
+  }));
+
+  // 5. Les grilles (pour les onglets à critères)
+  if (opts.withGrilles) {
+    const grilleRefs = [...new Set(
+      [...base.devoirs.values()].map((d) => d.grille)
+    )].filter(Boolean);
+    await Promise.all(grilleRefs.map(async (ref) => {
+      let doc = await adminDb.collection('grilles').doc(ref).get();
+      if (!doc.exists) {
+        const byName = await adminDb.collection('grilles').where('name', '==', ref).limit(1).get();
+        if (!byName.empty) doc = byName.docs[0];
+      }
+      if (doc.exists) {
+        const data = doc.data()!;
+        base.grilles.set(ref, {
+          criteria: (data.criteria || []).map((c: { id: string; name: string; weight: number }) => ({
+            id: c.id, name: c.name, weight: c.weight,
+          })),
+        });
+      }
+    }));
+  }
+
+  return base;
+}
+
+// Charge les corrections de toute la classe pour chaque devoir — c'est la partie
+// coûteuse (tous les travaux du devoir, puis toutes leurs corrections). Réservée
+// aux onglets Lire / Écrire qui affichent moyenne et max de classe.
+export async function loadClassStats(
+  devoirIds: string[]
+): Promise<Map<string, ClassCorrEntry[]>> {
+  const classCorrsPerDevoir = new Map<string, ClassCorrEntry[]>();
+  await Promise.all(devoirIds.map(async (devoirId) => {
+    const allTrSnap = await adminDb
+      .collection('travaux').where('devoirId', '==', devoirId).get();
+    const allTravailIds = allTrSnap.docs.map((d) => d.id);
+    if (allTravailIds.length === 0) { classCorrsPerDevoir.set(devoirId, []); return; }
+
+    const classCorrsList: ClassCorrEntry[] = [];
+    await Promise.all(
+      Array.from({ length: Math.ceil(allTravailIds.length / 30) }, (_, i) =>
+        allTravailIds.slice(i * 30, (i + 1) * 30)
+      ).map(async (batchIds) => {
+        const batch = batchIds.map((id) => `CORR-${id}`);
+        const corrSnap = await adminDb
+          .collection('corrections').where('__name__', 'in', batch).get();
+        for (const doc of corrSnap.docs) {
+          const d = doc.data();
+          if (d.score > 0 && d.evaluation) {
+            classCorrsList.push({
+              score: d.score, evaluation: d.evaluation as Record<string, number>,
+            });
+          }
+        }
+      })
+    );
+    classCorrsPerDevoir.set(devoirId, classCorrsList);
+  }));
+  return classCorrsPerDevoir;
+}
+
+// Statistiques agrégées d'une section (écriture ou lecture).
+// classCorrsPerDevoir vide → pas de comparaison classe (classeAvg/Max null).
+export function buildSectionStats(
+  corrsList: CorrEntry[],
+  base: StudentBase,
+  classCorrsPerDevoir: Map<string, ClassCorrEntry[]>
+): SectionStats | null {
+  if (corrsList.length === 0) return null;
+
+  const criterionAgg = new Map<string, {
+    totalWeightedScore: number; totalWeight: number;
+    count: number; history: CriterionHistory[];
+  }>();
+  let globalScoreSum = 0;
+
+  for (const corr of corrsList) {
+    globalScoreSum += corr.score;
+    const devoir = base.devoirs.get(corr.devoirId);
+    const grille = devoir ? base.grilles.get(devoir.grille) : undefined;
+    if (!devoir || !grille) continue;
+
+    for (const crit of grille.criteria) {
+      const level = corr.evaluation[crit.id];
+      if (level === undefined) continue;
+      const pct = LEVEL_PERCENTAGES[level as keyof typeof LEVEL_PERCENTAGES] ?? 0;
+      if (!criterionAgg.has(crit.name)) {
+        criterionAgg.set(crit.name, { totalWeightedScore: 0, totalWeight: 0, count: 0, history: [] });
+      }
+      const agg = criterionAgg.get(crit.name)!;
+      agg.totalWeightedScore += pct * crit.weight;
+      agg.totalWeight += crit.weight;
+      agg.count += 1;
+      agg.history.push({
+        devoirName: devoir.intitule,
+        date: devoir.date,
+        score: pct,
+      });
+    }
+  }
+
+  const devoirIdsInSection = [...new Set(corrsList.map((c) => c.devoirId))];
+  const classScoresByCrit = new Map<string, number[]>();
+  const allClassGlobalScores: number[] = [];
+
+  for (const devoirId of devoirIdsInSection) {
+    const devoir = base.devoirs.get(devoirId);
+    const grille = devoir ? base.grilles.get(devoir.grille) : undefined;
+    const classCorrsList = classCorrsPerDevoir.get(devoirId) || [];
+    for (const corr of classCorrsList) {
+      allClassGlobalScores.push(corr.score);
+      if (!grille) continue;
+      for (const crit of grille.criteria) {
+        const level = corr.evaluation[crit.id];
+        if (level === undefined) continue;
+        const pct = LEVEL_PERCENTAGES[level as keyof typeof LEVEL_PERCENTAGES] ?? 0;
+        if (!classScoresByCrit.has(crit.name)) classScoresByCrit.set(crit.name, []);
+        classScoresByCrit.get(crit.name)!.push(pct);
+      }
+    }
+  }
+
+  const classeAvg = allClassGlobalScores.length > 0
+    ? Math.round(allClassGlobalScores.reduce((s, v) => s + v, 0) / allClassGlobalScores.length)
+    : null;
+  const classeMax = allClassGlobalScores.length > 0 ? Math.max(...allClassGlobalScores) : null;
+
+  const criteria: CriterionStats[] = [];
+  for (const [name, agg] of criterionAgg) {
+    const classScores = classScoresByCrit.get(name) || [];
+    criteria.push({
+      name,
+      averageScore: agg.totalWeight > 0 ? Math.round(agg.totalWeightedScore / agg.totalWeight) : 0,
+      count: agg.count,
+      history: agg.history.sort((a, b) => a.date.localeCompare(b.date)),
+      classeAvg: classScores.length > 0
+        ? Math.round(classScores.reduce((s, v) => s + v, 0) / classScores.length) : null,
+      classeMax: classScores.length > 0 ? Math.max(...classScores) : null,
+      languageType: detectLanguageType(name) || undefined,
+    });
+  }
+  criteria.sort((a, b) => a.name.localeCompare(b.name));
+
+  return {
+    totalEvaluations: corrsList.length,
+    globalScore: Math.round(globalScoreSum / corrsList.length),
+    classeAvg, classeMax, criteria,
+  };
+}
+
+// Statistiques par devoir (pour le filtre par activité des onglets Lire / Écrire).
+export function buildDevoirStats(
+  corrsList: CorrEntry[],
+  base: StudentBase,
+  classCorrsPerDevoir: Map<string, ClassCorrEntry[]>
+): DevoirStat[] {
+  const devoirStatsList: DevoirStat[] = [];
+  for (const corr of corrsList) {
+    const devoir = base.devoirs.get(corr.devoirId);
+    if (!devoir || devoir.type === 'rechercher' || devoir.type === 'vocabulaire') continue;
+
+    const grille = base.grilles.get(devoir.grille);
+    const classCorrsList = classCorrsPerDevoir.get(corr.devoirId) || [];
+
+    const classeScores = classCorrsList.map((c) => c.score);
+    const classeAvg = classeScores.length > 0
+      ? Math.round(classeScores.reduce((s, v) => s + v, 0) / classeScores.length) : null;
+    const classeMax = classeScores.length > 0 ? Math.max(...classeScores) : null;
+
+    const devoirCriteria: DevoirCriterionStat[] = [];
+    if (grille) {
+      for (const crit of grille.criteria) {
+        const level = corr.evaluation[crit.id];
+        if (level === undefined) continue;
+        const myScore = LEVEL_PERCENTAGES[level as keyof typeof LEVEL_PERCENTAGES] ?? 0;
+
+        const classCritScores = classCorrsList
+          .map((c) => {
+            const l = c.evaluation[crit.id];
+            return l !== undefined ? (LEVEL_PERCENTAGES[l as keyof typeof LEVEL_PERCENTAGES] ?? 0) : null;
+          })
+          .filter((v): v is number => v !== null);
+
+        devoirCriteria.push({
+          name: crit.name,
+          score: myScore,
+          classeAvg: classCritScores.length > 0
+            ? Math.round(classCritScores.reduce((s, v) => s + v, 0) / classCritScores.length) : null,
+          classeMax: classCritScores.length > 0 ? Math.max(...classCritScores) : null,
+          languageType: detectLanguageType(crit.name) || undefined,
+        });
+      }
+    }
+
+    devoirStatsList.push({
+      devoirId: corr.devoirId,
+      name: devoir.intitule,
+      date: devoir.date,
+      type: devoir.type,
+      myScore: corr.score,
+      classeAvg, classeMax,
+      criteria: devoirCriteria,
+    });
+  }
+  devoirStatsList.sort((a, b) => a.date.localeCompare(b.date));
+  return devoirStatsList;
+}
+
+// ─── Vocabulaire ─────────────────────────────────────────────────────────────
+
+// Fusionne le suivi de maîtrise de toutes les activités vocabulaire de l'élève
+// (un même mot peut avoir été travaillé dans plusieurs activités).
+export function mergeWordMastery(base: StudentBase): Map<string, WordMasteryEntry> {
+  const merged = new Map<string, WordMasteryEntry>();
+  for (const travail of base.travaux) {
+    const devoir = base.devoirs.get(travail.devoirId);
+    if (!devoir || devoir.type !== 'vocabulaire' || !travail.content) continue;
+    let state: VocabulaireActivityState | null = null;
+    try { state = JSON.parse(travail.content); } catch { continue; }
+    for (const entry of state?.wordMastery || []) {
+      const key = entry.word.toLowerCase();
+      const existing = merged.get(key);
+      if (existing) {
+        existing.attempts.push(...entry.attempts);
+      } else {
+        merged.set(key, { word: entry.word, attempts: [...entry.attempts] });
+      }
+    }
+  }
+  // Les tentatives doivent rester chronologiques (getWordCategory lit les 3 dernières)
+  for (const entry of merged.values()) {
+    entry.attempts.sort((a, b) => a.date.localeCompare(b.date));
+  }
+  return merged;
+}
+
+// Niveau 0-5 d'un mot : 0 jamais testé, 1 aucune réussite, 2-3 fragile, 4-5 connu.
+export function wordLevel(entry: WordMasteryEntry | undefined): number {
+  if (!entry || entry.attempts.length === 0) return 0;
+  const successes = sumSuccesses(entry.attempts);
+  if (getWordCategory(entry) === 'known') return successes >= 4 ? 5 : 4;
+  if (successes >= 2) return 3;
+  if (successes >= 1) return 2;
+  return 1;
+}
+
+function sumSuccesses(attempts: WordAttempt[]): number {
+  return attempts.reduce((s, a) => s + (a.correct ? (a.credit ?? 1) : 0), 0);
+}
+
+function toProfilWord(word: string, entry: WordMasteryEntry | undefined): ProfilVocabWord {
+  return {
+    word,
+    level: wordLevel(entry),
+    attempts: entry?.attempts.length ?? 0,
+    successes: entry ? Math.round(sumSuccesses(entry.attempts) * 2) / 2 : 0,
+  };
+}
+
+// Construit l'onglet Vocabulaire : groupes par série du prof + groupe mots personnels.
+export async function buildVocabulaireProfil(
+  uid: string,
+  base: StudentBase
+): Promise<ProfilVocabulaire> {
+  const mastery = mergeWordMastery(base);
+
+  // Thèmes imposés par les devoirs vocabulaire de l'élève
+  const themeIds = [...new Set(
+    [...base.devoirs.values()]
+      .filter((d) => d.type === 'vocabulaire')
+      .flatMap((d) => d.vocabulaireThemes || [])
+  )];
+
+  const groups: ProfilVocabGroup[] = [];
+  await Promise.all(themeIds.map(async (themeId) => {
+    const doc = await adminDb.collection('vocabulaire').doc(themeId).get();
+    if (!doc.exists) return;
+    const data = doc.data()!;
+    const words: ProfilVocabWord[] = ((data.words || []) as VocabulaireWord[])
+      .map((w) => toProfilWord(w.word, mastery.get(w.word.toLowerCase())));
+    groups.push({
+      id: themeId,
+      name: data.name || themeId,
+      isPerso: false,
+      words,
+    });
+  }));
+  groups.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Mots personnels (définitions demandées dans l'app ou NavigKid)
+  const persoDoc = await adminDb.collection('vocabulairePersonnel').doc(uid).get();
+  const persoRaw: Array<{ word?: string; definition?: string; addedAt?: string }> =
+    (persoDoc.exists ? persoDoc.data()?.words : []) || [];
+  const perso: ProfilPersoWord[] = persoRaw
+    .filter((w) => w.word)
+    .map((w) => ({
+      word: w.word!,
+      definition: w.definition || '',
+      addedAt: w.addedAt || null,
+    }))
+    .sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || ''));
+
+  if (perso.length > 0) {
+    groups.push({
+      id: '__perso__',
+      name: 'Mots personnels',
+      isPerso: true,
+      words: perso.map((w) => toProfilWord(w.word, mastery.get(w.word.toLowerCase()))),
+    });
+  }
+
+  return { groups, perso };
+}

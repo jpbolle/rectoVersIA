@@ -213,6 +213,11 @@ interface Questionnaire {
   format `VocabulaireWord` — accès serveur uniquement, pas de règle Firestore
 - `devoirs` : le champ `uaa` affiché sur les cards est **enrichi à la lecture** par
   `/api/devoirs` (jointure grille par nom) — pas stocké dans le document
+- `ressourceImages` : images de ressources en **base64** (≤ 700 Ko, compression navigateur
+  `src/lib/image-compress.ts` — limite d'1 Mo par document Firestore), accès serveur
+  uniquement ; servies par `/api/ressources/image/[id]` (route **publique par lien
+  secret** — une balise `<img>` ne peut pas envoyer d'en-tête d'auth ; contenu
+  pédagogique uniquement, jamais de donnée personnelle)
 - `users/{uid}` : profil + préférences éditeur (`font`, `fontSize`, `lineHeight`, `theme`)
 - `aiGridEvaluations` : ID = `AIGRID-{travailId}`, évaluation IA par critère
 - Vocabulaire : séries lexicales (`profId`, `profName`, `mots`)
@@ -258,7 +263,7 @@ interface Questionnaire {
 | `/activites` | élève | Devoirs disponibles + travaux corrigés |
 | `/activites/[id]` | élève | Rédaction + auto-évaluation + remise (`WorkspaceRail`) |
 | `/mes-classes` | élève | Classes + rejoindre une classe |
-| `/profil` | élève | Profil d'écrilecteur (stats) |
+| `/profil` | élève | Profil d'écrilecteur en 5 onglets (Général / Lire / Écrire / Rechercher / Vocabulaire), un appel API par onglet chargé à la première ouverture |
 
 ### Header
 - Prof : Mes Activités → `/dashboard` | Mes Classes → `/classes` | Mes Ressources →
@@ -276,6 +281,7 @@ interface Questionnaire {
 | `/api/eleves`, `/api/eleves/[id]`, `/api/eleves/bulk`, `/api/eleves/link` | CRUD | Import masse (max 500), liaison UID |
 | `/api/grilles`, `/api/grilles/[name]` | CRUD | Mes grilles + shared + autres profs |
 | `/api/preferences` | GET, PUT | Préférences éditeur |
+| `/api/profil/{general,lecture,ecriture,recherche,vocabulaire}` | GET | Profil élève, un endpoint par onglet — helpers partagés dans `src/lib/profil-stats.ts` ; seuls `lecture`/`ecriture` calculent les stats de classe (coûteux) |
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |
 | `/api/professeurs`, `/api/admin/stats`, `/api/admin/prof-stats/[profId]` | — | Admin (profId = email encodé) |
 | `/api/roadmap` | GET, POST | Roadmap Firestore (POST admin) |
@@ -313,7 +319,7 @@ interface Questionnaire {
   `ClassesDropdown` (menu déroulant multi-sélection à cases — formulaires devoir)
 
 ### Hooks
-`useAuth`, `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,
+`useAuth` (expose `getAuthHeaders`), `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,
 `useTravail` (auto-save 2,5 s), `useCorrection`, `usePreferences`, `useAudioRecorder`,
 `useAiSuggestions`, `useAiGridEvaluation`, `useVocabulaireThemes`, `useVocabulaireWords`,
 `useVocabulaireExercises`, `useDictionaryLookup` (cache client partagé du dictionnaire)

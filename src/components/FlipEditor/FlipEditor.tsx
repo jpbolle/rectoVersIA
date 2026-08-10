@@ -139,7 +139,7 @@ export default function FlipEditor({
           title={`Retourner vers ${labels[oppositeContent].label}`}
         >
           <span className={`${styles.flipActionIcon} ${isAnimating ? styles.spinning : ''}`}>
-            🔄
+            ⟳
           </span>
           <span className={styles.flipActionText}>Retourner</span>
         </button>

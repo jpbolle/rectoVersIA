@@ -334,3 +334,57 @@
     width: auto;
   }
 }
+
+/* ── Fichiers Drive déposés par le prof ── */
+.filesSection {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+}
+
+.filesTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-primary);
+  margin: 0 0 8px;
+}
+
+.filesList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fileLink {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--c-primary);
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.fileLink:hover {
+  text-decoration: underline;
+}
+
+.imageFigure {
+  margin: 0;
+}
+
+.imageContent {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--c-border);
+  display: block;
+}
+
+.imageCaption {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  margin-top: 4px;
+}

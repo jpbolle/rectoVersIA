@@ -59,8 +59,22 @@ export async function GET(request: NextRequest) {
         codeAcces: data.codeAcces || undefined,
         vocabulaireThemes: data.vocabulaireThemes || undefined,
         vocabulaireDiagnostic: data.vocabulaireDiagnostic ?? undefined,
+        corrigeReference: data.corrigeReference || null,
+        ressourcesToIA: data.ressourcesToIA ?? false,
       };
     });
+
+    // Côté élève, le corrigé de référence n'expose que la production du prof,
+    // et uniquement quand la correction est disponible (jamais le plan)
+    if (auth.role === 'eleve') {
+      devoirs = devoirs.map((d) => ({
+        ...d,
+        corrigeReference:
+          d.corrigeDisponible && d.corrigeReference?.production
+            ? { production: d.corrigeReference.production }
+            : null,
+      }));
+    }
 
     // Enrichir chaque devoir avec les UAA de sa grille (jointure par nom de grille)
     const grilleNames = [...new Set(devoirs.map((d) => d.grille).filter(Boolean))];
@@ -147,6 +161,8 @@ export async function POST(request: NextRequest) {
       questionnaire,
       vocabulaireConfig,
       flipInverted,
+      corrigeReference,
+      ressourcesToIA,
     } = body;
 
     // Validation des champs requis (grille non requise pour vocabulaire)
@@ -182,6 +198,30 @@ export async function POST(request: NextRequest) {
       evaluation: evaluation === 'certificatif' ? 'certificatif' : 'formatif',
       flipInverted: flipInverted ?? false,
     };
+
+    // Corrigé de référence du prof (type ecrire uniquement) : plan + production
+    // + toggles « corrigé IA » (quels contenus sont transmis à l'IA)
+    if ((typeTravail || 'ecrire') === 'ecrire') {
+      if (corrigeReference) {
+        const ref: Record<string, unknown> = {};
+        if (typeof corrigeReference.theme === 'string' && corrigeReference.theme.trim()) {
+          ref.theme = corrigeReference.theme.trim();
+          ref.planToIA = corrigeReference.planToIA === true;
+        }
+        if (Array.isArray(corrigeReference.plan) && corrigeReference.plan.length > 0) {
+          ref.plan = corrigeReference.plan;
+          ref.planToIA = corrigeReference.planToIA === true;
+        }
+        if (typeof corrigeReference.production === 'string' && corrigeReference.production.trim()) {
+          ref.production = corrigeReference.production.trim();
+          ref.productionToIA = corrigeReference.productionToIA === true;
+        }
+        if (Object.keys(ref).length > 0) {
+          devoirData.corrigeReference = ref;
+        }
+      }
+      devoirData.ressourcesToIA = ressourcesToIA === true;
+    }
 
     // Si type "vocabulaire", stocker la config
     if (typeTravail === 'vocabulaire' && vocabulaireConfig) {

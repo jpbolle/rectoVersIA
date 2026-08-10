@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maquette — Créer une activité (recto/verso)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c-primary: #2d6a5a;
+    --c-primary-dark: #1e4d40;
+    --c-accent: #d4944c;
+    --c-bg: #faf6f0;
+    --c-surface: #ffffff;
+    --c-bg-element: #f4efe7;
+    --c-text: #3d3832;
+    --c-text-soft: #7a7267;
+    --c-border: #e6ddd1;
+    --c-danger: #b3432f;
+    --c-radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--c-bg); color: var(--c-text); font-family: 'Inter', sans-serif; }
+
+  .header { background: var(--c-surface); border-bottom: 1px solid var(--c-border); padding: 14px 32px; display: flex; align-items: center; gap: 24px; }
+  .logo { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; color: var(--c-primary); }
+  .logo small { display: block; font-family: 'Inter'; font-weight: 400; font-size: 11px; color: var(--c-text-soft); }
+  .nav { display: flex; gap: 18px; margin-left: auto; font-size: 14px; color: var(--c-text-soft); }
+  .nav b { color: var(--c-primary); }
+
+  .main { max-width: 1000px; margin: 0 auto; padding: 32px 24px 90px; }
+  h1 { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--c-primary-dark); }
+  .subtitle { color: var(--c-text-soft); font-size: 14px; margin: 6px 0 10px; }
+  .demoHint { background: #fdf3e6; border: 1px solid #ecd7b8; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #8a5f2a; margin-bottom: 24px; }
+
+  /* ── Barre de bascule recto/verso (reprise de FlipEditor) ── */
+  .flipBar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .flipToggle { display: flex; background: var(--c-bg-element); border: 1px solid var(--c-border); border-radius: 10px; padding: 4px; gap: 4px; }
+  .flipButton { display: flex; align-items: center; gap: 8px; border: none; background: transparent; padding: 9px 18px;
+                border-radius: 7px; font: 600 14px 'Inter'; color: var(--c-text-soft); cursor: pointer; transition: all .18s; }
+  .flipButton.active { background: var(--c-surface); color: var(--c-primary); box-shadow: 0 1px 4px rgba(61,56,50,.14); }
+  .flipTag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--c-text-soft);
+             border: 1px solid var(--c-border); border-radius: 4px; padding: 1px 5px; }
+  .flipButton.active .flipTag { color: var(--c-accent); border-color: var(--c-accent); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-accent); display: none; }
+  .dot.on { display: inline-block; }
+  .flipAction { display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--c-primary); background: var(--c-surface);
+                color: var(--c-primary); border-radius: 9px; padding: 9px 16px; font: 600 14px 'Inter'; cursor: pointer; transition: all .18s; }
+  .flipAction:hover { background: var(--c-primary); color: #fff; }
+  .flipActionIcon { display: inline-block; font-size: 16px; transition: transform .3s ease; }
+  .flipAction:hover .flipActionIcon { transform: rotate(180deg); }
+
+  /* ── Carte + animation flip ── */
+  .flipScene { perspective: 1400px; }
+  .card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 16px; padding: 30px 34px;
+          box-shadow: 0 2px 10px rgba(61,56,50,.06); transition: transform .28s ease, opacity .28s ease; transform-style: flat; }
+  .card.flipOut { transform: perspective(1400px) rotateY(90deg); opacity: .4; }
+  .card.versoSide { border-left: 5px solid var(--c-accent); }
+
+  .formHeader { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 26px; padding-bottom: 14px; border-bottom: 2px solid var(--c-border); }
+  .formTitle { color: var(--c-primary); font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 600; }
+  .faceBadge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--c-accent); }
+
+  .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 22px; }
+  .group { display: flex; flex-direction: column; }
+  label.lbl { color: var(--c-primary); font-weight: 600; margin-bottom: 8px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .req { color: var(--c-danger); }
+  .input, .select, .textarea { width: 100%; padding: 11px 14px; border: 2px solid var(--c-border); border-radius: var(--c-radius);
+    font-size: 14px; font-family: inherit; background: var(--c-surface); color: var(--c-text); }
+  .input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px rgba(45,106,90,.1); }
+  .textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+
+  .optional { margin-bottom: 18px; padding: 14px 16px; background: var(--c-bg-element); border-radius: 12px; border: 1px solid var(--c-border); }
+  .chk { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .chk input { width: 18px; height: 18px; accent-color: var(--c-primary); }
+
+  .toggles { display: flex; gap: 40px; padding: 20px 0; border-top: 1px solid var(--c-border); border-bottom: 1px solid var(--c-border); margin-bottom: 22px; }
+  .tgl { flex: 1; font-size: 14px; font-weight: 600; }
+  .tglHint { font-size: 12px; color: var(--c-text-soft); font-weight: 400; margin-top: 6px; }
+  .pill { display: inline-block; width: 40px; height: 22px; background: var(--c-border); border-radius: 11px; position: relative; vertical-align: middle; margin-right: 8px; }
+  .pill::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+
+  .actions { display: flex; gap: 14px; margin-top: 26px; }
+  .btn { padding: 13px 26px; border: none; border-radius: var(--c-radius); font: 600 13px 'Inter'; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+  .btnPrimary { background: var(--c-primary); color: #fff; }
+  .btnPrimary:hover { background: #245448; }
+  .btnGhost { background: var(--c-bg-element); color: var(--c-text-soft); border: 1px solid var(--c-border); }
+  .btnAccent { background: var(--c-accent); color: #fff; }
+
+  /* ── Verso : sections ressources ── */
+  .vSection { border: 1px solid var(--c-border); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; background: var(--c-surface); }
+  .vSection h3 { font: 600 15px 'Inter'; color: var(--c-primary-dark); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .vHint { font-size: 12.5px; color: var(--c-text-soft); margin-bottom: 12px; line-height: 1.5; }
+  .iaBadge { font-size: 10px; font-weight: 700; letter-spacing: .05em; background: #eef4f2; color: var(--c-primary); border: 1px solid #cfe0da; border-radius: 4px; padding: 2px 6px; text-transform: uppercase; }
+
+  .srcTabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .srcTab { border: 1px solid var(--c-border); background: var(--c-bg); border-radius: 18px; padding: 6px 14px; font: 500 13px 'Inter'; color: var(--c-text-soft); cursor: pointer; }
+  .srcTab.active { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+  .dropzone { border: 2px dashed var(--c-border); border-radius: 10px; padding: 22px; text-align: center; color: var(--c-text-soft); font-size: 13px; background: var(--c-bg); }
+
+  /* Espace de planification (mock PlanDraft) */
+  .plan { display: flex; flex-direction: column; gap: 8px; }
+  .planItem { display: flex; align-items: center; gap: 8px; }
+  .planItem input { flex: 1; padding: 9px 12px; border: 1.5px solid var(--c-border); border-radius: 7px; font-size: 14px; font-family: inherit; }
+  .planItem .mini { border: 1px solid var(--c-border); background: var(--c-bg); border-radius: 6px; width: 28px; height: 28px; font-size: 13px; color: var(--c-text-soft); cursor: pointer; }
+  .indent1 { margin-left: 34px; } .indent2 { margin-left: 68px; }
+  .planAdd { align-self: flex-start; border: 1.5px dashed var(--c-primary); background: none; color: var(--c-primary); border-radius: 7px; padding: 7px 14px; font: 600 13px 'Inter'; cursor: pointer; margin-top: 4px; }
+
+  /* Questionnaire mock */
+  .qItem { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+  .qNum { min-width: 26px; height: 26px; border-radius: 50%; background: var(--c-primary); color: #fff; font: 600 13px 'Inter'; display: flex; align-items: center; justify-content: center; }
+  .qItem input { flex: 1; padding: 9px 12px; border: 1.5px solid var(--c-border); border-radius: 7px; font-size: 14px; font-family: inherit; }
+  .qType { font-size: 12px; color: var(--c-text-soft); border: 1px solid var(--c-border); border-radius: 6px; padding: 5px 8px; background: var(--c-bg); }
+
+  .emptyVerso { text-align: center; color: var(--c-text-soft); font-size: 14px; padding: 30px 20px; }
+
+  /* ── Section 2 : remarques du prof (vue élève) ── */
+  .sep { margin: 56px 0 24px; border: none; border-top: 2px dashed var(--c-border); }
+  h2.mock { font-family: 'Playfair Display', serif; font-size: 21px; color: var(--c-primary-dark); margin-bottom: 4px; }
+  .panelMock { max-width: 460px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px; padding: 22px 24px; box-shadow: 0 2px 10px rgba(61,56,50,.06); }
+  .panelTabs { display: flex; gap: 4px; border-bottom: 2px solid var(--c-border); margin-bottom: 16px; font-size: 12px; color: var(--c-text-soft); }
+  .panelTabs span { padding: 8px 10px; }
+  .panelTabs .on { color: var(--c-primary); font-weight: 600; border-bottom: 3px solid var(--c-primary); margin-bottom: -2px; }
+  .remark { background: var(--c-bg-element); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; line-height: 1.55; margin-bottom: 10px; }
+  .profProd { border: 1.5px solid var(--c-accent); border-radius: 12px; padding: 16px 18px; margin-top: 18px; background: #fdf9f3; }
+  .profProd h4 { font: 600 14px 'Inter'; color: #a06a2c; display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .profProd p { font-size: 13.5px; line-height: 1.6; color: var(--c-text); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Recto-versIA <small>Aide à l'écrilecture</small></div>
+  <div class="nav"><b>Mes Activités</b><span>Mes Classes</span><span>Mes Ressources</span><span>👁 Vue élève</span><span>🟢 JB</span></div>
+</div>
+
+<div class="main">
+  <h1>Maquette — « Créer une nouvelle activité » en recto/verso</h1>
+  <p class="subtitle">Recto : infos de base (formulaire actuel sans les ressources). Verso : « Ajouter des ressources », variable selon le type d'activité.</p>
+  <div class="demoHint">💡 Maquette interactive : change le <b>Type de travail</b> et le <b>Type de grille</b> au recto, puis clique « Retourner » (ou l'onglet Verso) pour voir le verso s'adapter. Le point orange ● sur l'onglet Verso signale que des ressources ont été ajoutées.</div>
+
+  <!-- Barre de bascule -->
+  <div class="flipBar">
+    <div class="flipToggle">
+      <button type="button" class="flipButton active" id="btnRecto" onclick="goTo('recto')">
+        <span class="flipTag">Recto</span> 📋 Activité
+      </button>
+      <button type="button" class="flipButton" id="btnVerso" onclick="goTo('verso')">
+        <span class="flipTag">Verso</span> 📚 Ressources <span class="dot on" id="versoDot"></span>
+      </button>
+    </div>
+    <button type="button" class="flipAction" onclick="flip()">
+      <span class="flipActionIcon">⟳</span> Retourner
+    </button>
+  </div>
+
+  <div class="flipScene">
+    <!-- ══════════ RECTO ══════════ -->
+    <div class="card" id="cardRecto">
+      <div class="formHeader">
+        <div class="formTitle">Créer une nouvelle activité</div>
+        <span class="faceBadge">Recto — l'essentiel</span>
+      </div>
+
+      <div class="row">
+        <div class="group"><label class="lbl">Classe(s) <span class="req">*</span></label><select class="select"><option>4A, 4B</option></select></div>
+        <div class="group"><label class="lbl">Date de remise <span class="req">*</span></label><input class="input" type="text" value="15/09/2026"></div>
+        <div class="group"><label class="lbl">Type de travail <span class="req">*</span></label>
+          <select class="select" id="typeTravail" onchange="syncVerso()">
+            <option value="ecrire" selected>Écrire</option>
+            <option value="lire">Lire</option>
+            <option value="rechercher">Rechercher</option>
+            <option value="vocabulaire">Vocabulaire</option>
+          </select>
+        </div>
+        <div class="group"><label class="lbl">Évaluation <span class="req">*</span></label><select class="select"><option>Formative (entraînement)</option><option>Certificative (notée)</option></select></div>
+        <div class="group" id="grpGrille"><label class="lbl">Type de grille <span class="req">*</span></label>
+          <select class="select" id="grille" onchange="syncVerso()">
+            <option value="autre">Texte argumentatif</option>
+            <option value="resume" selected>Résumé de texte</option>
+            <option value="crc">Compte rendu critique</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="group" style="margin-bottom:22px;">
+        <label class="lbl">Intitulé de l'activité <span class="req">*</span></label>
+        <input class="input" type="text" value="Résumé — « Le grand voyage »">
+      </div>
+
+      <div class="optional">
+        <label class="chk"><input type="checkbox" checked> Ajouter des consignes particulières</label>
+        <textarea class="textarea" style="margin-top:12px;">Résume le texte en 150 mots maximum, sans citation directe.</textarea>
+      </div>
+
+      <div class="toggles">
+        <div class="tgl"><span class="pill"></span> Accès IA désactivé <div class="tglHint">Permet aux élèves d'utiliser l'assistant IA pour cette activité</div></div>
+        <div class="tgl"><span class="pill"></span> Non disponible <div class="tglHint">Rend l'activité visible et accessible aux élèves</div></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btnPrimary">Créer l'activité</button>
+        <button class="btn btnAccent" onclick="flip()">Ajouter des ressources ⟳</button>
+        <button class="btn btnGhost">Réinitialiser</button>
+      </div>
+    </div>
+
+    <!-- ══════════ VERSO ══════════ -->
+    <div class="card versoSide" id="cardVerso" style="display:none;">
+      <div class="formHeader">
+        <div class="formTitle">Ajouter des ressources</div>
+        <span class="faceBadge" id="versoContext">Verso — Écrire · Résumé de texte</span>
+      </div>
+
+      <!-- Bloc ressources (commun à tous les types) -->
+      <div class="vSection" id="vRessources">
+        <h3>📄 <span id="ressourceTitle">Texte-source</span></h3>
+        <p class="vHint" id="ressourceHint">Le document que les élèves devront résumer. Il sera aussi transmis à l'IA lors de la correction.</p>
+        <div class="srcTabs"><span class="srcTab active">Fichier</span><span class="srcTab">Lien</span><span class="srcTab">Texte</span></div>
+        <div class="dropzone">Glisser un fichier ici, ou cliquer pour parcourir — <b>le-grand-voyage.pdf ✓</b></div>
+      </div>
+
+      <!-- Bloc plan du prof (écrire uniquement) -->
+      <div class="vSection" id="vPlan">
+        <h3>🗂️ Espace de planification <span class="iaBadge">corrigé IA</span></h3>
+        <p class="vHint">Construis ici le plan hiérarchisé du texte — comme l'élève au verso de son espace de rédaction. Il sera converti en texte structuré et servira de <b>corrigé de référence</b> à l'IA, qui le comparera au plan de l'élève.</p>
+        <div class="plan">
+          <div class="planItem"><input value="1. Le départ contraint du narrateur"><button class="mini">→</button><button class="mini">✕</button></div>
+          <div class="planItem indent1"><input value="1.1 La perte de la maison familiale"><button class="mini">→</button><button class="mini">✕</button></div>
+          <div class="planItem indent1"><input value="1.2 L'espoir d'une vie meilleure"><button class="mini">→</button><button class="mini">✕</button></div>
+          <div class="planItem"><input value="2. Les épreuves de la traversée"><button class="mini">→</button><button class="mini">✕</button></div>
+          <div class="planItem indent1"><input value="2.1 La tempête et la solidarité à bord"><button class="mini">→</button><button class="mini">✕</button></div>
+          <button class="planAdd">+ Ajouter une idée</button>
+        </div>
+      </div>
+
+      <!-- Bloc production du prof (écrire uniquement) -->
+      <div class="vSection" id="vProduction">
+        <h3>✒️ <span id="productionTitle">Résumé du professeur</span> <span class="iaBadge">corrigé IA</span></h3>
+        <p class="vHint">Facultatif. Ta propre production servira de référence à l'IA — et sera montrée aux élèves dans « Remarques du prof » une fois la correction disponible.</p>
+        <textarea class="textarea" placeholder="Rédige ici ta version de référence…">Contraint de quitter sa maison, le narrateur embarque avec les siens vers un avenir incertain…</textarea>
+      </div>
+
+      <!-- Bloc questionnaire (rechercher uniquement) -->
+      <div class="vSection" id="vQuestionnaire" style="display:none;">
+        <h3>🔎 Questionnaire de recherche</h3>
+        <p class="vHint">Les questions auxquelles les élèves répondront via l'extension NavigKid (thèmes, sources exigées, points).</p>
+        <div class="qItem"><span class="qNum">1</span><input value="Quelles sont les causes de la Révolution belge de 1830 ?"><span class="qType">Texte · 2 sources · 5 pts</span></div>
+        <div class="qItem"><span class="qNum">2</span><input value="Qui était Léopold Ier ?"><span class="qType">QCM · 1 source · 2 pts</span></div>
+        <button class="planAdd">+ Ajouter une question</button>
+      </div>
+
+      <!-- Message vide (vocabulaire) -->
+      <div class="emptyVerso" id="vEmpty" style="display:none;">
+        Pas de ressource spécifique pour ce type d'activité.<br>Tu peux tout de même joindre un document ci-dessus si besoin.
+      </div>
+
+      <div class="actions">
+        <button class="btn btnPrimary">Créer l'activité</button>
+        <button class="btn btnAccent" onclick="flip()">Revenir à l'activité ⟳</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Section 2 : vue élève, remarques du prof ══════════ -->
+  <hr class="sep">
+  <h2 class="mock">Rappel — côté élève, après correction</h2>
+  <p class="subtitle">Onglet « Remarques du prof » (colonne de droite) quand le statut est « corrigé disponible » : la production du prof apparaît <b>après</b> les remarques personnalisées, seulement si le champ a été rempli.</p>
+
+  <div class="panelMock">
+    <div class="panelTabs"><span>Consignes</span><span>Ressources</span><span>Évaluation</span><span class="on">Remarques du prof</span><span>Aide IA</span></div>
+    <div class="remark">💬 Ton résumé garde trop de détails secondaires : la tempête occupe la moitié de ton texte alors qu'elle n'est qu'une étape.</div>
+    <div class="remark">🔊 Remarque audio — 0:42</div>
+    <div class="profProd">
+      <h4>✒️ La proposition du professeur</h4>
+      <p>Contraint de quitter sa maison, le narrateur embarque avec les siens vers un avenir incertain. La traversée, marquée par une tempête, révèle la solidarité des passagers…</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  let side = 'recto';
+
+  function render() {
+    document.getElementById('cardRecto').style.display = side === 'recto' ? 'block' : 'none';
+    document.getElementById('cardVerso').style.display = side === 'verso' ? 'block' : 'none';
+    document.getElementById('btnRecto').classList.toggle('active', side === 'recto');
+    document.getElementById('btnVerso').classList.toggle('active', side === 'verso');
+  }
+
+  function flip() {
+    const current = document.getElementById(side === 'recto' ? 'cardRecto' : 'cardVerso');
+    current.classList.add('flipOut');
+    setTimeout(() => {
+      current.classList.remove('flipOut');
+      side = side === 'recto' ? 'verso' : 'recto';
+      render();
+      const next = document.getElementById(side === 'recto' ? 'cardRecto' : 'cardVerso');
+      next.classList.add('flipOut');
+      requestAnimationFrame(() => requestAnimationFrame(() => next.classList.remove('flipOut')));
+    }, 280);
+  }
+
+  function goTo(target) { if (side !== target) flip(); }
+
+  const LABELS = {
+    ecrire:      { ctx: 'Verso — Écrire',      res: 'Texte-source', hint: "Le document de départ de la production écrite. Transmis à l'IA lors de la correction." },
+    lire:        { ctx: 'Verso — Lire',        res: 'Texte à lire', hint: 'Le texte que les élèves liront et annoteront dans leur espace de travail.' },
+    rechercher:  { ctx: 'Verso — Rechercher',  res: 'Documents d’appui (facultatif)', hint: 'Documents complémentaires à la recherche guidée.' },
+    vocabulaire: { ctx: 'Verso — Vocabulaire', res: 'Documents (facultatif)', hint: 'Documents complémentaires éventuels.' },
+  };
+
+  function syncVerso() {
+    const type = document.getElementById('typeTravail').value;
+    const grille = document.getElementById('grille').value;
+    const isEcrire = type === 'ecrire';
+    const isResume = isEcrire && grille === 'resume';
+
+    document.getElementById('grpGrille').style.visibility = type === 'vocabulaire' ? 'hidden' : 'visible';
+    const l = LABELS[type];
+    document.getElementById('versoContext').textContent = l.ctx + (isResume ? ' · Résumé de texte' : '');
+    document.getElementById('ressourceTitle').textContent = l.res;
+    document.getElementById('ressourceHint').textContent = l.hint;
+
+    document.getElementById('vPlan').style.display = isEcrire ? 'block' : 'none';
+    document.getElementById('vProduction').style.display = isEcrire ? 'block' : 'none';
+    document.getElementById('productionTitle').textContent = isResume ? 'Résumé du professeur' : 'Production du professeur';
+    document.getElementById('vQuestionnaire').style.display = type === 'rechercher' ? 'block' : 'none';
+    document.getElementById('vEmpty').style.display = type === 'vocabulaire' ? 'block' : 'none';
+    document.getElementById('vRessources').style.display = type === 'vocabulaire' ? 'none' : 'block';
+  }
+
+  syncVerso();
+  render();
+</script>
+</body>
+</html>

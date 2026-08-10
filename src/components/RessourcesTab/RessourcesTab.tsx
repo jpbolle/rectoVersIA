@@ -162,11 +162,31 @@ export default function RessourcesTab({
   const outilsContent = devoir.ressources.outils ?? '';
   const documentContent = devoir.ressources.document ?? '';
   const legacyContent = devoir.ressources.content ?? '';
+  const ressourceFiles = devoir.ressources.files ?? [];
   const hasOutils = outilsContent.trim().length > 0;
   const hasDocument = documentContent.trim().length > 0 && documentContent !== '<p></p>';
   const hasLegacy = !hasOutils && !hasDocument && legacyContent.trim().length > 0;
+  const hasFiles = ressourceFiles.length > 0;
 
-  if (!hasOutils && !hasDocument && !hasLegacy) {
+  // Images déposées par le prof — affichées en ligne (clic = plein écran)
+  const filesBlock = hasFiles ? (
+    <div className={styles.filesSection}>
+      <h4 className={styles.filesTitle}>🖼️ Images</h4>
+      <div className={styles.filesList}>
+        {ressourceFiles.map((file, index) => (
+          <figure key={file.fileId || index} className={styles.imageFigure}>
+            <a href={file.url} target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={file.url} alt={file.name} className={styles.imageContent} />
+            </a>
+            <figcaption className={styles.imageCaption}>{file.name}</figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
+  if (!hasOutils && !hasDocument && !hasLegacy && !hasFiles) {
     return (
       <div className={styles.container}>
         {dictionaryBlock}
@@ -186,6 +206,7 @@ export default function RessourcesTab({
     return (
       <div className={styles.container}>
         {dictionaryBlock}
+        {filesBlock}
         {/* Outils section (read-only links) above editor */}
         {hasOutils && (
           <div className={styles.outilsSection}>
@@ -193,12 +214,14 @@ export default function RessourcesTab({
             <div className={styles.outilsText} dangerouslySetInnerHTML={{ __html: outilsContent }} />
           </div>
         )}
-        <RessourceEditor
-          initialContent={initialContent}
-          onChange={onRessourceAnnotationsChange}
-          initialNotes={ressourceNotes || {}}
-          onNotesChange={onRessourceNotesChange!}
-        />
+        {(hasDocument || hasLegacy) && (
+          <RessourceEditor
+            initialContent={initialContent}
+            onChange={onRessourceAnnotationsChange}
+            initialNotes={ressourceNotes || {}}
+            onNotesChange={onRessourceNotesChange!}
+          />
+        )}
       </div>
     );
   }
@@ -211,6 +234,7 @@ export default function RessourcesTab({
   return (
     <div className={styles.container}>
       {dictionaryBlock}
+      {filesBlock}
       {hasOutils && (
         <div className={styles.outilsSection}>
           <h4 className={styles.outilsTitle}>🔧 Outils</h4>

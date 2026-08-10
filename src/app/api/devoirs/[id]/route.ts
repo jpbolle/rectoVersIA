@@ -62,6 +62,16 @@ export async function GET(
       codeAcces: data.codeAcces || null,
       vocabulaireThemes: data.vocabulaireThemes || undefined,
       vocabulaireDiagnostic: data.vocabulaireDiagnostic ?? undefined,
+      flipInverted: data.flipInverted ?? false,
+      ressourcesToIA: data.ressourcesToIA ?? false,
+      // Côté élève : seule la production est exposée, et uniquement quand la
+      // correction est disponible (jamais le plan de référence)
+      corrigeReference:
+        auth.role === 'eleve'
+          ? (data.corrigeDisponible && data.corrigeReference?.production
+              ? { production: data.corrigeReference.production }
+              : null)
+          : data.corrigeReference || null,
     };
 
     return NextResponse.json({ success: true, data: devoir });
@@ -150,6 +160,12 @@ export async function PATCH(
     }
     if (body.flipInverted !== undefined) {
       updateData.flipInverted = body.flipInverted;
+    }
+    if (body.corrigeReference !== undefined) {
+      updateData.corrigeReference = body.corrigeReference;
+    }
+    if (body.ressourcesToIA !== undefined) {
+      updateData.ressourcesToIA = body.ressourcesToIA;
     }
 
     if (Object.keys(updateData).length === 0) {

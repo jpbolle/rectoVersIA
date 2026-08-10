@@ -22,8 +22,10 @@
   collective, y intégrer 3 à 5 mots tirés de sa liste personnelle
   (`vocabulairePersonnel/{uid}`, alimentée par l'aide dictionnaire app + NavigKid).
   *(fait le 2026-08-08)*
-- [ ] **Interface de consultation** — afficher les listes personnelles (côté prof :
-  par élève, la route GET `?studentId=` existe déjà ; côté élève : sa liste).
+- [x] **Interface de consultation — côté élève** : liste personnelle + maîtrise lexicale
+  dans l'onglet Vocabulaire du profil. *(fait le 2026-08-10)*
+- [ ] **Interface de consultation — côté prof** : vue avec tous les résultats par élève
+  (la route GET `?studentId=` existe déjà) — session ultérieure.
 - [x] **RGPD** — décision prise le 2026-08-10 : `vocabulairePersonnel` est couvert par le
   chantier « Chiffrement des champs d'identité » (item 10 ci-dessous) — on chiffre
   l'email, pas les mots.
@@ -50,6 +52,11 @@
 
 ## Fait
 
+- [x] **Profil d'écrilecteur en 5 onglets** — Général / Lire / Écrire / Rechercher /
+  Vocabulaire, un appel API par onglet (fin de la page lente) ; nouveaux onglets
+  Rechercher (recherches NavigKid remises) et Vocabulaire (maîtrise lexicale en
+  3 colonnes par série + liste personnelle). *(2026-08-10 — à tester avec un compte
+  élève, non déployé)*
 - [x] **Page « Données personnelles » (`/rgpd`)** — accessible à tous via le menu avatar :
   données collectées, protection (chiffrement), services IA, droits RGPD. *(2026-08-10)*
 - [x] **Roadmap : drag « À venir » → « Nouveautés »** — déposer sur une carte de date ou

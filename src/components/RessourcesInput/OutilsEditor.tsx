@@ -13,6 +13,14 @@ interface OutilsEditorProps {
   disabled?: boolean;
 }
 
+// Liste à puces vide : structure de départ — chaque URL ajoutée est un bullet
+const EMPTY_LIST = '<ul><li><p></p></li></ul>';
+
+function isEmptyHtml(html: string): boolean {
+  if (!html) return true;
+  return html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim() === '';
+}
+
 export default function OutilsEditor({
   content,
   onChange,
@@ -29,12 +37,18 @@ export default function OutilsEditor({
         codeBlock: false,
         code: false,
         horizontalRule: false,
+        // Link est ajouté séparément avec notre configuration (autolink) —
+        // le désactiver ici évite le doublon (StarterKit l'inclut par défaut)
+        link: false,
       }),
       Placeholder.configure({
         placeholder: 'Dictionnaire, Bescherelle, sites de référence...',
       }),
       Link.configure({
         openOnClick: false,
+        // Une URL tapée ou collée devient automatiquement un lien cliquable
+        autolink: true,
+        linkOnPaste: true,
         HTMLAttributes: {
           class: 'editor-link',
           rel: 'noopener noreferrer',
@@ -42,7 +56,7 @@ export default function OutilsEditor({
         },
       }),
     ],
-    content,
+    content: isEmptyHtml(content) ? EMPTY_LIST : content,
     editable: !disabled,
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
@@ -51,9 +65,12 @@ export default function OutilsEditor({
   });
 
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
-    }
+    if (!editor) return;
+    const current = editor.getHTML();
+    if (content === current) return;
+    // Les deux sont vides : garder la liste à puces vide sans l'écraser
+    if (isEmptyHtml(content) && isEmptyHtml(current)) return;
+    editor.commands.setContent(isEmptyHtml(content) ? EMPTY_LIST : content);
   }, [content, editor]);
 
   useEffect(() => {

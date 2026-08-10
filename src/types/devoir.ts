@@ -1,13 +1,36 @@
+import type { PlanItem } from './travail';
+
 export type Classe = string;
 export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
 // formatif : entraînement, ne compte pas — certificatif : compte pour la note
 export type EvaluationType = 'formatif' | 'certificatif';
 
+// Corrigé de référence du prof (types écrire uniquement) :
+// plan hiérarchisé + production rédigée. Transmis à l'IA lors de l'évaluation ;
+// la production est montrée à l'élève quand la correction est disponible.
+export interface CorrigeReference {
+  theme?: string;           // thème ou thèse du texte attendu (au-dessus du plan)
+  plan?: PlanItem[];
+  production?: string;
+  planToIA?: boolean;       // envoyer le plan (+ thème) à l'IA
+  productionToIA?: boolean; // envoyer la production à l'IA
+}
+
+// Image déposée sur le serveur (onglet Image des ressources) —
+// stockée dans public/uploads/ressources/, servie statiquement
+export interface RessourceFile {
+  name: string;         // nom d'origine (affiché)
+  url: string;          // chemin public (/uploads/ressources/...)
+  fileId?: string;      // nom de fichier stocké (pour la suppression)
+  mimeType?: string;
+}
+
 export interface DevoirRessource {
   type: 'text';
   content: string;
-  outils?: string;      // Plain text with URLs (displayed as clickable links)
-  document?: string;    // Rich HTML content from Tiptap editor
+  outils?: string;      // HTML avec liens cliquables (onglet Lien)
+  document?: string;    // Rich HTML content from Tiptap editor (onglet Texte)
+  files?: RessourceFile[]; // Fichiers Drive (onglet Fichier)
 }
 
 export interface Devoir {
@@ -37,6 +60,12 @@ export interface Devoir {
   // false (defaut) : recto = espace de redaction, verso = espace de planification
   // true           : recto = espace de planification, verso = espace de redaction
   flipInverted?: boolean;
+  // Corrigé de référence du prof (type ecrire) — côté élève, seul `production`
+  // est exposé, et uniquement quand corrigeDisponible est vrai
+  corrigeReference?: CorrigeReference | null;
+  // Envoyer les ressources à l'IA pour le corrigé (défaut true) — seuls le
+  // texte (onglet Texte) et les images sont transmis, jamais les PDF ni les liens
+  ressourcesToIA?: boolean;
 }
 
 export interface CreateDevoirData {
@@ -62,4 +91,8 @@ export interface CreateDevoirData {
   };
   // Inversion recto/verso (type ecrire uniquement)
   flipInverted?: boolean;
+  // Corrigé de référence du prof (type ecrire uniquement)
+  corrigeReference?: CorrigeReference | null;
+  // Envoyer les ressources à l'IA (type ecrire uniquement)
+  ressourcesToIA?: boolean;
 }

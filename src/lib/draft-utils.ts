@@ -94,6 +94,38 @@ export function createPlanItem(): PlanItem {
 }
 
 /**
+ * Vrai si le plan contient au moins une idee non vide (a n'importe quel niveau).
+ */
+export function planHasContent(plan?: PlanItem[] | null): boolean {
+  if (!plan || plan.length === 0) return false;
+  return plan.some((item) => item.text.trim() !== '' || planHasContent(item.children));
+}
+
+/**
+ * Convertit un plan hierarchique en texte structure (Markdown numerote),
+ * lisible par l'IA lors de la correction. Les idees vides sont ignorees.
+ */
+export function planToMarkdown(plan: PlanItem[]): string {
+  const lines: string[] = [];
+
+  const walk = (items: PlanItem[], prefix: string, depth: number) => {
+    let count = 0;
+    for (const item of items) {
+      const text = item.text.trim();
+      const hasChildren = planHasContent(item.children);
+      if (!text && !hasChildren) continue;
+      count += 1;
+      const num = prefix ? `${prefix}.${count}` : `${count}`;
+      lines.push(`${'  '.repeat(depth)}- ${num}. ${text || '(sans titre)'}`);
+      walk(item.children, num, depth + 1);
+    }
+  };
+
+  walk(plan, '', 0);
+  return lines.join('\n');
+}
+
+/**
  * Retourne le label utilisateur pour le type de brouillon.
  */
 export function getDraftLabel(type: DraftType): string {

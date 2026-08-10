@@ -40,8 +40,7 @@ Claude/Whisper), droits et contact. À tenir à jour si le périmètre de chiffr
 
 ## TODO restants
 
-- [ ] **Recopier `ENCRYPTION_KEY` dans le `.env.local` du Mac Studio** — sans elle, le
-  dev local y est cassé (`grep ENCRYPTION_KEY .env.local` sur le MacBook pour la lire).
+- [x] Recopier `ENCRYPTION_KEY` dans le `.env.local` du Mac Studio *(fait le 2026-08-10)*.
 - [ ] **Publier l'extension NavigKid** sur le Chrome Web Store avant la rentrée —
   l'ancienne version ne peut plus soumettre (règles fermées).
 - [ ] Optionnel : tester le parcours élève complet à la rentrée (login, travaux/mine,

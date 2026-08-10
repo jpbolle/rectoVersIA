@@ -125,7 +125,8 @@ export default function WorkEditor({
   // Extensions Tiptap (incluant les décorations IA si accesIA)
   const editorExtensions = useMemo(() => {
     const base = [
-      StarterKit.configure({ heading: { levels: [2, 3] } }),
+      // link: false — Link est ajouté séparément ci-dessous (StarterKit l'inclut par défaut)
+      StarterKit.configure({ heading: { levels: [2, 3] }, link: false }),
       Placeholder.configure({ placeholder: placeholderText }),
       TextStyle,
       FontFamily.configure({ types: ['textStyle'] }),

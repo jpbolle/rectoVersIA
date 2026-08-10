@@ -122,3 +122,30 @@
   line-height: 1.5;
   margin: 0;
 }
+
+/* ── Proposition du professeur (corrigé de référence) ── */
+.profProduction {
+  margin-top: 20px;
+  padding: 16px 18px;
+  border: 1.5px solid var(--c-accent);
+  border-radius: var(--c-radius-lg, 12px);
+  background: rgba(212, 148, 76, 0.07);
+}
+
+.profProductionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-accent);
+  margin: 0 0 8px;
+}
+
+.profProductionText {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--c-text);
+  margin: 0;
+  white-space: pre-wrap;
+}

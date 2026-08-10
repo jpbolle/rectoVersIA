@@ -36,8 +36,11 @@ Livré et **déployé le 2026-08-10** (VPS + Chrome Web Store) :
 - [x] Exercices de vocabulaire : injecter des mots de la liste personnelle dans les
   exercices sur série collective. *(fait le 2026-08-08 — 3-5 mots, voir
   rollup_vocabulaire.md)*
-- [ ] Interface de consultation des listes personnelles (prof + élève).
-- [ ] RGPD : trancher le chiffrement de `vocabulairePersonnel` (skill `/encrypt`).
+- [ ] Interface de consultation des listes personnelles — **côté prof** : session ultérieure
+  (vue avec tous les résultats) ; **côté élève** : ✅ fait le 2026-08-10 dans l'onglet
+  Vocabulaire du profil (voir [[rollup_profil]]).
+- [x] RGPD : chiffrement de `vocabulairePersonnel` — **décision JP (2026-08-10) : non**,
+  les mots de vocabulaire ne sont pas des données sensibles (l'email y est déjà chiffré).
 
 ## À déployer
 
