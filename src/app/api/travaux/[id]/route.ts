@@ -46,6 +46,7 @@ export async function GET(
       draftContent: data.draftContent || null,
       ressourceAnnotations: data.ressourceAnnotations || '',
       ressourceNotes: data.ressourceNotes || {},
+      ressourceImageShapes: data.ressourceImageShapes || {},
       status: data.status || 'draft',
       selfEvaluation: data.selfEvaluation || null,
       createdAt: data.createdAt,
@@ -123,6 +124,10 @@ export async function PATCH(
 
     if (body.ressourceNotes !== undefined) {
       updateData.ressourceNotes = body.ressourceNotes;
+    }
+
+    if (body.ressourceImageShapes !== undefined) {
+      updateData.ressourceImageShapes = body.ressourceImageShapes;
     }
 
     if (body.draftContent !== undefined) {

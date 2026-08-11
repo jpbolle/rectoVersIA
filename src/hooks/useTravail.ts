@@ -176,6 +176,25 @@ export function useTravail(devoirId: string | null) {
     }, DEBOUNCE_DELAY);
   }, [saveNow]);
 
+  // Mise a jour des tracés sur images de ressources (avec debounce, autorise meme apres soumission)
+  const updateRessourceImageShapes = useCallback((ressourceImageShapes: import('@/types/travail').Travail['ressourceImageShapes']) => {
+    if (!travailRef.current) return;
+
+    pendingUpdate.current = { ...pendingUpdate.current, ressourceImageShapes };
+    setTravail(prev => prev ? { ...prev, ressourceImageShapes } : null);
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    debounceTimer.current = setTimeout(async () => {
+      if (pendingUpdate.current) {
+        await saveNow(pendingUpdate.current);
+        pendingUpdate.current = null;
+      }
+    }, DEBOUNCE_DELAY);
+  }, [saveNow]);
+
   // Soumission du travail (immediate)
   const submit = useCallback(async () => {
     // D'abord sauvegarder les changements en attente
@@ -222,6 +241,7 @@ export function useTravail(devoirId: string | null) {
     updateSelfEvaluation,
     updateRessourceAnnotations,
     updateRessourceNotes,
+    updateRessourceImageShapes,
     submit,
     refetch: fetchTravail,
   };

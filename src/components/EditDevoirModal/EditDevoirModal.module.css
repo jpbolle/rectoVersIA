@@ -131,53 +131,6 @@
   box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.1);
 }
 
-.classesGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.classCheckbox {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.checkbox {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: var(--c-primary);
-}
-
-.classLabel {
-  font-size: 14px;
-  color: var(--c-text);
-}
-
-.optionalSection {
-  margin-bottom: 20px;
-  padding: 15px;
-  background: var(--c-bg-element);
-  border-radius: var(--c-radius-lg);
-  border: 1px solid var(--c-border);
-}
-
-.checkboxLabel {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--c-text);
-}
-
-.ressourcesWrapper {
-  margin-top: 15px;
-}
-
 .toggleSection {
   display: flex;
   gap: 30px;
@@ -298,6 +251,227 @@
   .saveButton {
     width: 100%;
     text-align: center;
+  }
+}
+
+/* ── Bascule recto / verso du formulaire ── */
+.flipBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.flipToggle {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+}
+
+.flipToggleButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.flipToggleActive {
+  background: var(--c-bg-card);
+  color: var(--c-primary);
+  box-shadow: 0 1px 4px rgba(61, 56, 50, 0.14);
+}
+
+.flipToggleDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-accent);
+}
+
+.flipTurnButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: 1.5px solid var(--c-primary);
+  background: var(--c-bg-card);
+  color: var(--c-primary);
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.flipTurnButton:hover:not(:disabled) {
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+}
+
+.flipTurnIcon {
+  display: inline-block;
+  font-size: 16px;
+  transition: transform 0.3s ease;
+}
+
+.flipTurnButton:hover:not(:disabled) .flipTurnIcon {
+  transform: rotate(180deg);
+}
+
+.flipCard {
+  transition: transform 0.28s ease, opacity 0.28s ease;
+}
+
+.flipCardOut {
+  transform: perspective(1400px) rotateY(90deg);
+  opacity: 0.4;
+}
+
+.flipCardVerso {
+  border-left: 4px solid var(--c-accent);
+  padding-left: 18px;
+}
+
+/* ── Verso : en-tête et sections de ressources ── */
+.versoHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.versoTitle {
+  color: var(--c-primary);
+  font-family: var(--c-font-title);
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.versoContext {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--c-accent);
+}
+
+.versoGroup {
+  margin: 24px 0 12px;
+}
+
+.versoGroup:first-of-type {
+  margin-top: 4px;
+}
+
+.versoGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-accent);
+  margin: 0 0 4px;
+}
+
+.versoGroupHint {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.versoSection {
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  background: var(--c-bg-card);
+}
+
+.versoSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-primary);
+  margin: 0 0 4px;
+}
+
+.versoSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.versoSectionHeader .versoSectionTitle {
+  margin: 0;
+}
+
+/* Toggle « corrigé IA » — état affiché seulement en info-bulle au survol */
+.iaToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iaToggleLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+/* Champ « Thème ou thèse » au-dessus du plan */
+.themeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0 14px;
+}
+
+.themeLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+  white-space: nowrap;
+}
+
+.versoEmpty {
+  text-align: center;
+  color: var(--c-text-secondary);
+  font-size: 14px;
+  padding: 30px 20px;
+}
+
+@media (max-width: 600px) {
+  .flipBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .flipTurnButton {
+    justify-content: center;
   }
 }
 

@@ -7,10 +7,14 @@ import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
 import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/QuestionnaireBuilder';
 import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import PlanDraft from '@/components/DraftEditor/PlanDraft';
+import VocabListEditor from '@/components/VocabListEditor/VocabListEditor';
+import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
+import MessageBox from '@/components/MessageBox/MessageBox';
 import { getTodayString } from '@/lib/devoir-utils';
 import { createPlanItem, planHasContent } from '@/lib/draft-utils';
 import { useVocabulaireThemes } from '@/hooks/useVocabulaireThemes';
 import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail, EvaluationType, CorrigeReference } from '@/types/devoir';
+import type { LectureQuiz } from '@/types/lecture';
 import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import styles from './CreationForm.module.css';
@@ -29,11 +33,16 @@ function createEmptyPlanDraft(): DraftContent {
   return { type: 'plan', plan: [createPlanItem()] };
 }
 
+// Valeur spéciale du menu « Série lexicale » : créer une nouvelle liste au verso
+const NEW_VOCAB_LIST = '__new__';
+
 interface CreationFormProps {
   classeNames: string[];
   grilleTypes: string[];
   isVisible: boolean;
   onSubmit: (data: CreateDevoirData) => Promise<void>;
+  // Enregistre l'activité (non disponible) puis ouvre la vraie page élève en aperçu
+  onPreview?: (data: CreateDevoirData) => Promise<void>;
   isSubmitting: boolean;
   onClose?: () => void;
   getAuthHeaders?: () => Promise<Record<string, string> | null>;
@@ -44,6 +53,7 @@ export default function CreationForm({
   grilleTypes,
   isVisible,
   onSubmit,
+  onPreview,
   isSubmitting,
   onClose,
   getAuthHeaders,
@@ -84,8 +94,23 @@ export default function CreationForm({
   const [nkQuestions, setNkQuestions] = useState<NavigKidQuestion[]>([]);
   const [nkThemes, setNkThemes] = useState<string[]>([]);
 
-  // Vocabulaire (type vocabulaire)
-  const { themes: vocabThemes } = useVocabulaireThemes();
+  // Messages de l'outil de listes de vocabulaire (erreur 409 nom déjà pris, succès...)
+  const [vocabMessage, setVocabMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  // « Nouvelle liste » choisie dans le menu Série lexicale (création en cours au verso)
+  const [vocabCreatingNew, setVocabCreatingNew] = useState(false);
+
+  // Questionnaire de lecture (type lire) — composé au verso
+  const [lectureQuiz, setLectureQuiz] = useState<LectureQuiz | null>(null);
+
+  // Vocabulaire (type vocabulaire) — les callbacks servent à l'outil de listes
+  // au verso (même outil que Mes Ressources : les listes créées ici y apparaissent)
+  const {
+    themes: vocabThemes,
+    otherThemes: otherProfsVocabThemes,
+    createTheme,
+    updateWords,
+    updateThemeMeta,
+  } = useVocabulaireThemes();
 
   // Toggles (initialement à false)
   const [accesIA, setAccesIA] = useState(false);
@@ -99,11 +124,20 @@ export default function CreationForm({
   const isValid = baseValid && grilleValid
     && (typeTravail !== 'rechercher' || nkQuestions.some(q => q.texte.trim()));
 
+  // Liste de vocabulaire sélectionnée (type vocabulaire : intitule = id du thème).
+  // La liste d'un autre prof n'est modifiable que par son auteur → lecture seule
+  const selectedVocabTheme = vocabThemes.find((t) => t.id === intitule) || null;
+  const vocabThemeReadOnly = selectedVocabTheme
+    ? otherProfsVocabThemes.some((t) => t.id === selectedVocabTheme.id)
+    : false;
+
   // Le verso porte-t-il du contenu ? (point orange sur l'onglet Verso)
   const versoHasContent =
     ressources !== null ||
     (typeTravail === 'ecrire' && (planHasContent(profDraft.plan) || profProduction.trim() !== '')) ||
-    (typeTravail === 'rechercher' && nkQuestions.some(q => q.texte.trim()));
+    (typeTravail === 'rechercher' && nkQuestions.some(q => q.texte.trim())) ||
+    (typeTravail === 'vocabulaire' && selectedVocabTheme !== null) ||
+    (typeTravail === 'lire' && (lectureQuiz?.questions.length ?? 0) > 0);
 
   // Bascule animée recto ↔ verso
   const flip = useCallback(() => {
@@ -141,11 +175,12 @@ export default function CreationForm({
     setNkQuestions([]);
     setNkThemes([]);
     setFlipInverted(false);
+    setVocabMessage(null);
+    setVocabCreatingNew(false);
+    setLectureQuiz(null);
   }, []);
 
-  async function handleSubmit() {
-    if (!isValid) return;
-
+  function buildData(): CreateDevoirData {
     const data: CreateDevoirData = {
       classes: selectedClasses,
       dateRemise,
@@ -192,9 +227,23 @@ export default function CreationForm({
       };
     }
 
-    await onSubmit(data);
+    if (typeTravail === 'lire' && lectureQuiz && lectureQuiz.questions.length > 0) {
+      data.lectureQuiz = lectureQuiz;
+    }
 
+    return data;
+  }
+
+  async function handleSubmit() {
+    if (!isValid) return;
+    await onSubmit(buildData());
     resetForm();
+  }
+
+  // Enregistre (non disponible pour les élèves) puis ouvre la vraie page élève
+  async function handlePreview() {
+    if (!isValid || !onPreview) return;
+    await onPreview({ ...buildData(), disponible: false });
   }
 
   const ressourceLabel = RESSOURCE_LABELS[typeTravail];
@@ -313,11 +362,22 @@ export default function CreationForm({
             </label>
             <select
               className={styles.select}
-              value={intitule}
-              onChange={(e) => setIntitule(e.target.value)}
+              value={vocabCreatingNew ? NEW_VOCAB_LIST : intitule}
+              onChange={(e) => {
+                if (e.target.value === NEW_VOCAB_LIST) {
+                  // Nouvelle liste : le verso demande le titre puis les mots
+                  setVocabCreatingNew(true);
+                  setIntitule('');
+                  goToFace('verso');
+                } else {
+                  setVocabCreatingNew(false);
+                  setIntitule(e.target.value);
+                }
+              }}
               disabled={isSubmitting}
             >
               <option value="">Sélectionnez une série...</option>
+              <option value={NEW_VOCAB_LIST}>➕ Nouvelle liste…</option>
               {vocabThemes.map((theme) => (
                 <option key={theme.id} value={theme.id}>
                   {theme.name.charAt(0).toUpperCase() + theme.name.slice(1)} ({theme.wordCount} mots)
@@ -452,7 +512,7 @@ export default function CreationForm({
   const renderVerso = () => (
     <>
       <div className={styles.formHeader}>
-        <h2 className={styles.formTitle}>Ajouter des ressources</h2>
+        <h2 className={styles.formTitle}>Ajouter des contenus</h2>
         <span className={styles.versoContext}>
           {typeTravail === 'ecrire' && `Écrire${grille ? ` · ${grille}` : ''}`}
           {typeTravail === 'lire' && 'Lire'}
@@ -461,19 +521,52 @@ export default function CreationForm({
         </span>
       </div>
 
-      {/* Bloc ressources (tous les types sauf vocabulaire) */}
+      {/* ── Groupe 1 : ressources pour l'élève (tous les types sauf vocabulaire) ── */}
       {typeTravail !== 'vocabulaire' && (
-        <div className={styles.versoSection}>
-          <div className={styles.versoSectionHeader}>
-            <h3 className={styles.versoSectionTitle}>{ressourceLabel}</h3>
-            {typeTravail === 'ecrire' && renderIaToggle(ressourcesToIA, setRessourcesToIA)}
+        <>
+          <div className={styles.versoGroup}>
+            <h4 className={styles.versoGroupTitle}>Ressources pour l’élève</h4>
+            <p className={styles.versoGroupHint}>
+              Visibles par l’élève dans l’onglet «&nbsp;Ressources&nbsp;» de sa colonne de droite.
+            </p>
           </div>
-          <RessourcesInput
-            ressources={ressources}
-            onRessourcesChange={setRessources}
-            disabled={isSubmitting}
-          />
-        </div>
+          <div className={styles.versoSection}>
+            <div className={styles.versoSectionHeader}>
+              <h3 className={styles.versoSectionTitle}>{ressourceLabel}</h3>
+              {typeTravail === 'ecrire' && renderIaToggle(ressourcesToIA, setRessourcesToIA)}
+            </div>
+            <RessourcesInput
+              ressources={ressources}
+              onRessourcesChange={setRessources}
+              disabled={isSubmitting}
+            />
+          </div>
+        </>
+      )}
+
+      {/* ── Groupe 2 : contenus de l'activité (selon le type) ── */}
+      <div className={styles.versoGroup}>
+        <h4 className={styles.versoGroupTitle}>Contenus de l’activité</h4>
+        <p className={styles.versoGroupHint}>
+          {typeTravail === 'ecrire' &&
+            'Corrigé de référence : transmis à l’IA selon les interrupteurs « Corrigé IA » ; seule la production est montrée à l’élève, quand le corrigé est disponible.'}
+          {typeTravail === 'lire' &&
+            'Le questionnaire de lecture : rempli par l’élève dans sa colonne de gauche. QCM corrigés automatiquement, le reste par vous. Les compétences cochées alimenteront le profil de lecteur.'}
+          {typeTravail === 'rechercher' &&
+            'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'}
+          {typeTravail === 'vocabulaire' &&
+            'La liste sert de support à l’activité (apprentissage et évaluation). Elle est aussi enregistrée dans Mes Ressources.'}
+        </p>
+      </div>
+
+      {/* Questionnaire de lecture (type lire) */}
+      {typeTravail === 'lire' && (
+        <LectureQuizBuilder
+          value={lectureQuiz}
+          onChange={setLectureQuiz}
+          disabled={isSubmitting}
+          getAuthHeaders={getAuthHeaders}
+        />
       )}
 
       {/* Corrigé de référence (type ecrire uniquement) */}
@@ -534,31 +627,53 @@ export default function CreationForm({
         </div>
       )}
 
-      {/* Type vocabulaire : rien de spécifique */}
+      {/* Type vocabulaire : outil de listes de vocabulaire (même outil que
+          Mes Ressources — la liste créée ici apparaît aussi là-bas) */}
       {typeTravail === 'vocabulaire' && (
-        <div className={styles.versoEmpty}>
-          Pas de ressource spécifique pour ce type d&apos;activité.
-        </div>
+        vocabCreatingNew || selectedVocabTheme ? (
+          <>
+            <MessageBox
+              message={vocabMessage?.text || null}
+              type={vocabMessage?.type || 'success'}
+              onDismiss={() => setVocabMessage(null)}
+            />
+            <VocabListEditor
+              mode={selectedVocabTheme ?? 'create'}
+              readOnly={vocabThemeReadOnly}
+              createTheme={createTheme}
+              updateWords={updateWords}
+              updateThemeMeta={updateThemeMeta}
+              getAuthHeaders={getAuthHeaders}
+              onCreated={(theme) => {
+                setIntitule(theme.id);
+                setVocabCreatingNew(false);
+              }}
+              onMessage={(text, type) => setVocabMessage({ text, type })}
+            />
+          </>
+        ) : (
+          <div className={styles.versoEmpty}>
+            Choisissez une série lexicale au recto — ou «&nbsp;➕ Nouvelle liste…&nbsp;» pour en créer une ici.
+          </div>
+        )
       )}
 
-      {/* Actions */}
-      <div className={styles.formActions}>
-        <button
-          className={`${styles.btn} ${styles.btnPrimary}`}
-          onClick={handleSubmit}
-          disabled={isSubmitting || !isValid}
-        >
-          {isSubmitting ? 'Création en cours...' : 'Créer l’activité'}
-        </button>
-        <button
-          className={`${styles.btn} ${styles.btnAccent}`}
-          onClick={flip}
-          type="button"
-          disabled={isSubmitting}
-        >
-          Revenir à l’activité ⟳
-        </button>
-      </div>
+      {/* Prévisualisation de l'espace élève (tous les types) */}
+      {onPreview && (
+        <div className={styles.previewBar}>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnAccent}`}
+            onClick={handlePreview}
+            disabled={isSubmitting || !isValid}
+          >
+            👁 Prévisualiser l’espace élève
+          </button>
+          <span className={styles.previewNote}>
+            Enregistre l’activité (non disponible pour les élèves) puis ouvre la vraie page élève.
+          </span>
+        </div>
+      )}
     </>
   );
 
@@ -579,7 +694,7 @@ export default function CreationForm({
             className={`${styles.flipToggleButton} ${face === 'verso' ? styles.flipToggleActive : ''}`}
             onClick={() => goToFace('verso')}
           >
-            📚 Ajout de ressources
+            📚 Ajout de contenus
             {versoHasContent && <span className={styles.flipToggleDot} />}
           </button>
         </div>

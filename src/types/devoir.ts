@@ -1,4 +1,5 @@
 import type { PlanItem } from './travail';
+import type { LectureQuiz } from './lecture';
 
 export type Classe = string;
 export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
@@ -66,6 +67,10 @@ export interface Devoir {
   // Envoyer les ressources à l'IA pour le corrigé (défaut true) — seuls le
   // texte (onglet Texte) et les images sont transmis, jamais les PDF ni les liens
   ressourcesToIA?: boolean;
+  // Nombre de copies remises (enrichi côté serveur, liste prof uniquement)
+  submittedCount?: number;
+  // Questionnaire de lecture (type lire) — côté élève, correctIndex est filtré
+  lectureQuiz?: LectureQuiz | null;
 }
 
 export interface CreateDevoirData {
@@ -95,4 +100,6 @@ export interface CreateDevoirData {
   corrigeReference?: CorrigeReference | null;
   // Envoyer les ressources à l'IA (type ecrire uniquement)
   ressourcesToIA?: boolean;
+  // Questionnaire de lecture (type lire uniquement)
+  lectureQuiz?: LectureQuiz | null;
 }

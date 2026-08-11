@@ -20,6 +20,8 @@ import type { AiSuggestionType } from '@/types/ai-suggestions';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
 import RechercheResponseViewer from '@/components/RechercheResponseViewer/RechercheResponseViewer';
 import VocabulaireActivity from '@/components/VocabulaireActivity/VocabulaireActivity';
+import LectureQuizActivity from '@/components/LectureQuizActivity/LectureQuizActivity';
+import { parseLectureAnswers } from '@/types/lecture';
 import WorkspaceRail, { type RailTab } from '@/components/WorkspaceRail';
 import DictionaryClickLayer from '@/components/DictionaryClickLayer';
 import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
@@ -97,6 +99,7 @@ export default function TravailPage() {
     updateSelfEvaluation,
     updateRessourceAnnotations,
     updateRessourceNotes,
+    updateRessourceImageShapes,
     submit,
   } = useTravail(isPreviewMode ? null : devoirId);
 
@@ -419,6 +422,8 @@ export default function TravailPage() {
   const isDisabled = isPreviewMode || isSubmitted;
   const isRecherche = devoir?.typeTravail === 'rechercher';
   const isVocabulaire = devoir?.typeTravail === 'vocabulaire';
+  // Type lire avec questionnaire : la colonne de gauche devient le questionnaire
+  const isLectureQuiz = devoir?.typeTravail === 'lire' && !!devoir?.lectureQuiz;
 
   // ── Configuration du rail : icones + visibilite par type d'activite ──
   const hasAiSuggestions = aiSuggestions
@@ -432,10 +437,8 @@ export default function TravailPage() {
   // Ordre : Consignes → Ressources → Aide IA → Remarques → Recherche → Évaluation
   const railTabs: RailTab[] = [];
   railTabs.push({ id: 'consignes', label: 'Consignes', icon: ICON_CONSIGNES });
-  if (!isRecherche) {
-    railTabs.push({ id: 'ressources', label: 'Ressources', icon: ICON_RESSOURCES });
-  }
-  if (!isRecherche && (accesIA || showAiData)) {
+  railTabs.push({ id: 'ressources', label: 'Ressources', icon: ICON_RESSOURCES });
+  if (!isRecherche && !isLectureQuiz && (accesIA || showAiData)) {
     railTabs.push({
       id: 'ia',
       label: 'Aide IA à la réécriture',
@@ -549,6 +552,26 @@ export default function TravailPage() {
               studentView={!isPreviewMode}
             />
           </div>
+        ) : isLectureQuiz ? (
+          <div className={styles.editorSection}>
+            <div className={styles.editorHeader}>
+              <h2>Questionnaire de lecture</h2>
+            </div>
+            <LectureQuizActivity
+              quiz={devoir.lectureQuiz!}
+              savedState={isPreviewMode ? null : parseLectureAnswers(travail?.content)}
+              onStateChange={
+                isDisabled
+                  ? undefined
+                  : (state) => updateContent(JSON.stringify(state))
+              }
+              disabled={isDisabled}
+              onOpenRessources={() => {
+                setActiveTab('ressources');
+                setPanelOpen(true);
+              }}
+            />
+          </div>
         ) : (
           <div className={styles.editorSection}>
             <div className={styles.editorHeader}>
@@ -603,6 +626,8 @@ export default function TravailPage() {
             onRessourceAnnotationsChange={isPreviewMode ? undefined : updateRessourceAnnotations}
             ressourceNotes={travail?.ressourceNotes}
             onRessourceNotesChange={isPreviewMode ? undefined : updateRessourceNotes}
+            ressourceImageShapes={travail?.ressourceImageShapes}
+            onRessourceImageShapesChange={isPreviewMode ? undefined : updateRessourceImageShapes}
             dictionaryEnabled={dictionaryEnabled}
             onDictionaryEnabledChange={setDictionaryEnabled}
             activeTab={activeTab}

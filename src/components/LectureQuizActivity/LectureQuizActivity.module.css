@@ -1,0 +1,369 @@
+.activity {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.meta {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+}
+
+/* Progression (mode quiz) */
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progressCount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+.progressBar {
+  flex: 1;
+  height: 8px;
+  background: var(--c-bg-element);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressBar i {
+  display: block;
+  height: 100%;
+  background: var(--c-primary);
+  border-radius: 4px;
+  transition: width 0.25s ease;
+}
+
+/* Carte question */
+.card {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.num {
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.typeLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.pts {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--c-text-secondary);
+}
+
+.enonce {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  color: var(--c-text);
+}
+
+/* QCM */
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.choice {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13.5px;
+  background: var(--c-bg, #faf6f0);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--c-text);
+}
+
+.choice:hover {
+  border-color: var(--c-primary);
+}
+
+.choice input {
+  accent-color: var(--c-primary);
+}
+
+/* Texte court */
+.shortAnswer {
+  width: 100%;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--c-text);
+  resize: vertical;
+}
+
+/* Atelier image */
+.imgWork {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.canvasCol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.canvasFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.zoomBtn {
+  border: none;
+  background: none;
+  color: var(--c-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.savedNote {
+  font-size: 11px;
+  color: var(--c-primary);
+  font-weight: 600;
+}
+
+/* Éditeur riche (réponse longue) */
+.tiptap {
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--c-bg-card);
+}
+
+.tiptapBar {
+  display: flex;
+  gap: 2px;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
+  padding: 4px 6px;
+}
+
+.ttBtn {
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--c-text-secondary);
+  min-width: 26px;
+  height: 24px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.ttBtn:hover {
+  background: var(--c-bg-card);
+  color: var(--c-primary);
+}
+
+.ttBtnOn {
+  background: var(--c-bg-card);
+  color: var(--c-primary);
+}
+
+.tiptapBody {
+  padding: 4px 12px;
+  font-size: 13.5px;
+  min-height: 90px;
+  color: var(--c-text);
+}
+
+.tiptapBody :global(.ProseMirror) {
+  outline: none;
+  min-height: 80px;
+}
+
+/* Fluorage */
+.fluoText {
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  line-height: 1.9;
+  background: var(--c-bg, #faf6f0);
+  color: var(--c-text);
+}
+
+.fluoWord {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 1px 2px;
+}
+
+.fluoWordOn {
+  background: #ffe9a8;
+  box-shadow: inset 0 -2px 0 #e8c56a;
+}
+
+.fluoWordStatic {
+  cursor: default;
+}
+
+.ressourceFluo {
+  background: var(--c-bg-element);
+  border: 1px dashed var(--c-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  line-height: 1.5;
+}
+
+.openRessourcesBtn {
+  margin-top: 8px;
+  border: 1.5px solid var(--c-primary);
+  background: var(--c-bg-card);
+  color: var(--c-primary);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.openRessourcesBtn:hover {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+/* Bloc informatif */
+.cardInfo {
+  background: var(--c-bg-element);
+  border-style: dashed;
+}
+
+.infoIcon {
+  font-size: 15px;
+}
+
+.enonceInfo {
+  white-space: pre-wrap;
+  margin-bottom: 0;
+}
+
+.fluoComment {
+  margin-top: 8px;
+}
+
+/* Navigation quiz — avancer seulement */
+.quizNav {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.navBtn {
+  border: 1.5px solid var(--c-primary);
+  background: var(--c-bg-card);
+  color: var(--c-primary);
+  border-radius: 9px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.navBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.navBtnPrimary {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+/* Popup agrandissement */
+.popup {
+  position: fixed;
+  inset: 0;
+  background: rgba(40, 35, 30, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.popupInner {
+  position: relative;
+  background: var(--c-bg-card, #fff);
+  border-radius: 14px;
+  padding: 18px;
+  max-width: min(860px, 94vw);
+  max-height: 92vh;
+  overflow: auto;
+}
+
+.popupInner img {
+  display: block;
+  max-width: 100%;
+  max-height: 78vh;
+  border-radius: 8px;
+}
+
+.popupClose {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 15px;
+  cursor: pointer;
+  color: var(--c-text-secondary);
+  z-index: 1;
+}
+
+@media (max-width: 700px) {
+  .imgWork {
+    flex-direction: column;
+  }
+}

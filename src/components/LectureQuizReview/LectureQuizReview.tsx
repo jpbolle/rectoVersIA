@@ -1,0 +1,189 @@
+'use client';
+
+// Vue prof (correction) du questionnaire de lecture : réponses de l'élève
+// en lecture seule, QCM comptés automatiquement, tracés et fluorages affichés.
+
+import { useState } from 'react';
+import { DrawCanvas } from '@/components/DrawTools/DrawTools';
+import { FluoExtrait } from '@/components/LectureQuizActivity/LectureQuizActivity';
+import { parseLectureAnswers, LECTURE_COMPETENCE_LABELS } from '@/types/lecture';
+import type { LectureQuiz, LectureQuestion } from '@/types/lecture';
+import styles from './LectureQuizReview.module.css';
+
+const TYPE_LABELS: Record<LectureQuestion['type'], string> = {
+  qcm: 'QCM',
+  'texte-court': 'Réponse courte',
+  'texte-long': 'Réponse longue',
+  fluorage: 'Fluorage de texte',
+  info: 'Bloc informatif',
+};
+
+interface LectureQuizReviewProps {
+  quiz: LectureQuiz;
+  travailContent: string | null | undefined;
+}
+
+export default function LectureQuizReview({ quiz, travailContent }: LectureQuizReviewProps) {
+  const state = parseLectureAnswers(travailContent);
+  const answers = state?.answers ?? {};
+  const [popupImage, setPopupImage] = useState<string | null>(null);
+
+  // Comptage automatique des QCM
+  const qcmQuestions = quiz.questions.filter((q) => q.type === 'qcm');
+  const qcmCorrect = qcmQuestions.filter(
+    (q) => answers[q.id]?.choiceIndex === q.correctIndex
+  );
+  const qcmPointsMax = qcmQuestions.reduce((s, q) => s + (q.points || 0), 0);
+  const qcmPoints = qcmCorrect.reduce((s, q) => s + (q.points || 0), 0);
+  const totalPoints = quiz.questions.reduce((s, q) => s + (q.points || 0), 0);
+
+  return (
+    <div className={styles.review}>
+      {qcmQuestions.length > 0 && (
+        <div className={styles.autoScore}>
+          🎯 QCM : <b>{qcmCorrect.length}/{qcmQuestions.length}</b> corrects
+          {qcmPointsMax > 0 && <> · <b>{qcmPoints}/{qcmPointsMax}</b> pts automatiques</>}
+          {totalPoints > 0 && <span className={styles.totalPts}> (questionnaire : {totalPoints} pts)</span>}
+        </div>
+      )}
+
+      {quiz.questions.map((q, index) => {
+        const answer = answers[q.id];
+        // Bloc informatif : simple rappel du texte du prof
+        if (q.type === 'info') {
+          return (
+            <div key={q.id} className={`${styles.card} ${styles.cardInfo}`}>
+              <div className={styles.cardHead}>
+                <span className={styles.typeLabel}>ℹ️ {TYPE_LABELS.info}</span>
+              </div>
+              <p className={`${styles.enonce} ${styles.enonceInfo}`}>{q.enonce}</p>
+            </div>
+          );
+        }
+        const number = quiz.questions.slice(0, index).filter((p) => p.type !== 'info').length + 1;
+        return (
+          <div key={q.id} className={styles.card}>
+            <div className={styles.cardHead}>
+              <span className={styles.num}>{number}</span>
+              <span className={styles.typeLabel}>{TYPE_LABELS[q.type]}</span>
+              {q.competences.length > 0 && (
+                <span className={styles.comps}>
+                  {q.competences.map((c) => LECTURE_COMPETENCE_LABELS[c]).join(' · ')}
+                </span>
+              )}
+              {q.points > 0 && <span className={styles.pts}>{q.points} pt{q.points > 1 ? 's' : ''}</span>}
+            </div>
+
+            <p className={styles.enonce}>{q.enonce}</p>
+
+            {/* Image + tracés de l'élève (lecture seule) */}
+            {q.image && (
+              <div className={styles.imgBlock}>
+                <DrawCanvas
+                  imageUrl={q.image.url}
+                  shapes={answer?.shapes || []}
+                  tool="select"
+                  selectedShapeId={null}
+                  setSelectedShapeId={() => {}}
+                  readOnly
+                />
+                <div className={styles.imgFooter}>
+                  <button type="button" className={styles.zoomBtn} onClick={() => setPopupImage(q.image!.url)}>
+                    🔍 Agrandir l&apos;image
+                  </button>
+                  <span className={styles.shapeCount}>
+                    {(answer?.shapes?.length ?? 0) > 0
+                      ? `✏️ ${answer!.shapes!.length} tracé${answer!.shapes!.length > 1 ? 's' : ''} de l'élève`
+                      : 'Aucun tracé'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* QCM : réponse élève vs bonne réponse */}
+            {q.type === 'qcm' && (
+              <div className={styles.choices}>
+                {(q.choices ?? []).map((choice, ci) => {
+                  const isStudent = answer?.choiceIndex === ci;
+                  const isCorrect = q.correctIndex === ci;
+                  return (
+                    <div
+                      key={ci}
+                      className={`${styles.choice} ${isCorrect ? styles.choiceCorrect : ''} ${isStudent && !isCorrect ? styles.choiceWrong : ''}`}
+                    >
+                      <span className={styles.choiceMark}>
+                        {isStudent ? (isCorrect ? '✅' : '❌') : isCorrect ? '✔' : ''}
+                      </span>
+                      {choice}
+                      {isStudent && <span className={styles.studentTag}>réponse de l&apos;élève</span>}
+                    </div>
+                  );
+                })}
+                {answer?.choiceIndex === undefined || answer?.choiceIndex === null ? (
+                  <p className={styles.empty}>Pas de réponse.</p>
+                ) : null}
+              </div>
+            )}
+
+            {q.type === 'texte-court' && (
+              answer?.text?.trim() ? (
+                <p className={styles.textAnswer}>{answer.text}</p>
+              ) : (
+                <p className={styles.empty}>Pas de réponse.</p>
+              )
+            )}
+
+            {q.type === 'texte-long' && (
+              answer?.text?.trim() ? (
+                <div
+                  className={styles.richAnswer}
+                  dangerouslySetInnerHTML={{ __html: answer.text }}
+                />
+              ) : (
+                <p className={styles.empty}>Pas de réponse.</p>
+              )
+            )}
+
+            {q.type === 'fluorage' && (q.fluoSource ?? 'extrait') === 'extrait' && (
+              <FluoExtrait
+                texte={q.fluoTexte ?? ''}
+                fluoWords={answer?.fluoWords ?? []}
+                disabled
+              />
+            )}
+
+            {q.type === 'fluorage' && q.fluoSource === 'ressource' && (
+              <p className={styles.empty}>
+                🖍 L&apos;élève a fluoré dans la ressource de l&apos;activité — son surlignage
+                est visible dans l&apos;onglet Ressources (annotations de l&apos;élève).
+              </p>
+            )}
+
+            {/* Commentaire du fluorage par l'élève */}
+            {q.type === 'fluorage' && answer?.text?.trim() && (
+              <p className={styles.textAnswer}>💬 {answer.text}</p>
+            )}
+
+            {/* Réponse idéale du prof — pour comparaison */}
+            {q.reponseIdeale && (
+              <div className={styles.ideale}>
+                <span className={styles.idealeLabel}>🎓 Votre réponse idéale</span>
+                <p className={styles.idealeText}>{q.reponseIdeale}</p>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {popupImage && (
+        <div className={styles.popup} onClick={() => setPopupImage(null)}>
+          <div className={styles.popupInner} onClick={(e) => e.stopPropagation()}>
+            <button type="button" className={styles.popupClose} onClick={() => setPopupImage(null)}>✕</button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={popupImage} alt="" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

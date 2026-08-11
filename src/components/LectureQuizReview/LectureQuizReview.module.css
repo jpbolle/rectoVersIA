@@ -1,0 +1,254 @@
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.autoScore {
+  background: rgba(45, 106, 90, 0.07);
+  border: 1px solid rgba(45, 106, 90, 0.25);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--c-text);
+}
+
+.totalPts {
+  color: var(--c-text-secondary);
+}
+
+.card {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.num {
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.typeLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.comps {
+  font-size: 10.5px;
+  color: var(--c-accent);
+  font-weight: 600;
+}
+
+.pts {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--c-text-secondary);
+}
+
+.enonce {
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+  color: var(--c-text);
+}
+
+.imgBlock {
+  margin-bottom: 8px;
+}
+
+.imgFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.zoomBtn {
+  border: none;
+  background: none;
+  color: var(--c-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.shapeCount {
+  font-size: 11px;
+  color: var(--c-text-secondary);
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 7px 11px;
+  color: var(--c-text);
+}
+
+.choiceCorrect {
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.07);
+}
+
+.choiceWrong {
+  border-color: var(--c-danger, #b3432f);
+  background: rgba(179, 67, 47, 0.06);
+}
+
+.choiceMark {
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.studentTag {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--c-text-secondary);
+  font-style: italic;
+}
+
+.textAnswer {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--c-text);
+  background: var(--c-bg, #faf6f0);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+}
+
+.richAnswer {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--c-text);
+  background: var(--c-bg, #faf6f0);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.richAnswer p {
+  margin: 0 0 8px;
+}
+
+.richAnswer p:last-child {
+  margin-bottom: 0;
+}
+
+.empty {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  font-style: italic;
+}
+
+.cardInfo {
+  background: var(--c-bg-element);
+  border-style: dashed;
+}
+
+.enonceInfo {
+  white-space: pre-wrap;
+  margin-bottom: 0;
+}
+
+/* Réponse idéale du prof */
+.ideale {
+  margin-top: 10px;
+  border: 1px solid rgba(212, 148, 76, 0.4);
+  background: rgba(212, 148, 76, 0.07);
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+
+.idealeLabel {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-accent);
+  margin-bottom: 4px;
+}
+
+.idealeText {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--c-text);
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.popup {
+  position: fixed;
+  inset: 0;
+  background: rgba(40, 35, 30, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.popupInner {
+  position: relative;
+  background: var(--c-bg-card, #fff);
+  border-radius: 14px;
+  padding: 18px;
+  max-width: min(860px, 94vw);
+  max-height: 92vh;
+  overflow: auto;
+}
+
+.popupInner img {
+  display: block;
+  max-width: 100%;
+  max-height: 78vh;
+  border-radius: 8px;
+}
+
+.popupClose {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 15px;
+  cursor: pointer;
+  color: var(--c-text-secondary);
+  z-index: 1;
+}

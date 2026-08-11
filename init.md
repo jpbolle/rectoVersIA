@@ -100,6 +100,10 @@ Trois couches qui doivent rester cohérentes : **interface ⊆ route serveur ⊆
 ## 4. Modèle de données (Firestore)
 
 ### `devoirs`
+> Champs récents : `lectureQuiz` (questionnaire de lecture, type lire — voir
+> `src/types/lecture.ts` ; `correctIndex` et `reponseIdeale` **filtrés côté élève**
+> par `src/lib/lecture-server.ts`) ; `submittedCount` (nombre de copies remises,
+> enrichi à la lecture par `/api/devoirs`, liste prof uniquement).
 ```typescript
 interface Devoir {
   id: string;                    // DEV-YYYYMMDD-XXXX
@@ -144,8 +148,11 @@ interface Travail {
   createdAt: string;
   updatedAt: string;
   submittedAt: string | null;
+  ressourceImageShapes?: Record<string, DrawShape[]>; // tracés élève sur les images de ressources (clé = fileId)
 }
 ```
+> Pour les activités **vocabulaire** et **lire avec questionnaire**, `content` porte
+> un JSON d'état (pas du HTML Tiptap) — `parseLectureAnswers` pour la lecture.
 
 ### `corrections`
 ```typescript
@@ -302,6 +309,20 @@ interface Questionnaire {
   `VocabulaireEvaluation` (mots croisés + syn/ant + composition), `VocabulaireStats`,
   `VocabulaireListReadOnly` (vue prof)
 - NavigKid : `QuestionnaireBuilder`, `RechercheResponseViewer`, `RechercheStatsTab`
+- Questionnaire de lecture (type lire) : `LectureQuizBuilder` (prof — drag & drop de
+  blocs QCM/texte court/texte long/fluorage/bloc informatif, image et réponse idéale
+  par question, 7 compétences de lecture), `LectureQuizActivity` (élève — worksheet ou
+  quiz sans retour arrière, réponses auto-sauvées en JSON dans `travail.content`),
+  `LectureQuizReview` (correction — QCM auto-comptés, réponse idéale en encadré)
+- `DrawTools` (`DrawToolbar` + `DrawCanvas`) : atelier de tracé sur image (6 outils,
+  coordonnées en %, porté de romantismesam) — utilisé par les questions à image **et**
+  par les images de l'onglet Ressources élève (`travail.ressourceImageShapes`)
+- `VocabListEditor` : outil de listes de vocabulaire partagé entre Mes Ressources et
+  le verso de la création d'activité vocabulaire (option « ➕ Nouvelle liste… » au recto)
+- Création/édition d'activité : verso « 📚 Ajout de contenus » en deux groupes
+  (« Ressources pour l'élève » / « Contenus de l'activité ») dans `CreationForm` **et**
+  `EditDevoirModal` (refondu recto/verso) ; bouton « 👁 Prévisualiser l'espace élève »
+  (enregistre `disponible: false` puis ouvre `/activites/[id]` — un prof y est en aperçu)
 - Panels : `AssistancePanel` (onglets Consignes/Ressources/Évaluation/Remarques/Aide
   IA/Recherche — prop `hideTabs` quand un parent gère la navigation), `GrilleTab`
   (3 évaluations : élève, IA, prof)

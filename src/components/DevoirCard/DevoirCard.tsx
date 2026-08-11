@@ -118,6 +118,14 @@ export default function DevoirCard({
           <span className={styles.metaIcon}>🎓</span>
           <span>{devoir.classes.join(', ')}</span>
         </span>
+        {variant === 'prof' && devoir.submittedCount !== undefined && (
+          <span className={styles.metaItem}>
+            <span className={styles.metaIcon}>📥</span>
+            <span>
+              {devoir.submittedCount} {devoir.submittedCount > 1 ? 'copies remises' : 'copie remise'}
+            </span>
+          </span>
+        )}
       </div>
 
       {variant === 'prof' && (

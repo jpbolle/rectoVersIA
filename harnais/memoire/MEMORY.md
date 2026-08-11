@@ -11,3 +11,4 @@
 - [rollup_rgpd](rollup_rgpd.md) — chiffrement des identités élèves : **en production** (2026-08-10, 650 docs migrés) ; TODO : publier l'extension NavigKid avant la rentrée
 - [rollup_devoirs](rollup_devoirs.md) — création d'activités refondue en recto/verso : corrigé IA prof (thème/plan/production, toggles opt-in), ressources en onglets Image (Firestore base64) / Lien / Texte — livré le 2026-08-10 soir, TODO : test + déploiement + EditDevoirModal
 - [rollup_profil](rollup_profil.md) — profil élève refondu en 5 onglets (un appel API par onglet, maîtrise lexicale, recherches NavigKid) — livré le 2026-08-10, TODO : test compte élève + déploiement
+- [rollup_lecture](rollup_lecture.md) — questionnaire de lecture (worksheet/quiz, 4 types de questions, outils image, compétences, prévisualisation) — livré le 2026-08-11, TODO : test + profil Lire

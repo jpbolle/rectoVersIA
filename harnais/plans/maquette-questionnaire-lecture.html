@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maquette v2 — Questionnaire de lecture (Quiz / Worksheet)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c-primary: #2d6a5a;
+    --c-primary-dark: #1e4d40;
+    --c-accent: #d4944c;
+    --c-bg: #faf6f0;
+    --c-surface: #ffffff;
+    --c-bg-element: #f4efe7;
+    --c-text: #3d3832;
+    --c-text-soft: #7a7267;
+    --c-border: #e6ddd1;
+    --c-danger: #b3432f;
+    --c-radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--c-bg); color: var(--c-text); font-family: 'Inter', sans-serif; }
+
+  .header { background: var(--c-surface); border-bottom: 1px solid var(--c-border); padding: 14px 32px; display: flex; align-items: center; gap: 24px; }
+  .logo { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; color: var(--c-primary); }
+  .logo small { display: block; font-family: 'Inter'; font-weight: 400; font-size: 11px; color: var(--c-text-soft); }
+  .viewSwitch { margin-left: auto; display: flex; gap: 4px; background: var(--c-bg-element); border: 1px solid var(--c-border); border-radius: 10px; padding: 4px; }
+  .viewBtn { border: none; background: transparent; padding: 8px 16px; border-radius: 7px; font: 600 13px 'Inter'; color: var(--c-text-soft); cursor: pointer; }
+  .viewBtn.active { background: var(--c-surface); color: var(--c-primary); box-shadow: 0 1px 4px rgba(61,56,50,.14); }
+
+  .main { max-width: 1200px; margin: 0 auto; padding: 26px 24px 90px; }
+  h1 { font-family: 'Playfair Display', serif; font-size: 26px; color: var(--c-primary-dark); }
+  .subtitle { color: var(--c-text-soft); font-size: 14px; margin: 6px 0 10px; }
+  .demoHint { background: #fdf3e6; border: 1px solid #ecd7b8; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #8a5f2a; margin-bottom: 22px; }
+  .demoHint b { color: #6d4a1e; }
+
+  .view { display: none; }
+  .view.on { display: block; }
+
+  /* Info-bulle ⓘ */
+  .info { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px;
+          border-radius: 50%; border: 1.5px solid var(--c-text-soft); color: var(--c-text-soft); font: 700 11px 'Inter'; cursor: help; }
+  .info .tip { display: none; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); width: 240px;
+               background: var(--c-text); color: #fff; font: 400 12px/1.5 'Inter'; padding: 9px 12px; border-radius: 8px; z-index: 50; }
+  .info:hover .tip { display: block; }
+
+  /* ═══════════ VUE PROF — VERSO ═══════════ */
+  .card { background: var(--c-surface); border: 1px solid var(--c-border); border-left: 5px solid var(--c-accent);
+          border-radius: 16px; padding: 28px 32px; box-shadow: 0 2px 10px rgba(61,56,50,.06); }
+  .versoHead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+  .versoHead h2 { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--c-primary); }
+  .ctx { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--c-accent); }
+
+  .groupTitle { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; text-transform: uppercase;
+                letter-spacing: .06em; color: var(--c-accent); margin: 22px 0 3px; }
+  .groupHint { font-size: 12.5px; color: var(--c-text-soft); margin-bottom: 12px; line-height: 1.5; }
+  .section { border: 1px solid var(--c-border); border-radius: 12px; padding: 16px 18px; background: var(--c-surface); margin-bottom: 14px; }
+  .sectionMini { font-size: 14px; color: var(--c-text-soft); font-style: italic; }
+
+  /* Choix quiz / worksheet — compact + ⓘ */
+  .modeRow { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; font-size: 14px; }
+  .modeRow .lbl { font-weight: 600; font-size: 13px; color: var(--c-text-soft); text-transform: uppercase; letter-spacing: .04em; }
+  .modeOpt { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+  .modeOpt input { accent-color: var(--c-primary); }
+
+  /* Blocs de questions */
+  .qList { display: flex; flex-direction: column; gap: 10px; }
+  .qBlock { border: 1px solid var(--c-border); border-radius: 12px; background: var(--c-surface); overflow: visible; transition: box-shadow .15s; }
+  .qBlock.dragging { opacity: .45; }
+  .qBlock.dragOver { box-shadow: 0 -3px 0 var(--c-accent); }
+  .qHead { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--c-bg-element); border-bottom: 1px solid var(--c-border); border-radius: 12px 12px 0 0; }
+  .grip { cursor: grab; color: var(--c-text-soft); font-size: 16px; letter-spacing: -1px; user-select: none; }
+  .qType { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #fff; border-radius: 5px; padding: 3px 8px; }
+  .qType.qcm { background: var(--c-primary); }
+  .qType.court { background: #4a7ba6; }
+  .qType.long { background: #7c5fa6; }
+  .qType.fluo { background: #b7950b; }
+  .qNum { font-weight: 700; font-size: 13px; color: var(--c-text-soft); }
+  .qPts { margin-left: auto; font-size: 12px; color: var(--c-text-soft); display: flex; align-items: center; gap: 6px; }
+  .qPts input { width: 44px; padding: 4px 6px; border: 1px solid var(--c-border); border-radius: 6px; font: 600 12px 'Inter'; text-align: center; }
+  .qDel { border: none; background: none; color: var(--c-danger); cursor: pointer; font-size: 15px; padding: 4px; }
+  .qBody { padding: 14px; display: flex; gap: 14px; }
+  .qMain { flex: 1; min-width: 0; }
+  .qMain textarea, .qMain input[type=text] { width: 100%; border: 1px solid var(--c-border); border-radius: 8px; padding: 9px 12px; font: 400 13.5px 'Inter'; color: var(--c-text); resize: vertical; }
+  .qMain .label { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--c-text-soft); margin: 10px 0 5px; display: flex; align-items: center; gap: 6px; }
+  .choices { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .choice { display: flex; align-items: center; gap: 8px; }
+  .choice input[type=radio] { accent-color: var(--c-primary); }
+  .choice input[type=text] { flex: 1; }
+  .choice.correct input[type=text] { border-color: var(--c-primary); background: #eef4f2; }
+  .choiceHint { font-size: 11px; color: var(--c-text-soft); font-style: italic; margin-top: 4px; }
+  .addChoice { border: 1px dashed var(--c-border); background: none; border-radius: 8px; padding: 6px 10px; font: 600 12px 'Inter'; color: var(--c-text-soft); cursor: pointer; margin-top: 6px; }
+
+  /* Compétences de lecture (par question) */
+  .compRow { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .comp { border: 1px solid var(--c-border); border-radius: 12px; font-size: 11px; padding: 3px 9px; color: var(--c-text-soft); background: var(--c-bg); cursor: pointer; user-select: none; }
+  .comp.on { border-color: var(--c-primary); color: #fff; background: var(--c-primary); font-weight: 600; }
+
+  /* Vignette image de question (prof) */
+  .qImgZone { width: 160px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+  .thumb { position: relative; border: 1px solid var(--c-border); border-radius: 8px; overflow: hidden; cursor: zoom-in; }
+  .thumb img, .thumb svg { display: block; width: 100%; height: 96px; object-fit: cover; }
+  .thumb .zoomTag { position: absolute; right: 5px; bottom: 5px; background: rgba(61,56,50,.75); color: #fff; font-size: 10px; border-radius: 4px; padding: 2px 6px; }
+  .imgBtn { border: 1px dashed var(--c-primary); background: none; color: var(--c-primary); border-radius: 8px; padding: 7px 8px; font: 600 11.5px 'Inter'; cursor: pointer; }
+  .imgNote { font-size: 10.5px; color: var(--c-text-soft); line-height: 1.4; }
+
+  /* Faux éditeur Tiptap (démo) */
+  .tiptap { border: 1px solid var(--c-border); border-radius: 8px; overflow: hidden; }
+  .ttBar { display: flex; gap: 2px; background: var(--c-bg-element); border-bottom: 1px solid var(--c-border); padding: 4px 6px; }
+  .ttBtn { border: none; background: none; font: 600 12px 'Inter'; color: var(--c-text-soft); width: 26px; height: 24px; border-radius: 5px; cursor: pointer; }
+  .ttBtn:hover { background: var(--c-surface); color: var(--c-primary); }
+  .ttBody { padding: 10px 12px; font-size: 13.5px; min-height: 64px; color: var(--c-text-soft); }
+
+  /* Fluorage (prof + élève) */
+  .fluoText { border: 1px solid var(--c-border); border-radius: 8px; padding: 12px 14px; font-size: 13.5px; line-height: 1.8; background: var(--c-bg); }
+  .fluoText .w { cursor: pointer; border-radius: 3px; padding: 1px 2px; }
+  .fluoText .w.hl { background: #ffe9a8; box-shadow: inset 0 -2px 0 #e8c56a; }
+
+  /* Ajouter une question */
+  .addRow { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .addQ { border: 1px dashed var(--c-primary); background: none; color: var(--c-primary); border-radius: 9px; padding: 9px 16px; font: 600 13px 'Inter'; cursor: pointer; }
+  .addQ:hover { background: #eef4f2; }
+
+  .previewBar { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--c-border); display: flex; align-items: center; gap: 12px; }
+  .btnAccent { background: var(--c-accent); color: #fff; border: none; border-radius: 9px; padding: 11px 20px; font: 600 14px 'Inter'; cursor: pointer; }
+  .previewNote { font-size: 12px; color: var(--c-text-soft); }
+
+  /* ═══════════ VUES ÉLÈVE ═══════════ */
+  .studio { display: flex; gap: 0; border: 1px solid var(--c-border); border-radius: 14px; overflow: hidden; background: var(--c-surface); min-height: 560px; }
+  .colWork { flex: 1; padding: 20px 24px; border-right: 1px solid var(--c-border); background: var(--c-bg); overflow: auto; min-width: 0; }
+  .colWork h3 { font-family: 'Playfair Display', serif; color: var(--c-primary-dark); font-size: 18px; margin-bottom: 4px; }
+  .workMeta { font-size: 12px; color: var(--c-text-soft); margin-bottom: 14px; }
+  .colPanel { width: 290px; background: var(--c-surface); padding: 16px 18px; border-right: 1px solid var(--c-border); }
+  .colPanel h4 { font-size: 14px; color: var(--c-primary); margin-bottom: 10px; font-family: 'Playfair Display', serif; }
+  .colPanel p { font-size: 12.5px; color: var(--c-text-soft); line-height: 1.55; }
+  .rail { width: 52px; background: var(--c-bg-element); display: flex; flex-direction: column; align-items: center; padding-top: 12px; gap: 8px; }
+  .railBtn { width: 38px; height: 38px; border-radius: 9px; border: 1px solid transparent; background: none; font-size: 17px; cursor: pointer; color: var(--c-text-soft); }
+  .railBtn.on { background: var(--c-surface); border-color: var(--c-border); color: var(--c-primary); box-shadow: 0 1px 3px rgba(61,56,50,.12); }
+
+  .sq { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; }
+  .sqHead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .sqNum { background: var(--c-primary); color: #fff; font-size: 11px; font-weight: 700; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sqPts { margin-left: auto; font-size: 11px; color: var(--c-text-soft); }
+  .sq p.enonce { font-size: 14px; line-height: 1.5; margin-bottom: 8px; }
+  .sq .sChoices { display: flex; flex-direction: column; gap: 7px; }
+  .sq .sChoice { display: flex; gap: 8px; align-items: center; font-size: 13.5px; background: var(--c-bg); border: 1px solid var(--c-border); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+  .sq .sChoice:hover { border-color: var(--c-primary); }
+  .sq textarea { width: 100%; border: 1px solid var(--c-border); border-radius: 8px; padding: 9px 12px; font: 400 13.5px 'Inter'; }
+
+  /* Image dans une question élève : vignette → clic = ouvre l'atelier */
+  .imgWork { display: flex; gap: 10px; margin: 10px 0; }
+  .toolbar { display: flex; flex-direction: column; gap: 6px; }
+  .tbtn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--c-accent); background: var(--c-surface); color: var(--c-accent); cursor: pointer; font-size: 14px; }
+  .tbtn.on { background: var(--c-accent); color: #fff; }
+  .canvasWrap { position: relative; flex: 1; border: 1px solid var(--c-border); border-radius: 10px; overflow: hidden; }
+  .canvasWrap svg.bg { display: block; width: 100%; }
+  .canvasWrap svg.overlay { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+  .savedNote { font-size: 11px; color: var(--c-primary); font-weight: 600; margin-top: 4px; }
+
+  /* Quiz élève */
+  .quizProgress { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .qbar { flex: 1; height: 8px; background: var(--c-bg-element); border-radius: 4px; overflow: hidden; }
+  .qbar i { display: block; height: 100%; background: var(--c-primary); border-radius: 4px; transition: width .25s; }
+  .qcount { font-size: 12px; font-weight: 600; color: var(--c-text-soft); }
+  .quizNav { display: flex; justify-content: space-between; margin-top: 16px; }
+  .qnavBtn { border: 1.5px solid var(--c-primary); background: var(--c-surface); color: var(--c-primary); border-radius: 9px; padding: 9px 18px; font: 600 13px 'Inter'; cursor: pointer; }
+  .qnavBtn:disabled { opacity: .4; cursor: default; }
+  .qnavBtn.primary { background: var(--c-primary); color: #fff; }
+
+  /* Popup image */
+  .popup { position: fixed; inset: 0; background: rgba(40,35,30,.72); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .popup.on { display: flex; }
+  .popupInner { background: var(--c-surface); border-radius: 14px; padding: 18px; max-width: min(760px, 92vw); }
+  .popupInner svg { display: block; width: 100%; max-height: 70vh; border-radius: 8px; }
+  .popupClose { float: right; border: none; background: none; font-size: 20px; cursor: pointer; color: var(--c-text-soft); }
+  .popupCap { font-size: 12.5px; color: var(--c-text-soft); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Recto-versIA <small>Aide à l'écrilecture</small></div>
+  <div class="viewSwitch">
+    <button class="viewBtn active" data-v="prof">👩‍🏫 Prof — verso création</button>
+    <button class="viewBtn" data-v="ws">🧑‍🎓 Élève — Worksheet</button>
+    <button class="viewBtn" data-v="quiz">🧑‍🎓 Élève — Quiz</button>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ═══════════════ VUE PROF ═══════════════ -->
+<div class="view on" id="v-prof">
+  <h1>Créer une activité — type <em>Lire</em> <span style="font-size:14px;color:var(--c-accent)">(maquette v2)</span></h1>
+  <p class="subtitle">Verso « 📚 Ajout de contenus » — le questionnaire de lecture</p>
+  <div class="demoHint"><b>Interactif :</b> glissez les blocs ⠿ · survolez les ⓘ · cliquez les vignettes · cliquez les puces de compétences (vert = sélectionnée).</div>
+
+  <div class="card">
+    <div class="versoHead"><h2>Ajouter des contenus</h2><span class="ctx">Lire · Compte rendu</span></div>
+
+    <div class="groupTitle">Ressources pour l'élève</div>
+    <p class="groupHint">Visibles par l'élève dans l'onglet « Ressources » de sa colonne de droite.</p>
+    <div class="section sectionMini">📄 Texte à lire — bloc Image / Lien / Texte (inchangé, replié ici pour la maquette)</div>
+
+    <div class="groupTitle">Contenus de l'activité</div>
+    <p class="groupHint">Le questionnaire de lecture. QCM corrigés automatiquement ; le reste par vous. Les compétences cochées alimentent le <b>profil de lecteur</b> de l'élève.</p>
+
+    <!-- Choix du mode : compact avec ⓘ -->
+    <div class="modeRow">
+      <span class="lbl">Présentation</span>
+      <label class="modeOpt"><input type="radio" name="mode" checked> 📄 Worksheet
+        <span class="info">i<span class="tip">Toutes les questions sur une page — l'élève répond dans l'ordre qu'il veut, remise unique à la fin.</span></span>
+      </label>
+      <label class="modeOpt"><input type="radio" name="mode"> 🎯 Quiz
+        <span class="info">i<span class="tip">Une question à la fois, navigation ‹ › et barre de progression. Remise unique à la fin.</span></span>
+      </label>
+    </div>
+
+    <!-- Blocs de questions -->
+    <div class="qList" id="qList">
+
+      <!-- Q1 : QCM sans image -->
+      <div class="qBlock" draggable="true">
+        <div class="qHead">
+          <span class="grip" title="Glisser pour réordonner">⠿</span>
+          <span class="qNum">Question 1</span>
+          <span class="qType qcm">QCM</span>
+          <span class="qPts">Points <input value="2"></span>
+          <button class="qDel" title="Supprimer">🗑</button>
+        </div>
+        <div class="qBody">
+          <div class="qMain">
+            <input type="text" value="Qui est le narrateur du chapitre 3 ?">
+            <div class="choices">
+              <label class="choice"><input type="radio" name="c1"><input type="text" value="Julie"></label>
+              <label class="choice correct"><input type="radio" name="c1" checked><input type="text" value="Bernard"></label>
+              <label class="choice"><input type="radio" name="c1"><input type="text" value="Le père Guizot"></label>
+            </div>
+            <button class="addChoice">+ Ajouter un choix</button>
+            <div class="label">Compétences de lecture exercées
+              <span class="info">i<span class="tip">Cochez une ou plusieurs compétences — les résultats alimenteront l'onglet Lire du profil de l'élève.</span></span>
+            </div>
+            <div class="compRow" data-comp>
+              <span class="comp on">Comprendre l'explicite</span><span class="comp">Inférer</span><span class="comp">Interpréter</span><span class="comp">Analyser la forme</span><span class="comp">Modes et médias</span><span class="comp">Exercer son esprit critique</span><span class="comp">Identifier des structures</span>
+            </div>
+          </div>
+          <div class="qImgZone">
+            <button class="imgBtn">🖼 Joindre une image</button>
+            <p class="imgNote">Toute question peut porter une image — vignette + agrandissement, et atelier de tracé pour l'élève.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q2 : texte court AVEC image → outils élève automatiques -->
+      <div class="qBlock" draggable="true">
+        <div class="qHead">
+          <span class="grip" title="Glisser pour réordonner">⠿</span>
+          <span class="qNum">Question 2</span>
+          <span class="qType court">Texte court</span>
+          <span class="qPts">Points <input value="5"></span>
+          <button class="qDel" title="Supprimer">🗑</button>
+        </div>
+        <div class="qBody">
+          <div class="qMain">
+            <input type="text" value="Sur la planche, encadre les deux regards qui se croisent, puis justifie en une phrase.">
+            <div class="label">Compétences de lecture exercées</div>
+            <div class="compRow" data-comp>
+              <span class="comp">Comprendre l'explicite</span><span class="comp">Inférer</span><span class="comp">Interpréter</span><span class="comp on">Analyser la forme</span><span class="comp on">Modes et médias</span><span class="comp">Exercer son esprit critique</span><span class="comp">Identifier des structures</span>
+            </div>
+          </div>
+          <div class="qImgZone">
+            <div class="thumb" onclick="openPopup()">
+              <svg viewBox="0 0 160 100"><rect width="160" height="100" fill="#ded5c2"/><circle cx="48" cy="38" r="16" fill="#b09878"/><circle cx="112" cy="42" r="16" fill="#a08868"/><circle cx="43" cy="35" r="2.6" fill="#2b2b2b"/><circle cx="53" cy="35" r="2.6" fill="#2b2b2b"/><circle cx="107" cy="39" r="2.6" fill="#2b2b2b"/><circle cx="117" cy="39" r="2.6" fill="#2b2b2b"/><path d="M20 92 Q80 66 140 92" stroke="#8a7a5e" fill="none" stroke-width="4"/></svg>
+              <span class="zoomTag">🔍 agrandir</span>
+            </div>
+            <button class="imgBtn">↺ Remplacer l'image</button>
+            <p class="imgNote">✏️ Image jointe → l'élève reçoit <b>tous les outils de tracé</b> (sélection, ligne, crayon, axes, rectangle, ellipse). Ses tracés sont <b>enregistrés et visibles par vous</b>.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q3 : fluorage de texte -->
+      <div class="qBlock" draggable="true">
+        <div class="qHead">
+          <span class="grip" title="Glisser pour réordonner">⠿</span>
+          <span class="qNum">Question 3</span>
+          <span class="qType fluo">Fluorage de texte</span>
+          <span class="qPts">Points <input value="3"></span>
+          <button class="qDel" title="Supprimer">🗑</button>
+        </div>
+        <div class="qBody">
+          <div class="qMain">
+            <input type="text" value="Fluore dans l'extrait les mots qui installent l'atmosphère frénétique.">
+            <div class="label">Texte à fluorer
+              <span class="info">i<span class="tip">Soit un extrait collé dans la question (ressource secondaire), soit la ressource de l'activité elle-même : l'élève fluore alors directement dans l'onglet Ressources, et son fluorage est rattaché à cette question.</span></span>
+            </div>
+            <div class="modeRow" style="margin-bottom:8px">
+              <label class="modeOpt"><input type="radio" name="fluoSrc3" checked> Extrait ci-dessous</label>
+              <label class="modeOpt"><input type="radio" name="fluoSrc3"> 📚 La ressource de l'activité</label>
+            </div>
+            <textarea rows="2">Le vent hurlait dans les arbres morts ; Sarah, les yeux fous, serrait la lame contre sa poitrine, et le sang battait à ses tempes comme un tambour funèbre.</textarea>
+            <div class="label">Compétences de lecture exercées</div>
+            <div class="compRow" data-comp>
+              <span class="comp">Comprendre l'explicite</span><span class="comp">Inférer</span><span class="comp on">Interpréter</span><span class="comp on">Analyser la forme</span><span class="comp">Modes et médias</span><span class="comp">Exercer son esprit critique</span><span class="comp">Identifier des structures</span>
+            </div>
+          </div>
+          <div class="qImgZone">
+            <button class="imgBtn">🖼 Joindre une image</button>
+            <p class="imgNote">Le surligneur existant de l'app (annotation des ressources), au service d'une question.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q4 : texte long (Tiptap) -->
+      <div class="qBlock" draggable="true">
+        <div class="qHead">
+          <span class="grip" title="Glisser pour réordonner">⠿</span>
+          <span class="qNum">Question 4</span>
+          <span class="qType long">Texte long</span>
+          <span class="qPts">Points <input value="10"></span>
+          <button class="qDel" title="Supprimer">🗑</button>
+        </div>
+        <div class="qBody">
+          <div class="qMain">
+            <input type="text" value="Développe : en quoi ce chapitre annonce-t-il le dénouement ? (10 à 15 lignes)">
+            <p class="choiceHint">L'élève répondra dans un éditeur riche (Tiptap), comme dans l'espace de rédaction.</p>
+            <div class="label">Compétences de lecture exercées</div>
+            <div class="compRow" data-comp>
+              <span class="comp">Comprendre l'explicite</span><span class="comp on">Inférer</span><span class="comp">Interpréter</span><span class="comp">Analyser la forme</span><span class="comp">Modes et médias</span><span class="comp on">Exercer son esprit critique</span><span class="comp on">Identifier des structures</span>
+            </div>
+          </div>
+          <div class="qImgZone">
+            <button class="imgBtn">🖼 Joindre une image</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="addRow">
+      <button class="addQ">+ QCM</button>
+      <button class="addQ">+ Texte court</button>
+      <button class="addQ">+ Texte long</button>
+      <button class="addQ">+ Fluorage de texte</button>
+    </div>
+
+    <div class="previewBar">
+      <button class="btnAccent" onclick="switchView('ws')">👁 Prévisualiser l'espace élève</button>
+      <span class="previewNote">Enregistre l'activité (non disponible pour les élèves) puis ouvre la vraie page élève — 2 colonnes réelles. Disponible pour tous les types d'activités.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ VUE ÉLÈVE — WORKSHEET ═══════════════ -->
+<div class="view" id="v-ws">
+  <h1>Vue élève — mode Worksheet</h1>
+  <p class="subtitle">Colonne de gauche : le questionnaire complet · colonne de droite : les onglets habituels</p>
+  <div class="demoHint"><b>Interactif :</b> question 2, choisissez un outil et <b>tracez sur l'image</b> · question 3, <b>cliquez les mots</b> pour les fluorer · vignettes cliquables.</div>
+
+  <div class="studio">
+    <div class="colWork">
+      <h3>Questionnaire — Sambre, chapitre 3</h3>
+      <p class="workMeta">4 questions · 20 points · remise unique en bas de page</p>
+
+      <div class="sq">
+        <div class="sqHead"><span class="sqNum">1</span><b style="font-size:13px">QCM</b><span class="sqPts">2 pts</span></div>
+        <p class="enonce">Qui est le narrateur du chapitre 3 ?</p>
+        <div class="sChoices">
+          <label class="sChoice"><input type="radio" name="s1"> Julie</label>
+          <label class="sChoice"><input type="radio" name="s1"> Bernard</label>
+          <label class="sChoice"><input type="radio" name="s1"> Le père Guizot</label>
+        </div>
+      </div>
+
+      <div class="sq">
+        <div class="sqHead"><span class="sqNum">2</span><b style="font-size:13px">Réponse courte + image</b><span class="sqPts">5 pts</span></div>
+        <p class="enonce">Sur la planche, encadre les deux regards qui se croisent, puis justifie en une phrase.</p>
+        <div class="imgWork">
+          <div class="toolbar">
+            <button class="tbtn on" data-t="select" title="Sélectionner / déplacer">➤</button>
+            <button class="tbtn" data-t="line" title="Ligne droite">╱</button>
+            <button class="tbtn" data-t="pencil" title="Crayon">✎</button>
+            <button class="tbtn" data-t="cross" title="Axes">✚</button>
+            <button class="tbtn" data-t="rect" title="Rectangle">▭</button>
+            <button class="tbtn" data-t="ellipse" title="Ellipse">◯</button>
+          </div>
+          <div class="canvasWrap">
+            <svg class="bg" viewBox="0 0 160 100"><rect width="160" height="100" fill="#ded5c2"/><circle cx="48" cy="38" r="16" fill="#b09878"/><circle cx="112" cy="42" r="16" fill="#a08868"/><circle cx="43" cy="35" r="2.6" fill="#2b2b2b"/><circle cx="53" cy="35" r="2.6" fill="#2b2b2b"/><circle cx="107" cy="39" r="2.6" fill="#2b2b2b"/><circle cx="117" cy="39" r="2.6" fill="#2b2b2b"/><path d="M20 92 Q80 66 140 92" stroke="#8a7a5e" fill="none" stroke-width="4"/></svg>
+            <svg class="overlay" id="overlay" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+        <p class="savedNote">💾 Tracés enregistrés avec la réponse — le professeur les verra tels quels.</p>
+        <textarea rows="2" placeholder="Justifie ton tracé..."></textarea>
+      </div>
+
+      <div class="sq">
+        <div class="sqHead"><span class="sqNum">3</span><b style="font-size:13px">Fluorage de texte</b><span class="sqPts">3 pts</span></div>
+        <p class="enonce">Fluore dans l'extrait les mots qui installent l'atmosphère frénétique.</p>
+        <p class="fluoText" id="fluoText"></p>
+        <p class="savedNote">🖍 Fluorage enregistré — visible par le professeur.</p>
+      </div>
+
+      <div class="sq">
+        <div class="sqHead"><span class="sqNum">4</span><b style="font-size:13px">Réponse longue</b><span class="sqPts">10 pts</span></div>
+        <p class="enonce">Développe : en quoi ce chapitre annonce-t-il le dénouement ? (10 à 15 lignes)</p>
+        <div class="tiptap">
+          <div class="ttBar">
+            <button class="ttBtn"><b>B</b></button><button class="ttBtn"><i>I</i></button><button class="ttBtn"><u>U</u></button>
+            <button class="ttBtn">•≡</button><button class="ttBtn">1≡</button><button class="ttBtn">❝</button>
+          </div>
+          <div class="ttBody">Éditeur riche Tiptap — le même que l'espace de rédaction (gras, italique, listes…).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="colPanel">
+      <h4>Ressources</h4>
+      <p>📄 <b>Texte à lire</b> — l'extrait déposé par le professeur, avec l'aide dictionnaire habituelle.</p>
+      <p style="margin-top:10px">Onglets Consignes / Remarques / Évaluation identiques aux autres activités.</p>
+    </div>
+    <div class="rail">
+      <button class="railBtn" title="Consignes">📋</button>
+      <button class="railBtn on" title="Ressources">📚</button>
+      <button class="railBtn" title="Remarques">💬</button>
+      <button class="railBtn" title="Évaluation">✅</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ VUE ÉLÈVE — QUIZ ═══════════════ -->
+<div class="view" id="v-quiz">
+  <h1>Vue élève — mode Quiz</h1>
+  <p class="subtitle">Une question à la fois, progression visible, navigation libre ‹ ›</p>
+  <div class="demoHint"><b>Interactif :</b> boutons Précédent / Suivant pour parcourir les 4 questions.</div>
+
+  <div class="studio">
+    <div class="colWork">
+      <h3>Questionnaire — Sambre, chapitre 3</h3>
+      <div class="quizProgress">
+        <span class="qcount" id="qzCount">Question 1 / 4</span>
+        <div class="qbar"><i id="qzBar" style="width:25%"></i></div>
+        <span class="qcount">20 pts</span>
+      </div>
+
+      <div id="qzSlides">
+        <div class="sq qz">
+          <div class="sqHead"><span class="sqNum">1</span><b style="font-size:13px">QCM</b><span class="sqPts">2 pts</span></div>
+          <p class="enonce">Qui est le narrateur du chapitre 3 ?</p>
+          <div class="sChoices">
+            <label class="sChoice"><input type="radio" name="z1"> Julie</label>
+            <label class="sChoice"><input type="radio" name="z1"> Bernard</label>
+            <label class="sChoice"><input type="radio" name="z1"> Le père Guizot</label>
+          </div>
+        </div>
+        <div class="sq qz" style="display:none">
+          <div class="sqHead"><span class="sqNum">2</span><b style="font-size:13px">Réponse courte + image</b><span class="sqPts">5 pts</span></div>
+          <p class="enonce">Sur la planche, encadre les deux regards qui se croisent, puis justifie.</p>
+          <p style="font-size:12px;color:var(--c-text-soft)">(même atelier de tracé que dans la vue Worksheet)</p>
+          <textarea rows="2" placeholder="Justifie ton tracé..."></textarea>
+        </div>
+        <div class="sq qz" style="display:none">
+          <div class="sqHead"><span class="sqNum">3</span><b style="font-size:13px">Fluorage de texte</b><span class="sqPts">3 pts</span></div>
+          <p class="enonce">Fluore les mots qui installent l'atmosphère frénétique.</p>
+          <p style="font-size:12px;color:var(--c-text-soft)">(même fluorage que dans la vue Worksheet)</p>
+        </div>
+        <div class="sq qz" style="display:none">
+          <div class="sqHead"><span class="sqNum">4</span><b style="font-size:13px">Réponse longue</b><span class="sqPts">10 pts</span></div>
+          <p class="enonce">Développe : en quoi ce chapitre annonce-t-il le dénouement ?</p>
+          <div class="tiptap">
+            <div class="ttBar">
+              <button class="ttBtn"><b>B</b></button><button class="ttBtn"><i>I</i></button><button class="ttBtn"><u>U</u></button>
+              <button class="ttBtn">•≡</button><button class="ttBtn">1≡</button><button class="ttBtn">❝</button>
+            </div>
+            <div class="ttBody">Éditeur riche Tiptap…</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="quizNav">
+        <button class="qnavBtn" id="qzPrev" onclick="qzGo(-1)" disabled>‹ Précédent</button>
+        <button class="qnavBtn primary" id="qzNext" onclick="qzGo(1)">Suivant ›</button>
+      </div>
+    </div>
+
+    <div class="colPanel">
+      <h4>Ressources</h4>
+      <p>📄 <b>Texte à lire</b> — toujours accessible pendant le quiz.</p>
+    </div>
+    <div class="rail">
+      <button class="railBtn" title="Consignes">📋</button>
+      <button class="railBtn on" title="Ressources">📚</button>
+      <button class="railBtn" title="Remarques">💬</button>
+      <button class="railBtn" title="Évaluation">✅</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- Popup image -->
+<div class="popup" id="popup" onclick="this.classList.remove('on')">
+  <div class="popupInner" onclick="event.stopPropagation()">
+    <button class="popupClose" onclick="document.getElementById('popup').classList.remove('on')">✕</button>
+    <svg viewBox="0 0 160 100"><rect width="160" height="100" fill="#ded5c2"/><circle cx="48" cy="38" r="16" fill="#b09878"/><circle cx="112" cy="42" r="16" fill="#a08868"/><circle cx="43" cy="35" r="2.6" fill="#2b2b2b"/><circle cx="53" cy="35" r="2.6" fill="#2b2b2b"/><circle cx="107" cy="39" r="2.6" fill="#2b2b2b"/><circle cx="117" cy="39" r="2.6" fill="#2b2b2b"/><path d="M20 92 Q80 66 140 92" stroke="#8a7a5e" fill="none" stroke-width="4"/></svg>
+    <p class="popupCap">La même image en grand — en vue prof comme en vue élève.</p>
+  </div>
+</div>
+
+<script>
+// ── Bascule entre les 3 vues
+function switchView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('on'));
+  document.getElementById('v-' + v).classList.add('on');
+  document.querySelectorAll('.viewBtn').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.viewBtn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.v)));
+
+// ── Drag & drop des blocs (prof)
+const qList = document.getElementById('qList');
+let dragged = null;
+qList.querySelectorAll('.qBlock').forEach(block => {
+  block.addEventListener('dragstart', () => { dragged = block; block.classList.add('dragging'); });
+  block.addEventListener('dragend', () => { block.classList.remove('dragging'); dragged = null; renumber(); });
+  block.addEventListener('dragover', e => { e.preventDefault(); block.classList.add('dragOver'); });
+  block.addEventListener('dragleave', () => block.classList.remove('dragOver'));
+  block.addEventListener('drop', e => {
+    e.preventDefault();
+    block.classList.remove('dragOver');
+    if (dragged && dragged !== block) qList.insertBefore(dragged, block);
+  });
+});
+function renumber() {
+  qList.querySelectorAll('.qBlock .qNum').forEach((el, i) => el.textContent = 'Question ' + (i + 1));
+}
+
+// ── Puces de compétences (prof)
+document.querySelectorAll('[data-comp] .comp').forEach(c =>
+  c.addEventListener('click', () => c.classList.toggle('on')));
+
+// ── Popup image
+function openPopup() { document.getElementById('popup').classList.add('on'); }
+
+// ── Outils de tracé (élève worksheet)
+let tool = 'select';
+document.querySelectorAll('.tbtn').forEach(b => b.addEventListener('click', () => {
+  tool = b.dataset.t;
+  document.querySelectorAll('.tbtn').forEach(x => x.classList.toggle('on', x === b));
+}));
+const overlay = document.getElementById('overlay');
+let start = null, cur = null;
+function pt(e) {
+  const r = overlay.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 };
+}
+overlay.addEventListener('pointerdown', e => {
+  if (tool === 'select') return;
+  start = pt(e);
+  const tag = tool === 'ellipse' ? 'ellipse' : tool === 'line' || tool === 'cross' ? 'line' : tool === 'pencil' ? 'polyline' : 'rect';
+  cur = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  cur.setAttribute('fill', 'none');
+  const colors = { line: '#7a1f1f', pencil: '#d97706', cross: '#a35c2e', rect: '#047857', ellipse: '#7c3aed' };
+  cur.setAttribute('stroke', colors[tool] || '#047857');
+  cur.setAttribute('stroke-width', '0.8');
+  if (tool === 'pencil') cur.setAttribute('points', start.x + ',' + start.y);
+  overlay.appendChild(cur);
+  if (tool === 'cross') {
+    const v = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    v.setAttribute('stroke', colors.cross); v.setAttribute('stroke-width', '0.8');
+    v.setAttribute('x1', start.x); v.setAttribute('y1', start.y - 15); v.setAttribute('x2', start.x); v.setAttribute('y2', start.y + 15);
+    cur.setAttribute('x1', start.x - 15); cur.setAttribute('y1', start.y); cur.setAttribute('x2', start.x + 15); cur.setAttribute('y2', start.y);
+    overlay.appendChild(v);
+    cur = null; start = null;
+    return;
+  }
+  overlay.setPointerCapture(e.pointerId);
+});
+overlay.addEventListener('pointermove', e => {
+  if (!cur || !start) return;
+  const p = pt(e);
+  if (tool === 'line') {
+    cur.setAttribute('x1', start.x); cur.setAttribute('y1', start.y);
+    cur.setAttribute('x2', p.x); cur.setAttribute('y2', p.y);
+  } else if (tool === 'pencil') {
+    cur.setAttribute('points', cur.getAttribute('points') + ' ' + p.x + ',' + p.y);
+  } else if (tool === 'ellipse') {
+    cur.setAttribute('cx', (start.x + p.x) / 2); cur.setAttribute('cy', (start.y + p.y) / 2);
+    cur.setAttribute('rx', Math.abs(p.x - start.x) / 2); cur.setAttribute('ry', Math.abs(p.y - start.y) / 2);
+  } else {
+    cur.setAttribute('x', Math.min(start.x, p.x)); cur.setAttribute('y', Math.min(start.y, p.y));
+    cur.setAttribute('width', Math.abs(p.x - start.x)); cur.setAttribute('height', Math.abs(p.y - start.y));
+  }
+});
+overlay.addEventListener('pointerup', () => { start = null; cur = null; });
+
+// ── Fluorage (élève) : cliquer un mot le surligne
+const fluoSrc = "Le vent hurlait dans les arbres morts ; Sarah, les yeux fous, serrait la lame contre sa poitrine, et le sang battait à ses tempes comme un tambour funèbre.";
+const fluoEl = document.getElementById('fluoText');
+fluoSrc.split(' ').forEach(word => {
+  const s = document.createElement('span');
+  s.className = 'w';
+  s.textContent = word;
+  s.addEventListener('click', () => s.classList.toggle('hl'));
+  fluoEl.appendChild(s);
+  fluoEl.appendChild(document.createTextNode(' '));
+});
+
+// ── Navigation quiz
+let qzIdx = 0;
+function qzGo(d) {
+  const slides = document.querySelectorAll('#qzSlides .qz');
+  qzIdx = Math.max(0, Math.min(slides.length - 1, qzIdx + d));
+  slides.forEach((s, i) => s.style.display = i === qzIdx ? '' : 'none');
+  document.getElementById('qzCount').textContent = 'Question ' + (qzIdx + 1) + ' / ' + slides.length;
+  document.getElementById('qzBar').style.width = ((qzIdx + 1) / slides.length * 100) + '%';
+  document.getElementById('qzPrev').disabled = qzIdx === 0;
+  const next = document.getElementById('qzNext');
+  next.textContent = qzIdx === slides.length - 1 ? 'Remettre ✓' : 'Suivant ›';
+}
+</script>
+
+</body>
+</html>

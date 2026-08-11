@@ -20,6 +20,7 @@ import type { DraftType } from '@/types/travail';
 import type { DraftItemAnnotation } from '@/types/correction';
 import RechercheResponseViewer from '@/components/RechercheResponseViewer/RechercheResponseViewer';
 import VocabulaireListReadOnly from '@/components/VocabulaireListReadOnly/VocabulaireListReadOnly';
+import LectureQuizReview from '@/components/LectureQuizReview/LectureQuizReview';
 import ResizableSplit from '@/components/ResizableSplit/ResizableSplit';
 import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
 import styles from './travail-detail.module.css';
@@ -523,6 +524,16 @@ export default function TravailDetailPage() {
                   reponse={nkReponse}
                 />
               </div>
+            ) : devoir.typeTravail === 'lire' && devoir.lectureQuiz ? (
+              <div className={styles.contentSection}>
+                <div className={styles.sectionHeader}>
+                  <h2>Questionnaire de lecture</h2>
+                </div>
+                <LectureQuizReview
+                  quiz={devoir.lectureQuiz}
+                  travailContent={travail.content}
+                />
+              </div>
             ) : (
             <div className={styles.contentSection}>
               <div className={styles.sectionHeader}>
@@ -683,6 +694,7 @@ export default function TravailDetailPage() {
                   aiGridError={aiGridError}
                   onRequestAiGrid={handleProfRequestAiGrid}
                   studentRessourceAnnotations={travail.ressourceAnnotations}
+                  studentRessourceImageShapes={travail.ressourceImageShapes}
                   studentRessourceNotes={travail.ressourceNotes}
                   navigkidQuestions={nkQuestions.length > 0 ? nkQuestions : undefined}
                   navigkidReponse={nkReponse}

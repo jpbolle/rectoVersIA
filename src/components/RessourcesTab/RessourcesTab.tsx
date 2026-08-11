@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import DictionaryPanel from '@/components/DictionaryPanel';
+import { DrawToolbar, DrawCanvas } from '@/components/DrawTools/DrawTools';
+import type { DrawTool, DrawShape } from '@/types/draw';
 import type { Devoir } from '@/types/devoir';
 import styles from './RessourcesTab.module.css';
 
@@ -17,12 +19,84 @@ interface RessourcesTabProps {
   onRessourceAnnotationsChange?: (html: string) => void;
   ressourceNotes?: Record<string, string>;
   onRessourceNotesChange?: (notes: Record<string, string>) => void;
+  /** Tracés de l'élève sur les images de ressources (clé = fileId) */
+  ressourceImageShapes?: Record<string, DrawShape[]>;
+  onRessourceImageShapesChange?: (shapes: Record<string, DrawShape[]>) => void;
   /** Annotations de l'élève (lecture seule pour le prof) */
   studentRessourceAnnotations?: string;
   studentRessourceNotes?: Record<string, string>;
+  studentRessourceImageShapes?: Record<string, DrawShape[]>;
   /** Aide dictionnaire permanente (élève) — bloc affiché si le callback est fourni */
   dictionaryEnabled?: boolean;
   onDictionaryEnabledChange?: (value: boolean) => void;
+}
+
+// ── Image de ressource : atelier de tracé (élève) ou tracés en lecture seule (prof) ──
+function RessourceImageWorkspace({
+  url,
+  name,
+  shapes,
+  onShapesChange,
+}: {
+  url: string;
+  name: string;
+  shapes: DrawShape[];
+  onShapesChange?: (updater: (prev: DrawShape[]) => DrawShape[]) => void;
+}) {
+  const [tool, setTool] = useState<DrawTool>('select');
+  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  const [zoomed, setZoomed] = useState(false);
+  const readOnly = !onShapesChange;
+
+  return (
+    <figure className={styles.imageFigure}>
+      {!readOnly && (
+        <DrawToolbar
+          tool={tool}
+          setTool={setTool}
+          hasSelection={selectedShapeId !== null}
+          direction="horizontal"
+        />
+      )}
+      <DrawCanvas
+        imageUrl={url}
+        alt={name}
+        shapes={shapes}
+        onShapesChange={onShapesChange}
+        tool={tool}
+        selectedShapeId={selectedShapeId}
+        setSelectedShapeId={setSelectedShapeId}
+        readOnly={readOnly}
+      />
+      <figcaption className={styles.imageCaption}>
+        <button type="button" className={styles.imageZoomBtn} onClick={() => setZoomed(true)}>
+          🔍
+        </button>
+        {name}
+        {readOnly && shapes.length > 0 && (
+          <span className={styles.imageShapesTag}>
+            ✏️ {shapes.length} tracé{shapes.length > 1 ? 's' : ''} de l&apos;élève
+          </span>
+        )}
+      </figcaption>
+      {zoomed && (
+        <div className={styles.imagePopup} onClick={() => setZoomed(false)}>
+          <div className={styles.imagePopupInner} onClick={(e) => e.stopPropagation()}>
+            <button type="button" className={styles.imagePopupClose} onClick={() => setZoomed(false)}>✕</button>
+            <DrawCanvas
+              imageUrl={url}
+              alt={name}
+              shapes={shapes}
+              tool="select"
+              selectedShapeId={null}
+              setSelectedShapeId={() => {}}
+              readOnly
+            />
+          </div>
+        </div>
+      )}
+    </figure>
+  );
 }
 
 // Fonction pour transformer les URLs en liens cliquables
@@ -136,8 +210,11 @@ export default function RessourcesTab({
   onRessourceAnnotationsChange,
   ressourceNotes,
   onRessourceNotesChange,
+  ressourceImageShapes,
+  onRessourceImageShapesChange,
   studentRessourceAnnotations,
   studentRessourceNotes,
+  studentRessourceImageShapes,
   dictionaryEnabled = false,
   onDictionaryEnabledChange,
 }: RessourcesTabProps) {
@@ -168,20 +245,41 @@ export default function RessourcesTab({
   const hasLegacy = !hasOutils && !hasDocument && legacyContent.trim().length > 0;
   const hasFiles = ressourceFiles.length > 0;
 
-  // Images déposées par le prof — affichées en ligne (clic = plein écran)
+  // Images déposées par le prof — atelier de tracé pour l'élève (comme le
+  // fluorage/annotation pour un texte) ; le prof voit les tracés en lecture seule
+  const shapesSource = onRessourceImageShapesChange
+    ? ressourceImageShapes
+    : studentRessourceImageShapes;
   const filesBlock = hasFiles ? (
     <div className={styles.filesSection}>
       <h4 className={styles.filesTitle}>🖼️ Images</h4>
+      {onRessourceImageShapesChange && (
+        <p className={styles.filesHint}>
+          Utilise les outils pour analyser l&apos;image — tes tracés sont enregistrés
+          et visibles par ton professeur.
+        </p>
+      )}
       <div className={styles.filesList}>
-        {ressourceFiles.map((file, index) => (
-          <figure key={file.fileId || index} className={styles.imageFigure}>
-            <a href={file.url} target="_blank" rel="noopener noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={file.url} alt={file.name} className={styles.imageContent} />
-            </a>
-            <figcaption className={styles.imageCaption}>{file.name}</figcaption>
-          </figure>
-        ))}
+        {ressourceFiles.map((file, index) => {
+          const key = file.fileId || String(index);
+          return (
+            <RessourceImageWorkspace
+              key={key}
+              url={file.url}
+              name={file.name}
+              shapes={shapesSource?.[key] ?? []}
+              onShapesChange={
+                onRessourceImageShapesChange
+                  ? (updater) =>
+                      onRessourceImageShapesChange({
+                        ...(ressourceImageShapes ?? {}),
+                        [key]: updater(ressourceImageShapes?.[key] ?? []),
+                      })
+                  : undefined
+              }
+            />
+          );
+        })}
       </div>
     </div>
   ) : null;

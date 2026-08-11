@@ -1,0 +1,84 @@
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.toolbarHorizontal {
+  flex-direction: row;
+  flex-wrap: wrap;
+  padding-top: 0;
+}
+
+.toolBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-accent, #d4944c);
+  background: var(--c-bg-card, #fff);
+  color: var(--c-accent, #d4944c);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.toolBtn:hover {
+  background: rgba(212, 148, 76, 0.12);
+}
+
+.toolBtnActive {
+  background: var(--c-accent, #d4944c);
+  color: #fff;
+}
+
+.toolBtnActive:hover {
+  background: var(--c-accent, #d4944c);
+}
+
+.deleteHint {
+  margin-top: 2px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+  color: var(--c-accent, #d4944c);
+  line-height: 1.3;
+}
+
+.canvasWrap {
+  position: relative;
+  border: 1px solid var(--c-border, #e0dcd6);
+  border-radius: 10px;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.canvasImg {
+  display: block;
+  width: 100%;
+  user-select: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.overlayReadOnly {
+  pointer-events: none;
+}
+
+.overlaySelect {
+  cursor: default;
+}
+
+.overlayDraw {
+  cursor: crosshair;
+}

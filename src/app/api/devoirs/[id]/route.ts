@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { sanitizeLectureQuiz, lectureQuizForEleve } from '@/lib/lecture-server';
 
 export async function GET(
   request: NextRequest,
@@ -72,6 +73,11 @@ export async function GET(
               ? { production: data.corrigeReference.production }
               : null)
           : data.corrigeReference || null,
+      // Questionnaire de lecture : bonnes réponses filtrées côté élève
+      lectureQuiz:
+        auth.role === 'eleve'
+          ? lectureQuizForEleve(data.lectureQuiz)
+          : data.lectureQuiz || null,
     };
 
     return NextResponse.json({ success: true, data: devoir });
@@ -166,6 +172,9 @@ export async function PATCH(
     }
     if (body.ressourcesToIA !== undefined) {
       updateData.ressourcesToIA = body.ressourcesToIA;
+    }
+    if (body.lectureQuiz !== undefined) {
+      updateData.lectureQuiz = body.lectureQuiz === null ? null : sanitizeLectureQuiz(body.lectureQuiz);
     }
 
     if (Object.keys(updateData).length === 0) {

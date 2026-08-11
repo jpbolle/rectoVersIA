@@ -550,6 +550,34 @@
   color: var(--c-accent);
 }
 
+/* ── Verso : titres de groupes (ressources élève vs contenus de l'activité) ── */
+.versoGroup {
+  margin: 24px 0 12px;
+}
+
+.versoGroup:first-of-type {
+  margin-top: 4px;
+}
+
+.versoGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-accent);
+  margin: 0 0 4px;
+}
+
+.versoGroupHint {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
 /* ── Verso : sections de ressources ── */
 .versoSection {
   border: 1px solid var(--c-border);
@@ -623,6 +651,22 @@
   color: var(--c-text-secondary);
   font-size: 14px;
   padding: 30px 20px;
+}
+
+/* Barre de prévisualisation (verso) */
+.previewBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--c-border);
+  flex-wrap: wrap;
+}
+
+.previewNote {
+  font-size: 12px;
+  color: var(--c-text-secondary);
 }
 
 .btnAccent {

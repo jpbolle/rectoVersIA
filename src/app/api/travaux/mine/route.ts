@@ -133,6 +133,7 @@ export async function GET(request: NextRequest) {
       draftContent: data.draftContent || null,
       ressourceAnnotations: data.ressourceAnnotations || '',
       ressourceNotes: data.ressourceNotes || {},
+      ressourceImageShapes: data.ressourceImageShapes || {},
       status: data.status || 'draft',
       selfEvaluation: data.selfEvaluation || null,
       createdAt: data.createdAt,

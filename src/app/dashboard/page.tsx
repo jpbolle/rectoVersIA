@@ -95,6 +95,28 @@ export default function DashboardPage() {
     [createDevoir]
   );
 
+  // Prévisualisation : crée l'activité (non disponible) puis ouvre la page élève
+  // — un prof sur /activites/[id] est automatiquement en mode aperçu
+  const handlePreviewDevoir = useCallback(
+    async (data: CreateDevoirData) => {
+      setIsSubmitting(true);
+      try {
+        const json = await createDevoir(data);
+        const id = json?.data?.id;
+        setMessage({ text: 'Activité enregistrée (non disponible) — ouverture de l’aperçu…', type: 'success' });
+        if (id) router.push(`/activites/${id}`);
+      } catch (err) {
+        setMessage({
+          text: err instanceof Error ? err.message : 'Erreur lors de la creation',
+          type: 'error',
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [createDevoir, router]
+  );
+
   const handleToggleDisponible = useCallback(
     async (id: string, disponible: boolean) => {
       try {
@@ -260,6 +282,7 @@ export default function DashboardPage() {
               grilleTypes={grilleTypes}
               isVisible={isFormVisible}
               onSubmit={handleCreateDevoir}
+              onPreview={handlePreviewDevoir}
               isSubmitting={isSubmitting}
               onClose={() => setIsFormVisible(false)}
               getAuthHeaders={getAuthHeaders}

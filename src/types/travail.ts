@@ -1,3 +1,5 @@
+import type { DrawShape } from './draw';
+
 export type TravailStatus = 'draft' | 'submitted';
 
 // Types pour le brouillon/plan (verso de la carte)
@@ -55,6 +57,8 @@ export interface Travail {
   draftContent?: DraftContent | null; // Brouillon / plan (verso)
   ressourceAnnotations?: string; // HTML annote par l'eleve (surlignage, rature, soulignement)
   ressourceNotes?: Record<string, string>; // Notes par paragraphe (index → texte)
+  // Tracés de l'élève sur les images de ressources (clé = fileId de l'image)
+  ressourceImageShapes?: Record<string, DrawShape[]>;
   status: TravailStatus;
   selfEvaluation: Record<string, number> | null;  // {criterionId: level}
   createdAt: string;
@@ -72,6 +76,7 @@ export interface UpdateTravailData {
   draftContent?: DraftContent | null;
   ressourceAnnotations?: string;
   ressourceNotes?: Record<string, string>;
+  ressourceImageShapes?: Record<string, DrawShape[]>;
   selfEvaluation?: Record<string, number> | null;
   status?: TravailStatus;
 }

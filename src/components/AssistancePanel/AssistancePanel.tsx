@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import ConsignesTab from '@/components/ConsignesTab';
 import RessourcesTab from '@/components/RessourcesTab';
+import type { DrawShape } from '@/types/draw';
 import GrilleTab from '@/components/GrilleTab';
 import RemarquesTab from '@/components/RemarquesTab';
 import AiTab, { type AiTabUiState } from '@/components/AiTab/AiTab';
@@ -36,8 +37,11 @@ interface AssistancePanelProps {
   onRessourceAnnotationsChange?: (html: string) => void;
   ressourceNotes?: Record<string, string>;
   onRessourceNotesChange?: (notes: Record<string, string>) => void;
+  ressourceImageShapes?: Record<string, DrawShape[]>;
+  onRessourceImageShapesChange?: (shapes: Record<string, DrawShape[]>) => void;
   studentRessourceAnnotations?: string;
   studentRessourceNotes?: Record<string, string>;
+  studentRessourceImageShapes?: Record<string, DrawShape[]>;
   // Aide dictionnaire permanente (élève)
   dictionaryEnabled?: boolean;
   onDictionaryEnabledChange?: (value: boolean) => void;
@@ -95,8 +99,11 @@ export default function AssistancePanel({
   onRessourceAnnotationsChange,
   ressourceNotes,
   onRessourceNotesChange,
+  ressourceImageShapes,
+  onRessourceImageShapesChange,
   studentRessourceAnnotations,
   studentRessourceNotes,
+  studentRessourceImageShapes,
   dictionaryEnabled,
   onDictionaryEnabledChange,
   activeTab: controlledTab,
@@ -225,6 +232,9 @@ export default function AssistancePanel({
             onRessourceAnnotationsChange={onRessourceAnnotationsChange}
             ressourceNotes={ressourceNotes}
             onRessourceNotesChange={onRessourceNotesChange}
+            ressourceImageShapes={ressourceImageShapes}
+            onRessourceImageShapesChange={onRessourceImageShapesChange}
+            studentRessourceImageShapes={studentRessourceImageShapes}
             studentRessourceAnnotations={studentRessourceAnnotations}
             studentRessourceNotes={studentRessourceNotes}
             dictionaryEnabled={dictionaryEnabled}

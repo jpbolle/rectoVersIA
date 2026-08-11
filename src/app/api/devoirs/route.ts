@@ -4,6 +4,7 @@ import { verifyAuth } from '@/lib/api-auth';
 import { calculateSchoolYear } from '@/lib/auth-utils';
 import { generateDevoirId } from '@/lib/devoir-utils';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
+import { sanitizeLectureQuiz, lectureQuizForEleve } from '@/lib/lecture-server';
 
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -61,8 +62,42 @@ export async function GET(request: NextRequest) {
         vocabulaireDiagnostic: data.vocabulaireDiagnostic ?? undefined,
         corrigeReference: data.corrigeReference || null,
         ressourcesToIA: data.ressourcesToIA ?? false,
+        lectureQuiz: data.lectureQuiz || null,
+        submittedCount: undefined as number | undefined,
       };
     });
+
+    // Côté prof : nombre de copies remises par devoir.
+    // Requêtes d'agrégation count() — pas de lecture de documents.
+    if (auth.role === 'prof') {
+      devoirs = await Promise.all(
+        devoirs.map(async (d) => {
+          try {
+            if (d.typeTravail === 'rechercher') {
+              // Une réponse NavigKid n'est écrite qu'à la soumission
+              if (!d.questionnaireId) return { ...d, submittedCount: 0 };
+              const agg = await adminDb
+                .collection('questionnaires')
+                .doc(d.questionnaireId)
+                .collection('reponses')
+                .count()
+                .get();
+              return { ...d, submittedCount: agg.data().count };
+            }
+            const agg = await adminDb
+              .collection('travaux')
+              .where('devoirId', '==', d.id)
+              .where('status', '==', 'submitted')
+              .count()
+              .get();
+            return { ...d, submittedCount: agg.data().count };
+          } catch {
+            // Le comptage ne doit jamais faire échouer la liste
+            return d;
+          }
+        })
+      );
+    }
 
     // Côté élève, le corrigé de référence n'expose que la production du prof,
     // et uniquement quand la correction est disponible (jamais le plan)
@@ -73,6 +108,7 @@ export async function GET(request: NextRequest) {
           d.corrigeDisponible && d.corrigeReference?.production
             ? { production: d.corrigeReference.production }
             : null,
+        lectureQuiz: lectureQuizForEleve(d.lectureQuiz),
       }));
     }
 
@@ -163,6 +199,7 @@ export async function POST(request: NextRequest) {
       flipInverted,
       corrigeReference,
       ressourcesToIA,
+      lectureQuiz,
     } = body;
 
     // Validation des champs requis (grille non requise pour vocabulaire)
@@ -221,6 +258,12 @@ export async function POST(request: NextRequest) {
         }
       }
       devoirData.ressourcesToIA = ressourcesToIA === true;
+    }
+
+    // Si type "lire", questionnaire de lecture (nettoyé côté serveur)
+    if (typeTravail === 'lire' && lectureQuiz) {
+      const cleaned = sanitizeLectureQuiz(lectureQuiz);
+      if (cleaned) devoirData.lectureQuiz = cleaned;
     }
 
     // Si type "vocabulaire", stocker la config
