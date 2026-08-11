@@ -35,6 +35,14 @@ export async function GET(request: NextRequest) {
       .count()
       .get();
 
+    // Usage IA (onglet « Gestion des coûts ») : compteurs des collections
+    // alimentées par les appels IA — pas encore de suivi en tokens/euros
+    const [gridEvalSnap, devoirsIASnap, dictionarySnap] = await Promise.all([
+      adminDb.collection('aiGridEvaluations').count().get(),
+      adminDb.collection('devoirs').where('accesIA', '==', true).count().get(),
+      adminDb.collection('dictionaryCache').count().get(),
+    ]);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -46,6 +54,11 @@ export async function GET(request: NextRequest) {
         travauxSoumis: travauxSoumisSnap.data().count,
         corrections: correctionsSnap.data().count,
         correctionsFinalisees: correctionsFinSnap.data().count,
+        ia: {
+          gridEvaluations: gridEvalSnap.data().count,
+          devoirsAvecIA: devoirsIASnap.data().count,
+          dictionaryEntries: dictionarySnap.data().count,
+        },
       },
     });
   } catch (error) {

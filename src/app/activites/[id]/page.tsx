@@ -570,6 +570,7 @@ export default function TravailPage() {
                 setActiveTab('ressources');
                 setPanelOpen(true);
               }}
+              showCorrection={!isPreviewMode && isSubmitted && devoir.corrigeDisponible === true}
             />
           </div>
         ) : (

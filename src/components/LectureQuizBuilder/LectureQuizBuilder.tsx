@@ -1,30 +1,37 @@
 'use client';
 
 // Builder du questionnaire de lecture (verso de la création/édition d'une
-// activité de type « lire ») : blocs de questions réordonnables en drag & drop,
-// 4 types (QCM, texte court, texte long, fluorage), image par question,
-// compétences de lecture par question.
+// activité de type « lire ») : blocs de questions repliables (accordéon) et
+// réordonnables en drag & drop, 4 types (QCM, texte court, texte long,
+// souligner du texte), image et audio par question (limite d'écoutes),
+// gestes de lecture par question (menu déroulant dans l'entête).
 
 import { useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { compressImage } from '@/lib/image-compress';
-import {
-  LECTURE_COMPETENCES,
-  LECTURE_COMPETENCE_LABELS,
-  generateLectureQuestionId,
-} from '@/types/lecture';
+import { useAudioRecorder } from '@/hooks/useAudioRecorder';
+import { useDidactique } from '@/hooks/useDidactique';
+import { FluoExtrait } from '@/components/LectureQuizActivity/LectureQuizActivity';
+import { LECTURE_COMPETENCE_LABELS, generateLectureQuestionId } from '@/types/lecture';
+import type { LectureCompetence } from '@/types/lecture';
 import type {
   LectureQuiz,
   LectureQuestion,
   LectureQuestionType,
-  LectureCompetence,
 } from '@/types/lecture';
 import styles from './LectureQuizBuilder.module.css';
+
+// Éditeur riche des blocs informatifs (même éditeur que l'onglet Texte des ressources)
+const InfoEditor = dynamic(() => import('@/components/RessourcesInput/DocumentEditor'), {
+  ssr: false,
+  loading: () => <div className={styles.hint}>Chargement de l&apos;éditeur...</div>,
+});
 
 const TYPE_LABELS: Record<LectureQuestionType, string> = {
   qcm: 'QCM',
   'texte-court': 'Texte court',
   'texte-long': 'Texte long',
-  fluorage: 'Fluorage de texte',
+  fluorage: 'Souligner du texte',
   info: 'Bloc informatif',
 };
 
@@ -45,6 +52,12 @@ function emptyQuestion(type: LectureQuestionType): LectureQuestion {
     q.fluoTexte = '';
   }
   return q;
+}
+
+// Résumé de l'énoncé affiché dans l'entête quand le bloc est replié
+function excerpt(html: string): string {
+  const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  return text.length > 70 ? `${text.slice(0, 70)}…` : text;
 }
 
 interface LectureQuizBuilderProps {
@@ -68,6 +81,33 @@ export default function LectureQuizBuilder({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetRef = useRef<string | null>(null);
+  // Audio de question : upload de fichier + enregistrement micro
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const audioTargetRef = useRef<string | null>(null);
+  const [uploadingAudioId, setUploadingAudioId] = useState<string | null>(null);
+  const [recordingId, setRecordingId] = useState<string | null>(null);
+  // 32 kb/s : qualité voix compacte — ~3 min sous la limite de 700 Ko
+  const {
+    isRecording,
+    recordingDuration,
+    startRecording,
+    stopRecording,
+    error: recorderError,
+  } = useAudioRecorder({ audioBitsPerSecond: 32000 });
+
+  // ── Accordéon : questions dépliées (une nouvelle question replie les autres) ──
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const toggleOpen = (id: string) => {
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // ── Menu déroulant « Gestes de lecture » ouvert (id de question) ──
+  const [gestesOpenId, setGestesOpenId] = useState<string | null>(null);
 
   const update = (partial: Partial<LectureQuiz>) => onChange({ ...quiz, ...partial });
 
@@ -78,7 +118,10 @@ export default function LectureQuizBuilder({
   };
 
   const addQuestion = (type: LectureQuestionType) => {
-    update({ questions: [...quiz.questions, emptyQuestion(type)] });
+    const nq = emptyQuestion(type);
+    update({ questions: [...quiz.questions, nq] });
+    // La nouvelle question se déplie, les autres se replient
+    setOpenIds(new Set([nq.id]));
   };
 
   const removeQuestion = (id: string) => {
@@ -92,6 +135,8 @@ export default function LectureQuizBuilder({
     next.splice(to, 0, moved);
     update({ questions: next });
   };
+
+  const totalPoints = quiz.questions.reduce((sum, q) => sum + (q.points || 0), 0);
 
   // ── Image de question ──
   const triggerUpload = (questionId: string) => {
@@ -136,16 +181,121 @@ export default function LectureQuizBuilder({
     }
   };
 
-  const toggleCompetence = (q: LectureQuestion, comp: LectureCompetence) => {
+  // ── Audio de question (upload ou enregistrement micro) ──
+  const MAX_AUDIO_BYTES = 700 * 1024; // limite Firestore (~2-3 min en qualité voix)
+
+  const uploadAudioBlob = async (questionId: string, blob: Blob, name: string) => {
+    if (!getAuthHeaders) return;
+    if (blob.size > MAX_AUDIO_BYTES) {
+      const sizeKB = Math.round(blob.size / 1024);
+      setUploadError(
+        `Audio trop volumineux : ${sizeKB} Ko (max 700 Ko, soit ~2-3 min en qualité voix). Raccourcissez ou compressez le fichier.`
+      );
+      return;
+    }
+    setUploadingAudioId(questionId);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append('files', blob, name);
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      const res = await fetch('/api/ressources/upload', {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+      const json = await res.json();
+      if (json.success && json.data?.files?.[0]) {
+        const f = json.data.files[0];
+        // Remplacement : on conserve la limite d'écoutes déjà réglée
+        const prev = quiz.questions.find((q) => q.id === questionId)?.audio;
+        updateQuestion(questionId, {
+          audio: { url: f.url, fileId: f.fileId, maxEcoutes: prev?.maxEcoutes ?? null },
+        });
+      } else {
+        setUploadError(json.message || "Erreur lors de l'upload");
+      }
+    } catch {
+      setUploadError("Erreur de connexion pendant l'upload");
+    } finally {
+      setUploadingAudioId(null);
+    }
+  };
+
+  const handleAudioFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    const questionId = audioTargetRef.current;
+    if (!file || !questionId) return;
+    await uploadAudioBlob(questionId, file, file.name);
+  };
+
+  // ── Popup « Joindre un audio » : fichier ou enregistrement micro ──
+  const [audioPopupId, setAudioPopupId] = useState<string | null>(null);
+
+  const handlePopupFile = () => {
+    if (!audioPopupId) return;
+    audioTargetRef.current = audioPopupId;
+    setAudioPopupId(null);
+    audioInputRef.current?.click();
+  };
+
+  const handlePopupRecordToggle = async () => {
+    const questionId = audioPopupId;
+    if (!questionId) return;
+    if (isRecording && recordingId === questionId) {
+      const blob = await stopRecording();
+      setRecordingId(null);
+      if (blob) await uploadAudioBlob(questionId, blob, 'enregistrement.webm');
+      setAudioPopupId(null);
+    } else if (!isRecording) {
+      setRecordingId(questionId);
+      await startRecording();
+    }
+  };
+
+  const closeAudioPopup = async () => {
+    // Fermeture pendant un enregistrement : on arrête et on jette la prise
+    if (isRecording && recordingId === audioPopupId) {
+      await stopRecording();
+      setRecordingId(null);
+    }
+    setAudioPopupId(null);
+  };
+
+  const formatDuration = (seconds: number) =>
+    `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+
+  const toggleCompetence = (q: LectureQuestion, comp: string) => {
     const next = q.competences.includes(comp)
       ? q.competences.filter((c) => c !== comp)
       : [...q.competences, comp];
     updateQuestion(q.id, { competences: next });
   };
 
+  // ── Gestes de lecture : liste dynamique gérée par l'admin (didactique) ──
+  const { config: didactique } = useDidactique();
+
+  // Options proposées pour une question : les gestes visibles + ceux déjà
+  // cochés même s'ils ont été masqués ou supprimés depuis (pour les décochér)
+  const gesteOptions = (q: LectureQuestion) => {
+    const known = new Set(didactique.gestesLecture.map((g) => g.id));
+    return [
+      ...didactique.gestesLecture.filter((g) => g.visible || q.competences.includes(g.id)),
+      ...q.competences
+        .filter((c) => !known.has(c))
+        .map((c) => ({
+          id: c,
+          label: LECTURE_COMPETENCE_LABELS[c as LectureCompetence] ?? c,
+          visible: false,
+        })),
+    ];
+  };
+
   return (
     <div className={styles.builder}>
-      {/* Choix worksheet / quiz */}
+      {/* Choix worksheet / quiz + total des points */}
       <div className={styles.modeRow}>
         <span className={styles.modeLabel}>Présentation</span>
         <label className={styles.modeOpt}>
@@ -178,11 +328,16 @@ export default function LectureQuizBuilder({
             i
           </span>
         </label>
+        <span className={styles.totalPts}>
+          Total : {totalPoints} pt{totalPoints > 1 ? 's' : ''}
+        </span>
       </div>
 
-      {/* Blocs de questions */}
+      {/* Blocs de questions (accordéon) */}
       <div className={styles.qList}>
-        {quiz.questions.map((q, index) => (
+        {quiz.questions.map((q, index) => {
+          const isOpen = openIds.has(q.id);
+          return (
           <div
             key={q.id}
             className={`${styles.qBlock} ${dragIndex === index ? styles.qBlockDragging : ''} ${overIndex === index && dragIndex !== null && dragIndex !== index ? styles.qBlockOver : ''}`}
@@ -203,57 +358,207 @@ export default function LectureQuizBuilder({
               setOverIndex(null);
             }}
           >
-            <div className={styles.qHead}>
-              <span className={styles.grip} title="Glisser pour réordonner">⠿</span>
-              <span className={styles.qNum}>
-                {q.type === 'info' ? 'ℹ️ Bloc' : `Question ${quiz.questions.slice(0, index).filter((p) => p.type !== 'info').length + 1}`}
-              </span>
+            {/* Entête cliquable : replie / déplie le bloc */}
+            <div
+              className={`${styles.qHead} ${styles.qHeadClickable}`}
+              onClick={() => toggleOpen(q.id)}
+            >
+              <span className={styles.grip} title="Glisser pour réordonner" onClick={(e) => e.stopPropagation()}>⠿</span>
+              <span className={styles.chevron}>{isOpen ? '▾' : '▸'}</span>
+              {q.type !== 'info' && (
+                <span className={styles.qNum}>
+                  {`Question ${quiz.questions.slice(0, index).filter((p) => p.type !== 'info').length + 1}`}
+                </span>
+              )}
               <span className={`${styles.qType} ${styles['type_' + q.type.replace('-', '_')]}`}>
                 {TYPE_LABELS[q.type]}
               </span>
-              {q.type !== 'info' && (
-                <span className={styles.qPts}>
-                  Points
-                  <input
-                    type="number"
-                    min={0}
-                    value={q.points}
-                    onChange={(e) => updateQuestion(q.id, { points: Math.max(0, Number(e.target.value) || 0) })}
-                    disabled={disabled}
-                  />
-                </span>
+              {!isOpen && q.enonce && (
+                <span className={styles.qExcerpt}>{excerpt(q.enonce)}</span>
               )}
-              <button
-                type="button"
-                className={`${styles.qDel} ${q.type === 'info' ? styles.qDelRight : ''}`}
-                onClick={() => removeQuestion(q.id)}
-                title="Supprimer ce bloc"
-                disabled={disabled}
-              >
-                🗑
-              </button>
+
+              <span className={styles.headRight} onClick={(e) => e.stopPropagation()}>
+                {/* Gestes de lecture (pas pour les blocs info) */}
+                {q.type !== 'info' && (
+                  <span className={styles.gestesWrap}>
+                    <button
+                      type="button"
+                      className={`${styles.gestesBtn} ${q.competences.length > 0 ? styles.gestesBtnOn : ''}`}
+                      onClick={() => setGestesOpenId(gestesOpenId === q.id ? null : q.id)}
+                      disabled={disabled}
+                      title="Gestes de lecture exercés — les résultats alimenteront l'onglet Lire du profil de l'élève."
+                    >
+                      Gestes{q.competences.length > 0 ? ` (${q.competences.length})` : ''} ▾
+                    </button>
+                    {gestesOpenId === q.id && (
+                      <>
+                        <span className={styles.gestesBackdrop} onClick={() => setGestesOpenId(null)} />
+                        <span className={styles.gestesMenu}>
+                          <span className={styles.gestesMenuTitle}>Gestes de lecture</span>
+                          {gesteOptions(q).length === 0 && (
+                            <span className={styles.gestesEmpty}>
+                              Aucun geste défini — à gérer dans Administration du site.
+                            </span>
+                          )}
+                          {gesteOptions(q).map((geste) => (
+                            <label key={geste.id} className={styles.gestesItem}>
+                              <input
+                                type="checkbox"
+                                checked={q.competences.includes(geste.id)}
+                                onChange={() => toggleCompetence(q, geste.id)}
+                                disabled={disabled}
+                              />
+                              {geste.label}
+                            </label>
+                          ))}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                )}
+
+                {q.type !== 'info' && (
+                  <span className={styles.qPts}>
+                    Points
+                    <input
+                      type="number"
+                      min={0}
+                      value={q.points}
+                      onChange={(e) => updateQuestion(q.id, { points: Math.max(0, Number(e.target.value) || 0) })}
+                      disabled={disabled}
+                    />
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className={styles.qDel}
+                  onClick={() => removeQuestion(q.id)}
+                  title="Supprimer ce bloc"
+                  disabled={disabled}
+                >
+                  🗑
+                </button>
+              </span>
             </div>
 
+            {isOpen && (
             <div className={styles.qBody}>
               <div className={styles.qMain}>
-                {q.type === 'info' ? (
-                  <textarea
-                    className={styles.fluoTextarea}
-                    rows={3}
-                    value={q.enonce}
-                    onChange={(e) => updateQuestion(q.id, { enonce: e.target.value })}
-                    placeholder="Texte d'introduction ou de commentaire, affiché tel quel à l'élève dans le questionnaire..."
-                    disabled={disabled}
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    className={styles.enonceInput}
-                    value={q.enonce}
-                    onChange={(e) => updateQuestion(q.id, { enonce: e.target.value })}
-                    placeholder="Énoncé de la question..."
-                    disabled={disabled}
-                  />
+                {/* Énoncé + icônes joindre image / audio à sa droite */}
+                <div className={styles.enonceRow}>
+                  <div className={styles.enonceField}>
+                    {q.type === 'info' ? (
+                      <InfoEditor
+                        content={q.enonce}
+                        onChange={(html) => updateQuestion(q.id, { enonce: html })}
+                        disabled={disabled}
+                        placeholder="Texte d'introduction ou de commentaire, affiché tel quel à l'élève dans le questionnaire..."
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        className={styles.enonceInput}
+                        value={q.enonce}
+                        onChange={(e) => updateQuestion(q.id, { enonce: e.target.value })}
+                        placeholder="Énoncé de la question..."
+                        disabled={disabled}
+                      />
+                    )}
+                  </div>
+                  <div className={styles.enonceIcons}>
+                    <button
+                      type="button"
+                      className={`${styles.iconBtn} ${q.image ? styles.iconOn : ''}`}
+                      onClick={() => triggerUpload(q.id)}
+                      disabled={disabled || uploadingId === q.id}
+                      title={
+                        q.image
+                          ? "Remplacer l'image jointe"
+                          : "Joindre une image — vignette + agrandissement, et atelier de tracé pour l'élève."
+                      }
+                    >
+                      {uploadingId === q.id ? '⏳' : '🖼'}
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.iconBtn} ${q.audio ? styles.iconOn : ''}`}
+                      onClick={() => setAudioPopupId(q.id)}
+                      disabled={disabled || uploadingAudioId === q.id || isRecording}
+                      title={
+                        q.audio
+                          ? "Remplacer l'audio joint"
+                          : "Joindre un audio — fichier MP3, WAV... ou enregistrement au micro (max 700 Ko, ~2-3 min)."
+                      }
+                    >
+                      {uploadingAudioId === q.id ? '⏳' : '🎧'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Image jointe : vignette + remplacer / retirer */}
+                {q.image && (
+                  <div className={styles.mediaRow}>
+                    <div className={styles.thumb} onClick={() => setPopupImage(q.image!.url)}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={q.image.url} alt="" />
+                      <span className={styles.zoomTag}>🔍 agrandir</span>
+                    </div>
+                    <div className={styles.mediaActions}>
+                      <button
+                        type="button"
+                        className={styles.imgBtn}
+                        onClick={() => triggerUpload(q.id)}
+                        disabled={disabled || uploadingId === q.id}
+                      >
+                        {uploadingId === q.id ? 'Envoi...' : "↺ Remplacer l'image"}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.imgRemove}
+                        onClick={() => updateQuestion(q.id, { image: null })}
+                        disabled={disabled}
+                      >
+                        ✕ Retirer
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Audio joint : lecteur + limite d'écoutes + retirer */}
+                {q.audio && (
+                  <div className={styles.mediaRow}>
+                    <audio controls src={q.audio.url} className={styles.audioPlayer} />
+                    <label className={styles.audioLimit}>
+                      Écoutes autorisées
+                      <input
+                        type="number"
+                        min={1}
+                        placeholder="∞"
+                        value={q.audio.maxEcoutes ?? ''}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const maxEcoutes =
+                            raw === '' ? null : Math.max(1, Math.floor(Number(raw) || 1));
+                          updateQuestion(q.id, { audio: { ...q.audio!, maxEcoutes } });
+                        }}
+                        disabled={disabled}
+                      />
+                      <span
+                        className={styles.info}
+                        title="Nombre de fois que l'élève peut lancer l'écoute. Vide = illimité."
+                      >
+                        i
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      className={styles.imgRemove}
+                      onClick={() => updateQuestion(q.id, { audio: null })}
+                      disabled={disabled}
+                    >
+                      ✕ Retirer
+                    </button>
+                  </div>
                 )}
 
                 {/* QCM : choix + bonne réponse */}
@@ -322,14 +627,14 @@ export default function LectureQuizBuilder({
                   </p>
                 )}
 
-                {/* Fluorage : source extrait / ressource */}
+                {/* Souligner du texte : source extrait / ressource */}
                 {q.type === 'fluorage' && (
                   <div className={styles.fluoBlock}>
                     <div className={styles.fieldLabel}>
-                      Texte à fluorer
+                      Texte à souligner
                       <span
                         className={styles.info}
-                        title="Soit un extrait collé dans la question, soit la ressource de l'activité : l'élève fluore alors directement dans l'onglet Ressources, et son fluorage est rattaché à cette question."
+                        title="Soit un extrait collé dans la question, soit la ressource de l'activité : l'élève souligne alors directement dans l'onglet Ressources, et son soulignage est rattaché à cette question."
                       >
                         i
                       </span>
@@ -355,18 +660,46 @@ export default function LectureQuizBuilder({
                       </label>
                     </div>
                     {(q.fluoSource ?? 'extrait') === 'extrait' ? (
-                      <textarea
-                        className={styles.fluoTextarea}
-                        rows={3}
-                        value={q.fluoTexte ?? ''}
-                        onChange={(e) => updateQuestion(q.id, { fluoTexte: e.target.value })}
-                        placeholder="Collez ici l'extrait que l'élève devra fluorer..."
-                        disabled={disabled}
-                      />
+                      <>
+                        <textarea
+                          className={styles.fluoTextarea}
+                          rows={3}
+                          value={q.fluoTexte ?? ''}
+                          onChange={(e) =>
+                            // Le texte change → les indices de mots bougent :
+                            // on remet le soulignage attendu à zéro
+                            updateQuestion(q.id, { fluoTexte: e.target.value, fluoAttendu: [] })
+                          }
+                          placeholder="Collez ici l'extrait que l'élève devra souligner..."
+                          disabled={disabled}
+                        />
+                        {(q.fluoTexte ?? '').trim() && (
+                          <div className={styles.fluoAttenduZone}>
+                            <div className={styles.fieldLabel}>
+                              Réponse attendue — soulignez les mots
+                              <span
+                                className={styles.info}
+                                title="Cliquez les mots attendus : le soulignage de l'élève sera comparé automatiquement au vôtre (mots justes, manqués, en trop). C'est indicatif — les points restent à votre main. Facultatif."
+                              >
+                                i
+                              </span>
+                            </div>
+                            <FluoExtrait
+                              texte={q.fluoTexte ?? ''}
+                              fluoWords={q.fluoAttendu ?? []}
+                              onChange={
+                                disabled
+                                  ? undefined
+                                  : (fluoAttendu) => updateQuestion(q.id, { fluoAttendu })
+                              }
+                            />
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <p className={styles.hint}>
-                        L&apos;élève fluorera directement dans le texte de l&apos;onglet Ressources ;
-                        son surlignage sera visible dans votre correction.
+                        L&apos;élève soulignera directement dans le texte de l&apos;onglet Ressources ;
+                        son soulignage sera visible dans votre correction.
                       </p>
                     )}
                   </div>
@@ -379,7 +712,7 @@ export default function LectureQuizBuilder({
                       Votre réponse idéale
                       <span
                         className={styles.info}
-                        title="Jamais montrée à l'élève — affichée dans votre page de correction pour comparer avec sa réponse."
+                        title="Affichée dans votre page de correction pour comparer avec la réponse de l'élève, puis montrée à l'élève une fois le corrigé disponible."
                       >
                         i
                       </span>
@@ -394,98 +727,27 @@ export default function LectureQuizBuilder({
                     />
                   </>
                 )}
-
-                {/* Compétences de lecture (pas pour les blocs info) */}
-                {q.type !== 'info' && (
-                  <>
-                    <div className={styles.fieldLabel}>
-                      Compétences de lecture exercées
-                      <span
-                        className={styles.info}
-                        title="Cochez une ou plusieurs compétences — les résultats alimenteront l'onglet Lire du profil de l'élève."
-                      >
-                        i
-                      </span>
-                    </div>
-                    <div className={styles.compRow}>
-                      {LECTURE_COMPETENCES.map((comp) => (
-                        <button
-                          key={comp}
-                          type="button"
-                          className={`${styles.comp} ${q.competences.includes(comp) ? styles.compOn : ''}`}
-                          onClick={() => toggleCompetence(q, comp)}
-                          disabled={disabled}
-                        >
-                          {LECTURE_COMPETENCE_LABELS[comp]}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Image de la question */}
-              <div className={styles.qImgZone}>
-                {q.image ? (
-                  <>
-                    <div className={styles.thumb} onClick={() => setPopupImage(q.image!.url)}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={q.image.url} alt="" />
-                      <span className={styles.zoomTag}>🔍 agrandir</span>
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.imgBtn}
-                      onClick={() => triggerUpload(q.id)}
-                      disabled={disabled || uploadingId === q.id}
-                    >
-                      {uploadingId === q.id ? 'Envoi...' : "↺ Remplacer l'image"}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.imgRemove}
-                      onClick={() => updateQuestion(q.id, { image: null })}
-                      disabled={disabled}
-                    >
-                      ✕ Retirer
-                    </button>
-                    <p className={styles.imgNote}>
-                      ✏️ L&apos;élève reçoit les outils de tracé — ses tracés sont enregistrés et visibles par vous.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className={styles.imgBtn}
-                      onClick={() => triggerUpload(q.id)}
-                      disabled={disabled || uploadingId === q.id}
-                    >
-                      {uploadingId === q.id ? 'Envoi...' : '🖼 Joindre une image'}
-                    </button>
-                    <p className={styles.imgNote}>
-                      Vignette + agrandissement, et atelier de tracé pour l&apos;élève.
-                    </p>
-                  </>
-                )}
               </div>
             </div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {uploadError && <p className={styles.uploadError}>{uploadError}</p>}
+      {recorderError && <p className={styles.uploadError}>{recorderError}</p>}
 
       {/* Ajouter une question */}
       <div className={styles.addRow}>
         <button type="button" className={styles.addQ} onClick={() => addQuestion('qcm')} disabled={disabled}>+ QCM</button>
         <button type="button" className={styles.addQ} onClick={() => addQuestion('texte-court')} disabled={disabled}>+ Texte court</button>
         <button type="button" className={styles.addQ} onClick={() => addQuestion('texte-long')} disabled={disabled}>+ Texte long</button>
-        <button type="button" className={styles.addQ} onClick={() => addQuestion('fluorage')} disabled={disabled}>+ Fluorage de texte</button>
+        <button type="button" className={styles.addQ} onClick={() => addQuestion('fluorage')} disabled={disabled}>+ Souligner du texte</button>
         <button type="button" className={styles.addQ} onClick={() => addQuestion('info')} disabled={disabled}>+ Bloc informatif</button>
       </div>
 
-      {/* Input fichier caché (upload image de question) */}
+      {/* Inputs fichiers cachés (upload image / audio de question) */}
       <input
         ref={fileInputRef}
         type="file"
@@ -493,6 +755,55 @@ export default function LectureQuizBuilder({
         style={{ display: 'none' }}
         onChange={handleFileSelected}
       />
+      <input
+        ref={audioInputRef}
+        type="file"
+        accept="audio/*"
+        style={{ display: 'none' }}
+        onChange={handleAudioFileSelected}
+      />
+
+      {/* Popup « Joindre un audio » : fichier ou enregistrement micro */}
+      {audioPopupId && (
+        <div className={styles.popup} onClick={closeAudioPopup}>
+          <div
+            className={`${styles.popupInner} ${styles.audioPopup}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button type="button" className={styles.popupClose} onClick={closeAudioPopup}>
+              ✕
+            </button>
+            <h4 className={styles.audioPopupTitle}>🎧 Audio de la question</h4>
+            {isRecording && recordingId === audioPopupId ? (
+              <button
+                type="button"
+                className={`${styles.audioOption} ${styles.recording}`}
+                onClick={handlePopupRecordToggle}
+              >
+                ⏹ Arrêter et joindre ({formatDuration(recordingDuration)})
+              </button>
+            ) : uploadingAudioId === audioPopupId ? (
+              <p className={styles.audioPopupNote}>Envoi en cours...</p>
+            ) : (
+              <>
+                <button type="button" className={styles.audioOption} onClick={handlePopupFile}>
+                  📁 Choisir un fichier (MP3, WAV...)
+                </button>
+                <button
+                  type="button"
+                  className={styles.audioOption}
+                  onClick={handlePopupRecordToggle}
+                >
+                  🎙 S’enregistrer au micro
+                </button>
+              </>
+            )}
+            <p className={styles.audioPopupNote}>
+              Max 700 Ko, soit ~2-3 min en qualité voix. Limite d&apos;écoutes réglable ensuite.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Popup d'agrandissement */}
       {popupImage && (

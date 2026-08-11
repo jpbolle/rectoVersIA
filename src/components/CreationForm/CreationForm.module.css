@@ -786,3 +786,21 @@
     transform: rotate(90deg) scale(1.05);
   }
 }
+
+/* Icône « i » d'explication à côté du titre de groupe (texte en survol) */
+.versoGroupInfo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-text-secondary);
+  color: var(--c-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: help;
+  flex-shrink: 0;
+}

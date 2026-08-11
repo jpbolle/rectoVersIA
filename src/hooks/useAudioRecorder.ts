@@ -10,7 +10,14 @@ interface UseAudioRecorderReturn {
   error: string | null;
 }
 
-export function useAudioRecorder(): UseAudioRecorderReturn {
+interface UseAudioRecorderOptions {
+  // Débit d'encodage (bits/s) — ex. 32000 pour un enregistrement voix compact
+  // qui doit tenir sous la limite Firestore (~700 Ko ≈ 3 min à 32 kb/s)
+  audioBitsPerSecond?: number;
+}
+
+export function useAudioRecorder(options?: UseAudioRecorderOptions): UseAudioRecorderReturn {
+  const audioBitsPerSecond = options?.audioBitsPerSecond;
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +50,10 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         ? 'audio/webm'
         : '';
 
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        ...(audioBitsPerSecond ? { audioBitsPerSecond } : {}),
+      });
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
@@ -76,7 +86,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     } catch {
       setError("Impossible d'acceder au microphone");
     }
-  }, []);
+  }, [audioBitsPerSecond]);
 
   const stopRecording = useCallback((): Promise<Blob | null> => {
     return new Promise((resolve) => {

@@ -1,9 +1,34 @@
 # Rollup — Questionnaire de lecture (type « lire »)
 
-## État actuel (session du 2026-08-11)
+## État actuel (session du 2026-08-11 soir)
 
-**Livré, non testé, non déployé** — questionnaire de lecture complet, maquette validée
-(`harnais/plans/maquette-questionnaire-lecture.html`, v2 + ajustements).
+**Testé par l'utilisateur (v1 ok) puis largement enrichi le 2026-08-11 soir — les
+enrichissements restent à tester et l'ensemble à déployer.** Maquette d'origine :
+`harnais/plans/maquette-questionnaire-lecture.html`.
+
+### Enrichissements du 2026-08-11 soir (à tester)
+
+- **Audio par question** (`question.audio` : fichier ≤ 700 Ko base64 `ressourceImages`,
+  ou enregistrement micro 32 kb/s — popup unique « 🎧 Joindre un audio ») avec
+  **limite d'écoutes** (`maxEcoutes`, vide = illimité) : côté élève lecteur maison sans
+  navigation, compteur `answer.audioPlays` décompté au démarrage (contrôle navigateur,
+  pas inviolable) ; correction : lecteur libre + « Écouté X fois ». La route
+  `/api/ressources/upload` accepte désormais les mimetypes audio.
+- **« Fluorage » renommé « Souligner du texte »** partout + **soulignage attendu du
+  prof** (`fluoAttendu`, indices de mots, remis à zéro si l'extrait change) :
+  comparaison automatique **indicative** dans la correction et la vue élève corrigée
+  (`FluoCompare` : juste / en trop / manqué + compte) — les points restent au prof.
+- **Corrigé visible par l'élève** : quand `corrigeDisponible`, le serveur envoie le
+  quiz **complet** à l'élève (sinon filtré — `lectureQuizForEleve`) et
+  `LectureQuizActivity` reçoit `showCorrection` : QCM ✅/❌ + bonne réponse, réponse
+  idéale en encadré, comparaison de soulignage, mode quiz redevient une liste.
+- **Builder redessiné** : blocs en **accordéon** (nouvelle question dépliée, les autres
+  repliées, extrait d'énoncé dans le bandeau), icônes 🖼/🎧 **à côté de l'énoncé**,
+  total de points, **bloc informatif en éditeur Tiptap** (rendu HTML élève/correction),
+  menu déroulant **« Gestes de lecture »** dans le bandeau (avant les points).
+- **Gestes de lecture dynamiques** : `question.competences` est désormais `string[]`
+  (ids de la config didactique, cf. rollup_admin) ; les 7 slugs historiques restent les
+  défauts et le repli d'affichage.
 
 ### Ce qui existe
 
@@ -55,10 +80,13 @@
 
 ## TODOs
 
-- [ ] **Tester** : création (drag & drop, image, QCM), vue élève worksheet + quiz,
-  fluorage 2 sources, tracés, remise, correction prof, prévisualisation.
-- [ ] **Profil élève (onglet Lire)** : agréger les résultats par compétence
+- [x] Tester la v1 (création, vue élève, remise, correction) — fait le 2026-08-11.
+- [ ] **Tester les enrichissements du 2026-08-11 soir** : audio (upload + micro +
+  limite d'écoutes), soulignage attendu + comparaison, vue corrigée élève
+  (QCM/idéale/soulignage), accordéon du builder, bloc info Tiptap, gestes dynamiques.
+- [ ] **Déployer** (aucune règle Firestore à toucher).
+- [ ] **Profil élève (onglet Lire)** : agréger les résultats par geste de lecture
   (`question.competences` × réponses/QCM corrects) — non commencé.
-- [ ] Fluorage « ressource » : le surlignage vit dans `ressourceAnnotations` (global au
+- [ ] Soulignage « ressource » : le surlignage vit dans `ressourceAnnotations` (global au
   travail), pas rattaché finement à la question — suffisant pour v1, à raffiner si besoin.
 - [ ] Roadmap app (`/roadmap`) à mettre à jour via l'interface admin.

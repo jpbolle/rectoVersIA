@@ -420,3 +420,298 @@
     height: 140px;
   }
 }
+
+/* ── Audio de question ── */
+.audioZone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--c-border);
+}
+
+.audioPlayer {
+  width: 100%;
+  height: 34px;
+}
+
+.audioLimit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+
+.audioLimit input {
+  width: 52px;
+  padding: 4px 6px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: inherit;
+  text-align: center;
+}
+
+.recording {
+  border-style: solid;
+  border-color: #c0392b;
+  color: #c0392b;
+  animation: recordPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes recordPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* ── Popup « Joindre un audio » ── */
+.audioPopup {
+  width: min(380px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px;
+}
+
+.audioPopupTitle {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.audioOption {
+  border: 1.5px solid var(--c-primary);
+  background: none;
+  color: var(--c-primary);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.audioOption:hover {
+  background: rgba(45, 106, 90, 0.07);
+}
+
+.audioPopupNote {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-text-muted);
+  line-height: 1.4;
+}
+
+/* Zone « réponse attendue » du soulignage (clic sur les mots de l'extrait) */
+.fluoAttenduZone {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--c-bg-element);
+  border: 1px dashed var(--c-border);
+  border-radius: 8px;
+}
+
+/* ── Accordéon + entête enrichie ── */
+.qHeadClickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.chevron {
+  color: var(--c-text-secondary);
+  font-size: 13px;
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.qExcerpt {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.headRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card, #fff);
+  border-radius: 7px;
+  width: 30px;
+  height: 28px;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.iconBtn:hover:not(:disabled) {
+  border-color: var(--c-primary);
+}
+
+.iconBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.iconOn {
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.1);
+}
+
+.totalPts {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-primary);
+  white-space: nowrap;
+}
+
+/* ── Menu déroulant « Gestes de lecture » ── */
+.gestesWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.gestesBtn {
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card, #fff);
+  border-radius: 7px;
+  padding: 5px 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.gestesBtn:hover:not(:disabled) {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.gestesBtnOn {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.08);
+}
+
+.gestesBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1190;
+}
+
+.gestesMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 230px;
+  padding: 10px 12px;
+  background: var(--c-bg-card, #fff);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(61, 56, 50, 0.16);
+}
+
+.gestesMenuTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-secondary);
+  margin-bottom: 4px;
+}
+
+.gestesItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--c-text);
+  padding: 4px 2px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.gestesItem:hover {
+  background: var(--c-bg-element);
+}
+
+/* ── Médias joints (image / audio) dans le corps de la question ── */
+.mediaRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.mediaRow .thumb {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.mediaRow .audioPlayer {
+  flex: 1;
+  min-width: 180px;
+  width: auto;
+}
+
+.mediaActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Ligne énoncé + icônes joindre image / audio */
+.enonceRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.enonceField {
+  flex: 1;
+  min-width: 0;
+}
+
+.enonceIcons {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.gestesEmpty {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  padding: 2px;
+}

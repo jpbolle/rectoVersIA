@@ -660,3 +660,27 @@
 .lightboxClose:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* ── Onglet Vidéo : aperçus des lecteurs intégrés ── */
+.videoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.videoItem {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--c-radius);
+  overflow: hidden;
+  background: #000;
+  border: 1.5px solid var(--c-border);
+}
+
+.videoItem iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}

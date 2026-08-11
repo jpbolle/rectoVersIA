@@ -429,15 +429,21 @@ export default function EditDevoirModal({
       {/* ── Groupe 2 : contenus de l'activité (selon le type) ── */}
       {typeTravail !== 'vocabulaire' && (
         <div className={styles.versoGroup}>
-          <h4 className={styles.versoGroupTitle}>Contenus de l’activité</h4>
-          <p className={styles.versoGroupHint}>
-            {typeTravail === 'ecrire' &&
-              'Corrigé de référence : transmis à l’IA selon les interrupteurs « Corrigé IA » ; seule la production est montrée à l’élève, quand le corrigé est disponible.'}
-            {typeTravail === 'lire' &&
-              'Le questionnaire de lecture : rempli par l’élève dans sa colonne de gauche. QCM corrigés automatiquement, le reste par vous.'}
-            {typeTravail === 'rechercher' &&
-              'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'}
-          </p>
+          <h4 className={styles.versoGroupTitle}>
+            Contenus de l’activité
+            <span
+              className={styles.versoGroupInfo}
+              title={
+                typeTravail === 'ecrire'
+                  ? 'Corrigé de référence : transmis à l’IA selon les interrupteurs « Corrigé IA » ; seule la production est montrée à l’élève, quand le corrigé est disponible.'
+                  : typeTravail === 'lire'
+                    ? 'Le questionnaire de lecture : rempli par l’élève dans sa colonne de gauche. QCM corrigés automatiquement, le reste par vous. Les compétences cochées alimenteront le profil de lecteur.'
+                    : 'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'
+              }
+            >
+              i
+            </span>
+          </h4>
         </div>
       )}
 

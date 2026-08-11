@@ -101,9 +101,14 @@ Trois couches qui doivent rester cohérentes : **interface ⊆ route serveur ⊆
 
 ### `devoirs`
 > Champs récents : `lectureQuiz` (questionnaire de lecture, type lire — voir
-> `src/types/lecture.ts` ; `correctIndex` et `reponseIdeale` **filtrés côté élève**
-> par `src/lib/lecture-server.ts`) ; `submittedCount` (nombre de copies remises,
-> enrichi à la lecture par `/api/devoirs`, liste prof uniquement).
+> `src/types/lecture.ts` ; `correctIndex`, `reponseIdeale` et `fluoAttendu`
+> **filtrés côté élève** par `src/lib/lecture-server.ts` — **sauf quand
+> `corrigeDisponible`** : l'élève reçoit alors le quiz complet pour voir sa
+> correction) ; questions avec `audio` (base64 `ressourceImages`, ≤ 700 Ko,
+> `maxEcoutes` = limite d'écoutes) et `competences: string[]` (ids de gestes de
+> lecture, config didactique) ; `ressources.videos` (URLs YouTube, lecteur intégré
+> nocookie côté élève — `src/lib/youtube.ts`) ; `submittedCount` (enrichi à la
+> lecture par `/api/devoirs`, liste prof uniquement).
 ```typescript
 interface Devoir {
   id: string;                    // DEV-YYYYMMDD-XXXX
@@ -261,10 +266,10 @@ interface Questionnaire {
 | `/dashboard` | prof | Devoirs (actuels / corrigés / archivés) + création |
 | `/dashboard/travaux/[devoirId]` | prof | Travaux par devoir (3 colonnes) |
 | `/dashboard/travaux/[devoirId]/[travailId]` | prof | Correction + annotations (`ResizableSplit`) |
-| `/classes` | prof | Gestion classes et élèves |
+| `/classes` | prof | Gestion classes et élèves + bloc « Mes Élèves » (tous les élèves, filtre actifs/archivés, recherche) ; clic sur un élève (bloc ou détail de classe) → fiche complète en popup (`EleveProfilModal` → `ProfilPanel`) |
 | `/grilles` | prof | Mes Ressources : onglets Grilles + Listes de vocabulaire |
 | `/archives` | prof | Devoirs archivés |
-| `/admin` | admin | Gestion professeurs + stats globales et par prof |
+| `/admin` | admin | Header dédié (variant `admin`) en onglets : Vue d'ensemble (stats) / Gestion des membres (professeurs) / Gestion didactique (UAA + gestes, `DidactiquePanel`) / Gestion des coûts (compteurs d'usage IA — pas de suivi tokens) |
 | `/roadmap` | tous | Nouveautés + à venir — **pilotée par Firestore**, éditable par l'admin (drag « À venir » → « Nouveautés » pour marquer fait) |
 | `/rgpd` | tous | Données personnelles : quelles données, protection (chiffrement), services IA, droits RGPD — statique, menu avatar |
 | `/activites` | élève | Devoirs disponibles + travaux corrigés |
@@ -288,7 +293,8 @@ interface Questionnaire {
 | `/api/eleves`, `/api/eleves/[id]`, `/api/eleves/bulk`, `/api/eleves/link` | CRUD | Import masse (max 500), liaison UID |
 | `/api/grilles`, `/api/grilles/[name]` | CRUD | Mes grilles + shared + autres profs |
 | `/api/preferences` | GET, PUT | Préférences éditeur |
-| `/api/profil/{general,lecture,ecriture,recherche,vocabulaire}` | GET | Profil élève, un endpoint par onglet — helpers partagés dans `src/lib/profil-stats.ts` ; seuls `lecture`/`ecriture` calculent les stats de classe (coûteux) |
+| `/api/profil/{general,lecture,ecriture,recherche,vocabulaire}` | GET | Profil élève, un endpoint par onglet — helpers dans `src/lib/profil-stats.ts` ; `?eleveId=` réservé au prof (fiche élève — `src/lib/profil-target.ts` vérifie l'appartenance à ses classes) |
+| `/api/didactique` | GET, PUT | Config « Didactique du français » (UAA + gestes) — doc `configuration/didactique`, GET tout connecté, PUT admin ; hook client `useDidactique` (cache partagé) |
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |
 | `/api/professeurs`, `/api/admin/stats`, `/api/admin/prof-stats/[profId]` | — | Admin (profId = email encodé) |
 | `/api/roadmap` | GET, POST | Roadmap Firestore (POST admin) |
@@ -309,11 +315,19 @@ interface Questionnaire {
   `VocabulaireEvaluation` (mots croisés + syn/ant + composition), `VocabulaireStats`,
   `VocabulaireListReadOnly` (vue prof)
 - NavigKid : `QuestionnaireBuilder`, `RechercheResponseViewer`, `RechercheStatsTab`
-- Questionnaire de lecture (type lire) : `LectureQuizBuilder` (prof — drag & drop de
-  blocs QCM/texte court/texte long/fluorage/bloc informatif, image et réponse idéale
-  par question, 7 compétences de lecture), `LectureQuizActivity` (élève — worksheet ou
-  quiz sans retour arrière, réponses auto-sauvées en JSON dans `travail.content`),
-  `LectureQuizReview` (correction — QCM auto-comptés, réponse idéale en encadré)
+- Questionnaire de lecture (type lire) : `LectureQuizBuilder` (prof — blocs en
+  accordéon drag & drop : QCM / texte court / texte long / **Souligner du texte**
+  (extrait ou ressource, soulignage attendu `fluoAttendu`) / bloc informatif (éditeur
+  Tiptap) ; icônes 🖼/🎧 à côté de l'énoncé — image, audio avec limite d'écoutes
+  (popup fichier/micro) ; gestes de lecture en menu déroulant du bandeau (dynamiques,
+  config didactique) ; total de points), `LectureQuizActivity` (élève — worksheet ou
+  quiz sans retour arrière, réponses auto-sauvées en JSON dans `travail.content` ;
+  lecteur audio limité ; `showCorrection` quand corrigé disponible : QCM ✅/❌,
+  réponse idéale, comparaison `FluoCompare`), `LectureQuizReview` (correction — QCM
+  auto-comptés, soulignage comparé, écoutes consommées, réponse idéale en encadré)
+- Admin : `DidactiquePanel` (UAA + gestes : œil/poubelle/+ — alimente `useDidactique`)
+- Fiche élève : `ProfilPanel` (profil 5 onglets partagé élève/prof),
+  `EleveProfilModal` (grande popup), `MesElevesSection` (bloc Mes Élèves)
 - `DrawTools` (`DrawToolbar` + `DrawCanvas`) : atelier de tracé sur image (6 outils,
   coordonnées en %, porté de romantismesam) — utilisé par les questions à image **et**
   par les images de l'onglet Ressources élève (`travail.ressourceImageShapes`)
@@ -343,7 +357,8 @@ interface Questionnaire {
 `useAuth` (expose `getAuthHeaders`), `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,
 `useTravail` (auto-save 2,5 s), `useCorrection`, `usePreferences`, `useAudioRecorder`,
 `useAiSuggestions`, `useAiGridEvaluation`, `useVocabulaireThemes`, `useVocabulaireWords`,
-`useVocabulaireExercises`, `useDictionaryLookup` (cache client partagé du dictionnaire)
+`useVocabulaireExercises`, `useDictionaryLookup` (cache client partagé du dictionnaire),
+`useDidactique` (config UAA/gestes, cache module partagé)
 
 ---
 

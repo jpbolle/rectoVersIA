@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { resolveProfilTarget, isProfilTargetError } from '@/lib/profil-target';
 import { loadStudentBase } from '@/lib/profil-stats';
 import type { RechercheItem } from '@/types/profil';
 import type { NavigKidQuestionData } from '@/types/navigkid';
@@ -12,8 +13,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 });
   }
 
+  const target = await resolveProfilTarget(auth, request);
+  if (isProfilTargetError(target)) {
+    return NextResponse.json(
+      { success: false, message: target.errorMessage },
+      { status: target.errorStatus }
+    );
+  }
+
   try {
-    const base = await loadStudentBase(auth.uid, auth.email);
+    const base = await loadStudentBase(target.uid, target.email);
     if (!base) return NextResponse.json({ success: true, data: [] });
 
     const rechercheDevoirs = [...base.devoirs.entries()]
@@ -24,7 +33,7 @@ export async function GET(request: NextRequest) {
       const qRef = adminDb.collection('questionnaires').doc(devoir.questionnaireId!);
       const [qSnap, repSnap] = await Promise.all([
         qRef.get(),
-        qRef.collection('reponses').doc(auth.uid).get(),
+        qRef.collection('reponses').doc(target.uid).get(),
       ]);
       if (!qSnap.exists) return;
 

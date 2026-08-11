@@ -6,7 +6,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { isAdmin } from '@/lib/auth-utils';
 import { useProfesseurs } from '@/hooks/useProfesseurs';
 import Header from '@/components/Header/Header';
+import type { AdminHeaderTab } from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
+import DidactiquePanel from '@/components/DidactiquePanel/DidactiquePanel';
 import type { CreateProfesseurData } from '@/types/professeur';
 import styles from './admin.module.css';
 
@@ -29,6 +31,12 @@ interface AdminStats {
   travauxSoumis: number;
   corrections: number;
   correctionsFinalisees: number;
+  // Compteurs d'usage IA (onglet « Gestion des coûts »)
+  ia?: {
+    gridEvaluations: number;
+    devoirsAvecIA: number;
+    dictionaryEntries: number;
+  };
 }
 
 export default function AdminPage() {
@@ -42,6 +50,8 @@ export default function AdminPage() {
   } = useProfesseurs();
 
   const [isReady, setIsReady] = useState(false);
+  // Onglet actif, piloté par les boutons du header (variant admin)
+  const [activeTab, setActiveTab] = useState<AdminHeaderTab>('vue');
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -209,7 +219,7 @@ export default function AdminPage() {
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
-      <Header variant="prof" />
+      <Header variant="admin" adminTab={activeTab} onAdminTabChange={setActiveTab} />
 
       <main className={styles.mainContent}>
         <h1 className={styles.pageTitle}>Administration du site</h1>
@@ -220,8 +230,8 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Stats */}
-        {stats && (
+        {/* Stats — onglet Vue d'ensemble */}
+        {activeTab === 'vue' && stats && (
           <section className={styles.statsSection}>
             <h2 className={styles.sectionTitle}>Vue d&apos;ensemble</h2>
             <div className={styles.statsGrid}>
@@ -257,7 +267,37 @@ export default function AdminPage() {
           </section>
         )}
 
+        {/* Didactique du français : UAA + gestes (listes dynamiques des formulaires) */}
+        {activeTab === 'didactique' && <DidactiquePanel />}
+
+        {/* Gestion des coûts : usage de l'IA */}
+        {activeTab === 'couts' && (
+          <section className={styles.statsSection}>
+            <h2 className={styles.sectionTitle}>Usage de l&apos;IA</h2>
+            <div className={styles.statsGrid}>
+              <div className={styles.statCard}>
+                <span className={styles.statValue}>{stats?.ia?.gridEvaluations ?? '—'}</span>
+                <span className={styles.statLabel}>Évaluations IA de grilles</span>
+              </div>
+              <div className={styles.statCard}>
+                <span className={styles.statValue}>{stats?.ia?.devoirsAvecIA ?? '—'}</span>
+                <span className={styles.statLabel}>Devoirs avec IA activée</span>
+              </div>
+              <div className={styles.statCard}>
+                <span className={styles.statValue}>{stats?.ia?.dictionaryEntries ?? '—'}</span>
+                <span className={styles.statLabel}>Mots en cache dictionnaire</span>
+              </div>
+            </div>
+            <p className={styles.coutsNote}>
+              Ces compteurs mesurent l&apos;usage, pas la dépense : les appels à Claude et
+              Whisper ne sont pas encore comptabilisés en tokens ni en euros. Un suivi
+              détaillé des coûts par appel reste à mettre en place.
+            </p>
+          </section>
+        )}
+
         {/* Professeurs */}
+        {activeTab === 'membres' && (
         <section className={styles.professeursSection}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Professeurs</h2>
@@ -313,9 +353,10 @@ export default function AdminPage() {
             )}
           </div>
         </section>
+        )}
 
         {/* Panel stats prof */}
-        {selectedProfEmail && (
+        {activeTab === 'membres' && selectedProfEmail && (
           <section className={styles.profStatsPanel}>
             <div className={styles.profStatsPanelHeader}>
               <h2 className={styles.sectionTitle}>
@@ -415,7 +456,7 @@ export default function AdminPage() {
           </section>
         )}
 
-        {showForm && (
+        {activeTab === 'membres' && showForm && (
           <section className={styles.formSection}>
             <h3 className={styles.formTitle}>Nouveau professeur</h3>
             <form onSubmit={handleSubmit}>

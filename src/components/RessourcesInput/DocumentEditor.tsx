@@ -11,12 +11,14 @@ interface DocumentEditorProps {
   content: string;
   onChange: (html: string) => void;
   disabled?: boolean;
+  placeholder?: string;
 }
 
 export default function DocumentEditor({
   content,
   onChange,
   disabled = false,
+  placeholder = 'Rédigez votre document ici...',
 }: DocumentEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -26,7 +28,7 @@ export default function DocumentEditor({
         },
       }),
       Placeholder.configure({
-        placeholder: 'Rédigez votre document ici...',
+        placeholder,
       }),
       Indent,
     ],

@@ -9,6 +9,8 @@
 - [rollup_editeur](rollup_editeur.md) — anti-triche collage dans l'espace de rédaction : testé et déployé (2026-08-10)
 - [rollup_aide_ia](rollup_aide_ia.md) — panneau Aide IA réécriture refondu : onglets, un par un, synchro bulles, ponctuation bleue — testé et déployé (2026-08-10)
 - [rollup_rgpd](rollup_rgpd.md) — chiffrement des identités élèves : **en production** (2026-08-10, 650 docs migrés) ; TODO : publier l'extension NavigKid avant la rentrée
-- [rollup_devoirs](rollup_devoirs.md) — création d'activités refondue en recto/verso : corrigé IA prof (thème/plan/production, toggles opt-in), ressources en onglets Image (Firestore base64) / Lien / Texte — livré le 2026-08-10 soir, TODO : test + déploiement + EditDevoirModal
+- [rollup_devoirs](rollup_devoirs.md) — création d'activités recto/verso : corrigé IA prof, ressources en onglets Image / Lien / Texte / **Vidéo YouTube (2026-08-11 soir)** — TODO : test + déploiement
 - [rollup_profil](rollup_profil.md) — profil élève refondu en 5 onglets (un appel API par onglet, maîtrise lexicale, recherches NavigKid) — livré le 2026-08-10, TODO : test compte élève + déploiement
-- [rollup_lecture](rollup_lecture.md) — questionnaire de lecture (worksheet/quiz, 4 types de questions, outils image, compétences, prévisualisation) — livré le 2026-08-11, TODO : test + profil Lire
+- [rollup_lecture](rollup_lecture.md) — questionnaire de lecture : v1 testée, puis enrichie le 2026-08-11 soir (audio + limite d'écoutes, « Souligner du texte » + soulignage attendu, corrigé visible élève, builder accordéon, gestes dynamiques) — TODO : test + déploiement + profil Lire
+- [rollup_admin](rollup_admin.md) — /admin refondu en onglets (header dédié) : didactique (UAA + gestes dynamiques, `configuration/didactique`), coûts (compteurs d'usage — ⚠️ pas de vrai suivi tokens) — livré 2026-08-11 soir, TODO : test + déploiement
+- [rollup_classes](rollup_classes.md) — bloc Mes Élèves (filtre actifs/archivés) + fiche élève en popup (ProfilPanel partagé, routes profil `?eleveId=`) — livré 2026-08-11 soir, TODO : test + déploiement

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useDidactique } from '@/hooks/useDidactique';
 import type { Grille } from '@/types/grille';
 import { LEVEL_LABELS, LEVEL_PERCENTAGES, UAA_LIST } from '@/types/grille';
 import styles from './GrilleViewer.module.css';
@@ -14,6 +15,7 @@ export default function GrilleViewer({ grille, onClose }: GrilleViewerProps) {
   const [expandedCriterionId, setExpandedCriterionId] = useState<string | null>(
     grille.criteria.length > 0 ? grille.criteria[0].id : null
   );
+  const { config: didactique } = useDidactique();
 
   const totalWeight = grille.criteria.reduce((sum, c) => sum + c.weight, 0);
   const sortedCriteria = [...grille.criteria].sort((a, b) => a.order - b.order);
@@ -37,10 +39,14 @@ export default function GrilleViewer({ grille, onClose }: GrilleViewerProps) {
       {grille.uaa && grille.uaa.length > 0 && (
         <div className={styles.uaaTags}>
           {grille.uaa.map((id) => {
-            const uaa = UAA_LIST.find((u) => u.id === id);
+            // Libellé : config didactique, repli sur la liste historique
+            const label =
+              didactique.uaa.find((u) => Number(u.id) === id)?.label ??
+              UAA_LIST.find((u) => u.id === id)?.label ??
+              '';
             return (
               <span key={id} className={styles.uaaTag}>
-                UAA {id}{uaa ? ` — ${uaa.label}` : ''}
+                UAA {id}{label ? ` — ${label}` : ''}
               </span>
             );
           })}

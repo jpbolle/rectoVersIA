@@ -13,6 +13,8 @@ import ClasseDetailForm from '@/components/ClasseDetailForm/ClasseDetailForm';
 import AddClasseModal from '@/components/AddClasseModal/AddClasseModal';
 import AddEleveModal from '@/components/AddEleveModal/AddEleveModal';
 import BulkImportEleveModal from '@/components/BulkImportEleveModal/BulkImportEleveModal';
+import MesElevesSection from '@/components/MesElevesSection/MesElevesSection';
+import EleveProfilModal from '@/components/EleveProfilModal/EleveProfilModal';
 import MessageBox from '@/components/MessageBox/MessageBox';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import type { Classe, Eleve } from '@/types/classe';
@@ -59,6 +61,9 @@ export default function ClassesPage() {
 
   // Onglet actif: actives ou archives
   const [activeTab, setActiveTab] = useState<'actives' | 'archives'>('actives');
+
+  // Fiche élève ouverte en grande popup (profil d'écrilecteur complet)
+  const [ficheEleve, setFicheEleve] = useState<Eleve | null>(null);
 
   // Filtrer les classes selon l'onglet
   const filteredClasses = classes.filter((c) =>
@@ -335,6 +340,7 @@ export default function ClassesPage() {
               onBulkImport={handleBulkImport}
               onEditEleve={handleEditEleve}
               onDeleteEleve={handleDeleteEleve}
+              onOpenFiche={setFicheEleve}
             />
           </section>
         )}
@@ -381,9 +387,25 @@ export default function ClassesPage() {
           </div>
         </section>
 
+        {/* Tous les élèves du prof, filtre actifs / archivés, clic = fiche */}
+        <MesElevesSection
+          classes={classes}
+          refreshKey={elevesRefreshKey}
+          onOpenFiche={setFicheEleve}
+        />
+
       </main>
 
       <Footer />
+
+      {ficheEleve && (
+        <EleveProfilModal
+          eleveId={ficheEleve.id}
+          eleveName={`${ficheEleve.prenom} ${ficheEleve.nom}`}
+          classeName={classes.find((c) => c.id === ficheEleve.classeId)?.nom}
+          onClose={() => setFicheEleve(null)}
+        />
+      )}
 
       <AddClasseModal
         isOpen={isClasseModalOpen}

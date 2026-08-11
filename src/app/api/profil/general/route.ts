@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { resolveProfilTarget, isProfilTargetError } from '@/lib/profil-target';
 import {
   loadStudentBase, buildSectionStats, buildVocabulaireProfil,
 } from '@/lib/profil-stats';
@@ -13,13 +14,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 });
   }
 
+  const target = await resolveProfilTarget(auth, request);
+  if (isProfilTargetError(target)) {
+    return NextResponse.json(
+      { success: false, message: target.errorMessage },
+      { status: target.errorStatus }
+    );
+  }
+
   try {
     const empty: ProfilGeneral = {
       travauxRemis: 0, reussites: 0, echecs: 0, attention: [],
       lire: null, ecrire: null, rechercher: null, vocabulaire: null,
     };
 
-    const base = await loadStudentBase(auth.uid, auth.email, {
+    const base = await loadStudentBase(target.uid, target.email, {
       withGrilles: true, withContent: true,
     });
     if (!base || base.travaux.length === 0) {
@@ -57,12 +66,12 @@ export async function GET(request: NextRequest) {
     await Promise.all(rechercheDevoirs.map(async (e) => {
       const rep = await adminDb
         .collection('questionnaires').doc(e.devoir!.questionnaireId!)
-        .collection('reponses').doc(auth.uid).get();
+        .collection('reponses').doc(target.uid).get();
       if (rep.exists) remises++;
     }));
 
     // Tuile Vocabulaire : mots connus / total
-    const vocab = await buildVocabulaireProfil(auth.uid, base);
+    const vocab = await buildVocabulaireProfil(target.uid, base);
     const allVocabWords = vocab.groups.flatMap((g) => g.words);
     const connus = allVocabWords.filter((w) => w.level >= 4).length;
 

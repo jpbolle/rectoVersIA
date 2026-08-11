@@ -108,7 +108,11 @@ export async function GET(request: NextRequest) {
           d.corrigeDisponible && d.corrigeReference?.production
             ? { production: d.corrigeReference.production }
             : null,
-        lectureQuiz: lectureQuizForEleve(d.lectureQuiz),
+        // Quiz complet (bonnes réponses, réponses idéales, soulignage attendu)
+        // dès que le corrigé est disponible, sinon version filtrée
+        lectureQuiz: d.corrigeDisponible
+          ? d.lectureQuiz || null
+          : lectureQuizForEleve(d.lectureQuiz),
       }));
     }
 

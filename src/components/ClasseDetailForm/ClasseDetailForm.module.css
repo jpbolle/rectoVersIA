@@ -386,3 +386,14 @@
     white-space: nowrap;
   }
 }
+
+/* Carte élève cliquable (ouvre la fiche de l'élève) */
+.eleveCardClickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.eleveCardClickable:hover {
+  border-color: var(--c-primary);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.12);
+}

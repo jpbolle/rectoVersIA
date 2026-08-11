@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useDidactique } from '@/hooks/useDidactique';
 import type { Grille, GrilleCriterion, GrilleLevel } from '@/types/grille';
 import { LEVEL_LABELS, LEVEL_PERCENTAGES, UAA_LIST } from '@/types/grille';
 import styles from './GrilleBuilder.module.css';
@@ -31,6 +32,24 @@ export default function GrilleBuilder({ grille, onSave, onCancel, isSaving }: Gr
   const [name, setName] = useState(grille?.name || '');
   const [description, setDescription] = useState(grille?.description || '');
   const [selectedUaa, setSelectedUaa] = useState<number[]>(grille?.uaa || []);
+
+  // UAA dynamiques (config didactique, gérée par l'admin) : visibles + celles
+  // déjà cochées sur la grille ; libellé de repli sur la liste historique
+  const { config: didactique } = useDidactique();
+  const uaaOptions = useMemo(
+    () =>
+      didactique.uaa
+        .filter((u) => u.visible || selectedUaa.includes(Number(u.id)))
+        .map((u) => ({ id: Number(u.id), label: u.label })),
+    [didactique.uaa, selectedUaa]
+  );
+  const uaaLabel = useCallback(
+    (id: number) =>
+      didactique.uaa.find((u) => Number(u.id) === id)?.label ??
+      UAA_LIST.find((u) => u.id === id)?.label ??
+      '',
+    [didactique.uaa]
+  );
   const [criteria, setCriteria] = useState<GrilleCriterion[]>(() => {
     if (grille && grille.criteria.length > 0) {
       // S'assurer que chaque critere a 6 niveaux
@@ -254,7 +273,7 @@ export default function GrilleBuilder({ grille, onSave, onCancel, isSaving }: Gr
         <div className={styles.field}>
           <label className={styles.label}>UAA ciblées</label>
           <div className={styles.uaaGrid}>
-            {UAA_LIST.map((uaa) => (
+            {uaaOptions.map((uaa) => (
               <button
                 key={uaa.id}
                 type="button"
@@ -269,12 +288,12 @@ export default function GrilleBuilder({ grille, onSave, onCancel, isSaving }: Gr
           {selectedUaa.length > 0 && (
             <div className={styles.uaaDetails}>
               {selectedUaa.map((id) => {
-                const uaa = UAA_LIST.find((u) => u.id === id);
-                return uaa ? (
+                const label = uaaLabel(id);
+                return (
                   <span key={id} className={styles.uaaDetailItem}>
-                    UAA {id} — {uaa.label}
+                    UAA {id}{label ? ` — ${label}` : ''}
                   </span>
-                ) : null;
+                );
               })}
             </div>
           )}

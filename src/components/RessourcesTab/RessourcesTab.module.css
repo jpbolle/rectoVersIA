@@ -449,3 +449,40 @@
   color: var(--c-text-secondary);
   z-index: 1;
 }
+
+/* ── Vidéos YouTube du prof (lecteurs intégrés) ── */
+.videosSection {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+}
+
+.videosTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-primary);
+  margin: 0 0 8px;
+}
+
+.videosList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.videoFrame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--c-radius);
+  overflow: hidden;
+  background: #000;
+}
+
+.videoFrame iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}

@@ -9,14 +9,21 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { DrawToolbar, DrawCanvas } from '@/components/DrawTools/DrawTools';
 import type { DrawTool, DrawShape } from '@/types/draw';
-import type { LectureQuiz, LectureQuestion, LectureAnswer, LectureAnswersState } from '@/types/lecture';
+import type {
+  LectureQuiz,
+  LectureQuestion,
+  LectureQuestionAudio,
+  LectureAnswer,
+  LectureAnswersState,
+} from '@/types/lecture';
 import styles from './LectureQuizActivity.module.css';
 
 const TYPE_LABELS: Record<LectureQuestion['type'], string> = {
   qcm: 'QCM',
   'texte-court': 'Réponse courte',
+  
   'texte-long': 'Réponse longue',
-  fluorage: 'Fluorage de texte',
+  fluorage: 'Souligner du texte',
   info: 'Information',
 };
 
@@ -31,8 +38,11 @@ interface LectureQuizActivityProps {
   savedState?: LectureAnswersState | null;
   onStateChange?: (state: LectureAnswersState) => void;
   disabled?: boolean;
-  // Fluorage « ressource » : ouvre l'onglet Ressources de la colonne de droite
+  // Soulignage « ressource » : ouvre l'onglet Ressources de la colonne de droite
   onOpenRessources?: () => void;
+  // Corrigé disponible : montre les bonnes réponses QCM, la réponse idéale du
+  // prof et la comparaison du soulignage (le quiz reçu du serveur est complet)
+  showCorrection?: boolean;
 }
 
 export default function LectureQuizActivity({
@@ -41,6 +51,7 @@ export default function LectureQuizActivity({
   onStateChange,
   disabled = false,
   onOpenRessources,
+  showCorrection = false,
 }: LectureQuizActivityProps) {
   const [answers, setAnswers] = useState<Record<string, LectureAnswer>>(
     savedState?.answers || {}
@@ -68,9 +79,10 @@ export default function LectureQuizActivity({
   const totalPoints = quiz.questions.reduce((sum, q) => sum + (q.points || 0), 0);
   const questionCount = quiz.questions.filter((q) => q.type !== 'info').length;
 
-  // Mode quiz : question courante
+  // Mode quiz : question courante — mais dès que le corrigé est affiché,
+  // toutes les questions redeviennent visibles (relecture libre)
   const [quizIndex, setQuizIndex] = useState(0);
-  const isQuizMode = quiz.mode === 'quiz';
+  const isQuizMode = quiz.mode === 'quiz' && !showCorrection;
   const visibleQuestions = isQuizMode
     ? quiz.questions.slice(quizIndex, quizIndex + 1)
     : quiz.questions;
@@ -105,6 +117,7 @@ export default function LectureQuizActivity({
           disabled={disabled}
           onOpenRessources={onOpenRessources}
           onZoomImage={setPopupImage}
+          showCorrection={showCorrection}
         />
       ))}
 
@@ -144,6 +157,7 @@ function QuestionCard({
   disabled,
   onOpenRessources,
   onZoomImage,
+  showCorrection,
 }: {
   question: LectureQuestion;
   number: number;
@@ -152,6 +166,7 @@ function QuestionCard({
   disabled: boolean;
   onOpenRessources?: () => void;
   onZoomImage: (url: string) => void;
+  showCorrection: boolean;
 }) {
   // Bloc informatif : texte du prof, pas de réponse attendue
   if (question.type === 'info') {
@@ -161,7 +176,22 @@ function QuestionCard({
           <span className={styles.infoIcon}>ℹ️</span>
           <span className={styles.typeLabel}>{TYPE_LABELS.info}</span>
         </div>
-        <p className={`${styles.enonce} ${styles.enonceInfo}`}>{question.enonce}</p>
+        {/* Contenu riche (Tiptap) du bloc informatif — HTML rédigé par le prof */}
+        <div
+          className={`${styles.enonce} ${styles.enonceInfo}`}
+          dangerouslySetInnerHTML={{ __html: question.enonce }}
+        />
+        {question.audio && (
+          <QuestionAudio
+            audio={question.audio}
+            playsUsed={answer.audioPlays ?? 0}
+            onConsumePlay={
+              disabled
+                ? undefined
+                : () => onAnswerChange({ audioPlays: (answer.audioPlays ?? 0) + 1 })
+            }
+          />
+        )}
         {question.image && (
           <ImageWorkspace
             imageUrl={question.image.url}
@@ -185,6 +215,19 @@ function QuestionCard({
 
       <p className={styles.enonce}>{question.enonce}</p>
 
+      {/* Audio de la question (dictée, compréhension orale), écoutes limitées ou non */}
+      {question.audio && (
+        <QuestionAudio
+          audio={question.audio}
+          playsUsed={answer.audioPlays ?? 0}
+          onConsumePlay={
+            disabled
+              ? undefined
+              : () => onAnswerChange({ audioPlays: (answer.audioPlays ?? 0) + 1 })
+          }
+        />
+      )}
+
       {/* Image de la question : atelier de tracé complet */}
       {question.image && (
         <ImageWorkspace
@@ -201,17 +244,35 @@ function QuestionCard({
 
       {question.type === 'qcm' && (
         <div className={styles.choices}>
-          {(question.choices ?? []).map((choice, ci) => (
-            <label key={ci} className={styles.choice}>
-              <input
-                type="radio"
-                checked={answer.choiceIndex === ci}
-                onChange={() => onAnswerChange({ choiceIndex: ci })}
-                disabled={disabled}
-              />
-              {choice}
-            </label>
-          ))}
+          {(question.choices ?? []).map((choice, ci) => {
+            // Vue corrigée : la bonne réponse en vert, le mauvais choix de
+            // l'élève en rouge (correctIndex n'est envoyé qu'avec le corrigé)
+            const revealed = showCorrection && question.correctIndex !== undefined;
+            const isStudent = answer.choiceIndex === ci;
+            const isCorrect = question.correctIndex === ci;
+            const cls = [
+              styles.choice,
+              revealed && isCorrect ? styles.choiceRight : '',
+              revealed && isStudent && !isCorrect ? styles.choiceWrong : '',
+            ].join(' ');
+            return (
+              <label key={ci} className={cls}>
+                <input
+                  type="radio"
+                  checked={isStudent}
+                  onChange={() => onAnswerChange({ choiceIndex: ci })}
+                  disabled={disabled}
+                />
+                {choice}
+                {revealed && isStudent && (
+                  <span className={styles.choiceVerdict}>{isCorrect ? '✅' : '❌'}</span>
+                )}
+                {revealed && !isStudent && isCorrect && (
+                  <span className={styles.choiceVerdict}>✔ bonne réponse</span>
+                )}
+              </label>
+            );
+          })}
         </div>
       )}
 
@@ -235,22 +296,36 @@ function QuestionCard({
       )}
 
       {question.type === 'fluorage' && (question.fluoSource ?? 'extrait') === 'extrait' && (
-        <>
-          <FluoExtrait
+        showCorrection && (question.fluoAttendu?.length ?? 0) > 0 ? (
+          // Vue corrigée : comparaison entre le soulignage de l'élève et celui
+          // attendu par le prof
+          <FluoCompare
             texte={question.fluoTexte ?? ''}
-            fluoWords={answer.fluoWords ?? []}
-            onChange={(fluoWords) => onAnswerChange({ fluoWords })}
-            disabled={disabled}
+            attendu={question.fluoAttendu ?? []}
+            eleve={answer.fluoWords ?? []}
           />
-          <p className={styles.savedNote}>🖍 Clique les mots pour les fluorer — ton fluorage est enregistré.</p>
-        </>
+        ) : (
+          <>
+            <FluoExtrait
+              texte={question.fluoTexte ?? ''}
+              fluoWords={answer.fluoWords ?? []}
+              onChange={(fluoWords) => onAnswerChange({ fluoWords })}
+              disabled={disabled}
+            />
+            {!disabled && (
+              <p className={styles.savedNote}>
+                🖍 Clique les mots pour les souligner — ta sélection est enregistrée.
+              </p>
+            )}
+          </>
+        )
       )}
 
       {question.type === 'fluorage' && question.fluoSource === 'ressource' && (
         <div className={styles.ressourceFluo}>
           <p>
-            Réponds en fluorant directement dans le texte de l&apos;onglet
-            «&nbsp;Ressources&nbsp;» (colonne de droite). Ton surlignage sera transmis
+            Réponds en soulignant directement dans le texte de l&apos;onglet
+            «&nbsp;Ressources&nbsp;» (colonne de droite). Ton soulignage sera transmis
             avec ta remise.
           </p>
           {onOpenRessources && (
@@ -261,17 +336,113 @@ function QuestionCard({
         </div>
       )}
 
-      {/* Commentaire du fluorage (les deux sources) */}
+      {/* Commentaire du soulignage (les deux sources) */}
       {question.type === 'fluorage' && (
         <textarea
           className={`${styles.shortAnswer} ${styles.fluoComment}`}
           rows={2}
           value={answer.text ?? ''}
           onChange={(e) => onAnswerChange({ text: e.target.value })}
-          placeholder="Commente ce que tu as fluoré (facultatif, selon la question)..."
+          placeholder="Commente ce que tu as souligné (facultatif, selon la question)..."
           disabled={disabled}
         />
       )}
+
+      {/* Corrigé disponible : réponse idéale du prof */}
+      {showCorrection && question.reponseIdeale && (
+        <div className={styles.ideale}>
+          <span className={styles.idealeLabel}>🎓 Réponse attendue</span>
+          <p className={styles.idealeText}>{question.reponseIdeale}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Audio de question : lecteur libre ou à écoutes limitées ──
+// Sans limite : lecteur natif. Avec limite : lecteur maison sans barre de
+// navigation — une écoute est décomptée à chaque démarrage depuis le début
+// (pause/reprise = même écoute). Compteur enregistré avec la réponse.
+
+function QuestionAudio({
+  audio,
+  playsUsed,
+  onConsumePlay,
+}: {
+  audio: LectureQuestionAudio;
+  playsUsed: number;
+  onConsumePlay?: () => void; // absent = lecture désactivée (travail remis)
+}) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0); // 0..1
+
+  const max = audio.maxEcoutes ?? null;
+
+  // Pas de limite : lecteur natif classique
+  if (max === null) {
+    return (
+      <div className={styles.audioBlock}>
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+        <audio controls src={audio.url} className={styles.audioNative} />
+      </div>
+    );
+  }
+
+  const remaining = Math.max(0, max - playsUsed);
+
+  const handleToggle = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) {
+      el.pause();
+      return;
+    }
+    // Démarrage depuis le début = nouvelle écoute décomptée
+    const freshStart = el.currentTime === 0;
+    if (freshStart) {
+      if (!onConsumePlay || remaining <= 0) return;
+      onConsumePlay();
+    }
+    el.play();
+  };
+
+  const exhausted = remaining <= 0 && !playing;
+
+  return (
+    <div className={styles.audioBlock}>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <audio
+        ref={audioRef}
+        src={audio.url}
+        preload="metadata"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onTimeUpdate={(e) => {
+          const el = e.currentTarget;
+          setProgress(el.duration ? el.currentTime / el.duration : 0);
+        }}
+        onEnded={(e) => {
+          e.currentTarget.currentTime = 0;
+          setPlaying(false);
+          setProgress(0);
+        }}
+      />
+      <button
+        type="button"
+        className={styles.audioBtn}
+        onClick={handleToggle}
+        disabled={!playing && (exhausted || !onConsumePlay)}
+        title={playing ? 'Pause' : 'Écouter'}
+      >
+        {playing ? '⏸' : '▶'}
+      </button>
+      <div className={styles.audioTrack}>
+        <i style={{ width: `${Math.round(progress * 100)}%` }} />
+      </div>
+      <span className={`${styles.audioCount} ${exhausted ? styles.audioCountOff : ''}`}>
+        🔊 {remaining} écoute{remaining > 1 ? 's' : ''} restante{remaining > 1 ? 's' : ''} / {max}
+      </span>
     </div>
   );
 }
@@ -395,7 +566,58 @@ function RichAnswerEditor({
   );
 }
 
-// ── Fluorage d'un extrait : clic sur les mots ──
+// ── Comparaison soulignage élève / soulignage attendu du prof ──
+// Affichée à l'élève quand le corrigé est disponible, et au prof dans sa page
+// de correction. Vert = juste, rouge barré = en trop, pointillé = manqué.
+
+export function FluoCompare({
+  texte,
+  attendu,
+  eleve,
+}: {
+  texte: string;
+  attendu: number[];
+  eleve: number[];
+}) {
+  const words = texte.split(/\s+/).filter(Boolean);
+  const attenduSet = new Set(attendu);
+  const eleveSet = new Set(eleve);
+
+  const hits = attendu.filter((i) => eleveSet.has(i)).length;
+  const extra = eleve.filter((i) => !attenduSet.has(i)).length;
+
+  return (
+    <div>
+      <p className={styles.fluoText}>
+        {words.map((word, i) => {
+          const isAttendu = attenduSet.has(i);
+          const isEleve = eleveSet.has(i);
+          const cls = [
+            styles.fluoWord,
+            styles.fluoWordStatic,
+            isAttendu && isEleve ? styles.fluoHit : '',
+            !isAttendu && isEleve ? styles.fluoExtra : '',
+            isAttendu && !isEleve ? styles.fluoMiss : '',
+          ].join(' ');
+          return (
+            <span key={i}>
+              <span className={cls}>{word}</span>{' '}
+            </span>
+          );
+        })}
+      </p>
+      <p className={styles.fluoLegend}>
+        <span className={styles.fluoHit}>juste</span> · <span className={styles.fluoExtra}>en trop</span> ·{' '}
+        <span className={styles.fluoMiss}>manqué</span> — {hits}/{attendu.length} mot
+        {attendu.length > 1 ? 's' : ''} attendu{attendu.length > 1 ? 's' : ''} trouvé
+        {hits > 1 ? 's' : ''}
+        {extra > 0 ? `, ${extra} en trop` : ''}
+      </p>
+    </div>
+  );
+}
+
+// ── Soulignage d'un extrait : clic sur les mots ──
 
 export function FluoExtrait({
   texte,

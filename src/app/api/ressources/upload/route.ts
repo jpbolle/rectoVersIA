@@ -2,13 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 
-// Upload d'images de ressources — stockées en base64 dans Firestore
+// Upload d'images et d'audios de ressources — stockés en base64 dans Firestore
 // (collection ressourceImages, accès serveur uniquement — pas de Storage).
-// Limite : 1 Mo par document Firestore → images ≤ 700 Ko, compressées côté
-// client avant envoi (src/lib/image-compress.ts). Les PDF et documents longs
-// passent par l'onglet Lien.
+// Limite : 1 Mo par document Firestore → fichiers ≤ 700 Ko. Les images sont
+// compressées côté client avant envoi (src/lib/image-compress.ts) ; les audios
+// (questions de lecture) doivent tenir sous la limite (~2 min en qualité voix).
+// Les PDF et documents longs passent par l'onglet Lien.
 
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  // Audios des questions de lecture (upload prof ou enregistrement micro)
+  'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg',
+  'audio/webm', 'audio/mp4', 'audio/x-m4a', 'audio/aac',
+];
 const MAX_IMAGE_BYTES = 700 * 1024;
 
 export async function POST(request: NextRequest) {
@@ -36,7 +42,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            message: `Format non accepté : ${file.name}. Images uniquement (JPG, PNG, GIF, WebP) — pour un PDF ou un document long, utilisez l'onglet Lien.`,
+            message: `Format non accepté : ${file.name}. Images (JPG, PNG, GIF, WebP) ou audios (MP3, WAV, OGG, M4A…) uniquement — pour un PDF ou un document long, utilisez l'onglet Lien.`,
           },
           { status: 400 }
         );
@@ -46,7 +52,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            message: `Image trop volumineuse : ${file.name} (${sizeKB} Ko). Max : 700 Ko`,
+            message: `Fichier trop volumineux : ${file.name} (${sizeKB} Ko). Max : 700 Ko`,
           },
           { status: 400 }
         );

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/useAuth';
 import { compressImage } from '@/lib/image-compress';
+import { parseYoutubeId, youtubeEmbedUrl } from '@/lib/youtube';
 import type { DevoirRessource, RessourceFile } from '@/types/devoir';
 import styles from './RessourcesInput.module.css';
 
@@ -18,7 +19,7 @@ const DocumentEditor = dynamic<EditorProps>(
   { ssr: false, loading: () => <div className={styles.editorLoading}>Chargement...</div> }
 );
 
-type RessourceTab = 'fichier' | 'lien' | 'texte';
+type RessourceTab = 'fichier' | 'lien' | 'texte' | 'video';
 
 const ACCEPTED_EXTENSIONS = '.jpg,.jpeg,.png,.gif,.webp';
 
@@ -77,21 +78,23 @@ function linesToHtml(text: string): string {
   return `<ul>${items.join('')}</ul>`;
 }
 
-// Reconstruit l'objet ressources — null si les trois onglets sont vides
+// Reconstruit l'objet ressources — null si les quatre onglets sont vides
 function buildRessource(
   outils: string,
   document: string,
   files: RessourceFile[],
+  videos: string[],
 ): DevoirRessource | null {
   const outilsEmpty = isEmptyHtml(outils);
   const docEmpty = isEmptyHtml(document);
-  if (outilsEmpty && docEmpty && files.length === 0) return null;
+  if (outilsEmpty && docEmpty && files.length === 0 && videos.length === 0) return null;
   return {
     type: 'text',
     content: outilsEmpty ? '' : outils,
     outils: outilsEmpty ? '' : outils,
     document: docEmpty ? '' : document,
     files,
+    videos,
   };
 }
 
@@ -113,10 +116,12 @@ export default function RessourcesInput({
   const outilsValue = ressources?.outils ?? ressources?.content ?? '';
   const documentValue = ressources?.document ?? '';
   const filesValue = ressources?.files ?? [];
+  const videosValue = ressources?.videos ?? [];
 
   const hasFichier = filesValue.length > 0;
   const hasLien = !isEmptyHtml(outilsValue);
   const hasTexte = !isEmptyHtml(documentValue);
+  const hasVideo = videosValue.length > 0;
 
   // Champ Lien : texte brut du textarea (une URL par ligne), resynchronisé
   // quand la valeur externe change (réinitialisation, ouverture du modal)
@@ -135,17 +140,47 @@ export default function RessourcesInput({
   const handleLienChange = useCallback(
     (text: string) => {
       setLienText(text);
-      onRessourcesChange(buildRessource(linesToHtml(text), documentValue, filesValue));
+      onRessourcesChange(buildRessource(linesToHtml(text), documentValue, filesValue, videosValue));
     },
-    [onRessourcesChange, documentValue, filesValue]
+    [onRessourcesChange, documentValue, filesValue, videosValue]
   );
 
   const handleDocumentChange = useCallback(
     (html: string) => {
-      onRessourcesChange(buildRessource(outilsValue, html, filesValue));
+      onRessourcesChange(buildRessource(outilsValue, html, filesValue, videosValue));
     },
-    [onRessourcesChange, outilsValue, filesValue]
+    [onRessourcesChange, outilsValue, filesValue, videosValue]
   );
+
+  // ── Champ Vidéo : une URL YouTube par ligne, resynchronisé comme le champ Lien ──
+  const [videoText, setVideoText] = useState(() => videosValue.join('\n'));
+  const videoTextRef = useRef(videoText);
+  videoTextRef.current = videoText;
+
+  useEffect(() => {
+    const external = videosValue.join('\n');
+    const localNormalized = videoTextRef.current
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .join('\n');
+    if (external !== localNormalized) {
+      setVideoText(external);
+    }
+  }, [videosValue]);
+
+  const handleVideoChange = useCallback(
+    (text: string) => {
+      setVideoText(text);
+      const videos = text.split('\n').map((l) => l.trim()).filter(Boolean);
+      onRessourcesChange(buildRessource(outilsValue, documentValue, filesValue, videos));
+    },
+    [onRessourcesChange, outilsValue, documentValue, filesValue]
+  );
+
+  // Aperçus des vidéos reconnues (les lignes invalides sont signalées)
+  const videoLines = videoText.split('\n').map((l) => l.trim()).filter(Boolean);
+  const invalidVideoLines = videoLines.filter((l) => !parseYoutubeId(l));
 
   // ── Upload d'images (compressées dans le navigateur, stockées en Firestore) ──
 
@@ -193,7 +228,7 @@ export default function RessourcesInput({
 
         if (json.success && json.data?.files) {
           onRessourcesChange(
-            buildRessource(outilsValue, documentValue, [...filesValue, ...json.data.files])
+            buildRessource(outilsValue, documentValue, [...filesValue, ...json.data.files], videosValue)
           );
         } else {
           setUploadError(json.message || "Erreur lors de l'upload");
@@ -206,13 +241,13 @@ export default function RessourcesInput({
         if (inputRef.current) inputRef.current.value = '';
       }
     },
-    [disabled, isUploading, getAuthHeaders, onRessourcesChange, outilsValue, documentValue, filesValue]
+    [disabled, isUploading, getAuthHeaders, onRessourcesChange, outilsValue, documentValue, filesValue, videosValue]
   );
 
   const handleRemoveFile = useCallback(
     async (file: RessourceFile) => {
       onRessourcesChange(
-        buildRessource(outilsValue, documentValue, filesValue.filter((f) => f !== file))
+        buildRessource(outilsValue, documentValue, filesValue.filter((f) => f !== file), videosValue)
       );
 
       // Suppression de l'image stockée (silencieuse en cas d'échec)
@@ -225,7 +260,7 @@ export default function RessourcesInput({
         }).catch((err) => console.error('Erreur suppression Drive:', err));
       }
     },
-    [onRessourcesChange, outilsValue, documentValue, filesValue, getAuthHeaders]
+    [onRessourcesChange, outilsValue, documentValue, filesValue, videosValue, getAuthHeaders]
   );
 
   const handleDrop = useCallback(
@@ -261,6 +296,13 @@ export default function RessourcesInput({
           onClick={() => setActiveTab('texte')}
         >
           Texte {hasTexte && <span className={styles.tabDot} />}
+        </button>
+        <button
+          type="button"
+          className={`${styles.tab} ${activeTab === 'video' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('video')}
+        >
+          Vidéo {hasVideo && <span className={styles.tabDot} />}
         </button>
       </div>
 
@@ -364,6 +406,49 @@ export default function RessourcesInput({
             disabled={disabled}
             spellCheck={false}
           />
+        </div>
+      )}
+
+      {/* ── Onglet Vidéo : une URL YouTube par ligne, lecteur intégré côté élève ── */}
+      {activeTab === 'video' && (
+        <div className={styles.tabPanel}>
+          <p className={styles.tabHint}>
+            Une URL YouTube par ligne — chaque vidéo apparaît en lecteur intégré dans
+            l&apos;onglet Ressources des élèves.
+          </p>
+          <textarea
+            className={styles.lienTextarea}
+            value={videoText}
+            onChange={(e) => handleVideoChange(e.target.value)}
+            placeholder={'https://www.youtube.com/watch?v=...\nhttps://youtu.be/...'}
+            rows={3}
+            disabled={disabled}
+            spellCheck={false}
+          />
+          {invalidVideoLines.length > 0 && (
+            <p className={styles.uploadError}>
+              URL non reconnue comme vidéo YouTube :{' '}
+              {invalidVideoLines.join(', ')}
+            </p>
+          )}
+          {videoLines.some((l) => parseYoutubeId(l)) && (
+            <div className={styles.videoGrid}>
+              {videoLines.map((line, index) => {
+                const id = parseYoutubeId(line);
+                if (!id) return null;
+                return (
+                  <div key={`${id}-${index}`} className={styles.videoItem}>
+                    <iframe
+                      src={youtubeEmbedUrl(id)}
+                      title={`Vidéo ${index + 1}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

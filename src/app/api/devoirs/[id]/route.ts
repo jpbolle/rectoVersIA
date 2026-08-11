@@ -73,9 +73,11 @@ export async function GET(
               ? { production: data.corrigeReference.production }
               : null)
           : data.corrigeReference || null,
-      // Questionnaire de lecture : bonnes réponses filtrées côté élève
+      // Questionnaire de lecture : bonnes réponses filtrées côté élève tant
+      // que le corrigé n'est pas disponible ; quiz complet ensuite (l'élève
+      // voit ce qu'il a réussi ou raté)
       lectureQuiz:
-        auth.role === 'eleve'
+        auth.role === 'eleve' && !data.corrigeDisponible
           ? lectureQuizForEleve(data.lectureQuiz)
           : data.lectureQuiz || null,
     };

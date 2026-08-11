@@ -5,16 +5,17 @@
 
 import { useState } from 'react';
 import { DrawCanvas } from '@/components/DrawTools/DrawTools';
-import { FluoExtrait } from '@/components/LectureQuizActivity/LectureQuizActivity';
+import { FluoExtrait, FluoCompare } from '@/components/LectureQuizActivity/LectureQuizActivity';
+import { useDidactique } from '@/hooks/useDidactique';
 import { parseLectureAnswers, LECTURE_COMPETENCE_LABELS } from '@/types/lecture';
-import type { LectureQuiz, LectureQuestion } from '@/types/lecture';
+import type { LectureQuiz, LectureQuestion, LectureCompetence } from '@/types/lecture';
 import styles from './LectureQuizReview.module.css';
 
 const TYPE_LABELS: Record<LectureQuestion['type'], string> = {
   qcm: 'QCM',
   'texte-court': 'Réponse courte',
   'texte-long': 'Réponse longue',
-  fluorage: 'Fluorage de texte',
+  fluorage: 'Souligner du texte',
   info: 'Bloc informatif',
 };
 
@@ -27,6 +28,14 @@ export default function LectureQuizReview({ quiz, travailContent }: LectureQuizR
   const state = parseLectureAnswers(travailContent);
   const answers = state?.answers ?? {};
   const [popupImage, setPopupImage] = useState<string | null>(null);
+
+  // Libellés des gestes de lecture : config didactique, repli sur les slugs
+  // historiques puis sur l'id brut (geste supprimé de la config)
+  const { config: didactique } = useDidactique();
+  const gesteLabel = (id: string) =>
+    didactique.gestesLecture.find((g) => g.id === id)?.label ??
+    LECTURE_COMPETENCE_LABELS[id as LectureCompetence] ??
+    id;
 
   // Comptage automatique des QCM
   const qcmQuestions = quiz.questions.filter((q) => q.type === 'qcm');
@@ -56,7 +65,21 @@ export default function LectureQuizReview({ quiz, travailContent }: LectureQuizR
               <div className={styles.cardHead}>
                 <span className={styles.typeLabel}>ℹ️ {TYPE_LABELS.info}</span>
               </div>
-              <p className={`${styles.enonce} ${styles.enonceInfo}`}>{q.enonce}</p>
+              {/* Contenu riche (Tiptap) du bloc informatif */}
+              <div
+                className={`${styles.enonce} ${styles.enonceInfo}`}
+                dangerouslySetInnerHTML={{ __html: q.enonce }}
+              />
+              {q.audio && (
+                <div className={styles.audioBlock}>
+                  { }
+                  <audio controls src={q.audio.url} className={styles.audioPlayer} />
+                  <span className={styles.audioMeta}>
+                    🔊 Écouté {answer?.audioPlays ?? 0} fois
+                    {q.audio.maxEcoutes ? ` (max ${q.audio.maxEcoutes})` : ''}
+                  </span>
+                </div>
+              )}
             </div>
           );
         }
@@ -68,13 +91,25 @@ export default function LectureQuizReview({ quiz, travailContent }: LectureQuizR
               <span className={styles.typeLabel}>{TYPE_LABELS[q.type]}</span>
               {q.competences.length > 0 && (
                 <span className={styles.comps}>
-                  {q.competences.map((c) => LECTURE_COMPETENCE_LABELS[c]).join(' · ')}
+                  {q.competences.map((c) => gesteLabel(c)).join(' · ')}
                 </span>
               )}
               {q.points > 0 && <span className={styles.pts}>{q.points} pt{q.points > 1 ? 's' : ''}</span>}
             </div>
 
             <p className={styles.enonce}>{q.enonce}</p>
+
+            {/* Audio de la question + nombre d'écoutes consommées par l'élève */}
+            {q.audio && (
+              <div className={styles.audioBlock}>
+                { }
+                <audio controls src={q.audio.url} className={styles.audioPlayer} />
+                <span className={styles.audioMeta}>
+                  🔊 Écouté {answer?.audioPlays ?? 0} fois
+                  {q.audio.maxEcoutes ? ` (max ${q.audio.maxEcoutes})` : ''}
+                </span>
+              </div>
+            )}
 
             {/* Image + tracés de l'élève (lecture seule) */}
             {q.image && (
@@ -145,21 +180,30 @@ export default function LectureQuizReview({ quiz, travailContent }: LectureQuizR
             )}
 
             {q.type === 'fluorage' && (q.fluoSource ?? 'extrait') === 'extrait' && (
-              <FluoExtrait
-                texte={q.fluoTexte ?? ''}
-                fluoWords={answer?.fluoWords ?? []}
-                disabled
-              />
+              (q.fluoAttendu?.length ?? 0) > 0 ? (
+                // Comparaison automatique avec le soulignage attendu du prof
+                <FluoCompare
+                  texte={q.fluoTexte ?? ''}
+                  attendu={q.fluoAttendu ?? []}
+                  eleve={answer?.fluoWords ?? []}
+                />
+              ) : (
+                <FluoExtrait
+                  texte={q.fluoTexte ?? ''}
+                  fluoWords={answer?.fluoWords ?? []}
+                  disabled
+                />
+              )
             )}
 
             {q.type === 'fluorage' && q.fluoSource === 'ressource' && (
               <p className={styles.empty}>
-                🖍 L&apos;élève a fluoré dans la ressource de l&apos;activité — son surlignage
+                🖍 L&apos;élève a souligné dans la ressource de l&apos;activité — son soulignage
                 est visible dans l&apos;onglet Ressources (annotations de l&apos;élève).
               </p>
             )}
 
-            {/* Commentaire du fluorage par l'élève */}
+            {/* Commentaire du soulignage par l'élève */}
             {q.type === 'fluorage' && answer?.text?.trim() && (
               <p className={styles.textAnswer}>💬 {answer.text}</p>
             )}

@@ -1,0 +1,145 @@
+.section {
+  margin-top: 40px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.title {
+  color: var(--c-primary);
+  font-size: 20px;
+  font-weight: 600;
+  font-family: var(--c-font-title);
+  margin: 0;
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search {
+  padding: 10px 14px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  font-size: 14px;
+  font-family: inherit;
+  min-width: 220px;
+  background: var(--c-bg-card, #fff);
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+/* Mêmes onglets que le bloc Mes Classes */
+.tabs {
+  display: flex;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius-lg);
+  padding: 4px;
+  gap: 4px;
+}
+
+.tab {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: var(--c-radius-sm);
+  font-family: inherit;
+}
+
+.tab:hover {
+  color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.05);
+}
+
+.tabActive,
+.tab.tabActive:hover,
+.tabActive:hover {
+  background: var(--c-accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.hint {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  margin: 0 0 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.eleveChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-bg-card, #fff);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.eleveChip:hover {
+  border-color: var(--c-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.12);
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--c-primary);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.eleveInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eleveName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.classeBadge {
+  font-size: 11.5px;
+  color: var(--c-text-secondary);
+}

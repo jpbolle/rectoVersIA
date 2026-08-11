@@ -62,3 +62,13 @@
   ancien devoir, tags sur les cards des deux côtés, duplication.
 - [ ] À terme : exploiter `evaluation` côté stats/corrections (aujourd'hui purement
   informatif).
+
+## Ajout du 2026-08-11 soir — onglet Vidéo (non testé, non déployé)
+
+4e onglet « Vidéo » dans les ressources (`RessourcesInput`, création **et** édition) :
+une URL YouTube par ligne (`ressources.videos: string[]`), aperçu du lecteur côté prof,
+lecteur intégré « 🎬 Vidéos » dans l'onglet Ressources élève (`RessourcesTab`) via
+`youtube-nocookie.com` (variante sans cookies de pistage). Parsing des URL dans
+`src/lib/youtube.ts` (watch, youtu.be, shorts, embed, live) ; URL non reconnue =
+alerte côté prof, ignorée côté élève. Aucun changement serveur (ressources passent
+telles quelles).

@@ -11,6 +11,8 @@ interface ClasseDetailFormProps {
   refreshKey?: number;
   onClose: () => void;
   onAddEleve: (classeId: string) => void;
+  // Clic sur la carte d'un élève : ouvre sa fiche (profil d'écrilecteur)
+  onOpenFiche?: (eleve: Eleve) => void;
   onBulkImport: (classeId: string) => void;
   onEditEleve: (eleve: Eleve) => void;
   onDeleteEleve: (eleve: Eleve) => void;
@@ -22,6 +24,7 @@ export default function ClasseDetailForm({
   refreshKey,
   onClose,
   onAddEleve,
+  onOpenFiche,
   onBulkImport,
   onEditEleve,
   onDeleteEleve,
@@ -105,7 +108,15 @@ export default function ClasseDetailForm({
         ) : (
           <div className={styles.elevesList}>
             {eleves.map((eleve) => (
-              <div key={eleve.id} className={styles.eleveCard}>
+              <div
+                key={eleve.id}
+                className={`${styles.eleveCard} ${onOpenFiche ? styles.eleveCardClickable : ''}`}
+                onClick={onOpenFiche ? () => onOpenFiche(eleve) : undefined}
+                role={onOpenFiche ? 'button' : undefined}
+                tabIndex={onOpenFiche ? 0 : undefined}
+                onKeyDown={onOpenFiche ? (e) => e.key === 'Enter' && onOpenFiche(eleve) : undefined}
+                title={onOpenFiche ? "Ouvrir la fiche de l'élève" : undefined}
+              >
                 <div className={styles.eleveInfo}>
                   <span className={styles.eleveAvatar}>
                     {eleve.nom.charAt(0)}{eleve.prenom.charAt(0)}
@@ -117,7 +128,7 @@ export default function ClasseDetailForm({
                     <span className={styles.eleveEmail}>{eleve.email}</span>
                   </div>
                 </div>
-                <div className={styles.eleveActions}>
+                <div className={styles.eleveActions} onClick={(e) => e.stopPropagation()}>
                   <button
                     className={styles.actionBtn}
                     onClick={() => onEditEleve(eleve)}

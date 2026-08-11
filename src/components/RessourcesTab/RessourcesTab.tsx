@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import DictionaryPanel from '@/components/DictionaryPanel';
 import { DrawToolbar, DrawCanvas } from '@/components/DrawTools/DrawTools';
+import { parseYoutubeId, youtubeEmbedUrl } from '@/lib/youtube';
 import type { DrawTool, DrawShape } from '@/types/draw';
 import type { Devoir } from '@/types/devoir';
 import styles from './RessourcesTab.module.css';
@@ -240,10 +241,34 @@ export default function RessourcesTab({
   const documentContent = devoir.ressources.document ?? '';
   const legacyContent = devoir.ressources.content ?? '';
   const ressourceFiles = devoir.ressources.files ?? [];
+  const ressourceVideos = (devoir.ressources.videos ?? []).filter((v) => parseYoutubeId(v));
   const hasOutils = outilsContent.trim().length > 0;
   const hasDocument = documentContent.trim().length > 0 && documentContent !== '<p></p>';
   const hasLegacy = !hasOutils && !hasDocument && legacyContent.trim().length > 0;
   const hasFiles = ressourceFiles.length > 0;
+  const hasVideos = ressourceVideos.length > 0;
+
+  // Vidéos YouTube du prof — lecteurs intégrés (variante nocookie)
+  const videosBlock = hasVideos ? (
+    <div className={styles.videosSection}>
+      <h4 className={styles.videosTitle}>🎬 Vidéos</h4>
+      <div className={styles.videosList}>
+        {ressourceVideos.map((video, index) => {
+          const id = parseYoutubeId(video)!;
+          return (
+            <div key={`${id}-${index}`} className={styles.videoFrame}>
+              <iframe
+                src={youtubeEmbedUrl(id)}
+                title={`Vidéo ${index + 1}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
 
   // Images déposées par le prof — atelier de tracé pour l'élève (comme le
   // fluorage/annotation pour un texte) ; le prof voit les tracés en lecture seule
@@ -284,7 +309,7 @@ export default function RessourcesTab({
     </div>
   ) : null;
 
-  if (!hasOutils && !hasDocument && !hasLegacy && !hasFiles) {
+  if (!hasOutils && !hasDocument && !hasLegacy && !hasFiles && !hasVideos) {
     return (
       <div className={styles.container}>
         {dictionaryBlock}
@@ -305,6 +330,7 @@ export default function RessourcesTab({
       <div className={styles.container}>
         {dictionaryBlock}
         {filesBlock}
+        {videosBlock}
         {/* Outils section (read-only links) above editor */}
         {hasOutils && (
           <div className={styles.outilsSection}>
@@ -333,6 +359,7 @@ export default function RessourcesTab({
     <div className={styles.container}>
       {dictionaryBlock}
       {filesBlock}
+      {videosBlock}
       {hasOutils && (
         <div className={styles.outilsSection}>
           <h4 className={styles.outilsTitle}>🔧 Outils</h4>

@@ -32,6 +32,7 @@ export interface DevoirRessource {
   outils?: string;      // HTML avec liens cliquables (onglet Lien)
   document?: string;    // Rich HTML content from Tiptap editor (onglet Texte)
   files?: RessourceFile[]; // Fichiers Drive (onglet Fichier)
+  videos?: string[];    // URLs YouTube (onglet Vidéo) — lecteur intégré côté élève
 }
 
 export interface Devoir {

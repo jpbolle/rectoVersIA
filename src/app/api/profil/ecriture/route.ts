@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/api-auth';
+import { resolveProfilTarget, isProfilTargetError } from '@/lib/profil-target';
 import {
   loadStudentBase, loadClassStats, buildSectionStats, buildDevoirStats,
 } from '@/lib/profil-stats';
@@ -12,9 +13,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 });
   }
 
+  const target = await resolveProfilTarget(auth, request);
+  if (isProfilTargetError(target)) {
+    return NextResponse.json(
+      { success: false, message: target.errorMessage },
+      { status: target.errorStatus }
+    );
+  }
+
   try {
     const empty: ProfilSection = { stats: null, devoirs: [] };
-    const base = await loadStudentBase(auth.uid, auth.email, { withGrilles: true });
+    const base = await loadStudentBase(target.uid, target.email, { withGrilles: true });
     if (!base) return NextResponse.json({ success: true, data: empty });
 
     const corrs = base.corrections.filter(
