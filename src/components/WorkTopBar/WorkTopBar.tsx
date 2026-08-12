@@ -16,6 +16,9 @@ interface WorkTopBarProps {
   // Correction rendue (corrigé disponible, correction visible ou non rendu) :
   // la remise est fermée, le bouton « Remettre le devoir » disparaît
   submissionClosed?: boolean;
+  // Activités de recherche : la remise se fait depuis l'extension NavigKid!,
+  // il n'y a rien à remettre depuis l'app
+  hideSubmit?: boolean;
 }
 
 export default function WorkTopBar({
@@ -27,6 +30,7 @@ export default function WorkTopBar({
   isSubmitting = false,
   isPreviewMode = false,
   submissionClosed = false,
+  hideSubmit = false,
 }: WorkTopBarProps) {
   const router = useRouter();
 
@@ -79,6 +83,9 @@ export default function WorkTopBar({
             </span>
           ) : submissionClosed ? (
             <span className={styles.statusDraft}>🔒 Remise clôturée</span>
+          ) : hideSubmit ? (
+            // Recherche : rien n'est saisi dans l'app, « Brouillon » n'aurait pas de sens
+            <span className={styles.statusDraft}>Réponses pas encore envoyées</span>
           ) : isSaving ? (
             <span className={styles.statusSaving}>
               <span className={styles.savingDot} />
@@ -94,7 +101,7 @@ export default function WorkTopBar({
           )}
         </div>
 
-        {!isSubmitted && !submissionClosed && (
+        {!isSubmitted && !submissionClosed && !hideSubmit && (
           <button
             type="button"
             className={styles.submitButton}

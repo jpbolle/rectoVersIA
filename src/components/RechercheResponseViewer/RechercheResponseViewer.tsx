@@ -9,6 +9,27 @@ interface RechercheResponseViewerProps {
   studentView?: boolean;
 }
 
+// Une question porte son corrigé QCM uniquement si le serveur a accepté de l'envoyer
+// (corrigé rendu disponible par le prof — voir src/lib/navigkid-server.ts).
+function autoCorrigeable(question: NavigKidQuestion): boolean {
+  return (
+    question.type === 'qcm' &&
+    Array.isArray(question.correctes) &&
+    question.correctes.length > 0 &&
+    Array.isArray(question.options)
+  );
+}
+
+// L'extension enregistre le TEXTE de l'option choisie, pas son indice.
+function estCorrecte(question: NavigKidQuestion, reponse: string): boolean {
+  const index = question.options!.findIndex((opt) => opt === reponse);
+  return index !== -1 && question.correctes!.includes(index);
+}
+
+function bonnesReponses(question: NavigKidQuestion): string[] {
+  return question.correctes!.map((i) => question.options![i]).filter(Boolean);
+}
+
 function formatTemps(ms: number): string {
   const sec = Math.round(ms / 1000);
   if (sec < 60) return `${sec}s`;
@@ -170,9 +191,41 @@ export default function RechercheResponseViewer({
               <div className={styles.sectionLabel}>✍️ Ta réponse</div>
               {qData?.reponse ? (
                 question.type === 'qcm' ? (
-                  <div className={styles.qcmReponse}>{qData.reponse}</div>
+                  (() => {
+                    // `correctes` n'est présent que si le serveur l'a envoyé, donc
+                    // uniquement quand le prof a rendu le corrigé disponible.
+                    const corrige = autoCorrigeable(question);
+                    const juste = corrige && estCorrecte(question, qData.reponse);
+                    return (
+                      <>
+                        <div
+                          className={`${styles.qcmReponse} ${
+                            corrige ? (juste ? styles.qcmCorrect : styles.qcmIncorrect) : ''
+                          }`}
+                        >
+                          {corrige && (
+                            <span className={styles.corrigeMarque}>{juste ? '✅' : '❌'}</span>
+                          )}
+                          {qData.reponse}
+                        </div>
+                        {corrige && !juste && (
+                          <div className={styles.bonneReponse}>
+                            Bonne réponse : {bonnesReponses(question).join(' · ')}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()
                 ) : (
-                  <div className={styles.reponseText}>{qData.reponse}</div>
+                  <>
+                    <div className={styles.reponseText}>{qData.reponse}</div>
+                    {studentView && (
+                      <div className={styles.attenteProf}>
+                        Cette réponse est lue et corrigée par ton professeur : elle n&apos;est
+                        pas corrigée automatiquement.
+                      </div>
+                    )}
+                  </>
                 )
               ) : (
                 <div className={`${styles.reponseText} ${styles.reponseEmpty}`}>

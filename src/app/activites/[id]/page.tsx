@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useStudentClasses } from '@/hooks/useStudentClasses';
@@ -19,6 +19,7 @@ import type { DraftContent } from '@/types/travail';
 import type { AiSuggestionType } from '@/types/ai-suggestions';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
 import RechercheResponseViewer from '@/components/RechercheResponseViewer/RechercheResponseViewer';
+import RechercheStartOverlay from '@/components/RechercheStartOverlay/RechercheStartOverlay';
 import VocabulaireActivity from '@/components/VocabulaireActivity/VocabulaireActivity';
 import LectureQuizActivity from '@/components/LectureQuizActivity/LectureQuizActivity';
 import { parseLectureAnswers } from '@/types/lecture';
@@ -238,29 +239,58 @@ export default function TravailPage() {
   }, [isAuthenticated, isPreviewMode, travail?.id, getAuthHeaders]);
 
   // Fetch réponse NavigKid de l'élève
-  useEffect(() => {
-    async function fetchNkReponse() {
-      if (!devoir?.questionnaireId || !travail?.studentId) return;
-      try {
-        const headers = await getAuthHeaders();
-        if (!headers) return;
-        const rRes = await fetch(
-          `/api/navigkid/reponse?questionnaireId=${devoir.questionnaireId}&eleveId=${travail.studentId}`,
-          { headers }
-        );
-        const rJson = await rRes.json();
-        if (rJson.success && rJson.data) {
-          setNkReponse(rJson.data);
-        }
-      } catch (err) {
-        console.error('Erreur fetch navigkid reponse:', err);
+  const questionnaireId = devoir?.questionnaireId;
+  const studentId = travail?.studentId;
+  const fetchNkReponse = useCallback(async () => {
+    if (!questionnaireId || !studentId) return;
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      const rRes = await fetch(
+        `/api/navigkid/reponse?questionnaireId=${questionnaireId}&eleveId=${studentId}`,
+        { headers }
+      );
+      const rJson = await rRes.json();
+      if (rJson.success && rJson.data) {
+        setNkReponse(rJson.data);
       }
+    } catch (err) {
+      console.error('Erreur fetch navigkid reponse:', err);
     }
+  }, [questionnaireId, studentId, getAuthHeaders]);
 
-    if (isAuthenticated && devoir?.typeTravail === 'rechercher' && travail?.studentId) {
+  useEffect(() => {
+    if (isAuthenticated && devoir?.typeTravail === 'rechercher' && studentId) {
       fetchNkReponse();
     }
-  }, [isAuthenticated, devoir?.typeTravail, devoir?.questionnaireId, travail?.studentId, getAuthHeaders]);
+  }, [isAuthenticated, devoir?.typeTravail, studentId, fetchNkReponse]);
+
+  // L'élève répond dans un autre onglet (extension NavigKid!) : au retour sur
+  // cette page, on recharge la réponse pour lever le voile sans rechargement manuel.
+  useEffect(() => {
+    if (!isAuthenticated || devoir?.typeTravail !== 'rechercher' || !studentId) return;
+    if (nkReponse) return;
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') fetchNkReponse();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [isAuthenticated, devoir?.typeTravail, studentId, nkReponse, fetchNkReponse]);
+
+  // Dès que les réponses sont envoyées, l'onglet Évaluation s'ouvre sur le
+  // récapitulatif (bonnes réponses / erreurs / à corriger par le prof) — une seule fois.
+  const evalOuvertRef = useRef(false);
+  useEffect(() => {
+    if (evalOuvertRef.current) return;
+    if (devoir?.typeTravail !== 'rechercher' || !nkReponse?.resume) return;
+    evalOuvertRef.current = true;
+    setActiveTab('grille');
+    setPanelOpen(true);
+  }, [devoir?.typeTravail, nkReponse]);
 
   const handleContentChange = useCallback((content: string) => {
     if (!isPreviewMode) {
@@ -424,6 +454,8 @@ export default function TravailPage() {
   const isSubmitted = travail?.status === 'submitted';
   const isDisabled = isPreviewMode || isSubmitted;
   const isRecherche = devoir?.typeTravail === 'rechercher';
+  // Réponses envoyées depuis l'extension : le voile se lève, le corrigé peut s'afficher
+  const hasRechercheReponse = !!nkReponse?.questions?.length;
   const isVocabulaire = devoir?.typeTravail === 'vocabulaire';
   // Type lire avec questionnaire : la colonne de gauche devient le questionnaire
   const isLectureQuiz = devoir?.typeTravail === 'lire' && !!devoir?.lectureQuiz;
@@ -499,7 +531,15 @@ export default function TravailPage() {
 
       <WorkTopBar
         title={devoir.intitule}
-        status={isPreviewMode ? 'draft' : (travail?.status || 'draft')}
+        // Recherche : c'est l'envoi depuis l'extension qui fait foi — le hook travail
+        // n'est pas rechargé quand l'élève revient de l'onglet de recherche
+        status={
+          isPreviewMode
+            ? 'draft'
+            : hasRechercheReponse
+              ? 'submitted'
+              : (travail?.status || 'draft')
+        }
         isSaving={isSaving}
         lastSaved={lastSaved}
         onSubmit={handleSubmitClick}
@@ -510,6 +550,8 @@ export default function TravailPage() {
           correction?.visibleParEleve === true ||
           !!travail?.nonRendu
         )}
+        // Recherche : la remise se fait en envoyant les réponses depuis NavigKid!
+        hideSubmit={isRecherche}
       />
 
       <main className={styles.main}>
@@ -554,11 +596,21 @@ export default function TravailPage() {
             <div className={styles.editorHeader}>
               <h2>Questionnaire de recherche</h2>
             </div>
-            <RechercheResponseViewer
-              questions={nkQuestions}
-              reponse={nkReponse}
-              studentView={!isPreviewMode}
-            />
+            {/* Le questionnaire reste derrière un voile tant que l'élève n'a pas
+                envoyé ses réponses depuis l'extension NavigKid! */}
+            <div className={styles.rechercheBody}>
+              <RechercheResponseViewer
+                questions={nkQuestions}
+                reponse={nkReponse}
+                studentView={!isPreviewMode}
+              />
+              {!hasRechercheReponse && devoir.questionnaireId && (
+                <RechercheStartOverlay
+                  questionnaireId={devoir.questionnaireId}
+                  previewMode={isPreviewMode}
+                />
+              )}
+            </div>
           </div>
         ) : isLectureQuiz ? (
           <div className={styles.editorSection}>

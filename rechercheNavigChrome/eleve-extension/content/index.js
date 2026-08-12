@@ -171,7 +171,64 @@
       highlighterActif = msg.actif;
       if (!msg.actif) supprimerPopup();
     }
+    if (msg.type === "NAVIGKID_BANDEAU") {
+      afficherBandeauOuverture();
+    }
   });
+
+  // ─── Pont avec l'app Recto-versIA ───
+  // La page de l'activité poste un message quand l'élève clique sur
+  // « Commencer ma recherche » ; on le relaie au service worker, qui ouvre le
+  // panneau latéral et la page de recherche, puis on renvoie le résultat à la page.
+  window.addEventListener("message", (event) => {
+    if (event.source !== window) return;
+    const data = event.data;
+    if (!data || data.source !== "rectoversia-navigkid") return;
+    if (data.type !== "DEMARRER_RECHERCHE") return;
+
+    envoyerAvecReponse(
+      { type: "OUVRIR_RECHERCHE", questionnaireId: data.questionnaireId },
+      (reponse) => {
+        window.postMessage(
+          {
+            source: "navigkid-extension",
+            type: "DEMARRAGE_RESULTAT",
+            panneauOuvert: !!(reponse && reponse.panneauOuvert),
+          },
+          window.location.origin
+        );
+      }
+    );
+  });
+
+  // ─── Bandeau de repli : Chrome a refusé d'ouvrir le panneau tout seul ───
+  function afficherBandeauOuverture() {
+    if (document.getElementById("rnc-bandeau-ouverture")) return;
+
+    const bandeau = document.createElement("div");
+    bandeau.id = "rnc-bandeau-ouverture";
+    bandeau.className = "rnc-bandeau";
+
+    const texte = document.createElement("span");
+    texte.className = "rnc-bandeau-texte";
+    texte.textContent =
+      "Ta recherche est prête. Clique sur l'icône NavigKid! (en haut à droite du navigateur), puis sur « Ouvrir le questionnaire ».";
+
+    const fermer = document.createElement("button");
+    fermer.className = "rnc-bandeau-fermer";
+    fermer.textContent = "✕";
+    fermer.title = "Fermer";
+    fermer.addEventListener("click", () => bandeau.remove());
+
+    const icone = document.createElement("span");
+    icone.className = "rnc-bandeau-icone";
+    icone.textContent = "🔍";
+
+    bandeau.appendChild(icone);
+    bandeau.appendChild(texte);
+    bandeau.appendChild(fermer);
+    document.documentElement.appendChild(bandeau);
+  }
 
   document.addEventListener("mouseup", (e) => {
     if (!highlighterActif) return;

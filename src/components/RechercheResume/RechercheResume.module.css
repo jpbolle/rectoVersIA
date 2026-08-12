@@ -1,0 +1,78 @@
+/* Récapitulatif de l'envoi affiché en tête de l'onglet Évaluation
+   (activités de recherche). Les chiffres viennent du serveur. */
+
+.container {
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  background: var(--c-bg-card, #fff);
+  border: 1px solid rgba(45, 106, 90, 0.18);
+  border-radius: var(--c-radius-lg, 12px);
+}
+
+.title {
+  margin: 0 0 4px;
+  font-family: var(--c-font-title, 'Playfair Display', serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-primary, #2d6a5a);
+}
+
+.date {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--c-text-muted, #7a736a);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.stat {
+  padding: 12px 8px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.statValue {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.statLabel {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.correctes {
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--c-primary, #2d6a5a);
+}
+
+.erreurs {
+  background: rgba(197, 87, 100, 0.12);
+  color: #9c3b47;
+}
+
+.attente {
+  background: rgba(212, 148, 76, 0.14);
+  color: #8a5a20;
+}
+
+.note {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--c-text-muted, #7a736a);
+}
+
+@media (max-width: 600px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}

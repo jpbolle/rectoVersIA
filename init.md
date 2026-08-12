@@ -317,7 +317,7 @@ interface Questionnaire {
 | `/api/ai/writing-help`, `/api/ai/grid-eval` | POST / GET+POST | Aide rédaction + évaluation IA grille |
 | `/api/dictionary` | GET | Dictionnaire élève : définition/synonymes/antonymes (Wiktionnaire, suivi de flexion) + proxémie (Claude) ; cache Firestore `dictionaryCache` ; enregistre les définitions demandées par un élève dans `vocabulairePersonnel/{uid}` |
 | `/api/vocabulaire/personnel` | GET, POST | Vocabulaire personnel élève (mots cliqués) — POST utilisé par NavigKid ; GET prof avec `?studentId=` |
-| `/api/navigkid/*` | — | Questionnaires, réponses, activités élève, aide IA recherche |
+| `/api/navigkid/*` | — | Questionnaires, réponses, activités élève, aide IA recherche. `questionnaire` GET **filtre les éléments de correction** pour un élève (`src/lib/navigkid-server.ts`) ; `reponse` POST **bascule le travail en `submitted`** (l'envoi depuis l'extension EST la remise) et GET renvoie un `resume` calculé serveur |
 | `/api/vocabulaire/*` | — | Thèmes, mots, génération/validation exercices IA, suggestions |
 
 ### Composants clés
@@ -330,7 +330,14 @@ interface Questionnaire {
   difficiles/flashcards), `VocabulaireList`, `VocabulaireExercises`,
   `VocabulaireEvaluation` (mots croisés + syn/ant + composition), `VocabulaireStats`,
   `VocabulaireListReadOnly` (vue prof)
-- NavigKid : `QuestionnaireBuilder`, `RechercheResponseViewer`, `RechercheStatsTab`
+- NavigKid : `QuestionnaireBuilder`, `RechercheResponseViewer` (✅/❌ + bonne réponse
+  sur les QCM quand le corrigé est disponible), `RechercheStatsTab`,
+  `RechercheStartOverlay` (voile flouté + popup **non fermable** sur la colonne 1 tant
+  que l'élève n'a pas envoyé ses réponses ; le bouton ouvre Google + le panneau de
+  l'extension), `RechercheResume` (compteurs justes/erreurs/à corriger, en tête de
+  l'onglet Évaluation qui s'ouvre seul à la première réponse détectée).
+  Type `rechercher` : **pas de bouton « Remettre le devoir »** — la remise, c'est
+  l'envoi depuis l'extension
 - Questionnaire de lecture (type lire) : `LectureQuizBuilder` (prof — blocs en
   accordéon drag & drop : QCM / texte court / texte long / **Souligner du texte**
   (extrait ou ressource, soulignage attendu `fluoAttendu`) / bloc informatif (éditeur
@@ -417,6 +424,29 @@ Le parseur CSS de Turbopack rejette `::highlight(...)` (API CSS Custom Highlight
 les fichiers CSS → **build cassé**. **Remède** : injecter la règle en JavaScript
 (`document.createElement('style')`) — voir `DictionaryClickLayer.tsx`.
 
+### Extension NavigKid : un identifiant par machine (connexion Google cassée)
+L'extension chargée « non empaquetée » n'a pas d'identifiant fixe : Chrome le calcule
+depuis le **chemin du dossier**. Or `chrome.identity.getRedirectURL()` construit
+l'adresse de retour OAuth à partir de cet identifiant.
+**Symptôme** : `Erreur 400 : redirect_uri_mismatch` à la connexion Google dans le
+panneau, sur un poste où ça marchait avant (typiquement l'autre Mac).
+**Remède immédiat** : relever l'ID dans `chrome://extensions` et ajouter
+`https://<ID>.chromiumapp.org/` aux « URI de redirection autorisés » du client OAuth
+`380560298164-d78g8d3e…` — console Google Cloud, **projet `recto-versia`** (attention,
+le sélecteur de projet retombe facilement sur `essai-27712`).
+**Remède durable, non fait** : champ `key` dans le manifeste (à arbitrer avec la
+publication Chrome Web Store, qui attribue son propre identifiant).
+
+### Extension NavigKid : `sidePanel.open()` et le geste utilisateur
+Chrome n'autorise `chrome.sidePanel.open()` que pendant un geste utilisateur. Le
+service worker le reçoit par relais depuis le script de contenu — mais **tout `await`
+placé avant l'appel fait perdre le geste**. Dans `background/index.js`, l'ouverture est
+donc la première instruction ; l'écriture dans le storage vient après.
+
+### API_BASE de l'extension pointe la production
+`sidebar/app.js` contient l'URL de production en dur. Pour tester en local il faut la
+basculer sur `http://localhost:3003` **et penser à la remettre avant tout commit**.
+
 ### Cache Turbopack corrompu
 **Symptôme** : comportement bizarre en dev, fichiers `.sst` manquants, erreurs 500
 inexpliquées. **Remède** : supprimer `.next/` et relancer `npm run dev`
@@ -470,6 +500,10 @@ prof.
   ignoré par git). NavigKid : l'extension n'accède plus à Firestore — `reponses` et
   `recherches` passent par `/api/navigkid/reponse` (POST) et `/api/navigkid/recherches`
   (POST), qui chiffrent `eleveNom`/`eleveEmail`.
+- `src/lib/navigkid-server.ts` — filtrage des éléments de correction NavigKid
+  (`correctes`, `reponseAttendue`, `referencesProf`) pour le rôle élève + calcul du
+  récapitulatif. **Serveur uniquement** — pendant de `lecture-server.ts`. Rappel :
+  l'extension enregistre le **texte** de l'option QCM choisie, pas son indice.
 - `src/context/AuthContext.tsx` — Provider auth, `getAuthHeaders` centralisé
 - `src/lib/api-auth.ts` — `verifyAuth()` côté serveur
 - `src/lib/auth-utils.ts` — `getUserRole()`, `isAdmin()`

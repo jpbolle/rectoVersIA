@@ -8,6 +8,7 @@ import GrilleTab from '@/components/GrilleTab';
 import RemarquesTab from '@/components/RemarquesTab';
 import AiTab, { type AiTabUiState } from '@/components/AiTab/AiTab';
 import RechercheStatsTab from '@/components/RechercheStatsTab/RechercheStatsTab';
+import RechercheResume from '@/components/RechercheResume/RechercheResume';
 import VocabulaireStats from '@/components/VocabulaireStats/VocabulaireStats';
 import type { VocabulaireActivityState } from '@/types/vocabulaire';
 import type { Devoir } from '@/types/devoir';
@@ -254,6 +255,14 @@ export default function AssistancePanel({
             themes={devoir.vocabulaireThemes}
             onSelectEvalAttempt={onSelectVocabEvalAttempt}
             selectedEvalIndex={selectedVocabEvalIndex}
+          />
+        )}
+        {/* Recherche : récapitulatif de l'envoi en tête de l'onglet Évaluation */}
+        {currentTab === 'grille' && !isProfessorView && navigkidReponse?.resume && (
+          <RechercheResume
+            resume={navigkidReponse.resume}
+            soumisLe={navigkidReponse.soumisLe}
+            corrigeDisponible={devoir.corrigeDisponible === true}
           />
         )}
         {currentTab === 'grille' && devoir.typeTravail !== 'vocabulaire' && (

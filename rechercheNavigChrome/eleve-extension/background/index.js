@@ -28,8 +28,61 @@ function diffuserEtatHighlighter(actif) {
   });
 }
 
+// ─── Démarrage d'une recherche depuis l'app Recto-versIA ───
+// L'élève clique sur « Commencer ma recherche » dans la page de l'activité ; le
+// script de contenu relaie le clic ici. Chrome n'autorise `sidePanel.open()` que
+// pendant un geste utilisateur : on l'appelle donc EN PREMIER, sans rien attendre
+// avant. Si Chrome refuse malgré tout, on ouvre quand même la page de recherche et
+// un bandeau y invite l'élève à cliquer sur l'icône de l'extension.
+
+const URL_RECHERCHE = "https://www.google.com/";
+
+function programmerBandeau(tabId) {
+  const surMiseAJour = (id, info) => {
+    if (id !== tabId || info.status !== "complete") return;
+    chrome.tabs.onUpdated.removeListener(surMiseAJour);
+    chrome.tabs.sendMessage(tabId, { type: "NAVIGKID_BANDEAU" }).catch(() => {});
+  };
+  chrome.tabs.onUpdated.addListener(surMiseAJour);
+}
+
+function demarrerRecherche(msg, sender, sendResponse) {
+  const cible =
+    sender.tab?.windowId !== undefined
+      ? { windowId: sender.tab.windowId }
+      : { tabId: sender.tab?.id };
+
+  let ouverture;
+  try {
+    ouverture = chrome.sidePanel.open(cible);
+  } catch (e) {
+    ouverture = Promise.reject(e);
+  }
+
+  ouverture.then(
+    () => true,
+    () => false
+  ).then(async (panneauOuvert) => {
+    // Mémoriser l'activité à ouvrir : la sidebar la chargera directement
+    await chrome.storage.local.set({
+      navigkidActiviteADemarrer: msg.questionnaireId || "",
+    });
+    let tab = null;
+    try {
+      tab = await chrome.tabs.create({ url: URL_RECHERCHE, active: true });
+    } catch (e) { /* onglet non créé : l'élève ouvrira Google lui-même */ }
+    if (!panneauOuvert && tab?.id) programmerBandeau(tab.id);
+    sendResponse({ ok: true, panneauOuvert });
+  });
+}
+
 // Répondre aux content scripts qui demandent l'état au chargement
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === "OUVRIR_RECHERCHE") {
+    demarrerRecherche(msg, sender, sendResponse);
+    return true; // réponse asynchrone
+  }
+
   if (msg.type === "GET_HIGHLIGHTER_ETAT") {
     chrome.storage.session.get("sidebarOuverte", (result) => {
       sendResponse({ actif: result.sidebarOuverte === true });

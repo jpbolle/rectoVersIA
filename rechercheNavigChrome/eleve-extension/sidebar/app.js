@@ -3,8 +3,8 @@
 // ─── Configuration ───
 const OAUTH_CLIENT_ID = "380560298164-d78g8d3evlmj3g8q5sdu1d1cpchc4oii.apps.googleusercontent.com";
 const API_BASE = "https://rectoversia.edukids.pedagokit.be";
-// En dev, décommenter la ligne suivante :
-// const API_BASE = "http://localhost:3000";
+// En dev, décommenter la ligne suivante (npm run dev écoute sur le port 3003) :
+// const API_BASE = "http://localhost:3003";
 
 // ─── Appel API authentifié (toutes les données passent par le serveur — RGPD) ───
 async function apiFetch(path, options = {}) {
@@ -266,6 +266,9 @@ async function chargerActivites() {
     actives.forEach((a) => afficherCarteActivite(a, "#liste-activites-actif"));
     archives.forEach((a) => afficherCarteActivite(a, "#liste-activites-archive"));
 
+    // L'élève a lancé la recherche depuis l'app : ouvrir directement son activité
+    ouvrirActiviteDemandee();
+
     if (archives.length === 0) {
       $("#liste-activites-archive").innerHTML = '<p class="aide-description" style="text-align:center;padding:20px 0;">Aucune activité corrigée.</p>';
     }
@@ -276,6 +279,34 @@ async function chargerActivites() {
     $("#erreur-activites").hidden = false;
   }
 }
+
+// ─── Ouverture directe demandée par l'app Recto-versIA ───
+// Le bouton « Commencer ma recherche » de la page activité dépose l'identifiant du
+// questionnaire dans le storage ; on l'ouvre dès que la liste est chargée.
+async function ouvrirActiviteDemandee() {
+  try {
+    const { navigkidActiviteADemarrer } = await chrome.storage.local.get(
+      "navigkidActiviteADemarrer"
+    );
+    if (!navigkidActiviteADemarrer) return;
+    await chrome.storage.local.remove("navigkidActiviteADemarrer");
+    const activite = state.activites.find(
+      (a) => a.questionnaireId === navigkidActiviteADemarrer
+    );
+    if (activite) ouvrirActivite(activite);
+  } catch (e) {
+    // Sans le raccourci, l'élève choisit son activité dans la liste
+  }
+}
+
+// Le panneau peut s'ouvrir avant que l'identifiant soit déposé (course entre
+// l'ouverture du panneau et l'écriture dans le storage) : on réessaie au changement.
+chrome.storage.onChanged.addListener((changements, zone) => {
+  if (zone !== "local" || !changements.navigkidActiviteADemarrer) return;
+  if (!changements.navigkidActiviteADemarrer.newValue) return;
+  if (state.activites.length === 0) return;
+  ouvrirActiviteDemandee();
+});
 
 function afficherCarteActivite(activite, containerSel) {
   const container = $(containerSel);

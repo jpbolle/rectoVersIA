@@ -16,3 +16,4 @@
 - [rollup_classes](rollup_classes.md) — bloc Mes Élèves + fiche élève en popup ; renommage propagé aux devoirs + archive ZIP avant suppression (2026-08-12) — TODO : test + déploiement
 - [rollup_remise](rollup_remise.md) — travaux non rendus (justifié / non justifié — 0), corrigé masqué, remise clôturée, archive de classe — testé élève 007 le 2026-08-12, TODO : déploiement
 - [rollup_notifications](rollup_notifications.md) — cloche header 3 rôles, calcul à la lecture, horodatages posés au basculement — livré 2026-08-12, TODO : test + contenu section admin
+- [rollup_recherche](rollup_recherche.md) — activités NavigKid : voile + popup de lancement, remise par l'extension, corrigé QCM, **fuite des bonnes réponses corrigée** (2026-08-12) — TODO : boucle d'envoi à tester, `key` du manifeste, republier l'extension

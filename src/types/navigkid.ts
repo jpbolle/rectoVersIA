@@ -61,6 +61,15 @@ export interface NavigKidQuestionData {
   passages?: NavigKidPassage[];
 }
 
+// Récapitulatif calculé par le serveur (voir src/lib/navigkid-server.ts) : il évite
+// d'envoyer les bonnes réponses au navigateur pour afficher un score.
+export interface NavigKidResume {
+  total: number;
+  correctes: number;
+  erreurs: number;
+  aCorrigerParProf: number;
+}
+
 // Document Firestore : questionnaires/{id}/reponses/{eleveId}
 export interface NavigKidReponse {
   id: string;
@@ -68,6 +77,7 @@ export interface NavigKidReponse {
   eleveEmail?: string;
   questions?: NavigKidQuestionData[];
   soumisLe: string;
+  resume?: NavigKidResume;
 }
 
 // ─── Tracking recherches ───

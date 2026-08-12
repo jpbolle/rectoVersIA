@@ -136,6 +136,40 @@
   border-left: 3px solid var(--c-accent);
 }
 
+/* ─── Corrigé (visible seulement quand le prof l'a rendu disponible) ─── */
+
+.qcmCorrect {
+  background: rgba(45, 106, 90, 0.1);
+  border-left-color: var(--c-primary);
+}
+
+.qcmIncorrect {
+  background: rgba(197, 87, 100, 0.1);
+  border-left-color: #c55764;
+}
+
+.corrigeMarque {
+  margin-right: 8px;
+}
+
+.bonneReponse {
+  margin-top: 8px;
+  padding: 8px 14px;
+  background: rgba(45, 106, 90, 0.08);
+  border-left: 3px solid var(--c-primary);
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  color: var(--c-primary);
+}
+
+.attenteProf {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--c-text-dim);
+  font-style: italic;
+}
+
 /* ─── Sources collectées ─── */
 
 .sourcesSection {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { sanitizeQuestionsForStudent } from '@/lib/navigkid-server';
+import type { NavigKidQuestion } from '@/types/navigkid';
 
 export async function PATCH(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -59,6 +61,19 @@ export async function GET(request: NextRequest) {
     }
 
     const data = doc.data()!;
+    let questions: NavigKidQuestion[] = data.questions || [];
+
+    // Élève : jamais les éléments de correction. Les bonnes réponses QCM ne
+    // partent que si le prof a rendu le corrigé disponible sur l'activité.
+    if (auth.role === 'eleve') {
+      let corrigeDisponible = false;
+      if (data.devoirId) {
+        const devoirSnap = await adminDb.collection('devoirs').doc(data.devoirId).get();
+        corrigeDisponible = devoirSnap.exists && devoirSnap.data()?.corrigeDisponible === true;
+      }
+      questions = sanitizeQuestionsForStudent(questions, corrigeDisponible);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -66,7 +81,7 @@ export async function GET(request: NextRequest) {
         titre: data.titre || '',
         theme: data.theme || '',
         consignes: data.consignes || '',
-        questions: data.questions || [],
+        questions,
         codeAcces: data.codeAcces || '',
         profId: data.profId || '',
         devoirId: data.devoirId || '',
