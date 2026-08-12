@@ -70,9 +70,29 @@ choisie, pas d'indice — toute comparaison passe par `options[i] === reponse`.
 
 ## TODO
 
-- [ ] Terminer le test de la boucle d'envoi (voir ci-dessus)
+### Prochaine session — 2026-08-13 (plan annoncé par JP)
+
+1. [ ] **Terminer les tests** de la boucle d'envoi : envoi des réponses depuis
+       l'extension → voile levé → onglet Évaluation avec les compteurs → corrigé QCM
+       une fois `corrigeDisponible` coché. Plus la vue prof (✅/❌ dans la page de
+       correction).
+2. [ ] **Publier l'extension NavigKid!** sur le Chrome Web Store (diffusion interne
+       `cnddinant.be`) : bump de version du `manifest.json` (numéro géré **à la main**
+       par JP), zip, envoi. Compter quelques heures de validation.
+       ⚠️ **Pendant cette étape, régler le `key`** (voir « Ensuite ») : une fois l'item
+       créé, le Store expose sa clé publique dans le tableau de bord développeur. La
+       recopier dans le `manifest.json` aligne les deux Macs sur l'identifiant publié.
+       Fait après coup, ce travail est à refaire.
+3. [ ] **Retravailler la description** de l'extension sur le Chrome Web Store —
+       `rechercheNavigChrome/chrome-web-store.md` porte le texte actuel (v1.3), qui ne
+       mentionne ni le lancement depuis l'app, ni les aides dictionnaire/traducteur,
+       ni la visionneuse PDF.
+
+### Ensuite
+
 - [ ] **Figer l'identifiant de l'extension** (champ `key` du manifeste) — voir le
-      gotcha dans `init.md`. À arbitrer avec la publication Chrome Web Store, qui
-      attribue son propre identifiant.
-- [ ] Republier l'extension (les 3 fichiers modifiés ne servent à rien tant que les
-      élèves ont l'ancienne version)
+      gotcha dans `init.md`. À trancher **au moment de la publication** : le Store
+      attribue son propre identifiant, dont on peut récupérer la clé publique pour
+      aligner les postes de développement et supprimer définitivement les
+      `redirect_uri_mismatch`.
+- [ ] Noter ici la version publiée sur le Store une fois la diffusion effective.
