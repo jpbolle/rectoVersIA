@@ -1,0 +1,126 @@
+/* Page élève « Mes ressources personnelles » — même gabarit que la page
+   Mes Ressources du prof (/grilles). */
+
+.pageWrapper {
+  min-height: 100vh;
+  background: var(--c-bg);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.ready {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mainContent {
+  flex: 1;
+  margin-top: 180px;
+  padding: 40px 20px 60px;
+  max-width: 1200px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pageTitle {
+  font-family: var(--c-font-title);
+  color: var(--c-primary);
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 24px;
+}
+
+/* ===== Onglets ===== */
+.tabBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--c-border, #e0dcd6);
+  margin-bottom: 24px;
+}
+
+.tabButton {
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--c-font-body);
+  color: var(--c-text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tabButton:hover {
+  color: var(--c-primary);
+}
+
+.tabActive {
+  color: var(--c-primary);
+  border-bottom-color: var(--c-primary);
+}
+
+/* ===== Liste de vocabulaire personnelle ===== */
+.section {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg, 16px);
+  padding: 30px 34px;
+}
+
+.persoNote {
+  background: var(--c-bg-element);
+  border-left: 3px solid var(--c-accent);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--c-text-muted);
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 14px;
+}
+
+.persoItem {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 14px;
+}
+
+.persoItem:last-child {
+  border-bottom: none;
+}
+
+.persoWord {
+  font-weight: 600;
+  color: var(--c-text);
+  min-width: 130px;
+}
+
+.persoDef {
+  color: var(--c-text-muted);
+  flex: 1;
+  font-size: 13px;
+}
+
+.persoDate {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .mainContent {
+    padding: 24px 12px 40px;
+  }
+  .section {
+    padding: 20px 16px;
+  }
+  .persoItem {
+    flex-wrap: wrap;
+  }
+}

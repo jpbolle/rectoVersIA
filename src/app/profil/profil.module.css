@@ -897,3 +897,321 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Onglet Vocabulaire : cartes de statistiques par activité ─────────────── */
+
+.vocActCard {
+  background: var(--c-bg-card, #fff);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+
+.vocActHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.vocActTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.vocActDate {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  flex-shrink: 0;
+}
+
+.vocActStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.vocActStat {
+  background: var(--c-bg-element, #f5f0e8);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.vocActStatValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--c-primary);
+}
+
+.vocActStatLabel {
+  font-size: 11.5px;
+  color: var(--c-text-secondary);
+}
+
+.vocActBar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  background: var(--c-bg-element, #f5f0e8);
+}
+
+.vocActLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-bottom: 12px;
+}
+
+.vocActLegendItem {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vocActDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.vocActScores {
+  border-top: 1px solid var(--c-border);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.vocActScoreRow {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--c-text);
+  flex-wrap: wrap;
+}
+
+.vocActScoreLabel {
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  min-width: 190px;
+}
+
+.vocActNone {
+  color: var(--c-text-muted);
+  font-style: italic;
+}
+
+/* Pastilles de résultat (diagnostics, évaluations) */
+.scoreChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.scoreChip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--c-bg-element, #f5f0e8);
+  border-radius: 8px;
+  padding: 5px 12px;
+  line-height: 1.25;
+}
+
+.scoreChipPct {
+  font-size: 14.5px;
+  font-weight: 700;
+}
+
+.scoreChipSub {
+  font-size: 11px;
+  color: var(--c-text-muted);
+  white-space: nowrap;
+}
+
+/* Barre empilée de la carte Vocabulaire (onglet Général) */
+.domBarStacked {
+  display: flex;
+}
+
+/* ─── Tous les critères : groupes par grille + évolution ───────────────────── */
+
+.grilleGroup {
+  background: var(--c-bg-card, #fff);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
+.grilleGroupTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-primary);
+  padding: 4px 2px 8px;
+  border-bottom: 1px solid var(--c-border);
+  margin-bottom: 4px;
+}
+
+.evoRow {
+  border-bottom: 1px solid var(--c-border);
+}
+
+.evoRow:last-child {
+  border-bottom: none;
+}
+
+.evoMain {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 2px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.evoMain:disabled {
+  cursor: default;
+}
+
+.evoMain:hover:not(:disabled) {
+  background: var(--c-bg-element);
+}
+
+.evoName {
+  flex: 1;
+  font-size: 13.5px;
+  color: var(--c-text);
+  min-width: 0;
+}
+
+.evoMeta {
+  font-size: 11.5px;
+  color: var(--c-text-muted);
+  white-space: nowrap;
+}
+
+.sparkline {
+  flex-shrink: 0;
+  display: block;
+}
+
+.evoScore {
+  font-size: 14.5px;
+  font-weight: 700;
+  min-width: 44px;
+  text-align: right;
+}
+
+.evoChevron {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  width: 14px;
+}
+
+.evoChevronHidden {
+  visibility: hidden;
+}
+
+.evoDetails {
+  padding: 2px 8px 10px 8px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.evoDetailList {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .evoDetails {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.evoDetailRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 12.5px;
+}
+
+.evoDetailName {
+  flex: 1;
+  color: var(--c-text-secondary);
+  min-width: 0;
+}
+
+.evoDetailDate {
+  color: var(--c-text-muted);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.evoDetailScore {
+  font-weight: 700;
+  min-width: 40px;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .evoMeta {
+    display: none;
+  }
+}
+
+
+/* Bloc « travaux non faits sanctionnés » (onglet Général) */
+.sanctionBlock {
+  background: rgba(192, 57, 43, 0.06);
+  border: 1px solid rgba(192, 57, 43, 0.35);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.sanctionTitle {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #c0392b;
+  margin-bottom: 6px;
+}
+
+.sanctionList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+.sanctionItem {
+  font-size: 13px;
+  color: var(--c-text);
+}
+
+.sanctionDate {
+  color: var(--c-text-muted);
+  font-size: 12px;
+}

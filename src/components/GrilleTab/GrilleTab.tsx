@@ -7,6 +7,7 @@ import type { Grille } from '@/types/grille';
 import { LEVEL_LABELS, LEVEL_PERCENTAGES } from '@/types/grille';
 import type { Correction } from '@/types/correction';
 import type { AiGridResult } from '@/types/ai-grid';
+import type { NonRenduStatus } from '@/types/travail';
 import styles from './GrilleTab.module.css';
 
 interface GrilleTabProps {
@@ -27,6 +28,11 @@ interface GrilleTabProps {
   aiGridError?: string | null;
   onRequestAiGrid?: () => void;
   studentContent?: string;
+  // Critères masqués pour CE devoir (choisis à la création de l'activité)
+  hiddenCriteria?: string[];
+  // Travail non rendu (décision du prof) — toggle en vue prof, bandeau en vue élève
+  nonRendu?: NonRenduStatus | null;
+  onNonRenduChange?: (nonRendu: NonRenduStatus | null) => void;
 }
 
 function getInitials(name: string): string {
@@ -60,7 +66,12 @@ export default function GrilleTab({
   aiGridError = null,
   onRequestAiGrid,
   studentContent = '',
+  hiddenCriteria,
+  nonRendu = null,
+  onNonRenduChange,
 }: GrilleTabProps) {
+  // Set des critères masqués pour ce devoir (lookup rapide)
+  const hiddenSet = React.useMemo(() => new Set(hiddenCriteria || []), [hiddenCriteria]);
   const initials = studentName ? getInitials(studentName) : '?';
   const [activePopup, setActivePopup] = useState<string | null>(null);
   const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null);
@@ -114,6 +125,9 @@ export default function GrilleTab({
 
     grille.criteria.forEach((criterion) => {
       const level = evaluation[criterion.id];
+      // Un critère masqué pour ce devoir ne compte pas dans le total — sauf
+      // s'il a été évalué (correction antérieure au masquage)
+      if (hiddenSet.has(criterion.id) && level === undefined) return;
       if (level !== undefined) {
         const percentage = LEVEL_PERCENTAGES[level] ?? 0;
         totalPoints += (criterion.weight * percentage) / 100;
@@ -125,7 +139,7 @@ export default function GrilleTab({
     const pct = Math.round((totalPoints / maxPoints) * 100);
     const pts = Math.round(totalPoints * 10) / 10;
     return { pct, pts, max: maxPoints };
-  }, [grille]);
+  }, [grille, hiddenSet]);
 
   const studentScoreData = React.useMemo(() => computeScore(selfEvaluation), [computeScore, selfEvaluation]);
   const profScoreData = React.useMemo(() => computeScore(correction?.evaluation || null), [computeScore, correction?.evaluation]);
@@ -141,9 +155,20 @@ export default function GrilleTab({
   }, [aiGridResult]);
   const aiScoreData = React.useMemo(() => computeScore(aiEvaluation), [computeScore, aiEvaluation]);
 
-  // Vérifier si l'élève a rempli ≥75% de la grille
+  // Critères visibles : les non-masqués + les masqués déjà évalués (historique)
+  const visibleCriteria = React.useMemo(() => {
+    if (!grille) return [];
+    return grille.criteria.filter((c) =>
+      !hiddenSet.has(c.id) ||
+      selfEvaluation?.[c.id] !== undefined ||
+      correction?.evaluation?.[c.id] !== undefined ||
+      aiEvaluation?.[c.id] !== undefined
+    );
+  }, [grille, hiddenSet, selfEvaluation, correction?.evaluation, aiEvaluation]);
+
+  // Vérifier si l'élève a rempli ≥75% de la grille (critères non masqués)
   const selfEvalCount = selfEvaluation ? Object.keys(selfEvaluation).length : 0;
-  const totalCriteria = grille?.criteria.length ?? 0;
+  const totalCriteria = grille?.criteria.filter((c) => !hiddenSet.has(c.id)).length ?? 0;
   const selfEvalPct = totalCriteria > 0 ? selfEvalCount / totalCriteria : 0;
   const hasEnoughSelfEval = selfEvalPct >= 0.75;
   const hasContent = studentContent.replace(/<[^>]*>/g, '').trim().length > 0;
@@ -274,8 +299,53 @@ export default function GrilleTab({
         </div>
       )}
 
+      {/* Travail non rendu — décision du prof (jamais automatique) */}
+      {isProfessorView && onNonRenduChange && (
+        <div className={styles.excuseBlock}>
+          <label className={styles.excuseToggle}>
+            <input
+              type="checkbox"
+              checked={nonRendu !== null}
+              onChange={(e) => onNonRenduChange(e.target.checked ? 'justifie' : null)}
+            />
+            Travail non rendu
+          </label>
+          {nonRendu !== null && (
+            <div className={styles.excuseMotifs}>
+              <label className={styles.excuseMotif}>
+                <input
+                  type="radio"
+                  name="non-rendu-motif"
+                  checked={nonRendu === 'justifie'}
+                  onChange={() => onNonRenduChange('justifie')}
+                />
+                Justifié — pas de note
+              </label>
+              <label className={styles.excuseMotif}>
+                <input
+                  type="radio"
+                  name="non-rendu-motif"
+                  checked={nonRendu === 'nonJustifie'}
+                  onChange={() => onNonRenduChange('nonJustifie')}
+                />
+                Non justifié — note : 0
+              </label>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Bandeau élève : travail marqué non rendu par le prof */}
+      {!isProfessorView && nonRendu !== null && (
+        <div className={nonRendu === 'nonJustifie' ? styles.nonRenduBannerSanction : styles.nonRenduBannerInfo}>
+          {nonRendu === 'nonJustifie'
+            ? 'Travail non fait, non justifié — note : 0 %'
+            : 'Travail non rendu — justifié, pas de note pour cette activité.'}
+        </div>
+      )}
+
       <div className={styles.criteria}>
-        {grille.criteria.map((criterion) => (
+        {visibleCriteria.map((criterion) => (
           <div key={criterion.id} className={styles.criterion}>
             <div className={styles.criterionHeader}>
               <span className={styles.criterionName}>{criterion.name}</span>

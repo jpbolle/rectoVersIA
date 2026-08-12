@@ -288,6 +288,7 @@ export interface VocabulaireActivityState {
 
   // Stats
   activityOpened: number;                  // nb de fois que l'activite est ouverte
+  timeSpentSeconds?: number;               // temps actif cumule (onglet visible), en secondes
 
   // Production validation
   productionValidation?: ProductionValidation;

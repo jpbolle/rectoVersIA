@@ -115,6 +115,32 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     await adminDb.collection('classes').doc(id).update(updates);
 
+    // Les devoirs référencent les classes par NOM : un renommage doit se
+    // propager, sinon les devoirs existants deviennent invisibles pour les
+    // élèves (incident forcoGosselies → forcoBraine, 2026-08-12).
+    const newNom = updates.nom as string | undefined;
+    if (newNom && newNom !== data.nom) {
+      // Requête par profId seul (index simple), filtre du nom en code — pas
+      // d'index composite requis
+      const devoirsSnap = await adminDb
+        .collection('devoirs')
+        .where('profId', '==', auth.uid)
+        .get();
+      const toUpdate = devoirsSnap.docs.filter((d) =>
+        Array.isArray(d.data().classes) && d.data().classes.includes(data.nom)
+      );
+      if (toUpdate.length > 0) {
+        const batch = adminDb.batch();
+        for (const devoirDoc of toUpdate) {
+          const classes = (devoirDoc.data().classes as string[]).map((n) =>
+            n === data.nom ? newNom : n
+          );
+          batch.update(devoirDoc.ref, { classes });
+        }
+        await batch.commit();
+      }
+    }
+
     const updatedClasse: Classe = {
       id,
       nom: (updates.nom as string) ?? data.nom,

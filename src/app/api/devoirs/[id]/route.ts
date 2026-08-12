@@ -42,6 +42,19 @@ export async function GET(
       );
     }
 
+    // Corrigé réservé à ceux qui ont rendu : une copie marquée « non rendu »
+    // n'y a pas accès, même si le prof l'a ouvert pour toute la classe
+    let corrigeAccessible = data.corrigeDisponible ?? false;
+    if (auth.role === 'eleve' && corrigeAccessible) {
+      const travailSnap = await adminDb
+        .collection('travaux')
+        .doc(`TRV-${data.id || docSnap.id}-${auth.uid}`)
+        .get();
+      if (travailSnap.exists && travailSnap.data()!.nonRendu) {
+        corrigeAccessible = false;
+      }
+    }
+
     const devoir = {
       id: data.id || docSnap.id,
       classes: data.classes || [],
@@ -54,7 +67,7 @@ export async function GET(
       disponible: data.disponible ?? true,
       archive: data.archive ?? false,
       corrige: data.corrige ?? false,
-      corrigeDisponible: data.corrigeDisponible ?? false,
+      corrigeDisponible: corrigeAccessible,
       createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || '',
       anneeScolaire: data.anneeScolaire || '',
       profId: data.profId || '',
@@ -63,13 +76,14 @@ export async function GET(
       codeAcces: data.codeAcces || null,
       vocabulaireThemes: data.vocabulaireThemes || undefined,
       vocabulaireDiagnostic: data.vocabulaireDiagnostic ?? undefined,
+      hiddenCriteria: data.hiddenCriteria || undefined,
       flipInverted: data.flipInverted ?? false,
       ressourcesToIA: data.ressourcesToIA ?? false,
       // Côté élève : seule la production est exposée, et uniquement quand la
       // correction est disponible (jamais le plan de référence)
       corrigeReference:
         auth.role === 'eleve'
-          ? (data.corrigeDisponible && data.corrigeReference?.production
+          ? (corrigeAccessible && data.corrigeReference?.production
               ? { production: data.corrigeReference.production }
               : null)
           : data.corrigeReference || null,
@@ -77,7 +91,7 @@ export async function GET(
       // que le corrigé n'est pas disponible ; quiz complet ensuite (l'élève
       // voit ce qu'il a réussi ou raté)
       lectureQuiz:
-        auth.role === 'eleve' && !data.corrigeDisponible
+        auth.role === 'eleve' && !corrigeAccessible
           ? lectureQuizForEleve(data.lectureQuiz)
           : data.lectureQuiz || null,
     };
@@ -132,6 +146,10 @@ export async function PATCH(
 
     if (body.disponible !== undefined) {
       updateData.disponible = body.disponible;
+      // Horodatage de l'ouverture aux élèves (notifications)
+      if (body.disponible === true && docSnap.data()?.disponible !== true) {
+        updateData.disponibleAt = new Date();
+      }
     }
     if (body.accesIA !== undefined) {
       updateData.accesIA = body.accesIA;
@@ -157,6 +175,12 @@ export async function PATCH(
     if (body.evaluation !== undefined) {
       updateData.evaluation = body.evaluation === 'certificatif' ? 'certificatif' : 'formatif';
     }
+    if (body.hiddenCriteria !== undefined) {
+      // Critères masqués pour ce devoir — tableau d'ids (vide = tout évaluer)
+      updateData.hiddenCriteria = Array.isArray(body.hiddenCriteria)
+        ? body.hiddenCriteria.filter((c: unknown) => typeof c === 'string')
+        : [];
+    }
     if (body.archive !== undefined) {
       updateData.archive = body.archive;
     }
@@ -165,6 +189,10 @@ export async function PATCH(
     }
     if (body.corrigeDisponible !== undefined) {
       updateData.corrigeDisponible = body.corrigeDisponible;
+      // Horodatage de la mise à disposition du corrigé (notifications élève)
+      if (body.corrigeDisponible === true && docSnap.data()?.corrigeDisponible !== true) {
+        updateData.corrigeDisponibleAt = new Date();
+      }
     }
     if (body.flipInverted !== undefined) {
       updateData.flipInverted = body.flipInverted;

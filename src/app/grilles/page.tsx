@@ -301,7 +301,7 @@ export default function GrillesPage() {
 
               <div className={styles.grillesGrid}>
                 {grillesLoading ? (
-                  <EmptyState icon="hourglass" message="Chargement..." />
+                  <EmptyState icon="hourglass" message="En cours de chargement" />
                 ) : (
                   <>
                     <CreateGrilleCard onClick={handleCreateClick} />
@@ -405,7 +405,7 @@ export default function GrillesPage() {
 
               <div className={styles.grillesGrid}>
                 {vocabThemesLoading ? (
-                  <EmptyState icon="hourglass" message="Chargement..." />
+                  <EmptyState icon="hourglass" message="En cours de chargement" />
                 ) : (
                   <>
                     <CreateVocabCard onClick={handleVocabCreateClick} />

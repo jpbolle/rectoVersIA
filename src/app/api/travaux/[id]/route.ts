@@ -49,6 +49,7 @@ export async function GET(
       ressourceImageShapes: data.ressourceImageShapes || {},
       status: data.status || 'draft',
       selfEvaluation: data.selfEvaluation || null,
+      nonRendu: data.nonRendu || null,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       submittedAt: data.submittedAt || null,
@@ -132,6 +133,12 @@ export async function PATCH(
 
     if (body.draftContent !== undefined) {
       updateData.draftContent = body.draftContent;
+    }
+
+    // Travail non rendu (justifié / non justifié) — décision du prof
+    if (body.nonRendu !== undefined && auth.role === 'prof') {
+      updateData.nonRendu =
+        body.nonRendu === 'justifie' || body.nonRendu === 'nonJustifie' ? body.nonRendu : null;
     }
 
     if (body.status !== undefined) {

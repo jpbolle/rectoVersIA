@@ -6,7 +6,7 @@
 // Masquer retire l'élément des nouveaux formulaires sans toucher aux contenus
 // existants — préférer masquer quand l'élément a déjà servi.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { setDidactiqueCache } from '@/hooks/useDidactique';
 import { DEFAULT_DIDACTIQUE, DIDACTIQUE_CATEGORIES } from '@/types/didactique';
@@ -21,6 +21,7 @@ function generateGesteId(prefix: string): string {
 const GESTE_PREFIX: Partial<Record<keyof DidactiqueConfig, string>> = {
   gestesLecture: 'GL',
   gestesEcriture: 'GE',
+  gestesParole: 'GP',
   gestesRecherche: 'GR',
 };
 
@@ -31,6 +32,9 @@ export default function DidactiquePanel() {
   const [isSaving, setIsSaving] = useState(false);
   // Champs « ajouter » par catégorie
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  // Catégorie dont le + a été cliqué à vide — déclenche le message d'aide
+  const [hintKey, setHintKey] = useState<string | null>(null);
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -102,7 +106,13 @@ export default function DidactiquePanel() {
   const addItem = (key: keyof DidactiqueConfig) => {
     if (!config) return;
     const label = (drafts[key] ?? '').trim();
-    if (!label) return;
+    if (!label) {
+      // Clic à vide : guider vers le champ au lieu de rester muet
+      setHintKey(key);
+      inputRefs.current[key]?.focus();
+      return;
+    }
+    setHintKey(null);
     // UAA : identifiant numérique suivant ; gestes : slug généré
     const id =
       key === 'uaa'
@@ -166,9 +176,15 @@ export default function DidactiquePanel() {
               <div className={styles.addRow}>
                 <input
                   type="text"
-                  className={styles.addInput}
+                  ref={(el) => {
+                    inputRefs.current[key] = el;
+                  }}
+                  className={`${styles.addInput} ${hintKey === key ? styles.addInputHint : ''}`}
                   value={drafts[key] ?? ''}
-                  onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
+                  onChange={(e) => {
+                    if (hintKey === key) setHintKey(null);
+                    setDrafts((d) => ({ ...d, [key]: e.target.value }));
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -181,12 +197,17 @@ export default function DidactiquePanel() {
                   type="button"
                   className={styles.addBtn}
                   onClick={() => addItem(key)}
-                  disabled={!(drafts[key] ?? '').trim() || isSaving}
+                  disabled={isSaving}
                   title="Ajouter"
                 >
                   +
                 </button>
               </div>
+              {hintKey === key && (
+                <p className={styles.addHint}>
+                  Tapez d&apos;abord l&apos;intitulé dans le champ, puis cliquez sur + (ou Entrée).
+                </p>
+              )}
             </div>
           ))}
         </div>

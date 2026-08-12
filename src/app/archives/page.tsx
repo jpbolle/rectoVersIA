@@ -100,9 +100,9 @@ export default function ArchivesPage() {
 
           <div className={styles.archivesGrid}>
             {devoirsLoading ? (
-              <EmptyState icon="hourglass" message="Chargement..." />
+              <EmptyState icon="hourglass" message="En cours de chargement" />
             ) : archivedDevoirs.length === 0 ? (
-              <EmptyState icon="archive" message="Aucun devoir archivé" />
+              <EmptyState icon="🗃️" message="Aucun devoir archivé" />
             ) : (
               archivedDevoirs.map((devoir) => (
                 <DevoirCard

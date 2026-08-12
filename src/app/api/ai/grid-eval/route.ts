@@ -330,8 +330,14 @@ export async function POST(request: NextRequest) {
     ? `\n8. CORRIGÉ DE RÉFÉRENCE : compare la copie${planEleve ? ' et le plan' : ''} de l'élève au corrigé du professeur — idées essentielles retenues ou manquantes, hiérarchie respectée, fidélité au texte-source. Appuie tes justifications sur cette comparaison, sans jamais recopier le corrigé dans tes réponses.`
     : '';
 
-  // Formater la grille et construire le prompt utilisateur
-  const grilleFormatee = formatGrilleForAI(grille.criteria);
+  // Formater la grille et construire le prompt utilisateur — sans les critères
+  // masqués pour ce devoir ; le mapping des résultats plus bas doit utiliser le
+  // même tableau (l'IA répond par index de critère)
+  const hiddenCriteria = new Set<string>(
+    Array.isArray(devoirData.hiddenCriteria) ? devoirData.hiddenCriteria : []
+  );
+  const activeCriteria = grille.criteria.filter((c) => !hiddenCriteria.has(c.id));
+  const grilleFormatee = formatGrilleForAI(activeCriteria);
   const userPrompt = `GRILLE DE CORRECTION :
 
 CRITÈRES À ÉVALUER :
@@ -405,7 +411,7 @@ RAPPEL FORMAT : JSON brut uniquement. Commence par { et termine par }.`;
     // Mapper vers AiGridCriterionResult[]
     const criteriaResults: AiGridCriterionResult[] = [];
 
-    grille.criteria.forEach((criterion, index) => {
+    activeCriteria.forEach((criterion, index) => {
       const correction = parsed.corrections[String(index)];
       if (correction) {
         const level = percentageToLevel(correction.pourcentage);

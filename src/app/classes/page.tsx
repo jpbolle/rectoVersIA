@@ -21,7 +21,7 @@ import type { Classe, Eleve } from '@/types/classe';
 import styles from './classes.module.css';
 
 export default function ClassesPage() {
-  const { isAuthenticated, isLoading: authLoading, role, user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, role, user, getAuthHeaders } = useAuth();
   const router = useRouter();
   const {
     classes,
@@ -123,17 +123,51 @@ export default function ClassesPage() {
     }
   };
 
-  const handleDeleteClasse = async (classe: Classe) => {
-    if (!confirm(`Supprimer la classe "${classe.nom}" et tous ses élèves ?`)) return;
+  // Suppression de classe : modale avec proposition d'archive ZIP
+  // (travaux nommés et évalués + CSV des notes) avant destruction
+  const [deletingClasse, setDeletingClasse] = useState<Classe | null>(null);
+  const [isDownloadingArchive, setIsDownloadingArchive] = useState(false);
+  const [isDeletingClasse, setIsDeletingClasse] = useState(false);
 
+  const handleDeleteClasse = (classe: Classe) => setDeletingClasse(classe);
+
+  const handleDownloadArchive = async () => {
+    if (!deletingClasse) return;
+    setIsDownloadingArchive(true);
     try {
-      await deleteClasse(classe.id);
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      const res = await fetch(`/api/classes/${deletingClasse.id}/archive`, { headers });
+      if (!res.ok) throw new Error('archive');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `archive-${deletingClasse.nom}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setMessage({ text: "Impossible de générer l'archive.", type: 'error' });
+    } finally {
+      setIsDownloadingArchive(false);
+    }
+  };
+
+  const confirmDeleteClasse = async () => {
+    if (!deletingClasse) return;
+    setIsDeletingClasse(true);
+    try {
+      await deleteClasse(deletingClasse.id);
       setMessage({ text: 'Classe supprimée', type: 'success' });
+      if (selectedClasse?.id === deletingClasse.id) setSelectedClasse(null);
+      setDeletingClasse(null);
     } catch (err) {
       setMessage({
         text: err instanceof Error ? err.message : 'Erreur lors de la suppression',
         type: 'error',
       });
+    } finally {
+      setIsDeletingClasse(false);
     }
   };
 
@@ -368,7 +402,7 @@ export default function ClassesPage() {
 
           <div className={styles.classesGrid}>
             {classesLoading ? (
-              <EmptyState icon="hourglass" message="Chargement..." />
+              <EmptyState icon="hourglass" message="En cours de chargement" />
             ) : (
               <>
                 <CreateClasseCard onClick={handleAddClasse} />
@@ -437,6 +471,51 @@ export default function ClassesPage() {
         isSaving={isBulkImporting}
         classeName={classes.find((c) => c.id === selectedClasseId)?.nom}
       />
+
+      {deletingClasse && (
+        <div className={styles.deleteModalOverlay} onClick={() => !isDeletingClasse && setDeletingClasse(null)}>
+          <div className={styles.deleteModalBox} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.deleteModalTitle}>
+              Supprimer la classe « {deletingClasse.nom} » ?
+            </h3>
+            <p className={styles.deleteModalText}>
+              La classe et ses élèves seront supprimés. Les activités liées
+              resteront en base mais deviendront invisibles pour les élèves.
+            </p>
+            <p className={styles.deleteModalText}>
+              <strong>Conseil :</strong> téléchargez d&apos;abord l&apos;archive de la
+              classe — les travaux des élèves (nommés et évalués) et les notes
+              des grilles critériées en CSV.
+            </p>
+            <div className={styles.deleteModalActions}>
+              <button
+                type="button"
+                className={styles.archiveBtn}
+                onClick={handleDownloadArchive}
+                disabled={isDownloadingArchive || isDeletingClasse}
+              >
+                {isDownloadingArchive ? 'Génération...' : '📦 Télécharger l\'archive (ZIP)'}
+              </button>
+              <button
+                type="button"
+                className={styles.deleteBtn}
+                onClick={confirmDeleteClasse}
+                disabled={isDeletingClasse}
+              >
+                {isDeletingClasse ? 'Suppression...' : 'Supprimer la classe'}
+              </button>
+              <button
+                type="button"
+                className={styles.cancelDeleteBtn}
+                onClick={() => setDeletingClasse(null)}
+                disabled={isDeletingClasse}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

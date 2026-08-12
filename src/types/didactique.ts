@@ -22,6 +22,7 @@ export interface DidactiqueConfig {
   uaa: DidactiqueItem[];
   gestesLecture: DidactiqueItem[];
   gestesEcriture: DidactiqueItem[];
+  gestesParole: DidactiqueItem[];
   gestesRecherche: DidactiqueItem[];
 }
 
@@ -29,6 +30,7 @@ export const DIDACTIQUE_CATEGORIES: { key: keyof DidactiqueConfig; title: string
   { key: 'uaa', title: 'UAA de français' },
   { key: 'gestesLecture', title: 'Gestes de lecture' },
   { key: 'gestesEcriture', title: 'Gestes d’écriture' },
+  { key: 'gestesParole', title: 'Gestes de parole' },
   { key: 'gestesRecherche', title: 'Gestes de recherche' },
 ];
 
@@ -43,5 +45,6 @@ export const DEFAULT_DIDACTIQUE: DidactiqueConfig = {
     visible: true,
   })),
   gestesEcriture: [],
+  gestesParole: [],
   gestesRecherche: [],
 };

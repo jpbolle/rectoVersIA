@@ -61,10 +61,17 @@ export interface Travail {
   ressourceImageShapes?: Record<string, DrawShape[]>;
   status: TravailStatus;
   selfEvaluation: Record<string, number> | null;  // {criterionId: level}
+  // Travail non rendu — décision du prof (jamais automatique) :
+  // 'justifie' = absence/maladie acceptée, pas de note ;
+  // 'nonJustifie' = travail non fait sanctionné, cote finale 0 SANS mettre les
+  // critères à zéro (les stats de capacités ne sont pas parasitées).
+  nonRendu?: NonRenduStatus | null;
   createdAt: string;
   updatedAt: string;
   submittedAt: string | null;
 }
+
+export type NonRenduStatus = 'justifie' | 'nonJustifie';
 
 export interface CreateTravailData {
   devoirId: string;
@@ -79,4 +86,5 @@ export interface UpdateTravailData {
   ressourceImageShapes?: Record<string, DrawShape[]>;
   selfEvaluation?: Record<string, number> | null;
   status?: TravailStatus;
+  nonRendu?: NonRenduStatus | null;  // prof uniquement
 }

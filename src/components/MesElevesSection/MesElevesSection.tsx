@@ -104,10 +104,10 @@ export default function MesElevesSection({
       </p>
 
       {isLoading ? (
-        <EmptyState icon="hourglass" message="Chargement..." />
+        <EmptyState icon="hourglass" message="En cours de chargement" />
       ) : filtered.length === 0 ? (
         <EmptyState
-          icon="chart"
+          icon="📊"
           message={
             search.trim()
               ? 'Aucun élève ne correspond à la recherche.'

@@ -115,7 +115,9 @@ export default function TravauxPage() {
 
     for (const t of travaux) {
       const correction = corrections.get(t.id);
-      if (isNotOpened(t)) nonOuverts.push(t);
+      // Copie marquée « non rendu » : plus rien à corriger → colonne Corrigés
+      if (t.nonRendu) corriges.push(t);
+      else if (isNotOpened(t)) nonOuverts.push(t);
       else if (correction && correction.score > 0) corriges.push(t);
       else nonCorriges.push(t);
     }
@@ -133,14 +135,27 @@ export default function TravauxPage() {
   }, [travaux, corrections, isLate, isNotOpened]);
 
   const stats = useMemo(() => {
-    const submittedCount = travaux.filter((t) => t.status === 'submitted').length;
-    const tauxRemise = travaux.length > 0 ? Math.round((submittedCount / travaux.length) * 100) : null;
+    // Copies marquées « non rendu » : les justifiées sortent des statistiques,
+    // les non justifiées comptent comme un 0 (cote finale disciplinaire)
+    const nonRenduIds = new Set(travaux.filter((t) => t.nonRendu).map((t) => t.id));
+    const excusedCount = travaux.filter((t) => t.nonRendu === 'justifie').length;
+    const sanctionedCount = travaux.filter((t) => t.nonRendu === 'nonJustifie').length;
 
-    const correctedOnes = Array.from(corrections.values()).filter((c) => c.score > 0);
-    const successCount = correctedOnes.filter((c) => c.score >= 50).length;
-    const failureCount = correctedOnes.filter((c) => c.score < 50).length;
+    const submittedCount = travaux.filter((t) => t.status === 'submitted' && !t.nonRendu).length;
+    const remiseTotal = travaux.length - excusedCount;
+    const tauxRemise = remiseTotal > 0 ? Math.round((submittedCount / remiseTotal) * 100) : null;
 
-    const sortedScores = correctedOnes.map((c) => c.score).sort((a, b) => a - b);
+    const correctedOnes = Array.from(corrections.entries())
+      .filter(([travailId, c]) => c.score > 0 && !nonRenduIds.has(travailId))
+      .map(([, c]) => c);
+    const allScores = [
+      ...correctedOnes.map((c) => c.score),
+      ...Array(sanctionedCount).fill(0) as number[],
+    ];
+    const successCount = allScores.filter((s) => s >= 50).length;
+    const failureCount = allScores.filter((s) => s < 50).length;
+
+    const sortedScores = [...allScores].sort((a, b) => a - b);
     const n = sortedScores.length;
     const moyenne = n > 0 ? Math.round(sortedScores.reduce((s, v) => s + v, 0) / n) : null;
     const mediane = n === 0 ? null
@@ -148,11 +163,11 @@ export default function TravauxPage() {
         ? Math.round((sortedScores[n / 2 - 1] + sortedScores[n / 2]) / 2)
         : sortedScores[Math.floor(n / 2)];
 
-    // Distribution par tranches
+    // Distribution par tranches (les 0 disciplinaires comptent en « faible »)
     const distribution = {
-      faible: correctedOnes.filter((c) => c.score < 45).length,
-      insuffisant: correctedOnes.filter((c) => c.score >= 45 && c.score < 65).length,
-      reussi: correctedOnes.filter((c) => c.score >= 65).length,
+      faible: allScores.filter((s) => s < 45).length,
+      insuffisant: allScores.filter((s) => s >= 45 && s < 65).length,
+      reussi: allScores.filter((s) => s >= 65).length,
     };
 
     // 3 critères les plus faibles
@@ -279,6 +294,11 @@ export default function TravauxPage() {
               </span>
             )}
             {late && <span className={styles.lateBadge}>En retard</span>}
+            {travail.nonRendu && (
+              <span className={`${styles.statusBadge} ${styles.statusNonRendu}`}>
+                {travail.nonRendu === 'justifie' ? 'Non rendu — justifié' : 'Non fait — 0'}
+              </span>
+            )}
           </div>
           {hasScore && <span className={styles.scoreBubble}>{correction.score}%</span>}
         </div>

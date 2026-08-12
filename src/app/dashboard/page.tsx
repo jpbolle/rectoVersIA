@@ -319,7 +319,7 @@ export default function DashboardPage() {
               <h3 className={styles.subSectionTitle}>📝 Travaux en cours</h3>
               <div className={styles.evaluationsGrid}>
                 {devoirsLoading ? (
-                  <EmptyState icon="hourglass" message="Chargement..." />
+                  <EmptyState icon="hourglass" message="En cours de chargement" />
                 ) : (
                   <>
                     <CreateDevoirCard onClick={() => setIsFormVisible(true)} />
@@ -372,9 +372,9 @@ export default function DashboardPage() {
             /* Onglet Archives */
             <div className={styles.evaluationsGrid}>
               {devoirsLoading ? (
-                <EmptyState icon="hourglass" message="Chargement..." />
+                <EmptyState icon="hourglass" message="En cours de chargement" />
               ) : devoirsArchives.length === 0 ? (
-                <EmptyState icon="archive" message="Aucun devoir archivé" />
+                <EmptyState icon="🗃️" message="Aucun devoir archivé" />
               ) : (
                 devoirsArchives.map((devoir) => (
                   <DevoirCard

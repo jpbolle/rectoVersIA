@@ -64,6 +64,10 @@ export async function PATCH(
 
     if (body.visibleParEleve !== undefined) {
       updateData.visibleParEleve = body.visibleParEleve;
+      // Horodatage de la mise à disposition (notifications élève)
+      if (body.visibleParEleve === true && docSnap.data()?.visibleParEleve !== true) {
+        updateData.visibleAt = new Date().toISOString();
+      }
     }
 
     if (body.annotatedContent !== undefined) {

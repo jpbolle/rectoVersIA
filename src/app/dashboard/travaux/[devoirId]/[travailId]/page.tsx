@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
@@ -14,7 +15,7 @@ import { blobToDataUrl } from '@/lib/firebase/audio-storage';
 import Link from 'next/link';
 import AssistancePanel from '@/components/AssistancePanel';
 import UserAvatar from '@/components/UserAvatar';
-import type { Travail } from '@/types/travail';
+import type { Travail, NonRenduStatus } from '@/types/travail';
 import type { Devoir } from '@/types/devoir';
 import type { DraftType } from '@/types/travail';
 import type { DraftItemAnnotation } from '@/types/correction';
@@ -321,6 +322,24 @@ export default function TravailDetailPage() {
   const handleSelectTravail = (id: string) => {
     router.push(`/dashboard/travaux/${devoirId}/${id}`);
   };
+
+  // Marquer le travail « non rendu » (justifié / non justifié) — toggle de
+  // l'onglet grille d'évaluation
+  const handleNonRenduChange = useCallback(async (nonRendu: NonRenduStatus | null) => {
+    if (!travail) return;
+    setTravail((prev) => (prev ? { ...prev, nonRendu } : prev));
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      await fetch(`/api/travaux/${travail.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ nonRendu }),
+      });
+    } catch (err) {
+      console.error('Erreur enregistrement non rendu:', err);
+    }
+  }, [travail, getAuthHeaders]);
 
   const handleReturnForCorrection = async () => {
     if (!travail) return;
@@ -687,6 +706,8 @@ export default function TravailDetailPage() {
                   studentContent={travail.content}
                   showRemarquesTab={false}
                   isProfessorView={true}
+                  nonRendu={travail.nonRendu ?? null}
+                  onNonRenduChange={handleNonRenduChange}
                   accesIA={!!devoir.accesIA}
                   showAiData={!!devoir.accesIA}
                   aiGridResult={aiGridResult}

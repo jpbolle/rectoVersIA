@@ -21,11 +21,14 @@ export default function ActivitesPage() {
   const [redirecting, setRedirecting] = useState(false);
   // devoirId → visibleParEleve pour les corrections individuelles
   const [correctionVisibility, setCorrectionVisibility] = useState<Record<string, boolean>>({});
+  // devoirId → { status, nonRendu } de son travail (classement corrigés / non rendus)
+  const [travauxStatus, setTravauxStatus] = useState<Record<string, { status: string; nonRendu: string | null }> | null>(null);
 
   // Mode prévisualisation pour les profs
   const isPreviewMode = role === 'prof';
 
-  // Charger la visibilité des corrections individuelles (élève seulement)
+  // Charger la visibilité des corrections individuelles + le statut de remise
+  // de ses travaux (élève seulement)
   useEffect(() => {
     if (role !== 'eleve' || !isAuthenticated) return;
     getAuthHeaders().then((headers) => {
@@ -42,6 +45,10 @@ export default function ActivitesPage() {
           }
         })
         .catch(() => {});
+      fetch('/api/travaux/status', { headers })
+        .then((r) => r.json())
+        .then((json) => setTravauxStatus(json.success ? json.data : {}))
+        .catch(() => setTravauxStatus({}));
     });
   }, [role, isAuthenticated, getAuthHeaders]);
 
@@ -84,15 +91,25 @@ export default function ActivitesPage() {
       <Header variant="student" topOffset={isPreviewMode ? 44 : 0} />
 
       <main className={styles.mainContent}>
-        {devoirsLoading ? (
+        {devoirsLoading || (role === 'eleve' && travauxStatus === null) ? (
           <section className={styles.activitesSection}>
-            <EmptyState icon="hourglass" message="Chargement..." />
+            <EmptyState icon="hourglass" message="En cours de chargement" />
           </section>
         ) : (() => {
           const estCorrige = (d: { id: string; corrigeDisponible: boolean }) =>
             d.corrigeDisponible || correctionVisibility[d.id] === true;
-          const actives = devoirs.filter((d) => !estCorrige(d));
-          const corrigees = devoirs.filter((d) => estCorrige(d));
+          // « Non rendu » = uniquement si le prof l'a coché sur la copie
+          const nonRenduOf = (d: { id: string }) =>
+            role === 'eleve' ? travauxStatus?.[d.id]?.nonRendu ?? null : null;
+          // Un travail marqué « non rendu » par le prof sort de tous les autres
+          // blocs, que l'activité soit corrigée ou non
+          const actives = devoirs.filter((d) => !estCorrige(d) && !nonRenduOf(d));
+          const corrigees = devoirs.filter((d) => estCorrige(d) && !nonRenduOf(d));
+          const nonRendus = devoirs.filter((d) => nonRenduOf(d));
+          const excuseLabel = (d: { id: string }) =>
+            nonRenduOf(d) === 'justifie'
+              ? 'Non rendu — justifié'
+              : 'Non fait — note : 0';
           return (
             <>
               <section className={styles.activitesSection}>
@@ -100,7 +117,7 @@ export default function ActivitesPage() {
                 <div className={styles.activitesGrid}>
                   {actives.length === 0 ? (
                     <EmptyState
-                      icon="clipboard"
+                      icon="📋"
                       message="Aucune activité n'est disponible pour le moment."
                     />
                   ) : (
@@ -125,6 +142,25 @@ export default function ActivitesPage() {
                         devoir={devoir}
                         variant="student"
                       />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {nonRendus.length > 0 && (
+                <section className={`${styles.activitesSection} ${styles.corrigeesSection}`}>
+                  <h3 className={styles.sectionTitle}>Travaux non rendus</h3>
+                  <div className={styles.activitesGrid}>
+                    {nonRendus.map((devoir) => (
+                      <div key={devoir.id} className={styles.nonRenduWrap}>
+                        {/* Pas de badge « corrigé disponible » : le corrigé est
+                            réservé à ceux qui ont rendu le travail */}
+                        <DevoirCard
+                          devoir={{ ...devoir, corrigeDisponible: false }}
+                          variant="student"
+                        />
+                        <span className={styles.nonRenduBadge}>{excuseLabel(devoir)}</span>
+                      </div>
                     ))}
                   </div>
                 </section>

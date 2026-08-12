@@ -72,3 +72,13 @@ lecteur intégré « 🎬 Vidéos » dans l'onglet Ressources élève (`Ressourc
 `src/lib/youtube.ts` (watch, youtu.be, shorts, embed, live) ; URL non reconnue =
 alerte côté prof, ignorée côté élève. Aucun changement serveur (ressources passent
 telles quelles).
+
+## Session 2026-08-12 — critères masqués par activité
+- `devoir.hiddenCriteria` : à la sélection d'une grille (création ET édition),
+  popup `HideCriteriaModal` « Masquer certains critères ? » (lien « modifier » sous
+  le menu). Le masquage est PAR DEVOIR — jamais dans la grille elle-même (le toggle
+  dans GrilleBuilder a été fait puis retiré le même jour, fausse piste).
+- Répercuté : GrilleTab (affichage/totaux/75 %), grid-eval IA (filtre + mapping par
+  index sur le même tableau), scores élève. Critère masqué mais évalué avant : reste
+  visible et compté (pas de score rétroactivement faussé).
+- TODO : test + déploiement.

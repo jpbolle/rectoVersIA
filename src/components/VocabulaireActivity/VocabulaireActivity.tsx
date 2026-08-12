@@ -290,6 +290,22 @@ export default function VocabulaireActivity({
     }
   }, []);
 
+  // Chronometre : temps actif cumule (une seconde comptee seulement si l'onglet
+  // est visible). timeTick force une sauvegarde toutes les 30 s d'activite pour
+  // que le temps persiste meme sans autre changement d'etat.
+  const baseTimeRef = useRef(savedState?.timeSpentSeconds || 0);
+  const sessionSecondsRef = useRef(0);
+  const [timeTick, setTimeTick] = useState(0);
+  useEffect(() => {
+    if (disabled) return;
+    const interval = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      sessionSecondsRef.current += 1;
+      if (sessionSecondsRef.current % 30 === 0) setTimeTick((t) => t + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [disabled]);
+
   // Si premier diagnostic pas encore fait, forcer phase diagnostic
   useEffect(() => {
     if (diagnosticCount === 0 && phase !== 'diagnostic') {
@@ -385,6 +401,7 @@ export default function VocabulaireActivity({
       exercises: displayedExercises.length > 0 ? displayedExercises : undefined,
       exerciseResults: exerciseResults.length > 0 ? exerciseResults : undefined,
       activityOpened,
+      timeSpentSeconds: baseTimeRef.current + sessionSecondsRef.current,
       productionValidation: productionValidation || undefined,
       evaluationScores: evaluationScores.length > 0 ? evaluationScores : undefined,
       evaluationAttempts: evaluationAttempts.length > 0 ? evaluationAttempts : undefined,
@@ -397,7 +414,7 @@ export default function VocabulaireActivity({
       prevStateStrRef.current = stateStr;
       onStateChangeRef.current(state);
     }
-  }, [phase, diagnosticSelections, diagnosticCount, diagnosticScores, wordMastery, learningSessions, currentSelection, displayedExercises, exerciseResults, activityOpened, productionValidation, evaluationScores, evaluationAttempts, difficultWords, flashcardsDefinitionFirst]);
+  }, [phase, diagnosticSelections, diagnosticCount, diagnosticScores, wordMastery, learningSessions, currentSelection, displayedExercises, exerciseResults, activityOpened, timeTick, productionValidation, evaluationScores, evaluationAttempts, difficultWords, flashcardsDefinitionFirst]);
 
   // --- Handlers diagnostic initial ---
   const handleDiagnosticSelect = useCallback((wordText: string) => {

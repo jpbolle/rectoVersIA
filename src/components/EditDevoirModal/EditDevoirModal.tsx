@@ -14,6 +14,7 @@ import type { Devoir, Classe, DevoirRessource, EvaluationType, TypeTravail, Corr
 import type { LectureQuiz } from '@/types/lecture';
 import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
+import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
 import styles from './EditDevoirModal.module.css';
 
 type FormFace = 'recto' | 'verso';
@@ -66,6 +67,9 @@ export default function EditDevoirModal({
   const [dateRemise, setDateRemise] = useState('');
   const [grille, setGrille] = useState('');
   const [intitule, setIntitule] = useState('');
+  // Critères de la grille masqués pour cette activité (popup au choix de la grille)
+  const [hiddenCriteria, setHiddenCriteria] = useState<string[]>([]);
+  const [showHideCriteria, setShowHideCriteria] = useState(false);
   const [consignes, setConsignes] = useState('');
   const [accesIA, setAccesIA] = useState(false);
   const [disponible, setDisponible] = useState(false);
@@ -98,6 +102,8 @@ export default function EditDevoirModal({
       const date = devoir.dateRemise ? devoir.dateRemise.split('T')[0] : '';
       setDateRemise(date);
       setGrille(devoir.grille || '');
+      setHiddenCriteria(devoir.hiddenCriteria || []);
+      setShowHideCriteria(false);
       setIntitule(devoir.intitule || '');
       setConsignes(devoir.consignes || '');
       setAccesIA(devoir.accesIA || false);
@@ -193,6 +199,7 @@ export default function EditDevoirModal({
       classes: selectedClasses,
       dateRemise,
       grille,
+      hiddenCriteria,
       intitule: intitule.trim(),
       consignes: consignes.trim(),
       accesIA,
@@ -281,7 +288,12 @@ export default function EditDevoirModal({
             <select
               className={styles.select}
               value={grille}
-              onChange={(e) => setGrille(e.target.value)}
+              onChange={(e) => {
+                setGrille(e.target.value);
+                setHiddenCriteria([]);
+                // Changement de grille → proposer de masquer certains critères
+                if (e.target.value) setShowHideCriteria(true);
+              }}
             >
               <option value="">Sélectionnez...</option>
               {grilleTypes.map((type) => (
@@ -290,6 +302,17 @@ export default function EditDevoirModal({
                 </option>
               ))}
             </select>
+            {grille && (
+              <button
+                type="button"
+                className={styles.hiddenCriteriaNote}
+                onClick={() => setShowHideCriteria(true)}
+              >
+                {hiddenCriteria.length > 0
+                  ? `🙈 ${hiddenCriteria.length} critère${hiddenCriteria.length > 1 ? 's' : ''} masqué${hiddenCriteria.length > 1 ? 's' : ''} — modifier`
+                  : 'Masquer certains critères...'}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -587,6 +610,19 @@ export default function EditDevoirModal({
           </button>
         </div>
       </div>
+
+      {showHideCriteria && grille && (
+        <HideCriteriaModal
+          grilleName={grille}
+          initialHidden={hiddenCriteria}
+          getAuthHeaders={getAuthHeaders}
+          onConfirm={(ids) => {
+            setHiddenCriteria(ids);
+            setShowHideCriteria(false);
+          }}
+          onClose={() => setShowHideCriteria(false)}
+        />
+      )}
     </div>
   );
 }

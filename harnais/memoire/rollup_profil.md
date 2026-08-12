@@ -40,3 +40,20 @@ Refonte complète en **5 onglets** : Général / Lire / Écrire / Rechercher / V
   l'email y est déjà chiffré) — décision JP.
 - 2026-08-10 — architecture « un appel par onglet » préférée à l'optimisation de
   l'appel unique et au cache serveur.
+
+## Session 2026-08-12 — vocabulaire, Parler, critères par grille
+- Onglet Vocabulaire refondu : cartes de stats par activité + « Vue d'ensemble »
+  (séances = activityOpened, temps réel `timeSpentSeconds` — chronométré depuis le
+  2026-08-12, historique à « — » —, sessions d'apprentissage, diagnostics initial/
+  intermédiaires et évaluations en pastilles ScoreChip, répartition 4 niveaux
+  rouge→vert). Vue prof (fiche élève) : stats seules, sans listes de mots.
+- « Liste personnelle » retirée du profil → page élève /mes-ressources (header
+  « Mes Ressources personnelles »).
+- Onglet 🗣️ Parler ajouté (état vide, en attente d'un module oral) + carte dans le
+  Général + « Gestes de parole » dans la didactique admin.
+- « Tous les critères » (Écrire/Lire) : groupés par grille d'évaluation, mini-courbe
+  à points (tooltip précis au survol), détail dépliable = liste + points en grand
+  (une seule fois). Carte Vocabulaire du Général : % maîtrisés + barre empilée.
+- EmptyState : les mots-clés (`hourglass`, `chart`…) s'affichaient littéralement —
+  hourglass = spinner, partout ailleurs de vrais emojis + « Absence de données ».
+- TODO : test + déploiement.

@@ -26,3 +26,8 @@
 - [ ] Tester : filtre actifs/archivés, recherche, fiche depuis les deux entrées,
   les 5 onglets avec un élève ayant des corrections visibles.
 - [ ] Déployer (aucune règle Firestore à toucher).
+
+## Session 2026-08-12 — renommage propagé + archive ZIP
+- Renommage de classe propagé aux devoirs (ils référencent les classes par NOM).
+- Suppression : modale avec archive ZIP (travaux HTML nommés/évalués + CSV notes
+  par grille + récapitulatif) — voir rollup_remise.md.

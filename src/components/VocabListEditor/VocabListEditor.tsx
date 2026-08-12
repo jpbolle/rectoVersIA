@@ -302,7 +302,7 @@ export default function VocabListEditor({
       )}
 
       {wordsLoading ? (
-        <EmptyState icon="hourglass" message="Chargement des mots..." />
+        <EmptyState icon="hourglass" message="En cours de chargement" />
       ) : (
         <>
           {!readOnly && (

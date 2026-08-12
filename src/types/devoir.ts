@@ -53,6 +53,7 @@ export interface Devoir {
   profId: string;
   typeTravail: TypeTravail;
   evaluation?: EvaluationType;    // absent sur les devoirs antérieurs au champ
+  hiddenCriteria?: string[];      // ids de critères de la grille masqués pour CE devoir
   uaa?: number[];                 // UAA de la grille liée (enrichi côté serveur, lecture seule)
   questionnaireId?: string;       // Référence vers questionnaires/{id} (type rechercher)
   codeAcces?: string;             // Code 6 chars pour l'extension Chrome (type rechercher)
@@ -85,6 +86,7 @@ export interface CreateDevoirData {
   disponible: boolean;
   typeTravail: TypeTravail;
   evaluation?: EvaluationType;
+  hiddenCriteria?: string[];      // ids de critères masqués pour ce devoir
   // NavigKid (type rechercher uniquement)
   questionnaire?: {
     themes: string;

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const empty: ProfilGeneral = {
-      travauxRemis: 0, reussites: 0, echecs: 0, attention: [],
+      travauxRemis: 0, reussites: 0, echecs: 0, attention: [], nonRendusSanctionnes: [],
       lire: null, ecrire: null, rechercher: null, vocabulaire: null,
     };
 
@@ -70,13 +70,50 @@ export async function GET(request: NextRequest) {
       if (rep.exists) remises++;
     }));
 
-    // Tuile Vocabulaire : mots connus / total
+    // Tuile Vocabulaire : répartition par niveau de maîtrise (agrégat des
+    // activités, comme la Vue d'ensemble de l'onglet Vocabulaire) + moyenne
+    // des évaluations. Repli sur les groupes de mots si aucune activité.
     const vocab = await buildVocabulaireProfil(target.uid, base);
-    const allVocabWords = vocab.groups.flatMap((g) => g.words);
-    const connus = allVocabWords.filter((w) => w.level >= 4).length;
+    let vocabulaire: ProfilGeneral['vocabulaire'] = null;
+    if (vocab.activites.length > 0) {
+      const sum = (f: (a: (typeof vocab.activites)[number]) => number) =>
+        vocab.activites.reduce((s, a) => s + f(a), 0);
+      const evals = vocab.activites.flatMap((a) => a.evaluations);
+      vocabulaire = {
+        maitrise: sum((a) => a.repartition.maitrise),
+        moyen: sum((a) => a.repartition.moyen),
+        faible: sum((a) => a.repartition.faible),
+        inconnu: sum((a) => a.repartition.inconnu),
+        total: sum((a) => a.totalWords),
+        activites: vocab.activites.length,
+        evalMoyenne: evals.length > 0 ? avg(evals.map((e) => e.percentage)) : null,
+      };
+    } else {
+      const allVocabWords = vocab.groups.flatMap((g) => g.words);
+      if (allVocabWords.length > 0) {
+        vocabulaire = {
+          maitrise: allVocabWords.filter((w) => w.level >= 4).length,
+          moyen: allVocabWords.filter((w) => w.level >= 2 && w.level <= 3).length,
+          faible: allVocabWords.filter((w) => w.level === 1).length,
+          inconnu: allVocabWords.filter((w) => w.level === 0).length,
+          total: allVocabWords.length,
+          activites: 0,
+          evalMoyenne: null,
+        };
+      }
+    }
+
+    // Travaux non faits sanctionnés (note 0 disciplinaire, hors statistiques)
+    const nonRendusSanctionnes = base.travaux
+      .filter((t) => t.nonRendu === 'nonJustifie')
+      .map((t) => {
+        const d = base.devoirs.get(t.devoirId);
+        return { intitule: d?.intitule || 'Activité', date: d?.date || '' };
+      })
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     const profil: ProfilGeneral = {
-      travauxRemis, reussites, echecs, attention,
+      travauxRemis, reussites, echecs, attention, nonRendusSanctionnes,
       ecrire: corrEcrire.length > 0
         ? { score: avg(corrEcrire.map((c) => c.score)), evaluations: corrEcrire.length }
         : null,
@@ -86,9 +123,7 @@ export async function GET(request: NextRequest) {
       rechercher: rechercheDevoirs.length > 0
         ? { remises, total: rechercheDevoirs.length }
         : null,
-      vocabulaire: allVocabWords.length > 0
-        ? { connus, total: allVocabWords.length }
-        : null,
+      vocabulaire,
     };
 
     return NextResponse.json({ success: true, data: profil });

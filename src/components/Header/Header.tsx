@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import UserAvatar from '@/components/UserAvatar';
+import NotificationBell from '@/components/NotificationBell/NotificationBell';
 import styles from './Header.module.css';
 
 // Onglets de la page /admin, pilotés par le header (variant admin)
@@ -93,6 +94,12 @@ export default function Header({ variant, topOffset = 0, adminTab, onAdminTabCha
             </button>
             <button
               className={styles.navBtn}
+              onClick={() => router.push('/mes-ressources')}
+            >
+              Mes Ressources personnelles
+            </button>
+            <button
+              className={styles.navBtn}
               onClick={() => router.push('/profil')}
             >
               Mon Profil
@@ -102,16 +109,7 @@ export default function Header({ variant, topOffset = 0, adminTab, onAdminTabCha
       </div>
 
       <div className={styles.headerActions}>
-        {variant === 'prof' && (
-          <button
-            className={styles.circleBtn}
-            onClick={() => router.push('/activites')}
-            title="Vue de l'élève"
-          >
-            <span className={styles.eyeIcon}>👁️</span>
-          </button>
-        )}
-
+        <NotificationBell variant={variant} />
         <UserAvatar />
       </div>
     </header>

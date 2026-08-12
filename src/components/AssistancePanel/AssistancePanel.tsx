@@ -11,6 +11,7 @@ import RechercheStatsTab from '@/components/RechercheStatsTab/RechercheStatsTab'
 import VocabulaireStats from '@/components/VocabulaireStats/VocabulaireStats';
 import type { VocabulaireActivityState } from '@/types/vocabulaire';
 import type { Devoir } from '@/types/devoir';
+import type { NonRenduStatus } from '@/types/travail';
 import type { Grille } from '@/types/grille';
 import type { Correction } from '@/types/correction';
 import type { AiSuggestion, AiSuggestionType } from '@/types/ai-suggestions';
@@ -33,6 +34,9 @@ interface AssistancePanelProps {
   studentContent?: string;
   showRemarquesTab?: boolean;
   isProfessorView?: boolean;
+  // Travail non rendu (toggle vue prof, bandeau vue élève)
+  nonRendu?: NonRenduStatus | null;
+  onNonRenduChange?: (nonRendu: NonRenduStatus | null) => void;
   ressourceAnnotations?: string;
   onRessourceAnnotationsChange?: (html: string) => void;
   ressourceNotes?: Record<string, string>;
@@ -95,6 +99,8 @@ export default function AssistancePanel({
   studentContent = '',
   showRemarquesTab = true,
   isProfessorView = false,
+  nonRendu = null,
+  onNonRenduChange,
   ressourceAnnotations,
   onRessourceAnnotationsChange,
   ressourceNotes,
@@ -253,6 +259,9 @@ export default function AssistancePanel({
         {currentTab === 'grille' && devoir.typeTravail !== 'vocabulaire' && (
           <GrilleTab
             grille={grille}
+            hiddenCriteria={devoir.hiddenCriteria}
+            nonRendu={nonRendu}
+            onNonRenduChange={onNonRenduChange}
             isLoading={grilleLoading}
             error={grilleError}
             selfEvaluation={selfEvaluation}

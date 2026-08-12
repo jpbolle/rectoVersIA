@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const empty: ProfilVocabulaire = { groups: [], perso: [] };
+    const empty: ProfilVocabulaire = { groups: [], perso: [], activites: [] };
     const base = await loadStudentBase(target.uid, target.email, { withContent: true });
     if (!base) return NextResponse.json({ success: true, data: empty });
 

@@ -51,10 +51,10 @@ export default function MesClassesPage() {
 
           <div className={styles.grid}>
             {isLoading ? (
-              <EmptyState icon="hourglass" message="Chargement..." />
+              <EmptyState icon="hourglass" message="En cours de chargement" />
             ) : classes.length === 0 ? (
               <EmptyState
-                icon="school"
+                icon="🏫"
                 message="Tu n'as rejoint aucune classe. Clique sur « Rejoindre une classe » et entre le code donné par ton professeur."
               />
             ) : (

@@ -17,6 +17,7 @@ import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail, Evaluation
 import type { LectureQuiz } from '@/types/lecture';
 import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
+import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
 import styles from './CreationForm.module.css';
 
 type FormFace = 'recto' | 'verso';
@@ -67,6 +68,9 @@ export default function CreationForm({
   const [dateRemise, setDateRemise] = useState('');
   const [grille, setGrille] = useState('');
   const [intitule, setIntitule] = useState('');
+  // Critères de la grille masqués pour cette activité (popup au choix de la grille)
+  const [hiddenCriteria, setHiddenCriteria] = useState<string[]>([]);
+  const [showHideCriteria, setShowHideCriteria] = useState(false);
 
   // Consignes particulières (optionnel avec checkbox)
   const [showConsignes, setShowConsignes] = useState(false);
@@ -178,6 +182,8 @@ export default function CreationForm({
     setVocabMessage(null);
     setVocabCreatingNew(false);
     setLectureQuiz(null);
+    setHiddenCriteria([]);
+    setShowHideCriteria(false);
   }, []);
 
   function buildData(): CreateDevoirData {
@@ -192,6 +198,7 @@ export default function CreationForm({
       disponible,
       typeTravail,
       evaluation,
+      ...(hiddenCriteria.length > 0 && { hiddenCriteria }),
       ...(typeTravail === 'ecrire' && { flipInverted }),
     };
 
@@ -340,7 +347,12 @@ export default function CreationForm({
             <select
               className={styles.select}
               value={grille}
-              onChange={(e) => setGrille(e.target.value)}
+              onChange={(e) => {
+                setGrille(e.target.value);
+                setHiddenCriteria([]);
+                // Choix d'une grille → proposer de masquer certains critères
+                if (e.target.value) setShowHideCriteria(true);
+              }}
             >
               <option value="">Sélectionnez...</option>
               {grilleTypes.map((type) => (
@@ -349,6 +361,17 @@ export default function CreationForm({
                 </option>
               ))}
             </select>
+            {grille && (
+              <button
+                type="button"
+                className={styles.hiddenCriteriaNote}
+                onClick={() => setShowHideCriteria(true)}
+              >
+                {hiddenCriteria.length > 0
+                  ? `🙈 ${hiddenCriteria.length} critère${hiddenCriteria.length > 1 ? 's' : ''} masqué${hiddenCriteria.length > 1 ? 's' : ''} — modifier`
+                  : 'Masquer certains critères...'}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -718,6 +741,19 @@ export default function CreationForm({
       <div className={`${styles.flipCard} ${isFlipping ? styles.flipCardOut : ''} ${face === 'verso' ? styles.flipCardVerso : ''}`}>
         {face === 'recto' ? renderRecto() : renderVerso()}
       </div>
+
+      {showHideCriteria && grille && (
+        <HideCriteriaModal
+          grilleName={grille}
+          initialHidden={hiddenCriteria}
+          getAuthHeaders={getAuthHeaders}
+          onConfirm={(ids) => {
+            setHiddenCriteria(ids);
+            setShowHideCriteria(false);
+          }}
+          onClose={() => setShowHideCriteria(false)}
+        />
+      )}
     </div>
   );
 }

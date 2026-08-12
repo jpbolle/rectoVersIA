@@ -940,3 +940,10 @@
     font-size: 12px;
   }
 }
+
+/* Badge « non rendu » (décision du prof sur la copie) */
+.statusNonRendu {
+  background: rgba(192, 57, 43, 0.12);
+  color: #c0392b;
+  border: 1px solid rgba(192, 57, 43, 0.35);
+}

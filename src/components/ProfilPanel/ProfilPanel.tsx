@@ -14,22 +14,26 @@ import EmptyState from '@/components/EmptyState/EmptyState';
 import type {
   CriterionStats, DevoirCriterionStat,
   ProfilGeneral, ProfilSection, RechercheItem, ProfilVocabulaire, ProfilVocabGroup,
+  VocabActiviteStat,
 } from '@/types/profil';
 import styles from '@/app/profil/profil.module.css';
 
 // ─── Onglets ─────────────────────────────────────────────────────────────────
 
-type TabId = 'general' | 'lire' | 'ecrire' | 'rechercher' | 'vocabulaire';
+type TabId = 'general' | 'lire' | 'ecrire' | 'parler' | 'rechercher' | 'vocabulaire';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'general', label: 'Général', icon: '🏠' },
   { id: 'lire', label: 'Lire', icon: '📖' },
   { id: 'ecrire', label: 'Écrire', icon: '✍️' },
+  { id: 'parler', label: 'Parler', icon: '🗣️' },
   { id: 'rechercher', label: 'Rechercher', icon: '🔍' },
   { id: 'vocabulaire', label: 'Vocabulaire', icon: '🧠' },
 ];
 
-const TAB_ENDPOINTS: Record<TabId, string> = {
+// Pas d'endpoint pour « parler » : aucune activité orale n'existe encore,
+// l'onglet affiche un état vide sans appel serveur.
+const TAB_ENDPOINTS: Record<Exclude<TabId, 'parler'>, string> = {
   general: '/api/profil/general',
   lire: '/api/profil/lecture',
   ecrire: '/api/profil/ecriture',
@@ -149,6 +153,97 @@ function CriterionRow({
   );
 }
 
+// ─── Évolution d'un critère (liste « Tous les critères ») ────────────────────
+
+// Petite courbe à points : une évaluation = un point, coloré selon le score.
+// Le survol d'un point affiche le résultat obtenu (infobulle native).
+function DotSparkline({
+  points,
+  width = 110,
+  height = 34,
+}: {
+  points: { score: number; devoirName: string; date: string }[];
+  width?: number;
+  height?: number;
+}) {
+  const w = width, h = height, pad = h > 40 ? 12 : 7;
+  const dotR = h > 40 ? 4.5 : 3.5;
+  const xs = points.map((_, i) =>
+    points.length === 1 ? w / 2 : pad + (i * (w - 2 * pad)) / (points.length - 1)
+  );
+  const ys = points.map((p) => h - pad - (p.score / 100) * (h - 2 * pad));
+  return (
+    <svg width={w} height={h} className={styles.sparkline}>
+      {points.length > 1 && (
+        <polyline
+          points={xs.map((x, i) => `${x},${ys[i]}`).join(' ')}
+          fill="none"
+          stroke="var(--c-border)"
+          strokeWidth="1.5"
+        />
+      )}
+      {points.map((p, i) => (
+        <g key={i} className={styles.sparklineDot}>
+          {/* Zone de survol élargie (le point fait 3,5 px) */}
+          <circle cx={xs[i]} cy={ys[i]} r="9" fill="transparent" />
+          <circle cx={xs[i]} cy={ys[i]} r={dotR} fill={scoreColor(p.score)} />
+          <title>{`${p.devoirName} — ${formatDateShort(p.date)} : ${p.score}%`}</title>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// Ligne de critère groupée par grille : score, courbe d'évolution, et détail
+// dépliable (le pourcentage de chaque évaluation)
+function CriterionEvolutionRow({ crit }: { crit: CriterionStats }) {
+  const [open, setOpen] = useState(false);
+  const multi = crit.history.length > 1;
+
+  return (
+    <div className={styles.evoRow}>
+      <button
+        type="button"
+        className={styles.evoMain}
+        onClick={() => multi && setOpen((o) => !o)}
+        disabled={!multi}
+        title={multi ? 'Voir le détail des évaluations' : undefined}
+      >
+        <span className={styles.evoName}>{crit.name}</span>
+        <span className={styles.evoMeta}>
+          {crit.count > 1 && `${crit.count} éval.`}
+          {crit.classeAvg !== null && ` · cl. moy. ${crit.classeAvg}%`}
+        </span>
+        {/* Mini-courbe masquée quand le détail est ouvert (les points y sont déjà) */}
+        {multi && !open && <DotSparkline points={crit.history} />}
+        <span className={styles.evoScore} style={{ color: scoreColor(crit.averageScore) }}>
+          {crit.averageScore}%
+        </span>
+        <span className={`${styles.evoChevron} ${multi ? '' : styles.evoChevronHidden}`}>
+          {open ? '▾' : '▸'}
+        </span>
+      </button>
+      {open && (
+        <div className={styles.evoDetails}>
+          <div className={styles.evoDetailList}>
+            {crit.history.map((h, i) => (
+              <div key={i} className={styles.evoDetailRow}>
+                <span className={styles.evoDetailName}>{h.devoirName}</span>
+                <span className={styles.evoDetailDate}>{formatDateShort(h.date)}</span>
+                <span className={styles.evoDetailScore} style={{ color: scoreColor(h.score) }}>
+                  {h.score}%
+                </span>
+              </div>
+            ))}
+          </div>
+          {/* Les points, en plus grand, à côté de la liste */}
+          <DotSparkline points={crit.history} width={220} height={90} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Contenu d'une section (écriture ou lecture) ──────────────────────────────
 function SectionContent({
   criteria,
@@ -260,28 +355,44 @@ function SectionContent({
         </>
       )}
 
-      {/* Tous les autres critères */}
+      {/* Tous les autres critères — vue agrégée : groupés par grille
+          d'évaluation, avec courbe d'évolution ; vue par activité : liste simple */}
       {otherCriteria.length > 0 && (
         <>
           <h4 className={styles.subTitle}>Tous les critères</h4>
-          <div className={styles.criteriaList}>
-            {otherCriteria.map((crit) => {
-              const score = 'score' in crit ? crit.score : crit.averageScore;
-              const count = 'count' in crit ? crit.count : undefined;
-              const history = 'history' in crit ? crit.history : undefined;
-              return (
-                <CriterionRow
-                  key={crit.name}
-                  name={crit.name}
-                  score={score}
-                  classeAvg={crit.classeAvg}
-                  classeMax={crit.classeMax}
-                  count={count}
-                  history={history}
-                />
-              );
-            })}
-          </div>
+          {'history' in otherCriteria[0] ? (
+            (() => {
+              const groups = new Map<string, CriterionStats[]>();
+              for (const c of otherCriteria as CriterionStats[]) {
+                const g = c.grille || 'Autres critères';
+                if (!groups.has(g)) groups.set(g, []);
+                groups.get(g)!.push(c);
+              }
+              return [...groups.entries()].map(([grilleName, crits]) => (
+                <div key={grilleName} className={styles.grilleGroup}>
+                  <div className={styles.grilleGroupTitle}>📋 {grilleName}</div>
+                  {crits.map((crit) => (
+                    <CriterionEvolutionRow key={crit.name} crit={crit} />
+                  ))}
+                </div>
+              ));
+            })()
+          ) : (
+            <div className={styles.criteriaList}>
+              {otherCriteria.map((crit) => {
+                const score = 'score' in crit ? crit.score : crit.averageScore;
+                return (
+                  <CriterionRow
+                    key={crit.name}
+                    name={crit.name}
+                    score={score}
+                    classeAvg={crit.classeAvg}
+                    classeMax={crit.classeMax}
+                  />
+                );
+              })}
+            </div>
+          )}
         </>
       )}
 
@@ -301,7 +412,7 @@ function SectionContent({
 }
 
 // ─── Onglet Lire / Écrire (avec filtre par activité) ─────────────────────────
-function SectionTab({ data, emptyMessage }: { data: ProfilSection; emptyMessage: string }) {
+function SectionTab({ data }: { data: ProfilSection }) {
   const [activeFilter, setActiveFilter] = useState<string>('all');
 
   const current = useMemo(() => {
@@ -321,7 +432,7 @@ function SectionTab({ data, emptyMessage }: { data: ProfilSection; emptyMessage:
   }, [activeFilter, data]);
 
   if (!data.stats) {
-    return <EmptyState icon="chart" message={emptyMessage} />;
+    return <EmptyState icon="📊" message="Absence de données" />;
   }
 
   return (
@@ -361,10 +472,16 @@ function SectionTab({ data, emptyMessage }: { data: ProfilSection; emptyMessage:
 
 // ─── Onglet Général ──────────────────────────────────────────────────────────
 function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab: TabId) => void }) {
+  const voc = data.vocabulaire;
+  const vocTotal = voc?.total || 1;
+  const vocPctMaitrise = voc ? Math.round((voc.maitrise / vocTotal) * 100) : 0;
+
   const domains: Array<{
     tab: TabId; icon: string; name: string;
     value: string; unit?: string; sub: string;
     pct: number; color: string;
+    // Barre empilée (carte Vocabulaire) — remplace la barre simple
+    segments?: { pct: number; color: string }[];
   }> = [
     {
       tab: 'lire', icon: '📖', name: 'Lire',
@@ -385,6 +502,13 @@ function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab:
       color: data.ecrire ? scoreColor(data.ecrire.score) : 'var(--c-border)',
     },
     {
+      tab: 'parler', icon: '🗣️', name: 'Parler',
+      value: '—',
+      sub: 'Aucune évaluation',
+      pct: 0,
+      color: 'var(--c-border)',
+    },
+    {
       tab: 'rechercher', icon: '🔍', name: 'Rechercher',
       value: data.rechercher ? `${data.rechercher.remises}/${data.rechercher.total}` : '—',
       sub: data.rechercher ? 'recherches remises' : 'Aucune recherche guidée',
@@ -394,12 +518,19 @@ function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab:
     },
     {
       tab: 'vocabulaire', icon: '🧠', name: 'Vocabulaire',
-      value: data.vocabulaire ? `${data.vocabulaire.connus}` : '—',
-      unit: data.vocabulaire ? `/${data.vocabulaire.total} mots` : undefined,
-      sub: data.vocabulaire ? 'mots connus' : 'Aucun mot travaillé',
-      pct: data.vocabulaire && data.vocabulaire.total > 0
-        ? Math.round((data.vocabulaire.connus / data.vocabulaire.total) * 100) : 0,
-      color: 'var(--c-primary)',
+      value: voc ? `${vocPctMaitrise}%` : '—',
+      unit: voc ? ` maîtrisés` : undefined,
+      sub: voc
+        ? `${voc.maitrise}/${voc.total} mots${voc.evalMoyenne !== null ? ` · éval. moy. ${voc.evalMoyenne} %` : ''}`
+        : 'Aucun mot travaillé',
+      pct: vocPctMaitrise,
+      color: voc ? scoreColor(vocPctMaitrise) : 'var(--c-border)',
+      segments: voc
+        ? VOCAB_SEGMENTS.map((s) => ({
+            pct: (voc[s.key] / vocTotal) * 100,
+            color: s.color,
+          }))
+        : undefined,
     },
   ];
 
@@ -433,6 +564,22 @@ function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab:
         </div>
       </div>
 
+      {data.nonRendusSanctionnes.length > 0 && (
+        <div className={styles.sanctionBlock}>
+          <div className={styles.sanctionTitle}>
+            ⚠ Travaux non faits, non justifiés — note : 0
+          </div>
+          <div className={styles.sanctionList}>
+            {data.nonRendusSanctionnes.map((t, i) => (
+              <span key={i} className={styles.sanctionItem}>
+                {t.intitule}
+                {t.date && <span className={styles.sanctionDate}> — {formatDateShort(t.date)}</span>}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className={styles.domGrid}>
         {domains.map((d) => (
           <button key={d.tab} className={styles.domCard} onClick={() => onOpenTab(d.tab)}>
@@ -443,8 +590,12 @@ function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab:
               {d.unit && <span className={styles.domScoreUnit}>{d.unit}</span>}
             </div>
             <div className={styles.domSub}>{d.sub}</div>
-            <div className={styles.domBarTrack}>
-              <div className={styles.domBarFill} style={{ width: `${d.pct}%`, background: d.color }} />
+            <div className={`${styles.domBarTrack} ${d.segments ? styles.domBarStacked : ''}`}>
+              {d.segments
+                ? d.segments.filter((s) => s.pct > 0).map((s, i) => (
+                    <div key={i} style={{ width: `${s.pct}%`, background: s.color }} />
+                  ))
+                : <div className={styles.domBarFill} style={{ width: `${d.pct}%`, background: d.color }} />}
             </div>
             <span className={styles.domLink}>Voir le détail →</span>
           </button>
@@ -457,7 +608,7 @@ function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab:
 // ─── Onglet Rechercher ───────────────────────────────────────────────────────
 function RechercheTab({ items }: { items: RechercheItem[] }) {
   if (items.length === 0) {
-    return <EmptyState icon="chart" message="Aucune recherche guidée pour le moment." />;
+    return <EmptyState icon="📊" message="Absence de données" />;
   }
   return (
     <section className={styles.section}>
@@ -482,6 +633,237 @@ function RechercheTab({ items }: { items: RechercheItem[] }) {
 }
 
 // ─── Onglet Vocabulaire ──────────────────────────────────────────────────────
+
+// Date courte « 2 mai » — évite la confusion avec une fraction de score
+function formatDateShort(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('fr-BE', { day: 'numeric', month: 'short' });
+}
+
+// Pastille de résultat : % coloré en gras, détail (fraction, date) en petit
+function ScoreChip({ pct, detail, date }: { pct: number; detail?: string; date?: string }) {
+  const sub = [detail, date].filter(Boolean).join(' · ');
+  return (
+    <span className={styles.scoreChip}>
+      <span className={styles.scoreChipPct} style={{ color: scoreColor(pct) }}>
+        {Math.round(pct)} %
+      </span>
+      {sub && <span className={styles.scoreChipSub}>{sub}</span>}
+    </span>
+  );
+}
+
+// Durée lisible — 0 seconde = pas encore mesuré (chronomètre récent)
+function formatDuration(sec: number): string {
+  if (!sec) return '—';
+  const m = Math.max(1, Math.round(sec / 60));
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
+}
+
+// Ordre du rouge au vert, comme les colonnes de la maîtrise lexicale
+const VOCAB_SEGMENTS: { key: keyof VocabActiviteStat['repartition']; label: string; color: string }[] = [
+  { key: 'inconnu', label: 'Inconnus', color: '#d8d2c8' },
+  { key: 'faible', label: 'Quasiment pas maîtrisés', color: '#c0522b' },
+  { key: 'moyen', label: 'Moyennement maîtrisés', color: '#d4a94c' },
+  { key: 'maitrise', label: 'Maîtrisés', color: '#4a9a6a' },
+];
+
+function VocabActiviteCard({ act }: { act: VocabActiviteStat }) {
+  const total = act.totalWords || 1;
+  const pctOf = (n: number) => Math.round((n / total) * 100);
+  const scorePct = (correct: number, t: number) => (t > 0 ? Math.round((correct / t) * 100) : 0);
+  const [initial, ...intermediaires] = act.diagnostics;
+
+  return (
+    <div className={styles.vocActCard}>
+      <div className={styles.vocActHead}>
+        <span className={styles.vocActTitle}>{act.intitule}</span>
+        {act.date && <span className={styles.vocActDate}>{formatDate(act.date)}</span>}
+      </div>
+
+      <div className={styles.vocActStats}>
+        <div className={styles.vocActStat}>
+          <span className={styles.vocActStatValue}>{act.ouvertures}</span>
+          <span className={styles.vocActStatLabel}>séance{act.ouvertures > 1 ? 's' : ''} d&apos;étude</span>
+        </div>
+        <div className={styles.vocActStat} title={act.timeSpentSeconds ? undefined : 'Pas encore mesuré'}>
+          <span className={styles.vocActStatValue}>{formatDuration(act.timeSpentSeconds)}</span>
+          <span className={styles.vocActStatLabel}>temps d&apos;étude</span>
+        </div>
+        <div className={styles.vocActStat}>
+          <span className={styles.vocActStatValue}>{act.learningSessions}</span>
+          <span className={styles.vocActStatLabel}>session{act.learningSessions > 1 ? 's' : ''} d&apos;apprentissage</span>
+        </div>
+        <div className={styles.vocActStat}>
+          <span className={styles.vocActStatValue}>{act.evaluations.length}</span>
+          <span className={styles.vocActStatLabel}>évaluation{act.evaluations.length > 1 ? 's' : ''}</span>
+        </div>
+      </div>
+
+      <div className={styles.vocActBar}>
+        {VOCAB_SEGMENTS.filter((s) => act.repartition[s.key] > 0).map((s) => (
+          <div
+            key={s.key}
+            style={{ width: `${(act.repartition[s.key] / total) * 100}%`, background: s.color }}
+            title={`${s.label} : ${act.repartition[s.key]} mot${act.repartition[s.key] > 1 ? 's' : ''}`}
+          />
+        ))}
+      </div>
+      <div className={styles.vocActLegend}>
+        {VOCAB_SEGMENTS.map((s) => (
+          <span key={s.key} className={styles.vocActLegendItem}>
+            <span className={styles.vocActDot} style={{ background: s.color }} />
+            {s.label} : {pctOf(act.repartition[s.key])} % ({act.repartition[s.key]})
+          </span>
+        ))}
+      </div>
+
+      <div className={styles.vocActScores}>
+        <div className={styles.vocActScoreRow}>
+          <span className={styles.vocActScoreLabel}>Diagnostic initial</span>
+          {initial
+            ? <span className={styles.scoreChips}>
+                <ScoreChip
+                  pct={scorePct(initial.correct, initial.total)}
+                  detail={`${initial.correct}/${initial.total}`}
+                  date={formatDateShort(initial.date)}
+                />
+              </span>
+            : <span className={styles.vocActNone}>non fait</span>}
+        </div>
+        <div className={styles.vocActScoreRow}>
+          <span className={styles.vocActScoreLabel}>Diagnostics intermédiaires</span>
+          {intermediaires.length > 0
+            ? <span className={styles.scoreChips}>
+                {intermediaires.map((d, i) => (
+                  <ScoreChip
+                    key={i}
+                    pct={scorePct(d.correct, d.total)}
+                    detail={`${d.correct}/${d.total}`}
+                    date={formatDateShort(d.date)}
+                  />
+                ))}
+              </span>
+            : <span className={styles.vocActNone}>aucun</span>}
+        </div>
+        <div className={styles.vocActScoreRow}>
+          <span className={styles.vocActScoreLabel}>Évaluations</span>
+          {act.evaluations.length > 0
+            ? <span className={styles.scoreChips}>
+                {act.evaluations.map((e, i) => (
+                  <ScoreChip key={i} pct={e.percentage} date={formatDateShort(e.date)} />
+                ))}
+              </span>
+            : <span className={styles.vocActNone}>aucune</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Synthèse de toutes les activités vocabulaire — même format que les cartes
+// individuelles, affichée en tête de la section.
+function VocabOverviewCard({ activites }: { activites: VocabActiviteStat[] }) {
+  const sum = (f: (a: VocabActiviteStat) => number) => activites.reduce((s, a) => s + f(a), 0);
+  const repartition = {
+    maitrise: sum((a) => a.repartition.maitrise),
+    moyen: sum((a) => a.repartition.moyen),
+    faible: sum((a) => a.repartition.faible),
+    inconnu: sum((a) => a.repartition.inconnu),
+  };
+  const totalWords = sum((a) => a.totalWords);
+  const total = totalWords || 1;
+  const timeSpent = sum((a) => a.timeSpentSeconds);
+  const nbEvals = sum((a) => a.evaluations.length);
+
+  const avg = (vals: number[]) =>
+    vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : null;
+  const pctDiag = (d: { correct: number; total: number }) =>
+    d.total > 0 ? (d.correct / d.total) * 100 : 0;
+  const avgInitiaux = avg(
+    activites.map((a) => a.diagnostics[0]).filter(Boolean).map(pctDiag)
+  );
+  const inters = activites.flatMap((a) => a.diagnostics.slice(1));
+  const avgInters = avg(inters.map(pctDiag));
+  const evals = activites.flatMap((a) => a.evaluations);
+  const avgEvals = avg(evals.map((e) => e.percentage));
+
+  return (
+    <div className={styles.vocActCard}>
+      <div className={styles.vocActHead}>
+        <span className={styles.vocActTitle}>Vue d&apos;ensemble</span>
+        <span className={styles.vocActDate}>
+          {activites.length} activité{activites.length > 1 ? 's' : ''} · {totalWords} mots
+        </span>
+      </div>
+
+      <div className={styles.vocActStats}>
+        <div className={styles.vocActStat}>
+          <span className={styles.vocActStatValue}>{sum((a) => a.ouvertures)}</span>
+          <span className={styles.vocActStatLabel}>séances d&apos;étude</span>
+        </div>
+        <div className={styles.vocActStat} title={timeSpent ? undefined : 'Pas encore mesuré'}>
+          <span className={styles.vocActStatValue}>{formatDuration(timeSpent)}</span>
+          <span className={styles.vocActStatLabel}>temps d&apos;étude</span>
+        </div>
+        <div className={styles.vocActStat}>
+          <span className={styles.vocActStatValue}>{sum((a) => a.learningSessions)}</span>
+          <span className={styles.vocActStatLabel}>sessions d&apos;apprentissage</span>
+        </div>
+        <div className={styles.vocActStat}>
+          <span className={styles.vocActStatValue}>{nbEvals}</span>
+          <span className={styles.vocActStatLabel}>évaluation{nbEvals > 1 ? 's' : ''}</span>
+        </div>
+      </div>
+
+      <div className={styles.vocActBar}>
+        {VOCAB_SEGMENTS.filter((s) => repartition[s.key] > 0).map((s) => (
+          <div
+            key={s.key}
+            style={{ width: `${(repartition[s.key] / total) * 100}%`, background: s.color }}
+            title={`${s.label} : ${repartition[s.key]} mot${repartition[s.key] > 1 ? 's' : ''}`}
+          />
+        ))}
+      </div>
+      <div className={styles.vocActLegend}>
+        {VOCAB_SEGMENTS.map((s) => (
+          <span key={s.key} className={styles.vocActLegendItem}>
+            <span className={styles.vocActDot} style={{ background: s.color }} />
+            {s.label} : {Math.round((repartition[s.key] / total) * 100)} % ({repartition[s.key]})
+          </span>
+        ))}
+      </div>
+
+      <div className={styles.vocActScores}>
+        <div className={styles.vocActScoreRow}>
+          <span className={styles.vocActScoreLabel}>Diagnostics initiaux</span>
+          {avgInitiaux !== null
+            ? <span className={styles.scoreChips}><ScoreChip pct={avgInitiaux} detail="moyenne" /></span>
+            : <span className={styles.vocActNone}>aucun</span>}
+        </div>
+        <div className={styles.vocActScoreRow}>
+          <span className={styles.vocActScoreLabel}>Diagnostics intermédiaires</span>
+          {avgInters !== null
+            ? <span className={styles.scoreChips}>
+                <ScoreChip pct={avgInters} detail={`moyenne sur ${inters.length}`} />
+              </span>
+            : <span className={styles.vocActNone}>aucun</span>}
+        </div>
+        <div className={styles.vocActScoreRow}>
+          <span className={styles.vocActScoreLabel}>Évaluations</span>
+          {avgEvals !== null
+            ? <span className={styles.scoreChips}>
+                <ScoreChip pct={avgEvals} detail={`moyenne sur ${evals.length}`} />
+              </span>
+            : <span className={styles.vocActNone}>aucune</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function VocabGroupCols({ group }: { group: ProfilVocabGroup }) {
   const cols: [string, (l: number) => boolean][] = [
     ['inconnus', (l) => l <= 1],
@@ -518,13 +900,23 @@ function VocabGroupCols({ group }: { group: ProfilVocabGroup }) {
   );
 }
 
-function VocabulaireTab({ data }: { data: ProfilVocabulaire }) {
-  if (data.groups.length === 0 && data.perso.length === 0) {
-    return <EmptyState icon="chart" message="Aucun mot de vocabulaire travaillé pour le moment." />;
+// profView : un prof consulte la fiche — statistiques par activité seulement,
+// sans les listes de mots (réservées à la vue élève).
+function VocabulaireTab({ data, profView }: { data: ProfilVocabulaire; profView: boolean }) {
+  if (data.activites.length === 0 && data.groups.length === 0 && data.perso.length === 0) {
+    return <EmptyState icon="📊" message="Absence de données" />;
   }
   return (
     <>
-      {data.groups.length > 0 && (
+      {data.activites.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Activités de vocabulaire</h2>
+          <VocabOverviewCard activites={data.activites} />
+          {data.activites.map((a) => <VocabActiviteCard key={a.devoirId} act={a} />)}
+        </section>
+      )}
+
+      {!profView && data.groups.length > 0 && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Maîtrise lexicale</h2>
           <div className={styles.gradientBar} />
@@ -543,23 +935,8 @@ function VocabulaireTab({ data }: { data: ProfilVocabulaire }) {
         </section>
       )}
 
-      {data.perso.length > 0 && (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Liste personnelle</h2>
-          <div className={styles.persoNote}>
-            Les mots dont la définition a été demandée, dans l&apos;app ou avec NavigKid.
-          </div>
-          <div>
-            {data.perso.map((w) => (
-              <div key={w.word} className={styles.persoItem}>
-                <span className={styles.persoWord}>{w.word}</span>
-                <span className={styles.persoDef}>{w.definition}</span>
-                {w.addedAt && <span className={styles.persoDate}>{formatDate(w.addedAt)}</span>}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* La liste personnelle (mots + définitions) vit désormais dans la page
+          élève « Mes ressources personnelles » (/mes-ressources). */}
     </>
   );
 }
@@ -586,6 +963,7 @@ export default function ProfilPanel({ eleveId }: ProfilPanelProps) {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    if (activeTab === 'parler') return; // pas encore de données orales
     const tab = activeTab;
     if (fetchedTabs.current.has(tab)) return;
     fetchedTabs.current.add(tab);
@@ -611,7 +989,7 @@ export default function ProfilPanel({ eleveId }: ProfilPanelProps) {
     })();
   }, [activeTab, isAuthenticated, getAuthHeaders, eleveId]);
 
-  const loadingState = <EmptyState icon="hourglass" message="Chargement..." />;
+  const loadingState = <EmptyState icon="hourglass" message="En cours de chargement" />;
 
   return (
     <>
@@ -631,20 +1009,19 @@ export default function ProfilPanel({ eleveId }: ProfilPanelProps) {
         general ? <GeneralTab data={general} onOpenTab={setActiveTab} /> : loadingState
       )}
       {activeTab === 'lire' && (
-        lecture
-          ? <SectionTab data={lecture} emptyMessage="Aucun travail de lecture évalué pour le moment." />
-          : loadingState
+        lecture ? <SectionTab data={lecture} /> : loadingState
       )}
       {activeTab === 'ecrire' && (
-        ecriture
-          ? <SectionTab data={ecriture} emptyMessage="Aucun travail d'écriture évalué pour le moment." />
-          : loadingState
+        ecriture ? <SectionTab data={ecriture} /> : loadingState
+      )}
+      {activeTab === 'parler' && (
+        <EmptyState icon="🗣️" message="Aucune activité orale évaluée pour le moment." />
       )}
       {activeTab === 'rechercher' && (
         recherche ? <RechercheTab items={recherche} /> : loadingState
       )}
       {activeTab === 'vocabulaire' && (
-        vocabulaire ? <VocabulaireTab data={vocabulaire} /> : loadingState
+        vocabulaire ? <VocabulaireTab data={vocabulaire} profView={!!eleveId} /> : loadingState
       )}
     </>
   );

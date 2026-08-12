@@ -14,6 +14,7 @@ const CATEGORY_KEYS: (keyof DidactiqueConfig)[] = [
   'uaa',
   'gestesLecture',
   'gestesEcriture',
+  'gestesParole',
   'gestesRecherche',
 ];
 

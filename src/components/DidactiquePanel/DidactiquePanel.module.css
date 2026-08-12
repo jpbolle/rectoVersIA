@@ -162,3 +162,21 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Clic sur + avec champ vide : le champ attire l'attention */
+.addInputHint {
+  border-color: var(--c-accent);
+  animation: hintShake 0.3s ease;
+}
+
+.addHint {
+  font-size: 12px;
+  color: var(--c-accent);
+  margin: 6px 0 0;
+}
+
+@keyframes hintShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}

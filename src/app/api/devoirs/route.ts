@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
         codeAcces: data.codeAcces || undefined,
         vocabulaireThemes: data.vocabulaireThemes || undefined,
         vocabulaireDiagnostic: data.vocabulaireDiagnostic ?? undefined,
+        hiddenCriteria: data.hiddenCriteria || undefined,
         corrigeReference: data.corrigeReference || null,
         ressourcesToIA: data.ressourcesToIA ?? false,
         lectureQuiz: data.lectureQuiz || null,
@@ -198,6 +199,7 @@ export async function POST(request: NextRequest) {
       disponible,
       typeTravail,
       evaluation,
+      hiddenCriteria,
       questionnaire,
       vocabulaireConfig,
       flipInverted,
@@ -238,7 +240,14 @@ export async function POST(request: NextRequest) {
       typeTravail: typeTravail || 'ecrire',
       evaluation: evaluation === 'certificatif' ? 'certificatif' : 'formatif',
       flipInverted: flipInverted ?? false,
+      // Horodatage de l'ouverture aux élèves (notifications)
+      ...(disponible ?? true ? { disponibleAt: new Date() } : {}),
     };
+
+    // Critères de la grille masqués pour ce devoir (ids)
+    if (Array.isArray(hiddenCriteria) && hiddenCriteria.length > 0) {
+      devoirData.hiddenCriteria = hiddenCriteria.filter((c: unknown) => typeof c === 'string');
+    }
 
     // Corrigé de référence du prof (type ecrire uniquement) : plan + production
     // + toggles « corrigé IA » (quels contenus sont transmis à l'IA)

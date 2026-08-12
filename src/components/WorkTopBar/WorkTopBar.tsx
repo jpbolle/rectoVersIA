@@ -13,6 +13,9 @@ interface WorkTopBarProps {
   onSubmit: () => void;
   isSubmitting?: boolean;
   isPreviewMode?: boolean;
+  // Correction rendue (corrigé disponible, correction visible ou non rendu) :
+  // la remise est fermée, le bouton « Remettre le devoir » disparaît
+  submissionClosed?: boolean;
 }
 
 export default function WorkTopBar({
@@ -23,6 +26,7 @@ export default function WorkTopBar({
   onSubmit,
   isSubmitting = false,
   isPreviewMode = false,
+  submissionClosed = false,
 }: WorkTopBarProps) {
   const router = useRouter();
 
@@ -73,6 +77,8 @@ export default function WorkTopBar({
               <span>✓</span>
               <span>Remis</span>
             </span>
+          ) : submissionClosed ? (
+            <span className={styles.statusDraft}>🔒 Remise clôturée</span>
           ) : isSaving ? (
             <span className={styles.statusSaving}>
               <span className={styles.savingDot} />
@@ -88,7 +94,7 @@ export default function WorkTopBar({
           )}
         </div>
 
-        {!isSubmitted && (
+        {!isSubmitted && !submissionClosed && (
           <button
             type="button"
             className={styles.submitButton}

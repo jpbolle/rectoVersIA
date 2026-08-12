@@ -136,6 +136,7 @@ export async function GET(request: NextRequest) {
       ressourceImageShapes: data.ressourceImageShapes || {},
       status: data.status || 'draft',
       selfEvaluation: data.selfEvaluation || null,
+      nonRendu: data.nonRendu || null,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       submittedAt: data.submittedAt || null,

@@ -15,7 +15,7 @@ import {
 import type {
   SectionStats, CriterionStats, CriterionHistory,
   DevoirStat, DevoirCriterionStat,
-  ProfilVocabGroup, ProfilVocabWord, ProfilPersoWord, ProfilVocabulaire,
+  ProfilVocabGroup, ProfilVocabWord, ProfilPersoWord, ProfilVocabulaire, VocabActiviteStat,
 } from '@/types/profil';
 
 type LanguageType = 'ortho' | 'syntaxe' | 'lexique' | 'ponctuation';
@@ -56,6 +56,7 @@ export type TravailInfo = {
   id: string;
   devoirId: string;
   status: string;
+  nonRendu?: 'justifie' | 'nonJustifie' | null;
   content?: string;
 };
 
@@ -89,6 +90,7 @@ export async function loadStudentBase(
       id: d.id,
       devoirId: data.devoirId,
       status: data.status || 'draft',
+      nonRendu: data.nonRendu || null,
       content: opts.withContent ? (data.content as string | undefined) : undefined,
     };
   });
@@ -214,7 +216,14 @@ export function buildSectionStats(
 ): SectionStats | null {
   if (corrsList.length === 0) return null;
 
+  // Clé d'agrégation : les critères de langue restent agrégés toutes grilles
+  // confondues (bloc « Maîtrise de la langue ») ; les autres sont séparés par
+  // grille d'évaluation (objet évalué) pour la liste « Tous les critères ».
+  const aggKey = (grilleName: string, critName: string) =>
+    detectLanguageType(critName) ? `lang::${critName}` : `${grilleName}::${critName}`;
+
   const criterionAgg = new Map<string, {
+    name: string; grille?: string;
     totalWeightedScore: number; totalWeight: number;
     count: number; history: CriterionHistory[];
   }>();
@@ -230,10 +239,15 @@ export function buildSectionStats(
       const level = corr.evaluation[crit.id];
       if (level === undefined) continue;
       const pct = LEVEL_PERCENTAGES[level as keyof typeof LEVEL_PERCENTAGES] ?? 0;
-      if (!criterionAgg.has(crit.name)) {
-        criterionAgg.set(crit.name, { totalWeightedScore: 0, totalWeight: 0, count: 0, history: [] });
+      const key = aggKey(devoir.grille, crit.name);
+      if (!criterionAgg.has(key)) {
+        criterionAgg.set(key, {
+          name: crit.name,
+          grille: detectLanguageType(crit.name) ? undefined : devoir.grille,
+          totalWeightedScore: 0, totalWeight: 0, count: 0, history: [],
+        });
       }
-      const agg = criterionAgg.get(crit.name)!;
+      const agg = criterionAgg.get(key)!;
       agg.totalWeightedScore += pct * crit.weight;
       agg.totalWeight += crit.weight;
       agg.count += 1;
@@ -260,8 +274,9 @@ export function buildSectionStats(
         const level = corr.evaluation[crit.id];
         if (level === undefined) continue;
         const pct = LEVEL_PERCENTAGES[level as keyof typeof LEVEL_PERCENTAGES] ?? 0;
-        if (!classScoresByCrit.has(crit.name)) classScoresByCrit.set(crit.name, []);
-        classScoresByCrit.get(crit.name)!.push(pct);
+        const key = aggKey(devoir!.grille, crit.name);
+        if (!classScoresByCrit.has(key)) classScoresByCrit.set(key, []);
+        classScoresByCrit.get(key)!.push(pct);
       }
     }
   }
@@ -272,20 +287,23 @@ export function buildSectionStats(
   const classeMax = allClassGlobalScores.length > 0 ? Math.max(...allClassGlobalScores) : null;
 
   const criteria: CriterionStats[] = [];
-  for (const [name, agg] of criterionAgg) {
-    const classScores = classScoresByCrit.get(name) || [];
+  for (const [key, agg] of criterionAgg) {
+    const classScores = classScoresByCrit.get(key) || [];
     criteria.push({
-      name,
+      name: agg.name,
+      grille: agg.grille,
       averageScore: agg.totalWeight > 0 ? Math.round(agg.totalWeightedScore / agg.totalWeight) : 0,
       count: agg.count,
       history: agg.history.sort((a, b) => a.date.localeCompare(b.date)),
       classeAvg: classScores.length > 0
         ? Math.round(classScores.reduce((s, v) => s + v, 0) / classScores.length) : null,
       classeMax: classScores.length > 0 ? Math.max(...classScores) : null,
-      languageType: detectLanguageType(name) || undefined,
+      languageType: detectLanguageType(agg.name) || undefined,
     });
   }
-  criteria.sort((a, b) => a.name.localeCompare(b.name));
+  criteria.sort((a, b) =>
+    (a.grille || '').localeCompare(b.grille || '') || a.name.localeCompare(b.name)
+  );
 
   return {
     totalEvaluations: corrsList.length,
@@ -410,28 +428,75 @@ export async function buildVocabulaireProfil(
 ): Promise<ProfilVocabulaire> {
   const mastery = mergeWordMastery(base);
 
-  // Thèmes imposés par les devoirs vocabulaire de l'élève
+  // Thèmes imposés par les devoirs vocabulaire de l'élève — chargés une seule
+  // fois : ils servent aux groupes de mots ET à la répartition par activité
   const themeIds = [...new Set(
     [...base.devoirs.values()]
       .filter((d) => d.type === 'vocabulaire')
       .flatMap((d) => d.vocabulaireThemes || [])
   )];
 
-  const groups: ProfilVocabGroup[] = [];
+  const themes = new Map<string, { name: string; words: string[] }>();
   await Promise.all(themeIds.map(async (themeId) => {
     const doc = await adminDb.collection('vocabulaire').doc(themeId).get();
     if (!doc.exists) return;
     const data = doc.data()!;
-    const words: ProfilVocabWord[] = ((data.words || []) as VocabulaireWord[])
-      .map((w) => toProfilWord(w.word, mastery.get(w.word.toLowerCase())));
-    groups.push({
-      id: themeId,
+    themes.set(themeId, {
       name: data.name || themeId,
-      isPerso: false,
-      words,
+      words: ((data.words || []) as VocabulaireWord[]).map((w) => w.word),
     });
   }));
+
+  const groups: ProfilVocabGroup[] = [...themes.entries()].map(([themeId, theme]) => ({
+    id: themeId,
+    name: theme.name,
+    isPerso: false,
+    words: theme.words.map((w) => toProfilWord(w, mastery.get(w.toLowerCase()))),
+  }));
   groups.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Statistiques par activité vocabulaire (état de chaque travail)
+  const activites: VocabActiviteStat[] = [];
+  for (const travail of base.travaux) {
+    const devoir = base.devoirs.get(travail.devoirId);
+    if (!devoir || devoir.type !== 'vocabulaire') continue;
+    let state: VocabulaireActivityState | null = null;
+    if (travail.content) {
+      try { state = JSON.parse(travail.content); } catch { /* contenu illisible */ }
+    }
+    const words = [...new Set(
+      (devoir.vocabulaireThemes || []).flatMap((t) => themes.get(t)?.words || [])
+    )];
+    // Maîtrise propre à cette activité (pas la fusion toutes activités)
+    const actMastery = new Map(
+      (state?.wordMastery || []).map((m) => [m.word.toLowerCase(), m])
+    );
+    const repartition = { maitrise: 0, moyen: 0, faible: 0, inconnu: 0 };
+    for (const w of words) {
+      const level = wordLevel(actMastery.get(w.toLowerCase()));
+      if (level >= 4) repartition.maitrise++;
+      else if (level >= 2) repartition.moyen++;
+      else if (level === 1) repartition.faible++;
+      else repartition.inconnu++;
+    }
+    activites.push({
+      devoirId: travail.devoirId,
+      intitule: devoir.intitule,
+      date: devoir.date,
+      ouvertures: state?.activityOpened || 0,
+      timeSpentSeconds: state?.timeSpentSeconds || 0,
+      learningSessions: state?.learningSessions || 0,
+      totalWords: words.length,
+      repartition,
+      diagnostics: (state?.diagnosticScores || []).map((d) => ({
+        date: d.date, correct: d.correct, total: d.total,
+      })),
+      evaluations: (state?.evaluationScores || []).map((e) => ({
+        date: e.date, percentage: e.percentage,
+      })),
+    });
+  }
+  activites.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   // Mots personnels (définitions demandées dans l'app ou NavigKid)
   const persoDoc = await adminDb.collection('vocabulairePersonnel').doc(uid).get();
@@ -455,5 +520,5 @@ export async function buildVocabulaireProfil(
     });
   }
 
-  return { groups, perso };
+  return { groups, perso, activites };
 }

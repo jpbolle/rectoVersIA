@@ -207,3 +207,98 @@
     gap: 12px;
   }
 }
+
+/* Modale de suppression de classe (avec proposition d'archive ZIP) */
+.deleteModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(61, 56, 50, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.deleteModalBox {
+  background: var(--c-bg-card, #fff);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 480px;
+  padding: 22px 24px;
+}
+
+.deleteModalTitle {
+  font-family: var(--c-font-title);
+  color: #c0392b;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+.deleteModalText {
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+  line-height: 1.5;
+  margin: 0 0 10px;
+}
+
+.deleteModalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+.archiveBtn {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.archiveBtn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.deleteBtn {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1.5px solid #c0392b;
+  background: none;
+  color: #c0392b;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background: rgba(192, 57, 43, 0.08);
+}
+
+.cancelDeleteBtn {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1.5px solid var(--c-border);
+  background: none;
+  color: var(--c-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.archiveBtn:disabled,
+.deleteBtn:disabled,
+.cancelDeleteBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

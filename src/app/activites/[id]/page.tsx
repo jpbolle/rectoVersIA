@@ -338,8 +338,11 @@ export default function TravailPage() {
     if (!correction?.visibleParEleve || !correction.evaluation || !grille) return null;
     let totalPoints = 0;
     let maxPoints = 0;
+    const hidden = new Set(devoir?.hiddenCriteria || []);
     grille.criteria.forEach((criterion) => {
       const level = correction.evaluation![criterion.id];
+      // Critère masqué pour ce devoir et non évalué : hors total
+      if (hidden.has(criterion.id) && level === undefined) return;
       if (level !== undefined) {
         const pct = LEVEL_PERCENTAGES[level] ?? 0;
         totalPoints += (criterion.weight * pct) / 100;
@@ -350,7 +353,7 @@ export default function TravailPage() {
     const pts = Math.round(totalPoints * 10) / 10;
     const percent = Math.round((totalPoints / maxPoints) * 100);
     return { pts, max: maxPoints, percent };
-  }, [correction, grille]);
+  }, [correction, grille, devoir]);
 
   // Loading states - pour preview mode, on n'attend pas travailLoading
   const isLoading = (authLoading && !isAuthenticated) || devoirLoading || (!isPreviewMode && travailLoading);
@@ -502,6 +505,11 @@ export default function TravailPage() {
         onSubmit={handleSubmitClick}
         isSubmitting={isSubmitting}
         isPreviewMode={isPreviewMode}
+        submissionClosed={!isPreviewMode && (
+          devoir.corrigeDisponible ||
+          correction?.visibleParEleve === true ||
+          !!travail?.nonRendu
+        )}
       />
 
       <main className={styles.main}>
@@ -612,6 +620,7 @@ export default function TravailPage() {
         >
           <DictionaryClickLayer enabled={dictionaryEnabled}>
           <AssistancePanel
+            nonRendu={travail?.nonRendu ?? null}
             devoir={devoir}
             grille={grille}
             grilleLoading={grilleLoading}

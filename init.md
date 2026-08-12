@@ -128,6 +128,8 @@ interface Devoir {
   createdAt: Timestamp;
   typeTravail: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
   evaluation?: 'formatif' | 'certificatif'; // certificatif = compte pour la note (tag sur les cards) ; absent sur les devoirs antérieurs
+  hiddenCriteria?: string[];      // ids de critères de la grille masqués pour CE devoir (popup au choix de la grille)
+  // disponibleAt / corrigeDisponibleAt : horodatages posés au basculement (notifications)
   questionnaireId?: string;       // ref questionnaires/{id} (type rechercher)
   codeAcces?: string;             // code 6 chars extension Chrome (type rechercher)
   vocabulaireThemes?: string[];   // serie lexicale imposee (type vocabulaire)
@@ -150,6 +152,11 @@ interface Travail {
   ressourceNotes?: Record<string, string>;
   status: 'draft' | 'submitted';
   selfEvaluation: Record<string, number> | null;
+  // nonRendu : décision du PROF (jamais automatique) — 'justifie' = pas de note,
+  // 'nonJustifie' = cote finale 0 SANS toucher les critères (stats de capacités
+  // préservées ; le 0 compte dans les stats du devoir, pas dans le profil).
+  // Effets : bloc « Travaux non rendus » élève, corrigé masqué, remise clôturée.
+  nonRendu?: 'justifie' | 'nonJustifie' | null;
   createdAt: string;
   updatedAt: string;
   submittedAt: string | null;
@@ -272,16 +279,22 @@ interface Questionnaire {
 | `/admin` | admin | Header dédié (variant `admin`) en onglets : Vue d'ensemble (stats) / Gestion des membres (professeurs) / Gestion didactique (UAA + gestes, `DidactiquePanel`) / Gestion des coûts (compteurs d'usage IA — pas de suivi tokens) |
 | `/roadmap` | tous | Nouveautés + à venir — **pilotée par Firestore**, éditable par l'admin (drag « À venir » → « Nouveautés » pour marquer fait) |
 | `/rgpd` | tous | Données personnelles : quelles données, protection (chiffrement), services IA, droits RGPD — statique, menu avatar |
-| `/activites` | élève | Devoirs disponibles + travaux corrigés |
+| `/activites` | élève | 3 blocs : devoirs disponibles / travaux corrigés (correction rendue) / travaux non rendus (cochés par le prof, badge justifié ou « Non fait — 0 ») |
+| `/mes-ressources` | élève | Mes ressources personnelles : onglet Liste de vocabulaire (mots dont il a demandé la définition) + onglet À venir (vide) |
 | `/activites/[id]` | élève | Rédaction + auto-évaluation + remise (`WorkspaceRail`) |
 | `/mes-classes` | élève | Classes + rejoindre une classe |
 | `/profil` | élève | Profil d'écrilecteur en 5 onglets (Général / Lire / Écrire / Rechercher / Vocabulaire), un appel API par onglet chargé à la première ouverture |
 
 ### Header
 - Prof : Mes Activités → `/dashboard` | Mes Classes → `/classes` | Mes Ressources →
-  `/grilles` | Vue élève (œil) → `/activites` | Avatar menu
-- Élève : Mes Activités → `/activites` | Mes Classes → `/mes-classes` | Mon Profil →
-  `/profil` | Avatar menu
+  `/grilles` | Cloche notifications | Avatar menu (l'œil « Vue élève » a été retiré —
+  l'aperçu passe par le bouton Prévisualiser des activités)
+- Élève : Mes Activités → `/activites` | Mes Classes → `/mes-classes` | Mes Ressources
+  personnelles → `/mes-ressources` | Mon Profil → `/profil` | Cloche | Avatar menu
+- Cloche (`NotificationBell`, 3 variantes) : notifications calculées à la lecture
+  (`/api/notifications`), badge non-lus vs `users.notifsLastSeen`, désactivables
+  (prof/admin) via `users.notifsEnabled` — élève : activité ouverte / corrigé dispo ;
+  prof : copies remises ; admin : + section Administration (vide)
 
 ### API Routes
 | Route | Méthodes | Description |
@@ -298,6 +311,9 @@ interface Questionnaire {
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |
 | `/api/professeurs`, `/api/admin/stats`, `/api/admin/prof-stats/[profId]` | — | Admin (profId = email encodé) |
 | `/api/roadmap` | GET, POST | Roadmap Firestore (POST admin) |
+| `/api/notifications` | GET, PUT | Notifications calculées à la lecture (aucune collection) ; PUT : `lastSeen` / `enabled` |
+| `/api/travaux/status` | GET | Élève : statut `{ status, nonRendu }` de ses travaux par devoir (classement page /activites) |
+| `/api/classes/[id]/archive` | GET | Archive ZIP de la classe avant suppression : HTML par élève (nommé + évaluation) + notes.csv par activité + récapitulatif — ZIP maison `src/lib/zip.ts`, zéro dépendance |
 | `/api/ai/writing-help`, `/api/ai/grid-eval` | POST / GET+POST | Aide rédaction + évaluation IA grille |
 | `/api/dictionary` | GET | Dictionnaire élève : définition/synonymes/antonymes (Wiktionnaire, suivi de flexion) + proxémie (Claude) ; cache Firestore `dictionaryCache` ; enregistre les définitions demandées par un élève dans `vocabulairePersonnel/{uid}` |
 | `/api/vocabulaire/personnel` | GET, POST | Vocabulaire personnel élève (mots cliqués) — POST utilisé par NavigKid ; GET prof avec `?studentId=` |
@@ -352,6 +368,23 @@ interface Questionnaire {
   Highlight), clic-mot dans `WorkEditor` (surlignage fluo via `tiptap-dictionary.ts`)
 - UI : `WorkspaceRail`, `ResizableSplit`, `JoinClasseModal`, `BulkImportEleveModal`,
   `ClassesDropdown` (menu déroulant multi-sélection à cases — formulaires devoir)
+- `NotificationBell` : cloche du header (SVG monochrome), badge non-lus, dropdown
+- `HideCriteriaModal` : popup « Masquer certains critères ? » à la sélection d'une
+  grille (création ET édition d'activité) → `devoir.hiddenCriteria` ; répercuté sur
+  `GrilleTab` (affichage, totaux, 75 % auto-éval), l'évaluation IA (`grid-eval` filtre
+  et mappe sur les critères actifs) et les scores — un critère masqué mais évalué
+  avant masquage reste visible et compté
+- Non rendu : toggle dans `GrilleTab` vue prof (justifié / non justifié — note : 0),
+  bandeau élève, badge liste prof, colonne Corrigés, stats devoir (0 compté, justifiés
+  exclus du taux de remise), bloc « sanctionnés » onglet Général du profil,
+  corrigé masqué serveur (`devoirs/[id]` GET), « Remise clôturée » (`WorkTopBar`)
+- Profil : onglet 🗣️ Parler (état vide, pas d'endpoint), onglet Vocabulaire refondu
+  (cartes stats par activité + Vue d'ensemble — séances, temps [`timeSpentSeconds`,
+  chronométré depuis le 2026-08-12], sessions, diagnostics/évaluations en pastilles
+  `ScoreChip`, répartition 4 niveaux rouge→vert) ; vue prof sans listes de mots ;
+  « Tous les critères » (Écrire/Lire) groupés par grille avec mini-courbe à points
+  (tooltip au survol) et détail dépliable ; carte Vocabulaire du Général en barre
+  empilée ; `EmptyState` : `icon="hourglass"` = spinner, sinon emoji (jamais de mot-clé)
 
 ### Hooks
 `useAuth` (expose `getAuthHeaders`), `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,
@@ -366,6 +399,18 @@ interface Questionnaire {
 
 > Les gotchas **critiques** (boucles de hooks, redirections, ContentLock, échelle des
 > grilles) sont dans `AGENTS.md`. Ici : les pièges opérationnels.
+
+### Les devoirs référencent les classes par NOM
+`devoirs.classes` contient des **noms** de classes, pas des ids. Le renommage d'une
+classe est propagé aux devoirs du prof (PATCH `/api/classes/[id]`) ; la **suppression**
+d'une classe laisse les devoirs orphelins (invisibles pour les élèves, visibles pour le
+prof) — d'où la modale d'archive ZIP avant suppression.
+**Symptôme historique** : devoir visible côté prof, absent côté élève (incident
+forcoGosselies, 2026-08-12).
+
+### Deux devoirs peuvent porter le même intitulé
+La duplication d'activité copie l'intitulé ET le tableau `classes` : côté élève, deux
+cartes homonymes peuvent coexister légitimement dans des blocs différents.
 
 ### Pseudo-élément ::highlight non parsé par Turbopack
 Le parseur CSS de Turbopack rejette `::highlight(...)` (API CSS Custom Highlight) dans
