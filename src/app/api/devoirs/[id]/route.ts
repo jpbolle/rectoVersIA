@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { sanitizeLectureQuiz, lectureQuizForEleve } from '@/lib/lecture-server';
+import { atelierParDispositif, isTypeModal } from '@/types/didactique';
 
 export async function GET(
   request: NextRequest,
@@ -72,6 +73,10 @@ export async function GET(
       anneeScolaire: data.anneeScolaire || '',
       profId: data.profId || '',
       typeTravail: data.typeTravail || 'ecrire',
+      modePrincipal: data.modePrincipal || undefined,
+      // Activités créées avant le champ : l'atelier se déduit du dispositif
+      atelier: data.atelier || atelierParDispositif(data.typeTravail || 'ecrire').id,
+      habiletes: Array.isArray(data.habiletes) ? data.habiletes : null,
       questionnaireId: data.questionnaireId || null,
       codeAcces: data.codeAcces || null,
       vocabulaireThemes: data.vocabulaireThemes || undefined,
@@ -174,6 +179,15 @@ export async function PATCH(
     }
     if (body.evaluation !== undefined) {
       updateData.evaluation = body.evaluation === 'certificatif' ? 'certificatif' : 'formatif';
+    }
+    if (body.modePrincipal !== undefined) {
+      updateData.modePrincipal = isTypeModal(body.modePrincipal) ? body.modePrincipal : null;
+    }
+    if (body.habiletes !== undefined) {
+      // null = toutes les habiletés de l'atelier (pas de sélection explicite)
+      updateData.habiletes = Array.isArray(body.habiletes)
+        ? body.habiletes.filter((h: unknown) => typeof h === 'string')
+        : null;
     }
     if (body.hiddenCriteria !== undefined) {
       // Critères masqués pour ce devoir — tableau d'ids (vide = tout évaluer)

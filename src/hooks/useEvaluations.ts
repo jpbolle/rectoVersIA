@@ -11,6 +11,9 @@ import type { Grille } from '@/types/grille';
 export function useGrilleTypes() {
   const { isAuthenticated, getAuthHeaders } = useAuth();
   const [grilleTypes, setGrilleTypes] = useState<string[]>([]);
+  // Nom + types d'activité de chaque grille : sert à ne proposer, à la création
+  // d'une activité, que les grilles rattachées à son atelier
+  const [grilles, setGrilles] = useState<{ name: string; ateliers: string[] }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -29,10 +32,9 @@ export function useGrilleTypes() {
           const myGrilles: Grille[] = json.data || [];
           const sharedGrilles: Grille[] = json.shared || [];
           const allGrilles = [...myGrilles, ...sharedGrilles];
-          const names = allGrilles
-            .filter((g) => !g.archive)
-            .map((g) => g.name);
-          setGrilleTypes(names);
+          const actives = allGrilles.filter((g) => !g.archive);
+          setGrilleTypes(actives.map((g) => g.name));
+          setGrilles(actives.map((g) => ({ name: g.name, ateliers: g.ateliers ?? [] })));
         }
       } catch (err) {
         console.error('Erreur fetchGrilles:', err);
@@ -44,5 +46,5 @@ export function useGrilleTypes() {
     fetchGrilles();
   }, [isAuthenticated, getAuthHeaders]);
 
-  return { grilleTypes, isLoading };
+  return { grilleTypes, grilles, isLoading };
 }

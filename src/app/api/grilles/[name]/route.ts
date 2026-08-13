@@ -12,6 +12,7 @@ function docToGrille(doc: FirebaseFirestore.DocumentSnapshot): Grille {
     name: data.name || '',
     description: data.description || '',
     uaa: data.uaa || [],
+    ateliers: Array.isArray(data.ateliers) ? data.ateliers : [],
     profId: data.profId || '',
     profName: data.profName || '',
     shared: data.shared ?? false,
@@ -111,6 +112,12 @@ export async function PATCH(
     if (body.name !== undefined) updateData.name = body.name;
     if (body.description !== undefined) updateData.description = body.description;
     if (body.uaa !== undefined) updateData.uaa = Array.isArray(body.uaa) ? body.uaa : [];
+    // Types d'activité où la grille est proposée (ids d'ateliers)
+    if (body.ateliers !== undefined) {
+      updateData.ateliers = Array.isArray(body.ateliers)
+        ? body.ateliers.filter((a: unknown) => typeof a === 'string')
+        : [];
+    }
     if (body.archive !== undefined) updateData.archive = body.archive;
     // Seul l'admin peut changer le flag shared
     if (body.shared !== undefined && isAdmin(auth.email)) updateData.shared = body.shared;

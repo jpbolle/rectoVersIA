@@ -15,6 +15,9 @@ import type { LectureQuiz } from '@/types/lecture';
 import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
+import HabiletesPicker from '@/components/HabiletesPicker/HabiletesPicker';
+import { atelierParDispositif, findAtelier, TYPES_MODAUX } from '@/types/didactique';
+import type { TypeModal } from '@/types/didactique';
 import styles from './EditDevoirModal.module.css';
 
 type FormFace = 'recto' | 'verso';
@@ -42,6 +45,8 @@ interface EditDevoirModalProps {
   devoir: Devoir | null;
   classeNames: string[];
   grilleTypes: string[];
+  // Nom + ateliers de chaque grille — filtre les grilles proposées
+  grilles?: { name: string; ateliers: string[] }[];
   isOpen: boolean;
   onClose: () => void;
   onSave: (id: string, data: Partial<Devoir>) => Promise<void>;
@@ -53,6 +58,7 @@ export default function EditDevoirModal({
   devoir,
   classeNames,
   grilleTypes,
+  grilles = [],
   isOpen,
   onClose,
   onSave,
@@ -75,6 +81,10 @@ export default function EditDevoirModal({
   const [disponible, setDisponible] = useState(false);
   const [flipInverted, setFlipInverted] = useState(false);
   const [evaluation, setEvaluation] = useState<EvaluationType>('formatif');
+  // Didactique : le mode principal et les habiletés se modifient ; l'atelier
+  // non — il commande le dispositif, le changer transformerait l'activité
+  const [modePrincipal, setModePrincipal] = useState<TypeModal>('ecrire');
+  const [habiletes, setHabiletes] = useState<string[] | null>(null);
 
   // Verso : ressources + corrigé de référence (type ecrire)
   const [ressources, setRessources] = useState<DevoirRessource | null>(null);
@@ -110,6 +120,11 @@ export default function EditDevoirModal({
       setDisponible(devoir.disponible || false);
       setFlipInverted(devoir.flipInverted ?? false);
       setEvaluation(devoir.evaluation ?? 'formatif');
+      setModePrincipal(
+        devoir.modePrincipal ??
+          atelierParDispositif(devoir.typeTravail ?? 'ecrire').modeParDefaut
+      );
+      setHabiletes(devoir.habiletes ?? null);
       setRessources(devoir.ressources || null);
       setRessourcesToIA(devoir.ressourcesToIA ?? false);
       setLectureQuiz(devoir.lectureQuiz || null);
@@ -150,11 +165,17 @@ export default function EditDevoirModal({
   }, [devoir, getAuthHeaders]);
 
   const typeTravail = devoir?.typeTravail ?? 'ecrire';
+  const atelierId = devoir?.atelier ?? atelierParDispositif(typeTravail).id;
+  // Seules les activités d'écriture s'appuient sur une grille
+  const usesGrille = typeTravail === 'ecrire';
+  const grillesDeLAtelier = grilles.length
+    ? grilles.filter((g) => !g.ateliers.length || g.ateliers.includes(atelierId)).map((g) => g.name)
+    : grilleTypes;
 
   const isValid =
     selectedClasses.length > 0 &&
     dateRemise &&
-    (typeTravail === 'vocabulaire' || grille) &&
+    (!usesGrille || grille) &&
     intitule.trim();
 
   // Le verso porte-t-il du contenu ? (point orange sur l'onglet Verso)
@@ -206,6 +227,8 @@ export default function EditDevoirModal({
       disponible,
       ressources,
       evaluation,
+      modePrincipal,
+      habiletes,
     };
 
     // Corrigé de référence du prof (type ecrire uniquement)
@@ -268,6 +291,34 @@ export default function EditDevoirModal({
         />
       </div>
 
+      {/* Didactique : l'atelier est figé (il commande le dispositif), le mode
+          principal et les habiletés se modifient */}
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Type d&apos;activité</label>
+          <select className={styles.select} value={atelierId} disabled>
+            <option value={atelierId}>{findAtelier(atelierId)?.label ?? atelierId}</option>
+          </select>
+          {/* Le mode principal découle du type d'activité — chercher, c'est lire */}
+          <p className={styles.modeNote}>
+            Mode principal : {TYPES_MODAUX.find((t) => t.id === modePrincipal)?.court}
+          </p>
+        </div>
+
+        {!usesGrille && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Habiletés travaillées</label>
+            <HabiletesPicker
+              atelier={atelierId}
+              modePrincipal={modePrincipal}
+              value={habiletes}
+              onChange={setHabiletes}
+              disabled={isSaving}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Date et Grille */}
       <div className={styles.formRow}>
         <div className={styles.formGroup}>
@@ -280,7 +331,7 @@ export default function EditDevoirModal({
           />
         </div>
 
-        {typeTravail !== 'vocabulaire' && (
+        {usesGrille && (
           <div className={styles.formGroup}>
             <label className={styles.label}>
               Type de grille <span className={styles.required}>*</span>
@@ -296,7 +347,7 @@ export default function EditDevoirModal({
               }}
             >
               <option value="">Sélectionnez...</option>
-              {grilleTypes.map((type) => (
+              {grillesDeLAtelier.map((type) => (
                 <option key={type} value={type}>
                   {type}
                 </option>
@@ -477,6 +528,7 @@ export default function EditDevoirModal({
           onChange={setLectureQuiz}
           disabled={isSaving}
           getAuthHeaders={getAuthHeaders}
+          allowedHabiletes={habiletes}
         />
       )}
 

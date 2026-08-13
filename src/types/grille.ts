@@ -16,6 +16,10 @@ export interface Grille {
   name: string;        // Nom de la grille
   description?: string;
   uaa: number[];       // UAA ciblées (ex: [0, 3])
+  // Types d'activité auxquels la grille se rapporte — ids de ATELIERS
+  // (types/didactique). Vide = grille non typée : proposée partout, cas des
+  // grilles créées avant l'existence du champ.
+  ateliers?: string[];
   profId: string;
   profName?: string;   // Nom du prof (pour affichage dans "Grilles des professeurs")
   shared: boolean;     // Grille exemple visible par tous (admin seulement)
@@ -31,6 +35,7 @@ export interface CreateGrilleData {
   name: string;
   description?: string;
   uaa?: number[];
+  ateliers?: string[];
   criteria: Omit<GrilleCriterion, 'id'>[];
 }
 

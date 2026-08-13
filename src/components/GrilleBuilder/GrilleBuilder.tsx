@@ -4,11 +4,18 @@ import { useState, useCallback, useMemo } from 'react';
 import { useDidactique } from '@/hooks/useDidactique';
 import type { Grille, GrilleCriterion, GrilleLevel } from '@/types/grille';
 import { LEVEL_LABELS, LEVEL_PERCENTAGES, UAA_LIST } from '@/types/grille';
+import { ATELIERS } from '@/types/didactique';
 import styles from './GrilleBuilder.module.css';
 
 interface GrilleBuilderProps {
   grille?: Grille | null;           // null = creation, Grille = edition
-  onSave: (data: { name: string; description: string; uaa: number[]; criteria: GrilleCriterion[] }) => void;
+  onSave: (data: {
+    name: string;
+    description: string;
+    uaa: number[];
+    ateliers: string[];
+    criteria: GrilleCriterion[];
+  }) => void;
   onCancel: () => void;
   isSaving?: boolean;
 }
@@ -32,6 +39,9 @@ export default function GrilleBuilder({ grille, onSave, onCancel, isSaving }: Gr
   const [name, setName] = useState(grille?.name || '');
   const [description, setDescription] = useState(grille?.description || '');
   const [selectedUaa, setSelectedUaa] = useState<number[]>(grille?.uaa || []);
+  // Types d'activité auxquels la grille se rapporte : c'est ce qui filtre les
+  // grilles proposées à la création d'une activité
+  const [selectedAteliers, setSelectedAteliers] = useState<string[]>(grille?.ateliers || []);
 
   // UAA dynamiques (config didactique, gérée par l'admin) : visibles + celles
   // déjà cochées sur la grille ; libellé de repli sur la liste historique
@@ -101,6 +111,7 @@ export default function GrilleBuilder({ grille, onSave, onCancel, isSaving }: Gr
       name: name.trim(),
       description: description.trim(),
       uaa: selectedUaa,
+      ateliers: selectedAteliers,
       criteria: criteria.map((c, i) => ({
         ...c,
         order: i,
@@ -111,7 +122,7 @@ export default function GrilleBuilder({ grille, onSave, onCancel, isSaving }: Gr
         })),
       })),
     });
-  }, [name, description, selectedUaa, criteria, onSave]);
+  }, [name, description, selectedUaa, selectedAteliers, criteria, onSave]);
 
   // --- CRITERES ---
 
@@ -267,6 +278,32 @@ export default function GrilleBuilder({ grille, onSave, onCancel, isSaving }: Gr
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Ex: Grille pour les rédactions argumentatives"
           />
+        </div>
+
+        {/* Type d'activité : filtre les grilles proposées à la création */}
+        <div className={styles.field}>
+          <label className={styles.label}>Type d&apos;activité</label>
+          <div className={styles.uaaGrid}>
+            {ATELIERS.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                className={`${styles.uaaChip} ${selectedAteliers.includes(a.id) ? styles.uaaChipActive : ''}`}
+                onClick={() =>
+                  setSelectedAteliers((prev) =>
+                    prev.includes(a.id) ? prev.filter((x) => x !== a.id) : [...prev, a.id].sort()
+                  )
+                }
+                title={a.label}
+              >
+                <span className={styles.uaaChipId}>{a.court}</span>
+              </button>
+            ))}
+          </div>
+          <p className={styles.fieldHint}>
+            Détermine les activités où cette grille est proposée. Aucun choix = proposée
+            partout.
+          </p>
         </div>
 
         {/* Sélection UAA */}

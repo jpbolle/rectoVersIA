@@ -7,8 +7,10 @@ import { useState } from 'react';
 import { DrawCanvas } from '@/components/DrawTools/DrawTools';
 import { FluoExtrait, FluoCompare } from '@/components/LectureQuizActivity/LectureQuizActivity';
 import { useDidactique } from '@/hooks/useDidactique';
+import { habileteLabel } from '@/types/didactique';
 import { parseLectureAnswers, LECTURE_COMPETENCE_LABELS } from '@/types/lecture';
 import type { LectureQuiz, LectureQuestion, LectureCompetence } from '@/types/lecture';
+import { scoreLectureQuiz } from '@/lib/lecture-scoring';
 import styles from './LectureQuizReview.module.css';
 
 const TYPE_LABELS: Record<LectureQuestion['type'], string> = {
@@ -22,9 +24,20 @@ const TYPE_LABELS: Record<LectureQuestion['type'], string> = {
 interface LectureQuizReviewProps {
   quiz: LectureQuiz;
   travailContent: string | null | undefined;
+  // Points attribués aux questions ouvertes ({questionId: points}) — les QCM
+  // sont comptés automatiquement, jamais stockés
+  questionScores?: Record<string, number>;
+  onQuestionScoreChange?: (questionId: string, points: number | null) => void;
+  disabled?: boolean;
 }
 
-export default function LectureQuizReview({ quiz, travailContent }: LectureQuizReviewProps) {
+export default function LectureQuizReview({
+  quiz,
+  travailContent,
+  questionScores,
+  onQuestionScoreChange,
+  disabled,
+}: LectureQuizReviewProps) {
   const state = parseLectureAnswers(travailContent);
   const answers = state?.answers ?? {};
   const [popupImage, setPopupImage] = useState<string | null>(null);
@@ -32,27 +45,29 @@ export default function LectureQuizReview({ quiz, travailContent }: LectureQuizR
   // Libellés des gestes de lecture : config didactique, repli sur les slugs
   // historiques puis sur l'id brut (geste supprimé de la config)
   const { config: didactique } = useDidactique();
-  const gesteLabel = (id: string) =>
-    didactique.gestesLecture.find((g) => g.id === id)?.label ??
-    LECTURE_COMPETENCE_LABELS[id as LectureCompetence] ??
-    id;
+  const gesteLabel = (id: string) => {
+    const h = didactique.habiletes.find((x) => x.id === id);
+    if (h) return habileteLabel(h);
+    return LECTURE_COMPETENCE_LABELS[id as LectureCompetence] ?? id;
+  };
 
-  // Comptage automatique des QCM
-  const qcmQuestions = quiz.questions.filter((q) => q.type === 'qcm');
-  const qcmCorrect = qcmQuestions.filter(
-    (q) => answers[q.id]?.choiceIndex === q.correctIndex
-  );
-  const qcmPointsMax = qcmQuestions.reduce((s, q) => s + (q.points || 0), 0);
-  const qcmPoints = qcmCorrect.reduce((s, q) => s + (q.points || 0), 0);
+  // Score complet : QCM automatiques + points saisis sur les questions ouvertes
+  const score = scoreLectureQuiz(quiz, answers, questionScores);
+  const scoreByQuestion = new Map(score.parQuestion.map((s) => [s.questionId, s]));
   const totalPoints = quiz.questions.reduce((s, q) => s + (q.points || 0), 0);
 
   return (
     <div className={styles.review}>
-      {qcmQuestions.length > 0 && (
+      {totalPoints > 0 && (
         <div className={styles.autoScore}>
-          🎯 QCM : <b>{qcmCorrect.length}/{qcmQuestions.length}</b> corrects
-          {qcmPointsMax > 0 && <> · <b>{qcmPoints}/{qcmPointsMax}</b> pts automatiques</>}
-          {totalPoints > 0 && <span className={styles.totalPts}> (questionnaire : {totalPoints} pts)</span>}
+          🎯 <b>{score.points}/{score.max}</b>
+          {score.percent !== null && <> ({score.percent}%)</>}
+          <span className={styles.totalPts}> sur {totalPoints} pts au total</span>
+          {score.aNoter > 0 && (
+            <span className={styles.totalPts}>
+              {' '}· {score.aNoter} question{score.aNoter > 1 ? 's' : ''} à noter
+            </span>
+          )}
         </div>
       )}
 
@@ -94,7 +109,34 @@ export default function LectureQuizReview({ quiz, travailContent }: LectureQuizR
                   {q.competences.map((c) => gesteLabel(c)).join(' · ')}
                 </span>
               )}
-              {q.points > 0 && <span className={styles.pts}>{q.points} pt{q.points > 1 ? 's' : ''}</span>}
+              {q.points > 0 && q.type === 'qcm' && (
+                <span className={styles.pts}>
+                  {scoreByQuestion.get(q.id)?.points ?? 0}/{q.points} pt{q.points > 1 ? 's' : ''}
+                </span>
+              )}
+              {q.points > 0 && q.type !== 'qcm' && onQuestionScoreChange && (
+                <span className={styles.scoreInput}>
+                  <input
+                    type="number"
+                    min={0}
+                    max={q.points}
+                    step={0.5}
+                    value={questionScores?.[q.id] ?? ''}
+                    placeholder="—"
+                    disabled={disabled}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      onQuestionScoreChange(q.id, v === '' ? null : Number(v));
+                    }}
+                  />
+                  <span>/ {q.points}</span>
+                </span>
+              )}
+              {q.points > 0 && q.type !== 'qcm' && !onQuestionScoreChange && (
+                <span className={styles.pts}>
+                  {scoreByQuestion.get(q.id)?.points ?? '—'}/{q.points}
+                </span>
+              )}
             </div>
 
             <p className={styles.enonce}>{q.enonce}</p>

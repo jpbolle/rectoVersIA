@@ -64,6 +64,35 @@
   color: var(--c-text-secondary);
 }
 
+/* Saisie des points d'une question ouverte (prof) */
+.scoreInput {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+.scoreInput input {
+  width: 52px;
+  padding: 3px 6px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  text-align: right;
+  color: var(--c-text);
+  background: var(--c-bg-card, #fff);
+}
+
+.scoreInput input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
 .enonce {
   font-size: 13.5px;
   line-height: 1.5;

@@ -70,7 +70,13 @@ choisie, pas d'indice — toute comparaison passe par `options[i] === reponse`.
 
 ## TODO
 
-### Prochaine session — 2026-08-13 (plan annoncé par JP)
+> ⚠️ **Le plan ci-dessous n'a PAS été exécuté le 2026-08-13** : la session a
+> basculé sur la refonte didactique (voir `rollup_didactique.md`). Il reste
+> entier. S'y ajoute désormais : ajouter `competences` aux questions NavigKid,
+> pour qu'une activité de recherche alimente le profil par habileté comme le
+> fait maintenant la lecture.
+
+### Prochaine session (plan annoncé par JP le 2026-08-12)
 
 1. [ ] **Terminer les tests** de la boucle d'envoi : envoi des réponses depuis
        l'extension → voile levé → onglet Évaluation avec les compteurs → corrigé QCM

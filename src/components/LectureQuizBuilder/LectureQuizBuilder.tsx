@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic';
 import { compressImage } from '@/lib/image-compress';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useDidactique } from '@/hooks/useDidactique';
+import { habileteLabel, habiletesOfType } from '@/types/didactique';
 import { FluoExtrait } from '@/components/LectureQuizActivity/LectureQuizActivity';
 import { LECTURE_COMPETENCE_LABELS, generateLectureQuestionId } from '@/types/lecture';
 import type { LectureCompetence } from '@/types/lecture';
@@ -65,6 +66,9 @@ interface LectureQuizBuilderProps {
   onChange: (quiz: LectureQuiz) => void;
   disabled?: boolean;
   getAuthHeaders?: () => Promise<Record<string, string> | null>;
+  // Habiletés retenues pour l'activité : les questions ne peuvent piocher que
+  // là-dedans. null = pas de restriction (toutes celles de l'atelier).
+  allowedHabiletes?: string[] | null;
 }
 
 export default function LectureQuizBuilder({
@@ -72,6 +76,7 @@ export default function LectureQuizBuilder({
   onChange,
   disabled = false,
   getAuthHeaders,
+  allowedHabiletes = null,
 }: LectureQuizBuilderProps) {
   const quiz: LectureQuiz = value ?? { mode: 'worksheet', questions: [] };
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -274,15 +279,21 @@ export default function LectureQuizBuilder({
     updateQuestion(q.id, { competences: next });
   };
 
-  // ── Gestes de lecture : liste dynamique gérée par l'admin (didactique) ──
+  // ── Habiletés de lecture : liste dynamique gérée par l'admin (didactique) ──
   const { config: didactique } = useDidactique();
 
-  // Options proposées pour une question : les gestes visibles + ceux déjà
-  // cochés même s'ils ont été masqués ou supprimés depuis (pour les décochér)
+  // Options proposées pour une question : les habiletés de lecture visibles +
+  // celles déjà cochées même si masquées ou supprimées depuis (pour les décocher)
   const gesteOptions = (q: LectureQuestion) => {
-    const known = new Set(didactique.gestesLecture.map((g) => g.id));
+    const restriction = allowedHabiletes ? new Set(allowedHabiletes) : null;
+    const lecture = habiletesOfType(didactique, 'lire').filter(
+      (h) => !restriction || restriction.has(h.id) || q.competences.includes(h.id)
+    );
+    const known = new Set(lecture.map((g) => g.id));
     return [
-      ...didactique.gestesLecture.filter((g) => g.visible || q.competences.includes(g.id)),
+      ...lecture
+        .filter((h) => h.visible || q.competences.includes(h.id))
+        .map((h) => ({ id: h.id, label: habileteLabel(h), visible: h.visible })),
       ...q.competences
         .filter((c) => !known.has(c))
         .map((c) => ({

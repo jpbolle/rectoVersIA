@@ -16,4 +16,5 @@
 - [rollup_classes](rollup_classes.md) — bloc Mes Élèves + fiche élève en popup ; renommage propagé aux devoirs + archive ZIP avant suppression (2026-08-12) — TODO : test + déploiement
 - [rollup_remise](rollup_remise.md) — travaux non rendus (justifié / non justifié — 0), corrigé masqué, remise clôturée, archive de classe — testé élève 007 le 2026-08-12, TODO : déploiement
 - [rollup_notifications](rollup_notifications.md) — cloche header 3 rôles, calcul à la lecture, horodatages posés au basculement — livré 2026-08-12, TODO : test + contenu section admin
+- [rollup_didactique](rollup_didactique.md) — **habiletés / ateliers / notation de la lecture** (2026-08-13) : chercher = lire, grille réservée à l'écriture, scoring par habileté — TODO : tout tester, `competences` sur les questions NavigKid
 - [rollup_recherche](rollup_recherche.md) — activités NavigKid : voile + popup de lancement, remise par l'extension, corrigé QCM, **fuite des bonnes réponses corrigée** (2026-08-12) — **plan du 2026-08-13** : tests de la boucle d'envoi, publication de l'extension sur le Chrome Web Store, réécriture de sa description

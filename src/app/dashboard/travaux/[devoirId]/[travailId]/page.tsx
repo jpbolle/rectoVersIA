@@ -83,6 +83,7 @@ export default function TravailDetailPage() {
     updateDraftAnnotations,
     updateCommentaireGeneral,
     updateCommentaireGeneralAudio,
+    updateQuestionScore,
     toggleVisibility,
   } = useCorrection(
     travailId || null,
@@ -551,6 +552,8 @@ export default function TravailDetailPage() {
                 <LectureQuizReview
                   quiz={devoir.lectureQuiz}
                   travailContent={travail.content}
+                  questionScores={correction?.questionScores}
+                  onQuestionScoreChange={updateQuestionScore}
                 />
               </div>
             ) : (

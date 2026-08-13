@@ -18,6 +18,7 @@ import type { Correction } from '@/types/correction';
 import type { AiSuggestion, AiSuggestionType } from '@/types/ai-suggestions';
 import type { AiGridResult } from '@/types/ai-grid';
 import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
+import LectureEvaluation from '@/components/LectureEvaluation/LectureEvaluation';
 import styles from './AssistancePanel.module.css';
 
 export type TabType = 'consignes' | 'ressources' | 'grille' | 'remarques' | 'ia' | 'recherche';
@@ -143,6 +144,10 @@ export default function AssistancePanel({
   // Mode contrôlé vs interne
   const [internalTab, setInternalTab] = useState<TabType>('consignes');
   const currentTab = controlledTab ?? internalTab;
+  // Activité de lecture avec questionnaire : l'évaluation passe par les
+  // habiletés des questions, pas par une grille
+  const isLectureQuiz =
+    devoir.typeTravail === 'lire' && (devoir.lectureQuiz?.questions.length ?? 0) > 0;
   const handleTabChange = (tab: TabType) => {
     if (onTabChange) {
       onTabChange(tab);
@@ -265,7 +270,17 @@ export default function AssistancePanel({
             corrigeDisponible={devoir.corrigeDisponible === true}
           />
         )}
-        {currentTab === 'grille' && devoir.typeTravail !== 'vocabulaire' && (
+        {/* Questionnaire de lecture : pas de grille — le score et le détail par
+            habileté tiennent lieu d'évaluation */}
+        {currentTab === 'grille' && isLectureQuiz && (
+          <LectureEvaluation
+            quiz={devoir.lectureQuiz}
+            travailContent={studentContent}
+            questionScores={correction?.questionScores}
+            showScores={isProfessorView || correction?.visibleParEleve === true}
+          />
+        )}
+        {currentTab === 'grille' && devoir.typeTravail !== 'vocabulaire' && !isLectureQuiz && (
           <GrilleTab
             grille={grille}
             hiddenCriteria={devoir.hiddenCriteria}

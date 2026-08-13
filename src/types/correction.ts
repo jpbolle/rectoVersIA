@@ -22,6 +22,10 @@ export interface Correction {
   commentaireGeneral: string;
   commentaireGeneralAudio?: string;              // base64 data URL (commentaire vocal)
   commentairesCriteres?: Record<string, string>; // {criterionId: commentaire}
+  // Questionnaire de lecture : points attribués par le prof aux questions
+  // ouvertes ({questionId: points}). Les QCM ne sont PAS stockés ici — ils sont
+  // recalculés à la lecture (voir lib/lecture-scoring.ts).
+  questionScores?: Record<string, number>;
   score: number;                                 // Score total calcule
   status: CorrectionStatus;
   visibleParEleve: boolean;
@@ -48,6 +52,7 @@ export interface UpdateCorrectionData {
   commentaireGeneral?: string;
   commentaireGeneralAudio?: string;
   commentairesCriteres?: Record<string, string>;
+  questionScores?: Record<string, number>;
   score?: number;
   status?: CorrectionStatus;
   visibleParEleve?: boolean;

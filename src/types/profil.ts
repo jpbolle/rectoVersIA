@@ -71,6 +71,19 @@ export interface ProfilGeneral {
 export interface ProfilSection {
   stats: SectionStats | null;
   devoirs: DevoirStat[];      // pour le filtre par activité
+  // Onglet Lire : agrégation par habileté à travers tous les questionnaires.
+  // Une question portant deux habiletés compte entièrement dans chacune — la
+  // somme des lignes ne retombe donc pas sur un total (voir lecture-scoring).
+  habiletes?: HabileteStat[];
+}
+
+export interface HabileteStat {
+  habileteId: string;
+  points: number;
+  max: number;
+  percent: number;
+  questions: number;          // nombre de questions notées
+  activites: number;          // nombre d'activités où elle a été travaillée
 }
 
 // Onglet Rechercher — une entrée par recherche guidée NavigKid

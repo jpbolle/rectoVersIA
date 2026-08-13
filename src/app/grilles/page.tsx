@@ -93,6 +93,7 @@ export default function GrillesPage() {
           name: `${grille.name} (copie)`,
           description: grille.description,
           uaa: grille.uaa,
+          ateliers: grille.ateliers,
           criteria: grille.criteria,
         });
         setMessage({ text: `Grille "${grille.name}" dupliquée dans vos grilles !`, type: 'success' });
@@ -148,7 +149,13 @@ export default function GrillesPage() {
   );
 
   const handleBuilderSave = useCallback(
-    async (data: { name: string; description: string; uaa: number[]; criteria: GrilleCriterion[] }) => {
+    async (data: {
+      name: string;
+      description: string;
+      uaa: number[];
+      ateliers: string[];
+      criteria: GrilleCriterion[];
+    }) => {
       setIsSaving(true);
       try {
         if (builderMode === 'create') {
@@ -156,6 +163,7 @@ export default function GrillesPage() {
             name: data.name,
             description: data.description,
             uaa: data.uaa,
+            ateliers: data.ateliers,
             criteria: data.criteria,
           });
           setMessage({ text: `Grille "${data.name}" créée avec succès !`, type: 'success' });
@@ -164,6 +172,7 @@ export default function GrillesPage() {
             name: data.name,
             description: data.description,
             uaa: data.uaa,
+            ateliers: data.ateliers,
             criteria: data.criteria,
           });
           setMessage({ text: `Grille "${data.name}" modifiée avec succès !`, type: 'success' });

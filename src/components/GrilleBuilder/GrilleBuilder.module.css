@@ -37,6 +37,13 @@
   margin-bottom: 20px;
 }
 
+.fieldHint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--c-text-secondary);
+}
+
 .field {
   display: flex;
   flex-direction: column;

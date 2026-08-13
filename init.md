@@ -74,6 +74,8 @@ npm run build      # build complet
 | Ligne de boutons d'action encadrée par 2 traits horizontaux | Convention couleurs : **vert** (`--c-primary`) = bouton qui **génère** du contenu (IA, exercices, évaluation) ; **amber** (`--c-accent`) = bouton qui **affiche** ou **navigue**. Verts groupés d'abord, ambers ensuite. Boutons `min-height:42px / padding:0 22px / font:14px 600` | `bottomActions` dans `VocabulaireActivity.module.css`, `actionBar` dans `VocabulaireExercises.module.css` |
 | Accès à un objet instable (`user`, `travail`) dans un callback mémoïsé | Pattern `ref` (jamais l'objet dans les deps — règle AGENTS.md) | `userRef` dans `AuthContext.tsx`, `travailRef` dans `useTravail` |
 | Page avec `router.replace()` | State `redirecting` : `if (redirecting) return;` avant le replace, `return null;` dans le render | pages protégées existantes |
+| Nouvelle façon d'évaluer une activité | **Grille pour l'écriture, habiletés partout ailleurs** — jamais les deux. La grille n'est exigée que pour `typeTravail === 'ecrire'`, client ET serveur | `usesGrille` dans `CreationForm` / `EditDevoirModal` |
+| Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
 | Panneau latéral élève | `WorkspaceRail` (rail icônes droite + panneau redimensionnable) — côté prof on garde `ResizableSplit` + onglets. **Ne pas uniformiser** | `/activites/[id]` vs `/dashboard/travaux/[devoirId]/[travailId]` |
 
 ---
@@ -126,7 +128,10 @@ interface Devoir {
   profId: string;
   anneeScolaire: string;         // "2025-2026" (calcul auto)
   createdAt: Timestamp;
-  typeTravail: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
+  typeTravail: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire'; // DISPOSITIF
+  modePrincipal?: TypeModal;     // compétence en jeu (lire/ecrire/parler/reflexif/lexique)
+  atelier?: string;              // type d'activité — id de ATELIERS
+  habiletes?: string[] | null;   // null = toutes celles de l'atelier
   evaluation?: 'formatif' | 'certificatif'; // certificatif = compte pour la note (tag sur les cards) ; absent sur les devoirs antérieurs
   hiddenCriteria?: string[];      // ids de critères de la grille masqués pour CE devoir (popup au choix de la grille)
   // disponibleAt / corrigeDisponibleAt : horodatages posés au basculement (notifications)
@@ -175,6 +180,7 @@ interface Correction {
   studentId: string;
   profId: string;
   evaluation: Record<string, number>;
+  questionScores?: Record<string, number>; // questionnaire de lecture : points des questions ouvertes
   commentaireGeneral: string;
   annotatedContent?: string;     // HTML annote par le prof
   audioAnnotations?: AudioAnnotation[];   // base64 dans Firestore, pas de Storage
@@ -194,6 +200,7 @@ interface Grille {
   name: string;
   description?: string;
   uaa: number[];                 // UAA ciblees (0-6)
+  ateliers?: string[];           // types d'activite ou la grille est proposee (vide = partout)
   profId: string;
   shared: boolean;               // grille exemple visible par tous (admin seulement)
   anneeScolaire: string;
@@ -226,6 +233,11 @@ interface Questionnaire {
 ```
 
 ### Autres collections
+- `configuration/didactique` : UAA + **habiletés**. Une habileté =
+  `{ id, type (mode principal), geste, label, objets[], uaa[], ateliers[], visible }`.
+  Le **geste** n'est pas une entité : c'est le libellé partagé par plusieurs
+  habiletés. Importée une fois depuis `scripts/data/ceintures-et-habiletes.csv`
+  (63 lignes) — le tableau Google n'est plus la source de vérité.
 - `professeurs` : doc ID = email, géré par admin via `/admin` (supporte `expiresAt`)
 - `dictionaryCache` : doc ID = mot — cache des consultations dictionnaire (accès serveur uniquement)
 - `vocabulairePersonnel/{uid}` : mots dont l'élève a demandé la définition (app + NavigKid),
@@ -276,7 +288,7 @@ interface Questionnaire {
 | `/classes` | prof | Gestion classes et élèves + bloc « Mes Élèves » (tous les élèves, filtre actifs/archivés, recherche) ; clic sur un élève (bloc ou détail de classe) → fiche complète en popup (`EleveProfilModal` → `ProfilPanel`) |
 | `/grilles` | prof | Mes Ressources : onglets Grilles + Listes de vocabulaire |
 | `/archives` | prof | Devoirs archivés |
-| `/admin` | admin | Header dédié (variant `admin`) en onglets : Vue d'ensemble (stats) / Gestion des membres (professeurs) / Gestion didactique (UAA + gestes, `DidactiquePanel`) / Gestion des coûts (compteurs d'usage IA — pas de suivi tokens) |
+| `/admin` | admin | Titre de page = nom de l'onglet actif (`ADMIN_TABS`, source unique dans `Header.tsx`). Header dédié (variant `admin`) en onglets : Vue d'ensemble (stats) / Gestion des membres (professeurs) / Gestion didactique (UAA + habiletés, `DidactiquePanel`) / Gestion des coûts (compteurs d'usage IA — pas de suivi tokens) |
 | `/roadmap` | tous | Nouveautés + à venir — **pilotée par Firestore**, éditable par l'admin (drag « À venir » → « Nouveautés » pour marquer fait) |
 | `/rgpd` | tous | Données personnelles : quelles données, protection (chiffrement), services IA, droits RGPD — statique, menu avatar |
 | `/activites` | élève | 3 blocs : devoirs disponibles / travaux corrigés (correction rendue) / travaux non rendus (cochés par le prof, badge justifié ou « Non fait — 0 ») |
@@ -307,7 +319,7 @@ interface Questionnaire {
 | `/api/grilles`, `/api/grilles/[name]` | CRUD | Mes grilles + shared + autres profs |
 | `/api/preferences` | GET, PUT | Préférences éditeur |
 | `/api/profil/{general,lecture,ecriture,recherche,vocabulaire}` | GET | Profil élève, un endpoint par onglet — helpers dans `src/lib/profil-stats.ts` ; `?eleveId=` réservé au prof (fiche élève — `src/lib/profil-target.ts` vérifie l'appartenance à ses classes) |
-| `/api/didactique` | GET, PUT | Config « Didactique du français » (UAA + gestes) — doc `configuration/didactique`, GET tout connecté, PUT admin ; hook client `useDidactique` (cache partagé) |
+| `/api/didactique` | GET, PUT | Config didactique (UAA + habiletés) — doc `configuration/didactique`, GET tout connecté, PUT admin ; le GET **normalise** les champs absents des documents anciens (`objets`, `ateliers`) ; hook client `useDidactique` (cache partagé) |
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |
 | `/api/professeurs`, `/api/admin/stats`, `/api/admin/prof-stats/[profId]` | — | Admin (profId = email encodé) |
 | `/api/roadmap` | GET, POST | Roadmap Firestore (POST admin) |
@@ -415,6 +427,26 @@ prof) — d'où la modale d'archive ZIP avant suppression.
 **Symptôme historique** : devoir visible côté prof, absent côté élève (incident
 forcoGosselies, 2026-08-12).
 
+### Scores par habileté : la somme ne fait jamais le total
+Une question portant deux habiletés compte **entièrement dans chacune**, jamais
+divisée — sinon elle serait comptée à moitié dans les deux. Le total du
+questionnaire, lui, compte chaque question **une seule fois**.
+**Ne jamais additionner les lignes par habileté pour en tirer un total.**
+La règle est écrite dans `lecture-scoring.ts` et rappelée à l'élève sous le tableau.
+
+### QCM d'un questionnaire de lecture : jamais stockés
+Les points des QCM sont **recalculés à chaque lecture** (`correctIndex`), pour
+rester justes si le prof corrige le quiz après coup. Seules les questions
+ouvertes sont enregistrées (`correction.questionScores`). Une question non notée
+est **hors total** — numérateur comme dénominateur.
+
+### Chercher, c'est lire
+« Rechercher » n'est **pas** un mode principal : c'est un **atelier**. Une
+recherche guidée est un travail de lecture. Le champ `devoir.typeTravail` garde
+la valeur `'rechercher'` — c'est le *dispositif*, pas la modalité. Ne pas
+« corriger » cette apparente incohérence : elle évite une migration des 35
+branchements existants.
+
 ### Deux devoirs peuvent porter le même intitulé
 La duplication d'activité copie l'intitulé ET le tableau `classes` : côté élève, deux
 cartes homonymes peuvent coexister légitimement dans des blocs différents.
@@ -489,6 +521,12 @@ prof.
 - `/nextjs-dev-server` — réparer le serveur dev (global)
 - `/encrypt` — chiffrement de données sensibles Firestore (global)
 
+### Scripts ponctuels
+- `scripts/import-habiletes.ts` — import unique des 63 habiletés depuis
+  l'instantané CSV. **Rejouable sans risque** : n'ajoute que ce qui manque.
+- `scripts/prefill-ateliers.ts` — pré-coche l'atelier évident selon le mode
+  principal. N'ajoute jamais un 2ᵉ atelier, n'en retire aucun.
+
 ### Fichiers clés
 - `src/lib/crypto.ts` — chiffrement AES-256-GCM des identités élèves + `hashEmail`
   (HMAC) — **serveur uniquement**, jamais d'import côté client. Champs chiffrés :
@@ -500,6 +538,11 @@ prof.
   ignoré par git). NavigKid : l'extension n'accède plus à Firestore — `reponses` et
   `recherches` passent par `/api/navigkid/reponse` (POST) et `/api/navigkid/recherches`
   (POST), qui chiffrent `eleveNom`/`eleveEmail`.
+- `src/types/didactique.ts` — modèle didactique : `TypeModal` (mode principal),
+  `ATELIERS` (liste **fermée**, chaque atelier lié à un dispositif = `typeTravail`),
+  `Habilete`, `habiletesPourAtelier`, `ATELIER_PAR_MODE`.
+- `src/lib/lecture-scoring.ts` — notation d'un questionnaire de lecture et
+  agrégation par habileté. Partagé serveur (profil) et client (onglets Évaluation).
 - `src/lib/navigkid-server.ts` — filtrage des éléments de correction NavigKid
   (`correctes`, `reponseAttendue`, `referencesProf`) pour le rôle élève + calcul du
   récapitulatif. **Serveur uniquement** — pendant de `lecture-server.ts`. Rappel :

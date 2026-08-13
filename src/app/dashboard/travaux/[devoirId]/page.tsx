@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import UserAvatar from '@/components/UserAvatar';
@@ -26,9 +26,7 @@ export default function TravauxPage() {
   const [grille, setGrille] = useState<Grille | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [codeCopied, setCodeCopied] = useState(false);
   const [showEcritureStats, setShowEcritureStats] = useState(false);
-  const copyTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [questionnaire, setQuestionnaire] = useState<NavigKidQuestion[] | null>(null);
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
 
@@ -236,14 +234,6 @@ export default function TravauxPage() {
     return styles.statValueSuccess;
   };
 
-  const handleCopyCode = useCallback(() => {
-    if (!devoir?.codeAcces) return;
-    navigator.clipboard.writeText(devoir.codeAcces);
-    setCodeCopied(true);
-    clearTimeout(copyTimeout.current);
-    copyTimeout.current = setTimeout(() => setCodeCopied(false), 2000);
-  }, [devoir?.codeAcces]);
-
   const handleBack = () => router.push('/dashboard');
 
   if ((authLoading && !isAuthenticated) || isLoading) {
@@ -337,12 +327,6 @@ export default function TravauxPage() {
           <div className={styles.headerContent}>
             <h1 className={styles.title}>{devoir?.intitule || 'Travaux'}</h1>
             <p className={styles.subtitle}>Travaux des élèves</p>
-            {devoir?.codeAcces && (
-              <button className={styles.codeAccesBadge} onClick={handleCopyCode} title="Copier le code d'accès">
-                Code extension : <strong>{devoir.codeAcces}</strong>
-                <span className={styles.codeAccesCopy}>{codeCopied ? '✓' : '⎘'}</span>
-              </button>
-            )}
           </div>
         </div>
         <div className={styles.headerRight}><UserAvatar /></div>

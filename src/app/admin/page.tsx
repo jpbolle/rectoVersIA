@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { isAdmin } from '@/lib/auth-utils';
 import { useProfesseurs } from '@/hooks/useProfesseurs';
-import Header from '@/components/Header/Header';
+import Header, { ADMIN_TABS } from '@/components/Header/Header';
 import type { AdminHeaderTab } from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import DidactiquePanel from '@/components/DidactiquePanel/DidactiquePanel';
@@ -222,7 +222,9 @@ export default function AdminPage() {
       <Header variant="admin" adminTab={activeTab} onAdminTabChange={setActiveTab} />
 
       <main className={styles.mainContent}>
-        <h1 className={styles.pageTitle}>Administration du site</h1>
+        <h1 className={styles.pageTitle}>
+          {ADMIN_TABS.find((t) => t.key === activeTab)?.label}
+        </h1>
 
         {message && (
           <div className={`${styles.message} ${message.type === 'success' ? styles.messageSuccess : styles.messageError}`}>
@@ -233,7 +235,6 @@ export default function AdminPage() {
         {/* Stats — onglet Vue d'ensemble */}
         {activeTab === 'vue' && stats && (
           <section className={styles.statsSection}>
-            <h2 className={styles.sectionTitle}>Vue d&apos;ensemble</h2>
             <div className={styles.statsGrid}>
               <div className={styles.statCard}>
                 <span className={styles.statValue}>{stats.professeurs}</span>

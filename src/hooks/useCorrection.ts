@@ -178,6 +178,18 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
     await saveNow({ draftAnnotations: annotations });
   }, [saveNow]);
 
+  // Points d'une question ouverte d'un questionnaire de lecture (debounce :
+  // le prof tape au clavier). null = note retirée.
+  const updateQuestionScore = useCallback((questionId: string, points: number | null) => {
+    setCorrection((prev) => {
+      const next = { ...(prev?.questionScores ?? {}) };
+      if (points === null) delete next[questionId];
+      else next[questionId] = points;
+      saveWithDebounce({ questionScores: next });
+      return prev ? { ...prev, questionScores: next } : prev;
+    });
+  }, [saveWithDebounce]);
+
   // Sauvegarde du commentaire général écrit (debounce)
   const updateCommentaireGeneral = useCallback((text: string) => {
     saveWithDebounce({ commentaireGeneral: text });
@@ -224,6 +236,7 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
     updateDraftAnnotations,
     updateCommentaireGeneral,
     updateCommentaireGeneralAudio,
+    updateQuestionScore,
     toggleVisibility,
     refetch: fetchCorrection,
   };

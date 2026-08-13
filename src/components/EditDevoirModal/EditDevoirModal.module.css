@@ -601,3 +601,12 @@
 .hiddenCriteriaNote:hover {
   text-decoration: underline;
 }
+
+/* Mention du mode principal sous le type d'activité — il en découle */
+.modeNote {
+  margin: 8px 0 0;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+}

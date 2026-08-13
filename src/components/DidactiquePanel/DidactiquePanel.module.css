@@ -2,31 +2,10 @@
   margin-bottom: 40px;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 4px;
-}
-
-.title {
-  color: var(--c-primary);
-  font-size: 20px;
-  font-weight: 600;
-  font-family: var(--c-font-title);
-  margin: 0;
-}
-
 .saving {
   font-size: 12px;
   color: var(--c-text-secondary);
-}
-
-.hint {
-  font-size: 12.5px;
-  color: var(--c-text-secondary);
-  line-height: 1.5;
-  margin: 0 0 14px;
+  margin: 0 0 10px;
 }
 
 .error {
@@ -35,97 +14,418 @@
   margin: 0 0 10px;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
-}
-
-.block {
-  background: var(--c-bg-card, #fff);
-  border: 1px solid var(--c-border);
-  border-radius: 12px;
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-}
-
-.blockTitle {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--c-text);
-  margin: 0 0 10px;
-}
-
 .empty {
   font-size: 12.5px;
   color: var(--c-text-muted);
-  margin: 0 0 8px;
+  margin: 0;
+  padding: 20px 4px;
+  text-align: center;
 }
 
-.list {
-  list-style: none;
-  margin: 0 0 10px;
-  padding: 0;
+/* ─── Filtres ───────────────────────────────────────────────────────── */
+.toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
 }
 
-.item {
+.search {
+  flex: 1;
+  min-width: 220px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--c-bg-card, #fff);
+  color: var(--c-text);
+}
+
+.search:focus,
+.filter:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.filter {
+  padding: 8px 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--c-bg-card, #fff);
+  color: var(--c-text);
+  max-width: 260px;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch input {
+  accent-color: var(--c-primary);
+  width: 15px;
+  height: 15px;
+}
+
+/* ─── Carte repliable, une par type modal ───────────────────────────── */
+.card {
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  background: var(--c-bg-card, #fff);
+  --card-color: var(--c-text-secondary);
+}
+
+.card_uaa {
+  --card-color: var(--c-primary);
+  margin-bottom: 26px;
+}
+
+.card_lire { --card-color: #2d6a5a; }
+.card_ecrire { --card-color: #c07c2e; }
+.card_parler { --card-color: #4a7ba7; }
+.card_rechercher { --card-color: #8a6a4f; }
+.card_reflexif { --card-color: #8b6f9e; }
+
+.cardHead {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 6px;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: var(--card-color);
+  color: #fff;
+  border-radius: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: filter 0.15s ease;
+}
+
+.cardHead:hover {
+  filter: brightness(1.08);
+}
+
+/* En-tête d'une carte non repliable (UAA) */
+.cardHeadStatic {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--card-color);
+  color: #fff;
+  border-radius: 11px 11px 0 0;
+}
+
+.cardBody + .cardHead,
+.card:has(.cardBody) .cardHead {
+  border-radius: 11px 11px 0 0;
+}
+
+.chevron {
+  font-size: 11px;
+  opacity: 0.9;
+  width: 12px;
+}
+
+.cardTitle {
+  font-family: var(--c-font-title);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.cardCount {
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.cardBody {
+  padding: 0;
+}
+
+.cardFoot {
+  padding: 10px 14px;
+  border-top: 1px solid var(--c-border);
+}
+
+.addHabBtn {
+  border: 1.5px solid var(--c-primary);
+  background: none;
+  color: var(--c-primary);
   border-radius: 8px;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
 }
 
-.item:hover {
-  background: var(--c-bg-element);
+.addHabBtn:hover {
+  background: rgba(45, 106, 90, 0.08);
 }
 
-.itemHidden .itemLabel {
+/* ─── Tableau des habiletés ─────────────────────────────────────────── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.colEye { width: 40px; }
+.colNum { width: 84px; }
+.colGeste { width: 17%; }
+.colObjet { width: 20%; }
+.colAtelier { width: 138px; }
+.colUaa { width: 112px; }
+.colAct { width: 44px; }
+
+.table thead th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--c-text-muted);
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--c-border);
 }
 
-.itemBtn {
+.table tbody td {
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--c-bg-element);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.rowHidden td:not(.actions) {
+  opacity: 0.45;
+}
+
+/* Ligne de groupe : le geste */
+.groupRow td {
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
+  padding: 5px 12px;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.groupCount {
+  font-size: 11.5px;
+  color: var(--c-text-muted);
+  white-space: nowrap;
+}
+
+/* Champs éditables en place */
+.cell {
+  width: 100%;
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 13.5px;
+  font-family: inherit;
+  background: transparent;
+  color: var(--c-text);
+}
+
+.cell:hover {
+  border-color: var(--c-border);
+}
+
+.cell:focus {
+  outline: none;
+  border: 1px solid var(--c-primary);
+  border-style: solid;
+  background: var(--c-bg-card, #fff);
+}
+
+.cellObjet {
+  font-size: 13px;
+}
+
+.cellObjet::placeholder {
+  color: var(--c-text-muted);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.cellFilled {
+  background: rgba(45, 106, 90, 0.06);
+  border-color: rgba(45, 106, 90, 0.2);
+}
+
+.cellGeste {
+  flex: 1;
+  min-width: 0;
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-family: var(--c-font-title);
+  font-size: 15px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--c-text);
+}
+
+.cellGeste:hover {
+  border-color: var(--c-border);
+}
+
+.cellGeste:focus {
+  outline: none;
+  border: 1px solid var(--c-primary);
+  background: var(--c-bg-card, #fff);
+}
+
+/* Cellule UAA + sélecteur */
+.uaaCellWrap {
+  position: relative;
+}
+
+.uaaCell {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  min-height: 26px;
+  padding: 3px 4px;
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.uaaCell:hover {
+  border-color: var(--c-border);
+}
+
+.uaaChip {
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+}
+
+.uaaEmpty {
+  font-size: 11.5px;
+  color: var(--c-text-muted);
+}
+
+.picker,
+.pickerRight {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  width: 300px;
+  background: var(--c-bg-card, #fff);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+  padding: 10px;
+}
+
+.picker {
+  left: 0;
+}
+
+/* Sélecteur de la dernière colonne : ouvert vers la gauche, sinon il déborde */
+.pickerRight {
+  right: 0;
+}
+
+.pickerRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 2px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.pickerRow input {
+  accent-color: var(--c-primary);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pickerClose {
+  width: 100%;
+  margin-top: 6px;
+  border: 1px solid var(--c-border);
+  background: none;
+  border-radius: 6px;
+  padding: 5px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.actions {
+  text-align: right;
+}
+
+.iconBtn {
   border: none;
   background: none;
   cursor: pointer;
   font-size: 14px;
-  padding: 2px 4px;
+  padding: 3px 5px;
   border-radius: 6px;
-  flex-shrink: 0;
   line-height: 1;
+  flex-shrink: 0;
 }
 
-.itemBtn:hover {
+.iconBtn:hover {
   background: rgba(45, 106, 90, 0.1);
 }
 
-.itemDelete {
-  margin-left: auto;
-  opacity: 0.65;
+.iconDelete {
+  opacity: 0.6;
 }
 
-.itemDelete:hover {
+.iconDelete:hover {
   opacity: 1;
   background: rgba(192, 57, 43, 0.1);
 }
 
-.itemLabel {
-  font-size: 13.5px;
-  color: var(--c-text);
-  line-height: 1.4;
-  min-width: 0;
+/* ─── Tableau des UAA ───────────────────────────────────────────────── */
+.uaaNum {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
 }
 
 .addRow {
   display: flex;
   gap: 8px;
-  margin-top: auto;
+  padding: 10px 16px;
+  border-top: 1px solid var(--c-border);
 }
 
 .addInput {
@@ -151,7 +451,6 @@
   font-size: 18px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s ease;
 }
 
 .addBtn:hover:not(:disabled) {
@@ -163,20 +462,161 @@
   cursor: not-allowed;
 }
 
-/* Clic sur + avec champ vide : le champ attire l'attention */
-.addInputHint {
-  border-color: var(--c-accent);
-  animation: hintShake 0.3s ease;
+/* ─── Popup de création ─────────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(61, 56, 50, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 200;
 }
 
-.addHint {
+.modal {
+  background: var(--c-bg-card, #fff);
+  border-radius: 14px;
+  width: min(600px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+}
+
+.modalHead {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.modalHead h3 {
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  margin: 0;
+  color: var(--c-primary);
+}
+
+.modalHead p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+.modalBody {
+  padding: 20px 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+  margin-bottom: 6px;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--c-text);
+  background: var(--c-bg-card, #fff);
+}
+
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.field textarea {
+  min-height: 66px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.fieldHelp {
   font-size: 12px;
-  color: var(--c-accent);
-  margin: 6px 0 0;
+  color: var(--c-text-muted);
+  margin: 5px 0 0;
 }
 
-@keyframes hintShake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-3px); }
-  75% { transform: translateX(3px); }
+.uaaPick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.uaaPick label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--c-text);
+  margin: 0;
+}
+
+.uaaPick label:has(input:checked) {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+}
+
+.uaaPick input {
+  accent-color: #fff;
+  width: 14px;
+  height: 14px;
+}
+
+.modalFoot {
+  padding: 16px 24px;
+  border-top: 1px solid var(--c-border);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btnPrimary,
+.btnGhost {
+  min-height: 42px;
+  padding: 0 22px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.btnPrimary {
+  border: none;
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btnGhost {
+  border: 1.5px solid var(--c-border);
+  background: none;
+  color: var(--c-text);
+}
+
+.btnGhost:hover {
+  border-color: var(--c-primary);
 }

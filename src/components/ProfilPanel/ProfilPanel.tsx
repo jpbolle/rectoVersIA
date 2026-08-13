@@ -12,10 +12,14 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import type {
-  CriterionStats, DevoirCriterionStat,
+  CriterionStats, DevoirCriterionStat, HabileteStat,
   ProfilGeneral, ProfilSection, RechercheItem, ProfilVocabulaire, ProfilVocabGroup,
   VocabActiviteStat,
 } from '@/types/profil';
+import { useDidactique } from '@/hooks/useDidactique';
+import { habileteLabel } from '@/types/didactique';
+import { LECTURE_COMPETENCE_LABELS } from '@/types/lecture';
+import type { LectureCompetence } from '@/types/lecture';
 import styles from '@/app/profil/profil.module.css';
 
 // ─── Onglets ─────────────────────────────────────────────────────────────────
@@ -411,6 +415,50 @@ function SectionContent({
   );
 }
 
+// ─── Habiletés travaillées (questionnaires de lecture) ───────────────────────
+// Cumul de tous les questionnaires corrigés. Une question portant deux
+// habiletés compte entièrement dans chacune : la somme des lignes ne retombe
+// pas sur un total, et c'est voulu.
+function HabiletesBlock({ habiletes }: { habiletes: HabileteStat[] }) {
+  const { config } = useDidactique();
+
+  const label = (id: string) => {
+    const h = config.habiletes.find((x) => x.id === id);
+    if (h) return habileteLabel(h);
+    return LECTURE_COMPETENCE_LABELS[id as LectureCompetence] ?? id;
+  };
+
+  return (
+    <div className={styles.habiletesBlock}>
+      <h4 className={styles.habiletesTitle}>Habiletés travaillées</h4>
+      <ul className={styles.habiletesList}>
+        {habiletes.map((h) => (
+          <li key={h.habileteId} className={styles.habileteRow}>
+            <div className={styles.habileteHead}>
+              <span className={styles.habileteLabel}>{label(h.habileteId)}</span>
+              <span className={styles.habileteScore}>{h.percent}%</span>
+            </div>
+            <div className={styles.habileteBar}>
+              <i
+                style={{
+                  width: `${h.percent}%`,
+                  background:
+                    h.percent < 35 ? '#c0392b' : h.percent < 60 ? '#d4944c'
+                      : h.percent < 80 ? '#5a8f6f' : 'var(--c-primary)',
+                }}
+              />
+            </div>
+            <span className={styles.habileteMeta}>
+              {h.points}/{h.max} pts · {h.questions} question{h.questions > 1 ? 's' : ''} ·{' '}
+              {h.activites} activité{h.activites > 1 ? 's' : ''}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // ─── Onglet Lire / Écrire (avec filtre par activité) ─────────────────────────
 function SectionTab({ data }: { data: ProfilSection }) {
   const [activeFilter, setActiveFilter] = useState<string>('all');
@@ -431,8 +479,18 @@ function SectionTab({ data }: { data: ProfilSection }) {
     };
   }, [activeFilter, data]);
 
+  const habiletes = data.habiletes ?? [];
+
+  // Une activité de lecture récente n'a pas de grille : les habiletés sont
+  // alors la seule donnée disponible
   if (!data.stats) {
-    return <EmptyState icon="📊" message="Absence de données" />;
+    return habiletes.length > 0 ? (
+      <section className={styles.section}>
+        <HabiletesBlock habiletes={habiletes} />
+      </section>
+    ) : (
+      <EmptyState icon="📊" message="Absence de données" />
+    );
   }
 
   return (
@@ -465,6 +523,10 @@ function SectionTab({ data }: { data: ProfilSection }) {
           classeMax={current.classeMax}
           totalEvaluations={current.totalEvaluations}
         />
+      )}
+
+      {activeFilter === 'all' && habiletes.length > 0 && (
+        <HabiletesBlock habiletes={habiletes} />
       )}
     </section>
   );

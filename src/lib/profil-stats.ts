@@ -3,6 +3,10 @@
 // et construisent les statistiques par onglet.
 
 import { adminDb } from '@/lib/firebase/admin';
+import { scoreLectureQuiz } from '@/lib/lecture-scoring';
+import { parseLectureAnswers } from '@/types/lecture';
+import type { LectureQuiz } from '@/types/lecture';
+import type { HabileteStat } from '@/types/profil';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
 import {
@@ -34,6 +38,8 @@ export type CorrEntry = {
   devoirId: string;
   evaluation: Record<string, number>;
   score: number;
+  // Questionnaires de lecture : points des questions ouvertes
+  questionScores?: Record<string, number>;
 };
 
 export type ClassCorrEntry = {
@@ -50,6 +56,9 @@ export type DevoirInfo = {
   type: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
   questionnaireId?: string;
   vocabulaireThemes?: string[];
+  // Questionnaire de lecture — nécessaire pour recalculer les scores par
+  // habileté (les QCM ne sont jamais stockés, ils se recalculent)
+  lectureQuiz?: LectureQuiz | null;
 };
 
 export type TravailInfo = {
@@ -115,6 +124,7 @@ export async function loadStudentBase(
           id: doc.id, travailId: data.travailId, devoirId: data.devoirId,
           evaluation: data.evaluation as Record<string, number>,
           score: data.score || 0,
+          questionScores: data.questionScores || undefined,
         });
       }
     }
@@ -142,6 +152,7 @@ export async function loadStudentBase(
         type: data.typeTravail || 'ecrire',
         questionnaireId: data.questionnaireId || undefined,
         vocabulaireThemes: data.vocabulaireThemes || undefined,
+        lectureQuiz: data.lectureQuiz || null,
       });
     }
   }));
@@ -521,4 +532,51 @@ export async function buildVocabulaireProfil(
   }
 
   return { groups, perso, activites };
+}
+
+
+// Agrégation par habileté des questionnaires de lecture de l'élève.
+// Nécessite loadStudentBase(..., { withContent: true }) : les réponses vivent
+// dans travail.content, et les QCM se recalculent à chaque lecture.
+//
+// Règle : une question portant deux habiletés compte ENTIÈREMENT dans chacune.
+// La somme des lignes ne retombe donc pas sur un total, et c'est voulu.
+export function buildHabileteStats(base: StudentBase): HabileteStat[] {
+  const corrById = new Map(base.corrections.map((c) => [c.travailId, c]));
+  const cumul = new Map<string, { points: number; max: number; questions: number; activites: Set<string> }>();
+
+  for (const travail of base.travaux) {
+    const devoir = base.devoirs.get(travail.devoirId);
+    if (!devoir || devoir.type !== 'lire' || !devoir.lectureQuiz) continue;
+
+    // Sans correction rendue, rien n'est comptabilisé : le profil ne montre
+    // que ce que l'élève a le droit de voir
+    const corr = corrById.get(travail.id);
+    if (!corr) continue;
+
+    const answers = parseLectureAnswers(travail.content)?.answers ?? {};
+    const score = scoreLectureQuiz(devoir.lectureQuiz as LectureQuiz, answers, corr.questionScores);
+
+    for (const h of score.parHabilete) {
+      const cur = cumul.get(h.habileteId) ?? {
+        points: 0, max: 0, questions: 0, activites: new Set<string>(),
+      };
+      cur.points += h.points;
+      cur.max += h.max;
+      cur.questions += h.questions;
+      cur.activites.add(travail.devoirId);
+      cumul.set(h.habileteId, cur);
+    }
+  }
+
+  return [...cumul.entries()]
+    .map(([habileteId, v]) => ({
+      habileteId,
+      points: Math.round(v.points * 10) / 10,
+      max: v.max,
+      percent: v.max > 0 ? Math.round((v.points / v.max) * 100) : 0,
+      questions: v.questions,
+      activites: v.activites.size,
+    }))
+    .sort((a, b) => a.percent - b.percent);
 }

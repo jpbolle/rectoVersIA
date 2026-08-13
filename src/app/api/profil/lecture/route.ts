@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/api-auth';
 import { resolveProfilTarget, isProfilTargetError } from '@/lib/profil-target';
 import {
-  loadStudentBase, loadClassStats, buildSectionStats, buildDevoirStats,
+  loadStudentBase, loadClassStats, buildSectionStats, buildDevoirStats, buildHabileteStats,
 } from '@/lib/profil-stats';
 import type { ProfilSection } from '@/types/profil';
 
@@ -23,13 +23,23 @@ export async function GET(request: NextRequest) {
 
   try {
     const empty: ProfilSection = { stats: null, devoirs: [] };
-    const base = await loadStudentBase(target.uid, target.email, { withGrilles: true });
+    const base = await loadStudentBase(target.uid, target.email, {
+      withGrilles: true,
+      // Les réponses aux questionnaires vivent dans travail.content
+      withContent: true,
+    });
     if (!base) return NextResponse.json({ success: true, data: empty });
+
+    // Habiletés : indépendantes des grilles — une activité de lecture récente
+    // n'en a pas, ce sont les questions qui portent la didactique
+    const habiletes = buildHabileteStats(base);
 
     const corrs = base.corrections.filter(
       (c) => base.devoirs.get(c.devoirId)?.type === 'lire'
     );
-    if (corrs.length === 0) return NextResponse.json({ success: true, data: empty });
+    if (corrs.length === 0) {
+      return NextResponse.json({ success: true, data: { ...empty, habiletes } });
+    }
 
     const devoirIds = [...new Set(corrs.map((c) => c.devoirId))];
     const classStats = await loadClassStats(devoirIds);
@@ -37,6 +47,7 @@ export async function GET(request: NextRequest) {
     const data: ProfilSection = {
       stats: buildSectionStats(corrs, base, classStats),
       devoirs: buildDevoirStats(corrs, base, classStats),
+      habiletes,
     };
     return NextResponse.json({ success: true, data });
   } catch (error) {

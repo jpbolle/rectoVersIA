@@ -32,7 +32,7 @@ export default function DashboardPage() {
     toggleCorrige,
     toggleCorrigeDisponible,
   } = useDevoirs();
-  const { grilleTypes } = useGrilleTypes();
+  const { grilleTypes, grilles } = useGrilleTypes();
   const { classes } = useClasses();
 
   // Noms des classes actives (non archivees), triees
@@ -280,6 +280,7 @@ export default function DashboardPage() {
             <CreationForm
               classeNames={activeClasseNames}
               grilleTypes={grilleTypes}
+              grilles={grilles}
               isVisible={isFormVisible}
               onSubmit={handleCreateDevoir}
               onPreview={handlePreviewDevoir}
@@ -403,6 +404,7 @@ export default function DashboardPage() {
         devoir={editingDevoir}
         classeNames={activeClasseNames}
         grilleTypes={grilleTypes}
+        grilles={grilles}
         isOpen={editingDevoir !== null}
         onClose={() => setEditingDevoir(null)}
         onSave={handleSaveEdit}

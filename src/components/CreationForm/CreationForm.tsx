@@ -18,6 +18,9 @@ import type { LectureQuiz } from '@/types/lecture';
 import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
+import HabiletesPicker from '@/components/HabiletesPicker/HabiletesPicker';
+import { ATELIERS, findAtelier, TYPES_MODAUX } from '@/types/didactique';
+import type { TypeModal } from '@/types/didactique';
 import styles from './CreationForm.module.css';
 
 type FormFace = 'recto' | 'verso';
@@ -40,6 +43,8 @@ const NEW_VOCAB_LIST = '__new__';
 interface CreationFormProps {
   classeNames: string[];
   grilleTypes: string[];
+  // Nom + ateliers de chaque grille — filtre les grilles proposées
+  grilles?: { name: string; ateliers: string[] }[];
   isVisible: boolean;
   onSubmit: (data: CreateDevoirData) => Promise<void>;
   // Enregistre l'activité (non disponible) puis ouvre la vraie page élève en aperçu
@@ -52,6 +57,7 @@ interface CreationFormProps {
 export default function CreationForm({
   classeNames,
   grilleTypes,
+  grilles = [],
   isVisible,
   onSubmit,
   onPreview,
@@ -88,8 +94,34 @@ export default function CreationForm({
   const [planToIA, setPlanToIA] = useState(false);
   const [productionToIA, setProductionToIA] = useState(false);
 
-  // Type de travail
-  const [typeTravail, setTypeTravail] = useState<TypeTravail>('ecrire');
+  // Type d'activité (atelier) : c'est lui qui décide du dispositif ouvert par
+  // l'app. Le mode principal dit la compétence en jeu — une recherche guidée
+  // est un travail de lecture menée dans un atelier de recherche.
+  const [atelier, setAtelier] = useState<string>('ecriture');
+  const [modePrincipal, setModePrincipal] = useState<TypeModal>('ecrire');
+  const typeTravail: TypeTravail = findAtelier(atelier)?.dispositif ?? 'ecrire';
+
+  // Habiletés travaillées : null = toutes celles de l'atelier
+  const [habiletes, setHabiletes] = useState<string[] | null>(null);
+
+  // Changer d'atelier change le dispositif : la sélection d'habiletés ne veut
+  // plus rien dire, et le mode principal reprend la valeur attendue
+  const changeAtelier = (id: string) => {
+    setAtelier(id);
+    setHabiletes(null);
+    // Seule l'écriture s'évalue par grille : ailleurs, ce sont les habiletés
+    // qui portent la didactique
+    setGrille('');
+    setHiddenCriteria([]);
+    const a = findAtelier(id);
+    if (a) setModePrincipal(a.modeParDefaut);
+  };
+
+  // Grilles proposées : celles rattachées à l'atelier choisi. Une grille sans
+  // type d'activité (créée avant le champ) reste proposée partout.
+  const grillesDeLAtelier = grilles.length
+    ? grilles.filter((g) => !g.ateliers.length || g.ateliers.includes(atelier)).map((g) => g.name)
+    : grilleTypes;
 
   // Évaluation : formative (entraînement) ou certificative (comptabilisée)
   const [evaluation, setEvaluation] = useState<EvaluationType>('formatif');
@@ -124,7 +156,10 @@ export default function CreationForm({
   const [flipInverted, setFlipInverted] = useState(false);
 
   const baseValid = selectedClasses.length > 0 && dateRemise && intitule.trim();
-  const grilleValid = typeTravail === 'vocabulaire' || grille;
+  // Seules les activités d'écriture s'appuient sur une grille ; lecture,
+  // recherche et vocabulaire portent leur didactique dans leurs habiletés
+  const usesGrille = typeTravail === 'ecrire';
+  const grilleValid = !usesGrille || grille;
   const isValid = baseValid && grilleValid
     && (typeTravail !== 'rechercher' || nkQuestions.some(q => q.texte.trim()));
 
@@ -174,7 +209,9 @@ export default function CreationForm({
     setProductionToIA(false);
     setAccesIA(false);
     setDisponible(false);
-    setTypeTravail('ecrire');
+    setAtelier('ecriture');
+    setModePrincipal('ecrire');
+    setHabiletes(null);
     setEvaluation('formatif');
     setNkQuestions([]);
     setNkThemes([]);
@@ -197,6 +234,9 @@ export default function CreationForm({
       accesIA,
       disponible,
       typeTravail,
+      modePrincipal,
+      atelier,
+      habiletes,
       evaluation,
       ...(hiddenCriteria.length > 0 && { hiddenCriteria }),
       ...(typeTravail === 'ecrire' && { flipInverted }),
@@ -285,8 +325,25 @@ export default function CreationForm({
         )}
       </div>
 
-      {/* Ligne 1: Classes + Date + Type travail + Évaluation + (Grille si pas vocabulaire) */}
-      <div className={typeTravail === 'vocabulaire' ? styles.formRowFour : styles.formRowFive}>
+      {/* Ligne 1 : Intitulé (double largeur) + Classes + Date + Évaluation.
+          En vocabulaire, l'intitulé est un menu de séries lexicales : il garde
+          sa propre ligne juste en dessous. */}
+      <div className={typeTravail === 'vocabulaire' ? styles.formRowThree : styles.formRowIntitule}>
+        {typeTravail !== 'vocabulaire' && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Intitulé de l’activité <span className={styles.required}>*</span>
+            </label>
+            <input
+              className={styles.input}
+              type="text"
+              value={intitule}
+              onChange={(e) => setIntitule(e.target.value)}
+              placeholder="Ex : Dissertation sur Molière"
+            />
+          </div>
+        )}
+
         <div className={styles.formGroup}>
           <label className={styles.label}>
             Classe(s) <span className={styles.required}>*</span>
@@ -311,22 +368,6 @@ export default function CreationForm({
 
         <div className={styles.formGroup}>
           <label className={styles.label}>
-            Type de travail <span className={styles.required}>*</span>
-          </label>
-          <select
-            className={styles.select}
-            value={typeTravail}
-            onChange={(e) => setTypeTravail(e.target.value as TypeTravail)}
-          >
-            <option value="ecrire">Écrire</option>
-            <option value="lire">Lire</option>
-            <option value="rechercher">Rechercher</option>
-            <option value="vocabulaire">Vocabulaire</option>
-          </select>
-        </div>
-
-        <div className={styles.formGroup}>
-          <label className={styles.label}>
             Évaluation <span className={styles.required}>*</span>
           </label>
           <select
@@ -338,46 +379,10 @@ export default function CreationForm({
             <option value="certificatif">Certificative (notée)</option>
           </select>
         </div>
-
-        {typeTravail !== 'vocabulaire' && (
-          <div className={styles.formGroup}>
-            <label className={styles.label}>
-              Type de grille <span className={styles.required}>*</span>
-            </label>
-            <select
-              className={styles.select}
-              value={grille}
-              onChange={(e) => {
-                setGrille(e.target.value);
-                setHiddenCriteria([]);
-                // Choix d'une grille → proposer de masquer certains critères
-                if (e.target.value) setShowHideCriteria(true);
-              }}
-            >
-              <option value="">Sélectionnez...</option>
-              {grilleTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-            {grille && (
-              <button
-                type="button"
-                className={styles.hiddenCriteriaNote}
-                onClick={() => setShowHideCriteria(true)}
-              >
-                {hiddenCriteria.length > 0
-                  ? `🙈 ${hiddenCriteria.length} critère${hiddenCriteria.length > 1 ? 's' : ''} masqué${hiddenCriteria.length > 1 ? 's' : ''} — modifier`
-                  : 'Masquer certains critères...'}
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* Ligne 2: Intitulé (+ mode si vocabulaire) */}
-      {typeTravail === 'vocabulaire' ? (
+      {/* Vocabulaire : la série lexicale tient lieu d'intitulé */}
+      {typeTravail === 'vocabulaire' && (
         <div className={styles.formRowIntituleVocab}>
           <div className={styles.formGroup}>
             <label className={styles.label}>
@@ -409,56 +414,114 @@ export default function CreationForm({
             </select>
           </div>
         </div>
-      ) : (
-        <>
-          <div className={styles.formGroup}>
-            <label className={styles.label}>
-              Intitulé de l’activité <span className={styles.required}>*</span>
-            </label>
-            <input
-              className={styles.input}
-              type="text"
-              value={intitule}
-              onChange={(e) => setIntitule(e.target.value)}
-              placeholder="Ex : Dissertation sur Molière"
-            />
-          </div>
-
-          {/* Recto / Verso de l'espace élève (uniquement pour type ecrire) */}
-          {typeTravail === 'ecrire' && (
-            <div className={styles.flipChoice}>
-              <span className={styles.flipChoiceLabel}>Espace d’écriture</span>
-              <div className={styles.flipChoiceRow}>
-                <div className={styles.flipChoiceFace}>
-                  <span className={styles.flipChoiceTag}>Recto</span>
-                  <span className={styles.flipChoiceContent}>
-                    {flipInverted ? '📝 Espace de planification' : '✏️ Espace de rédaction'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className={styles.flipChoiceSwap}
-                  onClick={() => setFlipInverted((v) => !v)}
-                  title="Inverser recto et verso"
-                  aria-label="Inverser recto et verso"
-                >
-                  ⇄
-                </button>
-                <div className={styles.flipChoiceFace}>
-                  <span className={styles.flipChoiceTag}>Verso</span>
-                  <span className={styles.flipChoiceContent}>
-                    {flipInverted ? '✏️ Espace de rédaction' : '📝 Espace de planification'}
-                  </span>
-                </div>
-              </div>
-              <p className={styles.flipChoiceHint}>
-                Le recto est la face affichée à l’ouverture de l’activité par l’élève.
-              </p>
-            </div>
-          )}
-        </>
       )}
 
+      {/* Ligne 2 : Type d'activité (+ mode principal, qui en découle) puis, à
+          droite, la grille pour l'écriture — les habiletés à sa place ailleurs */}
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>
+            Type d&apos;activité <span className={styles.required}>*</span>
+          </label>
+          <select
+            className={styles.select}
+            value={atelier}
+            onChange={(e) => changeAtelier(e.target.value)}
+          >
+            {ATELIERS.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+          {/* Le mode principal découle du type d'activité — chercher, c'est lire */}
+          <p className={styles.modeNote}>
+            Mode principal : {TYPES_MODAUX.find((t) => t.id === modePrincipal)?.court}
+          </p>
+        </div>
+
+        {usesGrille && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Type de grille <span className={styles.required}>*</span>
+            </label>
+            <select
+              className={styles.select}
+              value={grille}
+              onChange={(e) => {
+                setGrille(e.target.value);
+                setHiddenCriteria([]);
+                // Choix d'une grille → proposer de masquer certains critères
+                if (e.target.value) setShowHideCriteria(true);
+              }}
+            >
+              <option value="">Sélectionnez...</option>
+              {grillesDeLAtelier.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+            {grille && (
+              <button
+                type="button"
+                className={styles.hiddenCriteriaNote}
+                onClick={() => setShowHideCriteria(true)}
+              >
+                {hiddenCriteria.length > 0
+                  ? `🙈 ${hiddenCriteria.length} critère${hiddenCriteria.length > 1 ? 's' : ''} masqué${hiddenCriteria.length > 1 ? 's' : ''} — modifier`
+                  : 'Masquer certains critères...'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {!usesGrille && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Habiletés travaillées</label>
+            <HabiletesPicker
+              atelier={atelier}
+              modePrincipal={modePrincipal}
+              value={habiletes}
+              onChange={setHabiletes}
+              disabled={isSubmitting}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Recto / Verso de l'espace élève (uniquement pour type ecrire) */}
+      {typeTravail === 'ecrire' && (
+        <div className={styles.flipChoice}>
+          <span className={styles.flipChoiceLabel}>Espace d’écriture</span>
+          <div className={styles.flipChoiceRow}>
+            <div className={styles.flipChoiceFace}>
+              <span className={styles.flipChoiceTag}>Recto</span>
+              <span className={styles.flipChoiceContent}>
+                {flipInverted ? '📝 Espace de planification' : '✏️ Espace de rédaction'}
+              </span>
+            </div>
+            <button
+              type="button"
+              className={styles.flipChoiceSwap}
+              onClick={() => setFlipInverted((v) => !v)}
+              title="Inverser recto et verso"
+              aria-label="Inverser recto et verso"
+            >
+              ⇄
+            </button>
+            <div className={styles.flipChoiceFace}>
+              <span className={styles.flipChoiceTag}>Verso</span>
+              <span className={styles.flipChoiceContent}>
+                {flipInverted ? '✏️ Espace de rédaction' : '📝 Espace de planification'}
+              </span>
+            </div>
+          </div>
+          <p className={styles.flipChoiceHint}>
+            Le recto est la face affichée à l’ouverture de l’activité par l’élève.
+          </p>
+        </div>
+      )}
       {/* Consignes particulières (optionnel avec checkbox) */}
       <div className={styles.optionalSection}>
         <label className={styles.checkboxLabel}>
@@ -595,6 +658,7 @@ export default function CreationForm({
           onChange={setLectureQuiz}
           disabled={isSubmitting}
           getAuthHeaders={getAuthHeaders}
+          allowedHabiletes={habiletes}
         />
       )}
 

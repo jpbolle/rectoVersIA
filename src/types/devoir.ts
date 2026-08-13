@@ -1,5 +1,6 @@
 import type { PlanItem } from './travail';
 import type { LectureQuiz } from './lecture';
+import type { TypeModal } from './didactique';
 
 export type Classe = string;
 export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
@@ -51,7 +52,19 @@ export interface Devoir {
   createdAt: string;
   anneeScolaire: string;
   profId: string;
+  // Dispositif : quelle machinerie l'app ouvre (éditeur, questionnaire,
+  // NavigKid, vocabulaire). Déduit de l'atelier choisi — conservé tel quel pour
+  // ne rien casser des activités existantes.
   typeTravail: TypeTravail;
+  // Mode principal : quelle compétence est en jeu (lire, écrire, parler…).
+  // Découplé du dispositif : une recherche guidée est un travail de LECTURE
+  // menée dans un ATELIER de recherche. Absent sur les activités antérieures.
+  modePrincipal?: TypeModal;
+  // Type d'activité : l'atelier (ids de ATELIERS dans types/didactique)
+  atelier?: string;
+  // Habiletés travaillées dans CETTE activité. Absent ou null = toutes celles
+  // rattachées à l'atelier (cas par défaut) ; un tableau = sélection du prof.
+  habiletes?: string[] | null;
   evaluation?: EvaluationType;    // absent sur les devoirs antérieurs au champ
   hiddenCriteria?: string[];      // ids de critères de la grille masqués pour CE devoir
   uaa?: number[];                 // UAA de la grille liée (enrichi côté serveur, lecture seule)
@@ -85,6 +98,9 @@ export interface CreateDevoirData {
   accesIA: boolean;
   disponible: boolean;
   typeTravail: TypeTravail;
+  modePrincipal?: TypeModal;      // compétence en jeu (didactique)
+  atelier?: string;               // type d'activité — id de ATELIERS
+  habiletes?: string[] | null;    // null = toutes celles de l'atelier
   evaluation?: EvaluationType;
   hiddenCriteria?: string[];      // ids de critères masqués pour ce devoir
   // NavigKid (type rechercher uniquement)

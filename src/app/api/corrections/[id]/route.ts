@@ -78,6 +78,17 @@ export async function PATCH(
       updateData.audioAnnotations = body.audioAnnotations;
     }
 
+    if (body.questionScores !== undefined) {
+      // Points des questions ouvertes d'un questionnaire de lecture
+      const raw = body.questionScores;
+      const clean: Record<string, number> = {};
+      if (raw && typeof raw === 'object') {
+        for (const [k, v] of Object.entries(raw)) {
+          if (typeof v === 'number' && Number.isFinite(v) && v >= 0) clean[k] = v;
+        }
+      }
+      updateData.questionScores = clean;
+    }
     if (body.draftAnnotations !== undefined) {
       updateData.draftAnnotations = body.draftAnnotations;
     }

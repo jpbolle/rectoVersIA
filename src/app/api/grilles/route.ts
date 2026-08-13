@@ -13,6 +13,7 @@ function docToGrilleList(doc: FirebaseFirestore.DocumentSnapshot): Grille {
     name: data.name || '',
     description: data.description || '',
     uaa: data.uaa || [],
+    ateliers: Array.isArray(data.ateliers) ? data.ateliers : [],
     profId: data.profId || '',
     profName: data.profName || '',
     shared: data.shared ?? false,
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, description, uaa, criteria } = body;
+    const { name, description, uaa, ateliers, criteria } = body;
 
     if (!name || !criteria || !Array.isArray(criteria) || criteria.length === 0) {
       return NextResponse.json(
@@ -165,6 +166,7 @@ export async function POST(request: NextRequest) {
       name,
       description: description || '',
       uaa: Array.isArray(uaa) ? uaa : [],
+      ateliers: Array.isArray(ateliers) ? ateliers.filter((a: unknown) => typeof a === 'string') : [],
       profId: auth.uid,
       profName,
       shared,
@@ -182,6 +184,7 @@ export async function POST(request: NextRequest) {
         name,
         description: description || '',
         uaa: Array.isArray(uaa) ? uaa : [],
+      ateliers: Array.isArray(ateliers) ? ateliers.filter((a: unknown) => typeof a === 'string') : [],
         profId: auth.uid,
         profName,
         shared,

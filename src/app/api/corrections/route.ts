@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
           commentaireGeneral: data.commentaireGeneral || '',
           commentaireGeneralAudio: data.commentaireGeneralAudio || undefined,
           commentairesCriteres: data.commentairesCriteres || {},
+          questionScores: data.questionScores || {},
           score: data.score || 0,
           status: data.status || 'draft',
           visibleParEleve: data.visibleParEleve || false,
@@ -103,6 +104,9 @@ export async function GET(request: NextRequest) {
       commentaireGeneral: (auth.role !== 'eleve' || visible) ? (data.commentaireGeneral || '') : '',
       commentaireGeneralAudio: (auth.role !== 'eleve' || visible) ? (data.commentaireGeneralAudio || undefined) : undefined,
       commentairesCriteres: data.commentairesCriteres || {},
+      // Notes des questions ouvertes : même règle que le reste de la correction
+      // — l'élève ne les voit qu'une fois le corrigé rendu
+      questionScores: (auth.role !== 'eleve' || visible) ? (data.questionScores || {}) : {},
       score: (auth.role !== 'eleve' || visible) ? (data.score || 0) : 0,
       status: data.status || 'draft',
       visibleParEleve: visible,
@@ -156,6 +160,7 @@ export async function POST(request: NextRequest) {
       evaluation: body.evaluation || {},
       commentaireGeneral: body.commentaireGeneral || '',
       commentairesCriteres: {},
+      questionScores: {},
       score: body.score || 0,
       status: 'draft',
       visibleParEleve: false,

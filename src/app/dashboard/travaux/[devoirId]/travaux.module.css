@@ -90,38 +90,6 @@
   margin: 4px 0 0;
 }
 
-.codeAccesBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  padding: 4px 12px;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: var(--c-radius);
-  color: white;
-  font-size: 13px;
-  font-family: inherit;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.codeAccesBadge:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.codeAccesBadge strong {
-  font-family: monospace;
-  font-size: 15px;
-  letter-spacing: 2px;
-}
-
-.codeAccesCopy {
-  font-size: 14px;
-  opacity: 0.8;
-}
-
 /* ─── Questionnaire NavigKid ─── */
 .questionnairePanel {
   margin: 0 24px;

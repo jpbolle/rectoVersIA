@@ -17,7 +17,10 @@ interface HeaderProps {
   onAdminTabChange?: (tab: AdminHeaderTab) => void;
 }
 
-const ADMIN_TABS: { key: AdminHeaderTab; label: string }[] = [
+// Source unique des libellés d'onglets : la page /admin s'en sert aussi pour
+// son titre — le header porte déjà « Administration du site », le titre de la
+// page nomme donc l'onglet courant, sans le répéter.
+export const ADMIN_TABS: { key: AdminHeaderTab; label: string }[] = [
   { key: 'vue', label: 'Vue d’ensemble' },
   { key: 'membres', label: 'Gestion des membres' },
   { key: 'didactique', label: 'Gestion didactique' },
@@ -44,9 +47,6 @@ export default function Header({ variant, topOffset = 0, adminTab, onAdminTabCha
 
         {variant === 'admin' ? (
           <nav className={styles.navButtons}>
-            <button className={styles.navBtn} onClick={() => router.push('/dashboard')}>
-              Accueil
-            </button>
             {ADMIN_TABS.map((tab) => (
               <button
                 key={tab.key}
@@ -56,6 +56,10 @@ export default function Header({ variant, topOffset = 0, adminTab, onAdminTabCha
                 {tab.label}
               </button>
             ))}
+            {/* Sortie de l'administration : en dernier, après les onglets */}
+            <button className={styles.navBtn} onClick={() => router.push('/dashboard')}>
+              Retour à l&apos;accueil
+            </button>
           </nav>
         ) : variant === 'prof' ? (
           <nav className={styles.navButtons}>

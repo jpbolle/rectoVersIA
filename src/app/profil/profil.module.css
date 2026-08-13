@@ -1215,3 +1215,68 @@
   color: var(--c-text-muted);
   font-size: 12px;
 }
+
+/* ─── Habiletés travaillées (questionnaires de lecture) ─────────────────── */
+.habiletesBlock {
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid var(--c-border);
+}
+
+.habiletesTitle {
+  font-family: var(--c-font-title);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-primary);
+  margin: 0 0 14px;
+}
+
+.habiletesList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.habileteHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.habileteLabel {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: var(--c-text);
+}
+
+.habileteScore {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.habileteBar {
+  height: 7px;
+  background: var(--c-bg-element);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.habileteBar i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.25s ease;
+}
+
+.habileteMeta {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--c-text-muted);
+}

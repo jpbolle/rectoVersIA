@@ -5,6 +5,7 @@ import { calculateSchoolYear } from '@/lib/auth-utils';
 import { generateDevoirId } from '@/lib/devoir-utils';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import { sanitizeLectureQuiz, lectureQuizForEleve } from '@/lib/lecture-server';
+import { atelierParDispositif, findAtelier, isTypeModal } from '@/types/didactique';
 
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -56,6 +57,10 @@ export async function GET(request: NextRequest) {
         anneeScolaire: data.anneeScolaire || '',
         profId: data.profId || '',
         typeTravail: data.typeTravail || 'ecrire',
+        modePrincipal: data.modePrincipal || undefined,
+        // Activités créées avant le champ : l'atelier se déduit du dispositif
+        atelier: data.atelier || atelierParDispositif(data.typeTravail || 'ecrire').id,
+        habiletes: Array.isArray(data.habiletes) ? data.habiletes : null,
         questionnaireId: data.questionnaireId || undefined,
         codeAcces: data.codeAcces || undefined,
         vocabulaireThemes: data.vocabulaireThemes || undefined,
@@ -198,6 +203,9 @@ export async function POST(request: NextRequest) {
       accesIA,
       disponible,
       typeTravail,
+      modePrincipal,
+      atelier,
+      habiletes,
       evaluation,
       hiddenCriteria,
       questionnaire,
@@ -208,8 +216,10 @@ export async function POST(request: NextRequest) {
       lectureQuiz,
     } = body;
 
-    // Validation des champs requis (grille non requise pour vocabulaire)
-    const grilleRequired = typeTravail !== 'vocabulaire';
+    // Validation des champs requis. Seules les activités d'écriture s'appuient
+    // sur une grille : lecture, recherche et vocabulaire portent leur
+    // didactique dans leurs habiletés.
+    const grilleRequired = (typeTravail || 'ecrire') === 'ecrire';
     if (!Array.isArray(classes) || !dateRemise || (grilleRequired && !grille) || !intitule) {
       return NextResponse.json(
         { success: false, message: 'Date de remise, grille et intitulé requis' },
@@ -238,6 +248,14 @@ export async function POST(request: NextRequest) {
       anneeScolaire,
       profId: auth.uid,
       typeTravail: typeTravail || 'ecrire',
+      // Didactique : compétence en jeu + atelier. Le dispositif reste
+      // typeTravail — l'atelier ne fait que le nommer côté prof.
+      modePrincipal: isTypeModal(modePrincipal) ? modePrincipal : null,
+      atelier: findAtelier(atelier)?.id ?? atelierParDispositif(typeTravail || 'ecrire').id,
+      // null = toutes les habiletés de l'atelier (cas par défaut)
+      habiletes: Array.isArray(habiletes)
+        ? habiletes.filter((h: unknown) => typeof h === 'string')
+        : null,
       evaluation: evaluation === 'certificatif' ? 'certificatif' : 'formatif',
       flipInverted: flipInverted ?? false,
       // Horodatage de l'ouverture aux élèves (notifications)
