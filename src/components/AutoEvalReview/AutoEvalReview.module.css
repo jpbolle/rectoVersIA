@@ -1,0 +1,370 @@
+/* AutoEvalReview — les deux regards côte à côte.
+   La colonne de l'élève reste voilée tant que le prof ne s'est pas prononcé :
+   c'est ce voile qui donne sa valeur à la comparaison. */
+
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 2px 20px;
+}
+
+/* ── En-tête ── */
+
+.entete {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-left: 4px solid var(--c-primary);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.consigne {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--c-text);
+}
+
+.avancee {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.barre {
+  flex: 1;
+  height: 7px;
+  background: var(--c-bg-element);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.barreFill {
+  height: 100%;
+  background: var(--c-primary);
+  border-radius: 999px;
+  transition: width 0.25s;
+}
+
+.avanceeTexte {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+/* ── Questions ── */
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bloc {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.blocHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.numero {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+  flex-shrink: 0;
+}
+
+.enonce {
+  flex: 1;
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--c-text);
+}
+
+.verrou {
+  font-size: 13px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.info {
+  background: rgba(212, 148, 76, 0.09);
+  border: 1px dashed var(--c-accent);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--c-text);
+  white-space: pre-wrap;
+}
+
+.document {
+  margin: 10px 0 0 34px;
+  padding: 9px 12px;
+  background: var(--c-bg-element);
+  border-radius: 9px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--c-text-secondary);
+  white-space: pre-wrap;
+}
+
+/* ── Les deux regards ── */
+
+.duel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 12px 0 0 34px;
+}
+
+/* Sous 900 px la colonne de correction est trop étroite pour deux échelles */
+@media (max-width: 900px) {
+  .duel {
+    grid-template-columns: 1fr;
+  }
+}
+
+.colonne {
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  padding: 10px 11px;
+  background: var(--c-bg-element);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.colonneVoilee {
+  border-style: dashed;
+  background: transparent;
+}
+
+.colonneTitre {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+
+.libre {
+  margin: 12px 0 0 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* ── Voile ── */
+
+.voile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  border-radius: 8px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(61, 56, 50, 0.035),
+    rgba(61, 56, 50, 0.035) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+}
+
+.voileTexte {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--c-text-muted);
+  text-align: center;
+  padding: 0 10px;
+}
+
+/* ── Échelles ── */
+
+.echelons {
+  display: flex;
+  gap: 5px;
+}
+
+.echelon {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 3px;
+  background: var(--c-bg-card);
+  border: 2px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.echelon:disabled {
+  cursor: default;
+}
+
+.echelon:hover:not(:disabled) {
+  border-color: var(--c-border);
+}
+
+.echelonOn {
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.09);
+}
+
+.echelonEmoji {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.echelonTexte {
+  font-size: 9.5px;
+  text-align: center;
+  line-height: 1.2;
+  color: var(--c-text-muted);
+}
+
+.echelonOn .echelonTexte {
+  color: var(--c-primary);
+  font-weight: 600;
+}
+
+/* ── Likert ── */
+
+.likert {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.likertBornes {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--c-text-muted);
+}
+
+.likertPoints {
+  display: flex;
+  gap: 6px;
+}
+
+.likertPoint {
+  flex: 1;
+  height: 32px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: var(--c-bg-card);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.likertPoint:disabled {
+  cursor: default;
+}
+
+.likertPointOn {
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.09);
+  color: var(--c-primary);
+}
+
+/* ── Verdict ── */
+
+.verdict {
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 3px 10px;
+  align-self: flex-start;
+}
+
+.juste {
+  background: rgba(45, 106, 90, 0.12);
+  color: var(--c-primary);
+}
+
+/* Se sous-estimer et se surestimer ne se valent pas : deux couleurs
+   distinctes, aucune des deux alarmante — ce n'est pas une faute */
+.sousEstime {
+  background: rgba(74, 123, 166, 0.14);
+  color: #3c6486;
+}
+
+.surestime {
+  background: rgba(212, 148, 76, 0.18);
+  color: #a06a2c;
+}
+
+.ecartVal {
+  font-weight: 500;
+  font-style: normal;
+  opacity: 0.8;
+}
+
+/* ── Témoignages (questions non comparables) ── */
+
+.temoignage {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--c-text);
+}
+
+.puce {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+  margin-right: 6px;
+}
+
+.citation {
+  margin: 0;
+  padding: 10px 13px;
+  border-left: 3px solid var(--c-accent);
+  background: var(--c-bg-element);
+  border-radius: 0 9px 9px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--c-text);
+  white-space: pre-wrap;
+}
+
+.sansReponse {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--c-text-muted);
+}

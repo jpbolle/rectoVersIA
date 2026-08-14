@@ -7,9 +7,14 @@
 //  2. Décoché, la liste des GESTES apparaît. Cocher un geste sélectionne ses
 //     habiletés et les affiche ; le prof peut ensuite en retirer.
 //
-// Le PLIAGE et la SÉLECTION sont deux choses distinctes : la case coche les
-// habiletés du geste, le chevron ouvre ou referme la liste. Replier un geste
-// ne perd donc rien — le compteur rappelle ce qui reste coché dessous.
+// LE PLIAGE N'EST PAS LA SÉLECTION — à tous les niveaux.
+// Le bloc entier se replie par son CHEVRON, jamais par la case à cocher. Avant
+// le 2026-08-15, le seul moyen de refermer la liste était de recocher « Toutes
+// les habiletés » : replier pour alléger l'écran effaçait donc la sélection, et
+// le prof se retrouvait avec tout de coché. Le libellé lui-même basculait la
+// case, puisque toute la ligne était un <label>.
+// Désormais : la case coche, le reste de la ligne replie. Et le bloc s'ouvre
+// REPLIÉ, avec un résumé de ce qui est retenu.
 //
 // Tant qu'aucune habileté n'a été rattachée à l'atelier dans /admin, on
 // propose celles du mode principal et on le dit — cf. habiletesPourAtelier.
@@ -54,6 +59,8 @@ export default function HabiletesPicker({
 
   // Gestes dépliés — indépendant de ce qui est coché
   const [openGestes, setOpenGestes] = useState<Set<string>>(new Set());
+  // Le bloc entier : REPLIÉ à l'ouverture du formulaire, pour ne pas encombrer
+  const [ouvert, setOuvert] = useState(false);
 
   const toutes = value === null;
   const selected = new Set(value ?? []);
@@ -93,26 +100,48 @@ export default function HabiletesPicker({
     );
   }
 
+  // Ce que dit la ligne quand tout est replié
+  const resume = toutes
+    ? `Toutes les habiletés${atelier ? ` de l’${findAtelier(atelier)?.label.toLowerCase()}` : ''}`
+    : selected.size === 0
+      ? 'Aucune habileté retenue'
+      : `${selected.size} habileté${selected.size > 1 ? 's' : ''} retenue${selected.size > 1 ? 's' : ''}`;
+
   return (
     <div className={styles.picker}>
-      <label className={styles.allRow}>
+      <div className={styles.allRow}>
+        {/* La case à cocher est SEULE à décider « toutes ou certaines ». Le
+            reste de la ligne replie — sinon un clic pour ranger l'écran
+            resélectionnait tout. */}
         <input
           type="checkbox"
           checked={toutes}
           disabled={disabled}
-          // Décocher part d'une ardoise vierge : on choisit d'abord les gestes
-          onChange={(e) => onChange(e.target.checked ? null : [])}
+          title={toutes ? 'Décocher pour choisir les habiletés' : 'Cocher pour toutes les reprendre'}
+          // Décocher part d'une ardoise vierge : on choisit d'abord les gestes,
+          // et on ouvre le bloc puisqu'il y a désormais quelque chose à y faire
+          onChange={(e) => {
+            const tout = e.target.checked;
+            onChange(tout ? null : []);
+            setOuvert(!tout);
+          }}
         />
-        <span>
-          Toutes les habiletés
-          {atelier && <> de l&apos;{findAtelier(atelier)?.label.toLowerCase()}</>}
+        <button
+          type="button"
+          className={styles.allToggle}
+          onClick={() => setOuvert((v) => !v)}
+          aria-expanded={ouvert}
+          title={ouvert ? 'Replier' : 'Déplier'}
+        >
+          <span className={styles.allLabel}>{resume}</span>
           <span className={styles.count}>
             {toutes ? `${items.length}` : `${selected.size} / ${items.length}`}
           </span>
-        </span>
-      </label>
+          <span className={`${styles.mainChevron} ${ouvert ? styles.mainChevronOpen : ''}`}>▾</span>
+        </button>
+      </div>
 
-      {fallback && (
+      {ouvert && fallback && (
         <p className={styles.note}>
           Aucune habileté n&apos;est encore rattachée à cet atelier : ce sont celles du
           mode principal qui sont proposées. Le rattachement se fait dans
@@ -120,11 +149,12 @@ export default function HabiletesPicker({
         </p>
       )}
 
-      {!toutes && (
+      {ouvert && !toutes && (
         <div className={styles.list}>
           <p className={styles.lead}>
             Cochez un geste pour retenir ses habiletés ; la flèche déplie la liste
-            pour en retirer. Replier ne perd rien.
+            pour en retirer. <strong>Replier ne perd rien</strong> — ni ici, ni pour le
+            bloc entier.
           </p>
           {groups.map(([geste, list]) => {
             const n = gesteSelection(list);

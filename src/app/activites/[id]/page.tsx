@@ -22,6 +22,7 @@ import RechercheResponseViewer from '@/components/RechercheResponseViewer/Recher
 import RechercheStartOverlay from '@/components/RechercheStartOverlay/RechercheStartOverlay';
 import VocabulaireActivity from '@/components/VocabulaireActivity/VocabulaireActivity';
 import LectureQuizActivity from '@/components/LectureQuizActivity/LectureQuizActivity';
+import AutoEvalActivity from '@/components/AutoEvalActivity/AutoEvalActivity';
 import { parseLectureAnswers } from '@/types/lecture';
 import WorkspaceRail, { type RailTab } from '@/components/WorkspaceRail';
 import DictionaryClickLayer from '@/components/DictionaryClickLayer';
@@ -459,6 +460,8 @@ export default function TravailPage() {
   const isVocabulaire = devoir?.typeTravail === 'vocabulaire';
   // Type lire avec questionnaire : la colonne de gauche devient le questionnaire
   const isLectureQuiz = devoir?.typeTravail === 'lire' && !!devoir?.lectureQuiz;
+  // Auto-évaluation : l'élève se prononce sur son travail ou son attitude
+  const isAutoEval = devoir?.typeTravail === 'autoevaluation' && !!devoir?.autoEvalQuiz;
 
   // ── Configuration du rail : icones + visibilite par type d'activite ──
   const hasAiSuggestions = aiSuggestions
@@ -607,6 +610,18 @@ export default function TravailPage() {
                 />
               )}
             </div>
+          </div>
+        ) : isAutoEval ? (
+          <div className={styles.editorSection}>
+            <div className={styles.editorHeader}>
+              <h2>Auto-évaluation</h2>
+            </div>
+            <AutoEvalActivity
+              quiz={devoir.autoEvalQuiz!}
+              content={isPreviewMode ? null : travail?.content}
+              onChange={(json) => updateContent(json)}
+              readOnly={isDisabled}
+            />
           </div>
         ) : isLectureQuiz ? (
           <div className={styles.editorSection}>

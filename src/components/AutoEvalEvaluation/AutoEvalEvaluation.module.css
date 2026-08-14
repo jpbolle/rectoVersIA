@@ -1,0 +1,235 @@
+/* AutoEvalEvaluation — la lucidité, jamais une note.
+   Aucun pourcentage de réussite, aucun rouge d'échec : se sous-estimer n'est
+   pas une faute, se surestimer non plus. Deux couleurs distinctes, ni l'une ni
+   l'autre alarmante. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 2px 20px;
+}
+
+/* ── Attente ── */
+
+.attente {
+  padding: 22px 18px;
+  text-align: center;
+  background: var(--c-bg-element);
+  border: 1px dashed var(--c-border);
+  border-radius: 12px;
+}
+
+.attenteTitre {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.attenteTexte {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--c-text-secondary);
+}
+
+/* ── Tendance générale ── */
+
+.tendance {
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--c-border);
+  border-left-width: 4px;
+}
+
+.tendanceTitre {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.tendanceTexte {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--c-text);
+}
+
+/* Trois familles de couleurs, réutilisées partout dans l'onglet */
+.juste {
+  border-left-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.07);
+  color: var(--c-primary);
+}
+
+.sousEstime {
+  border-left-color: #4a7ba6;
+  background: rgba(74, 123, 166, 0.09);
+  color: #3c6486;
+}
+
+.surestime {
+  border-left-color: var(--c-accent);
+  background: rgba(212, 148, 76, 0.1);
+  color: #a06a2c;
+}
+
+/* ── Répartition ── */
+
+.repartition {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  flex: 1;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  padding: 11px 13px;
+}
+
+.statVal {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--c-font-title);
+  background: none;
+  border: none;
+}
+
+.statLbl {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--c-text-secondary);
+}
+
+.statBarre {
+  height: 5px;
+  background: var(--c-bg-element);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+
+.statFill {
+  height: 100%;
+  border-radius: 999px;
+  background: currentColor;
+  transition: width 0.25s;
+}
+
+/* ── Détail ── */
+
+.detail {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.detailTitre {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+
+.ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--c-border);
+  flex-wrap: wrap;
+}
+
+.ligne:last-of-type {
+  border-bottom: none;
+}
+
+.ligneEnonce {
+  flex: 1;
+  min-width: 160px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--c-text);
+}
+
+/* Axe de 5 crans : on voit d'un coup d'œil qui est où */
+.axe {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.cran {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--c-text-muted);
+}
+
+.cranEleve {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+  font-weight: 700;
+}
+
+.cranProf {
+  border-color: var(--c-text-secondary);
+  color: var(--c-text-secondary);
+}
+
+.cranEleveLeg {
+  color: var(--c-primary);
+  font-weight: 700;
+}
+
+.cranProfLeg {
+  color: var(--c-text-secondary);
+  font-weight: 700;
+}
+
+.badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 3px 10px;
+  border: none;
+  flex-shrink: 0;
+}
+
+.net {
+  font-weight: 500;
+  font-style: normal;
+  opacity: 0.85;
+}
+
+.legende {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  color: var(--c-text-muted);
+}
+
+.reste {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--c-text-muted);
+}

@@ -5,6 +5,8 @@
   background: var(--c-bg-card, #fff);
 }
 
+/* La case à cocher décide « toutes ou certaines » ; le reste de la ligne
+   replie le bloc. Deux zones cliquables distinctes, jamais confondues. */
 .allRow {
   display: flex;
   align-items: center;
@@ -12,7 +14,53 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--c-text);
+}
+
+.allRow input {
   cursor: pointer;
+}
+
+.allToggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  margin-left: -6px;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.allToggle:hover {
+  background: var(--c-bg-element);
+}
+
+.allLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mainChevron {
+  font-size: 11px;
+  color: var(--c-text-secondary);
+  transition: transform 0.15s;
+  transform: rotate(-90deg);
+  flex-shrink: 0;
+}
+
+.mainChevronOpen {
+  transform: none;
 }
 
 .allRow input {

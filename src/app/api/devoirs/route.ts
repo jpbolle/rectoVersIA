@@ -5,6 +5,7 @@ import { calculateSchoolYear } from '@/lib/auth-utils';
 import { generateDevoirId } from '@/lib/devoir-utils';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import { sanitizeLectureQuiz, lectureQuizForEleve } from '@/lib/lecture-server';
+import { sanitizeAutoEvalQuiz } from '@/lib/autoevaluation-server';
 import { atelierParDispositif, findAtelier, isTypeModal } from '@/types/didactique';
 
 export async function GET(request: NextRequest) {
@@ -70,6 +71,7 @@ export async function GET(request: NextRequest) {
         corrigeReference: data.corrigeReference || null,
         ressourcesToIA: data.ressourcesToIA ?? false,
         lectureQuiz: data.lectureQuiz || null,
+        autoEvalQuiz: data.autoEvalQuiz || null,
         submittedCount: undefined as number | undefined,
       };
     });
@@ -120,6 +122,8 @@ export async function GET(request: NextRequest) {
         lectureQuiz: d.corrigeDisponible
           ? d.lectureQuiz || null
           : lectureQuizForEleve(d.lectureQuiz),
+        // Auto-évaluation : rien à filtrer, il n'y a ni bonne réponse ni corrigé
+        autoEvalQuiz: d.autoEvalQuiz || null,
       }));
     }
 
@@ -215,6 +219,7 @@ export async function POST(request: NextRequest) {
       corrigeReference,
       ressourcesToIA,
       lectureQuiz,
+      autoEvalQuiz,
     } = body;
 
     // Validation des champs requis. Seules les activités d'écriture s'appuient
@@ -298,6 +303,12 @@ export async function POST(request: NextRequest) {
     if (typeTravail === 'lire' && lectureQuiz) {
       const cleaned = sanitizeLectureQuiz(lectureQuiz);
       if (cleaned) devoirData.lectureQuiz = cleaned;
+    }
+
+    // Si type "autoevaluation", questionnaire d'auto-évaluation
+    if (typeTravail === 'autoevaluation' && autoEvalQuiz) {
+      const cleaned = sanitizeAutoEvalQuiz(autoEvalQuiz);
+      if (cleaned) devoirData.autoEvalQuiz = cleaned;
     }
 
     // Si type "vocabulaire", stocker la config

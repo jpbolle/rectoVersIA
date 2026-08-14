@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
           commentairesCriteres: data.commentairesCriteres || {},
           questionScores: data.questionScores || {},
           rechercheScores: data.rechercheScores || {},
+          autoEvalProf: data.autoEvalProf || {},
           score: data.score || 0,
           status: data.status || 'draft',
           visibleParEleve: data.visibleParEleve || false,
@@ -110,6 +111,9 @@ export async function GET(request: NextRequest) {
       questionScores: (auth.role !== 'eleve' || visible) ? (data.questionScores || {}) : {},
       // Recherche : notes et remarques du prof, même règle de visibilité
       rechercheScores: (auth.role !== 'eleve' || visible) ? (data.rechercheScores || {}) : {},
+      // Auto-évaluation : le regard du prof ne se découvre à l'élève qu'avec
+      // la correction — sinon il lui suffirait de recopier
+      autoEvalProf: (auth.role !== 'eleve' || visible) ? (data.autoEvalProf || {}) : {},
       score: (auth.role !== 'eleve' || visible) ? (data.score || 0) : 0,
       status: data.status || 'draft',
       visibleParEleve: visible,
@@ -165,6 +169,7 @@ export async function POST(request: NextRequest) {
       commentairesCriteres: {},
       questionScores: {},
       rechercheScores: {},
+      autoEvalProf: {},
       score: body.score || 0,
       status: 'draft',
       visibleParEleve: false,

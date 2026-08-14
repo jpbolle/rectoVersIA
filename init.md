@@ -10,8 +10,9 @@
 
 - **Quoi** : assistant de correction pédagogique avec IA — un prof de français corrige des
   productions d'élèves via des grilles à 6 niveaux (précorrection Claude, dictée Whisper) ;
-  les élèves rédigent, s'autoévaluent, travaillent le vocabulaire et font des recherches
-  guidées (extension Chrome NavigKid).
+  les élèves rédigent, s'autoévaluent, travaillent le vocabulaire, font des recherches
+  guidées (extension Chrome NavigKid) et se prononcent sur leur propre travail
+  (auto-évaluation à deux regards). Le prof scénarise son année (Design & scénarisation).
 - **Statut** : v3.8, en production au Collège Notre-Dame de Dinant (profs + élèves réels)
 - **Stack** : Next.js 16 (App Router) + React 19 + TypeScript 5 + Firestore (Blaze) +
   Tiptap 3 — CSS Modules, design system Classica
@@ -130,7 +131,7 @@ interface Devoir {
   profId: string;
   anneeScolaire: string;         // "2025-2026" (calcul auto)
   createdAt: Timestamp;
-  typeTravail: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire'; // DISPOSITIF
+  typeTravail: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation'; // DISPOSITIF
   modePrincipal?: TypeModal;     // compétence en jeu (lire/ecrire/parler/reflexif/lexique)
   atelier?: string;              // type d'activité — id de ATELIERS
   habiletes?: string[] | null;   // null = toutes celles de l'atelier
@@ -139,6 +140,9 @@ interface Devoir {
   // disponibleAt / corrigeDisponibleAt : horodatages posés au basculement (notifications)
   questionnaireId?: string;       // ref questionnaires/{id} (type rechercher)
   codeAcces?: string;             // code 6 chars extension Chrome (type rechercher)
+  autoEvalQuiz?: AutoEvalQuestionnaire | null; // questionnaire d'auto-évaluation
+                                  // (type autoevaluation) — RIEN n'y est filtré
+                                  // pour l'élève : ni bonne réponse, ni corrigé
   vocabulaireThemes?: string[];   // serie lexicale imposee (type vocabulaire)
   vocabulaireDiagnostic?: boolean;
   flipInverted?: boolean;         // recto = planification au lieu de redaction
@@ -186,6 +190,9 @@ interface Correction {
   // Recherche : deux notes par question (clé = index) — la réponse et la
   // démarche, jamais mélangées. Voir src/lib/recherche-scoring.ts.
   rechercheScores?: Record<string, { reponse?, reponseComment?, demarche?, demarcheComment? }>;
+  // Auto-évaluation : le REGARD DU PROF, donné aux mêmes questions que l'élève.
+  // Ce n'est pas une note — l'écart avec l'élève dit sa lucidité.
+  autoEvalProf?: Record<string, { echelon?: string; likert?: number }>;
   commentaireGeneral: string;
   annotatedContent?: string;     // HTML annote par le prof
   audioAnnotations?: AudioAnnotation[];   // base64 dans Firestore, pas de Storage
@@ -305,7 +312,7 @@ interface Questionnaire {
 | `/mes-ressources` | élève | Mes ressources personnelles : onglet Liste de vocabulaire (mots dont il a demandé la définition) + onglet À venir (vide) |
 | `/activites/[id]` | élève | Rédaction + auto-évaluation + remise (`WorkspaceRail`) |
 | `/mes-classes` | élève | Classes + rejoindre une classe |
-| `/profil` | élève | Profil d'écrilecteur en 5 onglets (Général / Lire / Écrire / Rechercher / Vocabulaire), un appel API par onglet chargé à la première ouverture |
+| `/profil` | élève | Profil d'écrilecteur en 7 onglets (Général / Lire / Écrire / Parler / Rechercher / Vocabulaire / **🪞 Me connaître**), un appel API par onglet chargé à la première ouverture |
 
 ### Header
 - Prof : Mes Activités → `/dashboard` | Mes Classes → `/classes` | Mes Ressources →
@@ -328,7 +335,7 @@ interface Questionnaire {
 | `/api/eleves`, `/api/eleves/[id]`, `/api/eleves/bulk`, `/api/eleves/link` | CRUD | Import masse (max 500), liaison UID |
 | `/api/grilles`, `/api/grilles/[name]` | CRUD | Mes grilles + shared + autres profs |
 | `/api/preferences` | GET, PUT | Préférences éditeur |
-| `/api/profil/{general,lecture,ecriture,recherche,vocabulaire}` | GET | Profil élève, un endpoint par onglet — `recherche` renvoie `{ items, habiletes }` — helpers dans `src/lib/profil-stats.ts` ; `?eleveId=` réservé au prof (fiche élève — `src/lib/profil-target.ts` vérifie l'appartenance à ses classes) |
+| `/api/profil/{general,lecture,ecriture,recherche,vocabulaire,reflexif}` | GET | Profil élève, un endpoint par onglet — `recherche` renvoie `{ items, habiletes }` — helpers dans `src/lib/profil-stats.ts` ; `?eleveId=` réservé au prof (fiche élève — `src/lib/profil-target.ts` vérifie l'appartenance à ses classes) |
 | `/api/scenarisations`, `/api/scenarisations/[id]` | CRUD | Scénarisations didactiques (une par cours) — document unique par scénarisation, chapitres et modules **imbriqués**. Le PUT réécrit tout et pose/efface `devoir.scenarisationRef` (passerelle en retour) |
 | `/api/didactique` | GET, PUT | Config didactique (UAA + habiletés) — doc `configuration/didactique`, GET tout connecté, PUT admin ; le GET **normalise** les champs absents des documents anciens (`objets`, `ateliers`) ; hook client `useDidactique` (cache partagé) |
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |
@@ -380,6 +387,12 @@ interface Questionnaire {
   lecteur audio limité ; `showCorrection` quand corrigé disponible : QCM ✅/❌,
   réponse idéale, comparaison `FluoCompare`), `LectureQuizReview` (correction — QCM
   auto-comptés, soulignage comparé, écoutes consommées, réponse idéale en encadré)
+- **Auto-évaluation** (`typeTravail: 'autoevaluation'`) : `AutoEvalBuilder` (prof, verso —
+  emojis compétence/humeur, échelle 1-5, QCM **sans bonne réponse**, textes, bloc info ;
+  gestes limités au savoir-être et au réflexif), `AutoEvalActivity` (élève),
+  `AutoEvalReview` (**prof : il répond à l'aveugle, la réponse de l'élève se découvre
+  question par question**), `AutoEvalEvaluation` (onglet Évaluation : lucidité).
+  Aucune note nulle part — voir `harnais/memoire/rollup_autoevaluation.md`
 - Admin : `DidactiquePanel` (UAA + gestes : œil/poubelle/+ — alimente `useDidactique`)
 - Fiche élève : `ProfilPanel` (profil 5 onglets partagé élève/prof),
   `EleveProfilModal` (grande popup), `MesElevesSection` (bloc Mes Élèves)
@@ -508,6 +521,32 @@ donc la première instruction ; l'écriture dans le storage vient après.
 `sidebar/app.js` contient l'URL de production en dur. Pour tester en local il faut la
 basculer sur `http://localhost:3003` **et penser à la remettre avant tout commit**.
 
+### Spinner infini au rechargement d'une page prof
+L'`AuthProvider` restaure le rôle depuis un cache `sessionStorage` **avant** que
+Firebase ait rendu l'utilisateur : `isAuthenticated` et `role` sont déjà bons alors que
+`user` est encore `null`. Une page qui lance son chargement sur ces deux valeurs seules
+obtient un jeton nul, sort de son `fetch`, et **ne rejoue jamais l'effet** — l'écran reste
+sur son spinner pour toujours.
+**Symptôme** : « page blanche qui tourne dans le vide » après un clic sur un lien `<a>`
+(rechargement complet) ou un F5, alors que la navigation interne fonctionne.
+**Remède** : attendre `user?.uid`, pas seulement `isAuthenticated`, et ne jamais sortir
+d'un chargement sans remettre `isLoading` à `false`. Corrigé le 2026-08-15 sur
+`/dashboard/travaux/[devoirId]` et `.../[travailId]` — **le motif existe peut-être
+ailleurs**.
+
+### Menu déroulant rogné dans un tableau
+Un `<table>` crée son propre contexte d'empilement : un menu en `position: absolute`
+dans une cellule est **coupé par la ligne suivante**, et aucun `z-index` n'y change rien.
+**Remède** : rendre le menu dans un **portail** (`createPortal` vers `document.body`) en
+`position: fixed`, avec repositionnement au défilement — voir `TagField` de la
+scénarisation.
+
+### Un conteneur ne doit pas porter la couleur de ses en-têtes
+Le constructeur de questionnaire de recherche était peint en `--c-bg-element`, la couleur
+même de ses bandeaux de question : ceux-ci s'y noyaient et les blocs ne se détachaient
+plus. Les constructeurs (lecture, recherche, auto-évaluation) ont un conteneur
+**transparent** ; ce sont les cartes qui portent la couleur.
+
 ### Cache Turbopack corrompu
 **Symptôme** : comportement bizarre en dev, fichiers `.sst` manquants, erreurs 500
 inexpliquées. **Remède** : supprimer `.next/` et relancer `npm run dev`
@@ -578,6 +617,10 @@ prof.
   `Habilete`, `habiletesPourAtelier`, `ATELIER_PAR_MODE`.
 - `src/lib/lecture-scoring.ts` — notation d'un questionnaire de lecture et
   agrégation par habileté. Partagé serveur (profil) et client (onglets Évaluation).
+- `src/types/autoevaluation.ts` / `src/lib/autoeval-scoring.ts` — auto-évaluation.
+  **Seules les questions ORDONNÉES se comparent** (sentiment de compétence, échelle 1-5) :
+  une émotion ne s'évalue pas, un texte ne se place sur aucun axe. L'écart élève/prof
+  donne « se voit juste / se sous-estime / se surestime ».
 - `src/lib/recherche-scoring.ts` — son pendant pour la recherche : **deux
   volets** (réponses / démarche), QCM recalculés à chaque lecture, note du prof
   prioritaire sur l'automatique, agrégation par habileté, statistiques de
@@ -611,6 +654,11 @@ prof.
   sous ChromeOS — écrans et claviers d'entrée de gamme.
 - **Littératie** : l'app suit les compétences d'« écrilecteur » (écriture + lecture).
   Les grilles ciblent des **UAA** (unités d'acquis d'apprentissage, référentiel FWB, 0-6).
+- **Geste ⊃ habileté** : un **geste cognitif** (geste de lecture, d'écriture, de
+  recherche…) **englobe** plusieurs **habiletés**, qui en sont les déclinaisons
+  évaluables (« je suis capable de… »). Deux niveaux, jamais deux synonymes :
+  la **scénarisation** planifie en **gestes**, la **création d'activité** et la
+  **notation** évaluent en **habiletés**. Ne jamais renommer l'un en l'autre.
 - **Types d'activité** : écrire (rédaction + brouillon), lire, vocabulaire (diagnostic →
   apprentissage → évaluation sur séries lexicales), rechercher (NavigKid : recherche
   guidée sur le web via extension Chrome + questionnaire).

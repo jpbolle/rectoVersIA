@@ -97,8 +97,31 @@ l'instant**, à rouvrir si la correction s'avère trop longue à l'usage.
 - `sanitizeQuestionForStudent` laisse passer les nouveaux champs (spread) :
   rien à filtrer, aucun n'est un élément de corrigé.
 
+## Design du constructeur (2026-08-15)
+
+Reproche de JP : « le design n'est pas assez clair », « la couleur du bandeau de
+la question se confond avec le fond du div ».
+
+**Cause exacte** : le conteneur `.builder` était peint en `--c-bg-element`,
+c'est-à-dire **la couleur même des bandeaux de question** (`.qHead`). Les
+bandeaux s'y noyaient et les blocs ne se détachaient plus les uns des autres.
+Le constructeur de lecture, lui, est **transparent** — d'où la différence.
+
+Remède : conteneur transparent (comme la lecture), titre souligné d'un filet
+vert, ombre douce sur chaque carte, survol du bandeau, et la section Thèmes
+devenue une carte à part.
+
+⇒ **Règle à retenir** : ne jamais donner à un conteneur la couleur qu'il donne
+déjà à ses en-têtes internes.
+
+Ajout : bouton **« Créer l'activité »** à côté de « Aperçu du questionnaire »,
+au verso — le questionnaire s'écrit là, on ne doit pas retourner au recto pour
+un seul clic.
+
 ## TODO
 
+0. [ ] Vérifier le **nouveau design** du constructeur et le bouton
+       « Créer l'activité » (2026-08-15).
 1. [ ] **Tout tester** — rien de la session du 14 n'a été vu à l'écran :
        correction d'une recherche, deux scores, profil, aperçu, constructeur
        refondu, champs facultatifs, habiletés qui se replient.

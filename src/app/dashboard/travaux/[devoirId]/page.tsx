@@ -19,7 +19,10 @@ export default function TravauxPage() {
   const router = useRouter();
   const devoirId = params.devoirId as string;
 
-  const { isAuthenticated, role, isLoading: authLoading, getAuthHeaders } = useAuth();
+  const { isAuthenticated, role, user, isLoading: authLoading, getAuthHeaders } = useAuth();
+  // `user` est un objet instable : on ne garde que son identifiant pour les
+  // dépendances d'effet (règle AGENTS.md)
+  const uid = user?.uid;
   const [devoir, setDevoir] = useState<Devoir | null>(null);
   const [travaux, setTravaux] = useState<Travail[]>([]);
   const [corrections, setCorrections] = useState<Map<string, Correction>>(new Map());
@@ -39,7 +42,13 @@ export default function TravauxPage() {
   useEffect(() => {
     async function fetchData() {
       const headers = await getAuthHeaders();
-      if (!headers) return;
+      // Sortir ici sans rien faire laissait l'écran sur son spinner pour
+      // toujours : l'effet ne se rejoue pas tout seul. On rend la main.
+      if (!headers) {
+        setIsLoading(false);
+        setError('Session expirée — reconnectez-vous.');
+        return;
+      }
 
       setIsLoading(true);
       setError(null);
@@ -89,8 +98,13 @@ export default function TravauxPage() {
       }
     }
 
-    if (isAuthenticated && role === 'prof') fetchData();
-  }, [isAuthenticated, role, devoirId, getAuthHeaders]);
+    // `user` est ATTENDU, pas seulement `isAuthenticated` : au rechargement
+    // complet d'une page (un lien <a> depuis la scénarisation, par exemple),
+    // le rôle est restauré du cache de session avant que Firebase n'ait rendu
+    // l'utilisateur. Partir à ce moment-là donnait un jeton nul, donc un
+    // chargement qui n'aboutissait jamais. L'effet repart quand l'UID arrive.
+    if (isAuthenticated && role === 'prof' && uid) fetchData();
+  }, [isAuthenticated, role, uid, devoirId, getAuthHeaders]);
 
   const isLate = useCallback(
     (travail: Travail) => {

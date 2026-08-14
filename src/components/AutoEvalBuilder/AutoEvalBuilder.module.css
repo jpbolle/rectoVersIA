@@ -1,0 +1,576 @@
+/* AutoEvalBuilder — Classica design system.
+   Même forme que les constructeurs de lecture et de recherche : conteneur
+   transparent, chaque question est une carte qui se détache du fond. */
+
+.builder {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.title {
+  font-family: var(--c-font-title);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--c-primary);
+  margin: 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--c-primary);
+}
+
+/* ── Intention ── */
+
+.intro {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+  margin-bottom: 6px;
+}
+
+.introArea,
+.enonce,
+.detailsArea {
+  width: 100%;
+  border: 1px solid var(--c-border);
+  border-radius: 9px;
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--c-text);
+  background: var(--c-bg-card);
+  resize: vertical;
+}
+
+.introArea:focus,
+.enonce:focus,
+.detailsArea:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.1);
+}
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--c-text-muted);
+}
+
+/* ── Totaux ── */
+
+.totalsBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+}
+
+.totalChip {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+.totalChip strong {
+  color: var(--c-primary);
+  font-size: 14px;
+}
+
+/* ── Blocs de questions ── */
+
+.qList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.empty {
+  padding: 18px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--c-text-secondary);
+  background: var(--c-bg-card);
+  border: 1px dashed var(--c-border);
+  border-radius: 10px;
+}
+
+.qBlock {
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-bg-card);
+  box-shadow: 0 1px 3px rgba(61, 56, 50, 0.07);
+}
+
+/* Un bloc informatif n'attend pas de réponse : il se distingue au premier
+   coup d'œil de ce que l'élève doit remplir */
+.qBlockInfo {
+  border-style: dashed;
+  background: rgba(212, 148, 76, 0.05);
+}
+
+.dragging {
+  opacity: 0.45;
+}
+
+.over {
+  box-shadow: 0 -3px 0 var(--c-accent);
+}
+
+.qHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
+  border-radius: 12px 12px 0 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.qHead:hover {
+  background: rgba(45, 106, 90, 0.07);
+}
+
+.grip {
+  cursor: grab;
+  color: var(--c-text-muted);
+  font-size: 13px;
+}
+
+.chevron {
+  color: var(--c-text-secondary);
+  font-size: 12px;
+}
+
+.qNum {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text);
+  white-space: nowrap;
+}
+
+.qType {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 9px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+/* Une couleur par manière de répondre — on repère la forme du questionnaire
+   d'un seul regard sur la colonne des pastilles */
+.type_competence {
+  background: rgba(45, 106, 90, 0.12);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.type_humeur {
+  background: rgba(212, 148, 76, 0.15);
+  border-color: var(--c-accent);
+  color: #a06a2c;
+}
+
+.type_likert {
+  background: rgba(74, 123, 166, 0.13);
+  border-color: #4a7ba6;
+  color: #3c6486;
+}
+
+.type_qcm {
+  background: rgba(124, 95, 166, 0.13);
+  border-color: #7c5fa6;
+  color: #6a4f8f;
+}
+
+.qExcerpt {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--c-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.oblig {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.qAction {
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+  color: var(--c-text-secondary);
+}
+
+.qAction:hover {
+  border-color: var(--c-primary);
+}
+
+.qDel:hover {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+
+.qBody {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Gestes ── */
+
+.habWrap {
+  position: relative;
+}
+
+.habBtn {
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.habBtnOn {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.08);
+}
+
+.habBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.habMenu {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 5px);
+  right: 0;
+  width: 330px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(61, 56, 50, 0.16);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.habMenuTitle {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  margin-bottom: 3px;
+}
+
+.habEmpty {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--c-text-muted);
+}
+
+.habItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  padding: 4px 3px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.habItem:hover {
+  background: var(--c-bg-element);
+}
+
+.habGeste {
+  color: var(--c-text-muted);
+  font-size: 11.5px;
+}
+
+/* ── Aperçu des échelles à emoji ── */
+
+.echelle {
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.echelleLabel {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  margin-bottom: 8px;
+}
+
+.echelons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.echelon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 74px;
+  padding: 7px 5px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 9px;
+}
+
+.echelonEmoji {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.echelonTexte {
+  font-size: 10.5px;
+  text-align: center;
+  line-height: 1.25;
+  color: var(--c-text-secondary);
+}
+
+/* ── Likert ── */
+
+.likertRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.likertBorne {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  flex: 1;
+  min-width: 130px;
+}
+
+.likertBorne input {
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+  padding: 6px 9px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--c-text);
+  background: var(--c-bg-card);
+}
+
+.likertBorne input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.likertApercu {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 6px;
+}
+
+.likertPoint {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+}
+
+/* ── QCM ── */
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.choiceLabel {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+  flex-shrink: 0;
+}
+
+.choice input {
+  flex: 1;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--c-text);
+  background: var(--c-bg-card);
+}
+
+.choice input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.choiceDel {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--c-text-muted);
+  font-size: 12px;
+  padding: 4px 6px;
+}
+
+.choiceDel:hover {
+  color: var(--c-danger);
+}
+
+.addChoice {
+  align-self: flex-start;
+  border: 1px dashed var(--c-border);
+  background: none;
+  border-radius: 999px;
+  padding: 4px 13px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-primary);
+  cursor: pointer;
+}
+
+.addChoice:hover {
+  border-style: solid;
+  border-color: var(--c-primary);
+}
+
+/* ── Texte d'accompagnement ── */
+
+.details {
+  border-top: 1px dashed var(--c-border);
+  padding-top: 10px;
+}
+
+.detailsSummary {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+/* ── Boutons d'ajout ── */
+
+.addButtons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btnAdd {
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.btnAdd:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.btnAdd:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

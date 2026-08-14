@@ -10,12 +10,14 @@ import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import PlanDraft from '@/components/DraftEditor/PlanDraft';
 import VocabListEditor from '@/components/VocabListEditor/VocabListEditor';
 import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
+import AutoEvalBuilder from '@/components/AutoEvalBuilder/AutoEvalBuilder';
 import MessageBox from '@/components/MessageBox/MessageBox';
 import { getTodayString } from '@/lib/devoir-utils';
 import { createPlanItem, planHasContent } from '@/lib/draft-utils';
 import { useVocabulaireThemes } from '@/hooks/useVocabulaireThemes';
 import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail, EvaluationType, CorrigeReference } from '@/types/devoir';
 import type { LectureQuiz } from '@/types/lecture';
+import type { AutoEvalQuestionnaire } from '@/types/autoevaluation';
 import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
@@ -32,6 +34,7 @@ const RESSOURCE_LABELS: Record<TypeTravail, string> = {
   lire: '📄 Texte à lire',
   rechercher: '📄 Documents d’appui (facultatif)',
   vocabulaire: '📄 Documents (facultatif)',
+  autoevaluation: '📄 Travail à commenter (facultatif)',
 };
 
 function createEmptyPlanDraft(): DraftContent {
@@ -139,6 +142,9 @@ export default function CreationForm({
   // Questionnaire de lecture (type lire) — composé au verso
   const [lectureQuiz, setLectureQuiz] = useState<LectureQuiz | null>(null);
 
+  // Questionnaire d'auto-évaluation (type autoevaluation) — composé au verso
+  const [autoEvalQuiz, setAutoEvalQuiz] = useState<AutoEvalQuestionnaire | null>(null);
+
   // Vocabulaire (type vocabulaire) — les callbacks servent à l'outil de listes
   // au verso (même outil que Mes Ressources : les listes créées ici y apparaissent)
   const {
@@ -183,7 +189,8 @@ export default function CreationForm({
     (typeTravail === 'ecrire' && (planHasContent(profDraft.plan) || profProduction.trim() !== '')) ||
     (typeTravail === 'rechercher' && nkQuestions.some(q => q.texte.trim())) ||
     (typeTravail === 'vocabulaire' && selectedVocabTheme !== null) ||
-    (typeTravail === 'lire' && (lectureQuiz?.questions.length ?? 0) > 0);
+    (typeTravail === 'lire' && (lectureQuiz?.questions.length ?? 0) > 0) ||
+    (typeTravail === 'autoevaluation' && (autoEvalQuiz?.questions.length ?? 0) > 0);
 
   // Bascule animée recto ↔ verso
   const flip = useCallback(() => {
@@ -226,6 +233,7 @@ export default function CreationForm({
     setVocabMessage(null);
     setVocabCreatingNew(false);
     setLectureQuiz(null);
+    setAutoEvalQuiz(null);
     setHiddenCriteria([]);
     setShowHideCriteria(false);
   }, []);
@@ -283,6 +291,14 @@ export default function CreationForm({
 
     if (typeTravail === 'lire' && lectureQuiz && lectureQuiz.questions.length > 0) {
       data.lectureQuiz = lectureQuiz;
+    }
+
+    if (
+      typeTravail === 'autoevaluation' &&
+      autoEvalQuiz &&
+      autoEvalQuiz.questions.length > 0
+    ) {
+      data.autoEvalQuiz = autoEvalQuiz;
     }
 
     return data;
@@ -610,6 +626,7 @@ export default function CreationForm({
           {typeTravail === 'lire' && 'Lire'}
           {typeTravail === 'rechercher' && 'Rechercher'}
           {typeTravail === 'vocabulaire' && 'Vocabulaire'}
+          {typeTravail === 'autoevaluation' && 'Auto-évaluation'}
         </span>
       </div>
 
@@ -649,13 +666,25 @@ export default function CreationForm({
                   ? 'Le questionnaire de lecture : rempli par l’élève dans sa colonne de gauche. QCM corrigés automatiquement, le reste par vous. Les compétences cochées alimenteront le profil de lecteur.'
                   : typeTravail === 'rechercher'
                     ? 'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'
-                    : 'La liste sert de support à l’activité (apprentissage et évaluation). Elle est aussi enregistrée dans Mes Ressources.'
+                    : typeTravail === 'autoevaluation'
+                      ? 'Le questionnaire d’auto-évaluation : l’élève y dit où il en est. Rien n’est noté — les gestes cochés alimentent l’onglet réflexif de son profil.'
+                      : 'La liste sert de support à l’activité (apprentissage et évaluation). Elle est aussi enregistrée dans Mes Ressources.'
             }
           >
             i
           </span>
         </h4>
       </div>
+
+      {/* Questionnaire d'auto-évaluation (type autoevaluation) */}
+      {typeTravail === 'autoevaluation' && (
+        <AutoEvalBuilder
+          quiz={autoEvalQuiz}
+          onChange={setAutoEvalQuiz}
+          disabled={isSubmitting}
+          allowedHabiletes={habiletes}
+        />
+      )}
 
       {/* Questionnaire de lecture (type lire) */}
       {typeTravail === 'lire' && (
@@ -770,6 +799,16 @@ export default function CreationForm({
             disabled={isSubmitting || nkQuestions.length === 0}
           >
             👁 Aperçu du questionnaire
+          </button>
+          {/* Le questionnaire s'écrit au verso : on doit pouvoir créer
+              l'activité d'ici, sans retourner au recto pour un seul clic. */}
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            onClick={handleSubmit}
+            disabled={isSubmitting || !isValid}
+          >
+            {isSubmitting ? 'Création en cours...' : 'Créer l’activité'}
           </button>
           <span className={styles.previewNote}>
             Le questionnaire tel que l’élève le lira dans le panneau NavigKid!.

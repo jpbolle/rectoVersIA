@@ -109,6 +109,47 @@ export interface ProfilRecherche {
   habiletes: HabileteStat[];
 }
 
+// ─── Onglet Réflexif : la LUCIDITÉ ───
+//
+// Ce que suit cet onglet n'est pas une performance mais un écart : celui entre
+// le regard que l'élève porte sur lui-même et celui de son professeur, aux
+// mêmes questions. Voir src/lib/autoeval-scoring.ts.
+
+export interface ReflexifItem {
+  devoirId: string;
+  titre: string;
+  date: string;
+  intention?: string;
+  // Nombre de questions ordonnées effectivement comparées (les deux ont répondu)
+  comparees: number;
+  justes: number;
+  sousEstimations: number;
+  surestimations: number;
+  ecartMoyen: number;
+  tendance: 'juste' | 'sousEstime' | 'surestime' | null;
+  // Le prof s'est-il déjà prononcé ? Sinon rien n'est comparable encore
+  enAttenteProf: number;
+  // Émotions déclarées par l'élève, dans l'ordre du questionnaire — elles ne se
+  // comparent pas, mais elles se racontent
+  humeurs: string[];
+}
+
+export interface ProfilReflexif {
+  items: ReflexifItem[];
+  // Cumul sur toutes les auto-évaluations rendues
+  total: {
+    comparees: number;
+    justes: number;
+    sousEstimations: number;
+    surestimations: number;
+    ecartMoyen: number;
+    tendance: 'juste' | 'sousEstime' | 'surestime' | null;
+  };
+  // Gestes de savoir-être et gestes réflexifs travaillés, avec la lucidité
+  // constatée sur chacun
+  gestes: { habileteId: string; comparees: number; ecartMoyen: number }[];
+}
+
 // Onglet Vocabulaire
 export interface ProfilVocabWord {
   word: string;

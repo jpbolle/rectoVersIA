@@ -22,6 +22,7 @@ import type { DraftItemAnnotation } from '@/types/correction';
 import RechercheResponseViewer from '@/components/RechercheResponseViewer/RechercheResponseViewer';
 import VocabulaireListReadOnly from '@/components/VocabulaireListReadOnly/VocabulaireListReadOnly';
 import LectureQuizReview from '@/components/LectureQuizReview/LectureQuizReview';
+import AutoEvalReview from '@/components/AutoEvalReview/AutoEvalReview';
 import ResizableSplit from '@/components/ResizableSplit/ResizableSplit';
 import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
 import styles from './travail-detail.module.css';
@@ -56,7 +57,10 @@ export default function TravailDetailPage() {
   const router = useRouter();
   const { devoirId, travailId } = params as { devoirId: string; travailId: string };
 
-  const { isAuthenticated, role, isLoading: authLoading, getAuthHeaders } = useAuth();
+  const { isAuthenticated, role, user, isLoading: authLoading, getAuthHeaders } = useAuth();
+  // `user` est un objet instable : on ne garde que son identifiant pour les
+  // dépendances d'effet (règle AGENTS.md)
+  const uid = user?.uid;
   const [travail, setTravail] = useState<Travail | null>(null);
   const [devoir, setDevoir] = useState<Devoir | null>(null);
   const [travaux, setTravaux] = useState<Travail[]>([]);
@@ -85,6 +89,7 @@ export default function TravailDetailPage() {
     updateCommentaireGeneralAudio,
     updateQuestionScore,
     updateRechercheScore,
+    updateAutoEvalProf,
     toggleVisibility,
   } = useCorrection(
     travailId || null,
@@ -228,7 +233,13 @@ export default function TravailDetailPage() {
   useEffect(() => {
     async function fetchData() {
       const headers = await getAuthHeaders();
-      if (!headers) return;
+      // Sortir ici sans rien faire laissait l'écran sur son spinner pour
+      // toujours : l'effet ne se rejoue pas tout seul. On rend la main.
+      if (!headers) {
+        setIsLoading(false);
+        setError('Session expirée — reconnectez-vous.');
+        return;
+      }
 
       setIsLoading(true);
       setError(null);
@@ -294,10 +305,14 @@ export default function TravailDetailPage() {
       }
     }
 
-    if (isAuthenticated && role === 'prof') {
+    // `uid` est attendu, pas seulement `isAuthenticated` : au rechargement
+    // complet de la page, le rôle vient du cache de session avant que Firebase
+    // n'ait rendu l'utilisateur — le jeton était alors nul et le chargement
+    // n'aboutissait jamais.
+    if (isAuthenticated && role === 'prof' && uid) {
       fetchData();
     }
-  }, [isAuthenticated, role, devoirId, travailId, getAuthHeaders]);
+  }, [isAuthenticated, role, uid, devoirId, travailId, getAuthHeaders]);
 
   const handleBack = () => {
     router.push(`/dashboard/travaux/${devoirId}`);
@@ -549,6 +564,20 @@ export default function TravailDetailPage() {
                   reponse={nkReponse}
                   scores={correction?.rechercheScores}
                   onScoreChange={updateRechercheScore}
+                />
+              </div>
+            ) : devoir.typeTravail === 'autoevaluation' && devoir.autoEvalQuiz ? (
+              <div className={styles.contentSection}>
+                <div className={styles.sectionHeader}>
+                  <h2>Auto-évaluation — vos deux regards</h2>
+                </div>
+                {/* Le prof répond LUI-MÊME, à l'aveugle : la réponse de
+                    l'élève ne se découvre qu'ensuite, question par question. */}
+                <AutoEvalReview
+                  quiz={devoir.autoEvalQuiz}
+                  travailContent={travail.content}
+                  profAnswers={correction?.autoEvalProf}
+                  onProfAnswerChange={updateAutoEvalProf}
                 />
               </div>
             ) : devoir.typeTravail === 'lire' && devoir.lectureQuiz ? (

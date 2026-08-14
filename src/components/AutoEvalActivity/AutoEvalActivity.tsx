@@ -1,0 +1,249 @@
+'use client';
+
+// L'élève répond à un questionnaire d'AUTO-ÉVALUATION.
+//
+// Ce n'est pas une épreuve : rien n'est juste ou faux, rien n'est noté. L'écran
+// doit donc dire le contraire de ce que dit un questionnaire ordinaire — d'où
+// l'absence totale de points, de compteur de bonnes réponses et de correction.
+//
+// Les réponses sont enregistrées en JSON dans `travail.content`, comme pour le
+// questionnaire de lecture (`parseAutoEvalAnswers`).
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  aRepondu,
+  echelleDe,
+  estQuestion,
+  LIKERT_MAX_DEFAUT,
+  LIKERT_MIN_DEFAUT,
+  LIKERT_NIVEAUX,
+  parseAutoEvalAnswers,
+} from '@/types/autoevaluation';
+import type {
+  AutoEvalAnswer,
+  AutoEvalQuestion,
+  AutoEvalQuestionnaire,
+} from '@/types/autoevaluation';
+import styles from './AutoEvalActivity.module.css';
+
+interface Props {
+  quiz: AutoEvalQuestionnaire;
+  content: string | undefined | null;
+  onChange: (content: string) => void;
+  // Lecture seule : travail remis, ou prof en aperçu
+  readOnly?: boolean;
+}
+
+export default function AutoEvalActivity({ quiz, content, onChange, readOnly = false }: Props) {
+  const [answers, setAnswers] = useState<Record<string, AutoEvalAnswer>>({});
+
+  // Le contenu ne se relit qu'au premier rendu et quand l'activité change :
+  // le relire à chaque frappe écraserait la saisie en cours (l'auto-save
+  // renvoie l'objet `travail` mis à jour)
+  const charge = useRef(false);
+  useEffect(() => {
+    if (charge.current) return;
+    charge.current = true;
+    const parsed = parseAutoEvalAnswers(content);
+    if (parsed) setAnswers(parsed.answers);
+  }, [content]);
+
+  const majReponse = useCallback(
+    (id: string, patch: Partial<AutoEvalAnswer>) => {
+      if (readOnly) return;
+      setAnswers((prev) => {
+        const next = { ...prev, [id]: { ...prev[id], ...patch } };
+        onChange(JSON.stringify({ type: 'autoevaluation', answers: next }));
+        return next;
+      });
+    },
+    [onChange, readOnly]
+  );
+
+  const questions = quiz.questions ?? [];
+  const aRepondreCount = questions.filter(estQuestion).length;
+  const repondues = useMemo(
+    () => questions.filter((q) => estQuestion(q) && aRepondu(q, answers[q.id])).length,
+    [questions, answers]
+  );
+
+  const rendre = (q: AutoEvalQuestion) => {
+    const a = answers[q.id] ?? {};
+
+    switch (q.type) {
+      // ── Échelles à emoji : la réponse se donne d'un seul clic ──
+      case 'competence':
+      case 'humeur': {
+        const echelle = echelleDe(q.type);
+        return (
+          <div className={styles.echelons}>
+            {echelle.map((e) => {
+              const choisi = a.echelon === e.id;
+              return (
+                <button
+                  key={e.id}
+                  type="button"
+                  className={`${styles.echelon} ${choisi ? styles.echelonOn : ''}`}
+                  onClick={() => majReponse(q.id, { echelon: choisi ? null : e.id })}
+                  disabled={readOnly}
+                  aria-pressed={choisi}
+                >
+                  <span className={styles.echelonEmoji}>{e.emoji}</span>
+                  <span className={styles.echelonTexte}>{e.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
+
+      // ── Échelle de 1 à 5, au curseur ──
+      case 'likert': {
+        const valeur = a.likert ?? 0;
+        return (
+          <div className={styles.likert}>
+            <div className={styles.likertBornes}>
+              <span>{q.likertMin || LIKERT_MIN_DEFAUT}</span>
+              <span>{q.likertMax || LIKERT_MAX_DEFAUT}</span>
+            </div>
+            <input
+              type="range"
+              className={styles.curseur}
+              min={1}
+              max={LIKERT_NIVEAUX}
+              step={1}
+              // Tant que rien n'est choisi, le curseur se place au milieu sans
+              // que la réponse compte comme donnée
+              value={valeur || Math.ceil(LIKERT_NIVEAUX / 2)}
+              onChange={(e) => majReponse(q.id, { likert: Number(e.target.value) })}
+              disabled={readOnly}
+            />
+            <div className={styles.likertGraduations}>
+              {Array.from({ length: LIKERT_NIVEAUX }, (_, i) => (
+                <span
+                  key={i}
+                  className={`${styles.graduation} ${valeur === i + 1 ? styles.graduationOn : ''}`}
+                >
+                  {i + 1}
+                </span>
+              ))}
+            </div>
+            {!valeur && <p className={styles.aRepondre}>Déplacez le curseur pour répondre.</p>}
+          </div>
+        );
+      }
+
+      case 'qcm':
+        return (
+          <div className={styles.choices}>
+            {(q.choices ?? []).map((opt, j) => {
+              const choisi = a.choiceIndex === j;
+              return (
+                <button
+                  key={j}
+                  type="button"
+                  className={`${styles.choice} ${choisi ? styles.choiceOn : ''}`}
+                  onClick={() => majReponse(q.id, { choiceIndex: choisi ? null : j })}
+                  disabled={readOnly}
+                  aria-pressed={choisi}
+                >
+                  <span className={styles.choicePuce}>{choisi ? '●' : '○'}</span>
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        );
+
+      case 'texte-court':
+        return (
+          <input
+            type="text"
+            className={styles.champCourt}
+            value={a.text ?? ''}
+            onChange={(e) => majReponse(q.id, { text: e.target.value })}
+            placeholder="Ta réponse…"
+            disabled={readOnly}
+          />
+        );
+
+      case 'texte-long':
+        return (
+          <textarea
+            className={styles.champLong}
+            value={a.text ?? ''}
+            onChange={(e) => majReponse(q.id, { text: e.target.value })}
+            placeholder="Explique en quelques phrases…"
+            rows={5}
+            disabled={readOnly}
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  if (questions.length === 0) {
+    return (
+      <p className={styles.vide}>
+        Cette auto-évaluation ne contient encore aucune question.
+      </p>
+    );
+  }
+
+  return (
+    <div className={styles.activity}>
+      <div className={styles.entete}>
+        <h2 className={styles.titre}>Où en es-tu ?</h2>
+        {quiz.intention && <p className={styles.intention}>{quiz.intention}</p>}
+        <p className={styles.rassurance}>
+          Il n’y a ici ni bonne ni mauvaise réponse, et rien n’est noté. Réponds honnêtement :
+          c’est ce qui rendra la suite utile.
+        </p>
+        <div className={styles.progression}>
+          <div className={styles.barre}>
+            <div
+              className={styles.barreFill}
+              style={{ width: `${aRepondreCount ? (repondues / aRepondreCount) * 100 : 0}%` }}
+            />
+          </div>
+          <span className={styles.progressionTexte}>
+            {repondues} / {aRepondreCount} répondue{repondues > 1 ? 's' : ''}
+          </span>
+        </div>
+      </div>
+
+      <div className={styles.liste}>
+        {questions.map((q, index) => {
+          if (q.type === 'info') {
+            return (
+              <div key={q.id} className={styles.info}>
+                {q.enonce}
+              </div>
+            );
+          }
+
+          const numero = questions.slice(0, index).filter(estQuestion).length + 1;
+          const repondu = aRepondu(q, answers[q.id]);
+          return (
+            <div key={q.id} className={`${styles.bloc} ${repondu ? styles.blocRepondu : ''}`}>
+              <div className={styles.blocHead}>
+                <span className={styles.numero}>{numero}</span>
+                <p className={styles.enonce}>
+                  {q.enonce}
+                  {q.obligatoire && <span className={styles.requis} title="Réponse attendue"> *</span>}
+                </p>
+                {repondu && <span className={styles.coche} title="Tu as répondu">✓</span>}
+              </div>
+
+              {q.document && <div className={styles.document}>{q.document}</div>}
+
+              <div className={styles.reponse}>{rendre(q)}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth';
 import type { Correction, UpdateCorrectionData, AudioAnnotation, DraftItemAnnotation } from '@/types/correction';
+import type { AutoEvalAnswer } from '@/types/autoevaluation';
 import type { Grille } from '@/types/grille';
 import type { RechercheQuestionScore } from '@/types/navigkid';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
@@ -215,6 +216,26 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
     [saveWithDebounce]
   );
 
+  // Regard du PROF sur une question d'auto-évaluation. Ce n'est pas une note :
+  // c'est sa propre réponse à la question posée à l'élève, dont l'écart dira
+  // la lucidité de celui-ci. Enregistrée aussitôt — c'est un clic, pas de la
+  // frappe, et c'est elle qui déverrouille la réponse de l'élève à l'écran.
+  const updateAutoEvalProf = useCallback(
+    (questionId: string, answer: AutoEvalAnswer) => {
+      setCorrection((prev) => {
+        const next = { ...(prev?.autoEvalProf ?? {}) };
+        const vide =
+          (answer.echelon === null || answer.echelon === undefined) &&
+          (answer.likert === null || answer.likert === undefined);
+        if (vide) delete next[questionId];
+        else next[questionId] = { ...next[questionId], ...answer };
+        saveNow({ autoEvalProf: next });
+        return prev ? { ...prev, autoEvalProf: next } : prev;
+      });
+    },
+    [saveNow]
+  );
+
   // Sauvegarde du commentaire général écrit (debounce)
   const updateCommentaireGeneral = useCallback((text: string) => {
     saveWithDebounce({ commentaireGeneral: text });
@@ -263,6 +284,7 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
     updateCommentaireGeneralAudio,
     updateQuestionScore,
     updateRechercheScore,
+    updateAutoEvalProf,
     toggleVisibility,
     refetch: fetchCorrection,
   };

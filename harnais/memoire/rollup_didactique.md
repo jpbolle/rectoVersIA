@@ -23,6 +23,25 @@ typée « rechercher » — les gestes de recherche y sont classés en Lire ou �
 `devoir.typeTravail` **reste en base** comme identifiant de dispositif : les 35
 branchements existants n'ont pas bougé, aucune migration.
 
+## Geste et habileté — la hiérarchie (posée par JP le 2026-08-14)
+
+> **Un geste cognitif englobe des habiletés.** Ce ne sont pas deux mots pour la
+> même chose, et il ne faut surtout pas renommer l'un en l'autre.
+
+| Niveau | Ce que c'est | Exemple |
+|---|---|---|
+| **Geste** | Le geste de lecture, d'écriture, de recherche… — l'opération intellectuelle. Niveau **macro** | « Identifier les idées essentielles » |
+| **Habileté** | Sa déclinaison précise, évaluable : « je suis capable de… ». Niveau **fin** | « Je distingue l'idée principale des idées secondaires d'un paragraphe » |
+
+Conséquences :
+- la **scénarisation** raisonne en **gestes** (on planifie un cours au niveau
+  macro) ; la **création d'activité** et la **notation** raisonnent en
+  **habiletés** (c'est là qu'on évalue) ;
+- techniquement le geste reste ce qu'il était : le libellé partagé par plusieurs
+  habiletés (`Habilete.geste`), pas une collection à part ;
+- **ne jamais** remplacer le mot « habiletés » par « gestes cognitifs » dans
+  l'interface : les deux mots désignent deux niveaux différents.
+
 ## Modèle d'habileté
 
 ```ts
@@ -80,6 +99,23 @@ travaillées » de l'onglet Lire du profil.
 - Création / édition d'activité : Type d'activité + Mode principal (déduit,
   affiché en note), sélecteur d'habiletés, mise en page réorganisée.
 - Grilles : champ **Type d'activité** en pastilles à côté des UAA ciblées.
+
+## Sélecteur d'habiletés — replier n'est pas sélectionner (2026-08-15)
+
+Bug signalé deux fois par JP. Le bloc « Habiletés travaillées » n'avait **aucun
+moyen de se replier** : le seul geste qui refermait la liste était de recocher
+« Toutes les habiletés »… ce qui resélectionnait tout. Replier pour alléger
+l'écran effaçait donc le choix. Aggravant : toute la ligne était un `<label>`,
+si bien qu'un clic sur le libellé basculait la case.
+
+Corrigé : la **case à cocher** décide seule « toutes ou certaines », le **reste
+de la ligne** (libellé + compteur + chevron) replie. Le bloc s'ouvre **replié**,
+avec un résumé (« 3 habiletés retenues »).
+
+⇒ **Règle générale** : dans tout sélecteur de ce projet, le pliage et la
+sélection sont deux commandes distinctes, à tous les niveaux.
+
+JP a clos la session du 15/08 sur le constat « bug corrigé ».
 
 ## Scripts
 

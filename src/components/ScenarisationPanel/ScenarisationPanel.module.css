@@ -101,7 +101,20 @@
 .saveState {
   font-size: 12px;
   color: var(--c-text-muted);
-  min-width: 110px;
+  min-width: 165px;
+  white-space: nowrap;
+}
+
+/* L'état d'enregistrement doit se lire d'un coup d'œil : le prof encode
+   longtemps et doit savoir à tout moment si son travail est en sécurité. */
+.saved {
+  color: var(--c-primary);
+  font-weight: 600;
+}
+
+.pending {
+  color: var(--c-accent);
+  font-weight: 600;
 }
 
 .viewToggle {
@@ -218,11 +231,102 @@
   border-color: var(--c-primary);
 }
 
+/* Rappel de volume sous le nom du cours — le parcours ne porte plus ni
+   objectif général ni certification (ils vivent dans les chapitres) */
+.phHint {
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
 .phRow {
   display: flex;
   gap: 22px;
   flex-wrap: wrap;
   align-items: flex-start;
+}
+
+/* ── Liste de textes libres (objectifs généraux d'un chapitre) ── */
+
+.listField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.listRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.listPuce {
+  color: var(--c-accent);
+  font-weight: 700;
+  padding-top: 5px;
+  flex-shrink: 0;
+}
+
+.listInput {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: 12.5px;
+  background: transparent;
+  color: var(--c-text);
+}
+
+.listInput:hover {
+  border-color: var(--c-border);
+  background: var(--c-bg-card);
+}
+
+.listInput:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  background: var(--c-bg-card);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.09);
+}
+
+.listDel {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--c-text-muted);
+  font-size: 11px;
+  padding: 4px 5px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.listRow:hover .listDel {
+  opacity: 1;
+}
+
+.listDel:hover {
+  color: var(--c-danger);
+}
+
+.listAdd {
+  align-self: flex-start;
+  border: 1px dashed var(--c-border);
+  background: none;
+  border-radius: 999px;
+  padding: 2px 11px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-primary);
+  cursor: pointer;
+  margin-top: 3px;
+}
+
+.listAdd:hover {
+  border-color: var(--c-primary);
+  border-style: solid;
 }
 
 .phObj {
@@ -277,6 +381,22 @@
   font-size: 13px;
   background: transparent;
   color: var(--c-text);
+}
+
+/* Les champs de saisie sont des <textarea> qui grandissent avec leur contenu
+   (AutoTextarea) : le texte doit TOUJOURS se voir en entier, jamais être
+   coupé en bout de ligne. D'où le retour à la ligne et l'absence de
+   défilement interne. */
+textarea.cellInput,
+textarea.chTitle,
+textarea.phTitle,
+.listInput {
+  resize: none;
+  overflow: hidden;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: block;
 }
 
 .inlineArea {
@@ -690,9 +810,16 @@
 .chapter {
   background: var(--c-bg-card);
   border: 1px solid var(--c-border);
+  /* La couleur du chapitre (posée en style inline) le suit dans les deux vues */
+  border-left: 4px solid var(--c-primary);
   border-radius: 12px;
   margin-bottom: 14px;
   overflow: visible;
+}
+
+/* Objectifs généraux : plusieurs par chapitre, en tête du corps */
+.chObjectifs {
+  padding: 12px 15px 4px;
 }
 
 .chHead {
@@ -730,8 +857,10 @@
   padding: 3px 7px;
   background: transparent;
   color: var(--c-text);
-  width: 270px;
-  flex-shrink: 0;
+  /* Le titre occupe la place laissée libre par l'objectif général, qui a
+     quitté l'en-tête pour devenir une liste dans le corps du chapitre */
+  flex: 1;
+  min-width: 0;
 }
 
 .chTitle:hover,
@@ -788,6 +917,60 @@
 
 .iconBtn:hover {
   color: var(--c-danger);
+}
+
+.iconBtn:disabled {
+  opacity: 0.25;
+  cursor: default;
+  color: var(--c-text-muted);
+}
+
+/* Flèches de réordonnancement d'un module — discrètes, elles n'apparaissent
+   qu'au survol de la ligne */
+.rowMove {
+  display: flex;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.modRow:hover .rowMove {
+  opacity: 1;
+}
+
+/* ── Colonnes de synthèse du module (lecture seule) ──
+   La didactique se saisit sur l'activité : ces cellules ne font que la
+   totaliser. Pas de bordure au survol — rien n'y est cliquable. */
+.roCell {
+  color: var(--c-text-secondary);
+}
+
+.roTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.roTag {
+  font-size: 11px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  padding: 1px 8px;
+  color: var(--c-text-secondary);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.roVide {
+  color: var(--c-text-muted);
+  font-size: 12px;
+}
+
+.roPer {
+  font-weight: 700;
+  color: var(--c-primary);
+  font-size: 14px;
 }
 
 .chBody {
@@ -853,15 +1036,38 @@
   border-color: var(--c-primary);
 }
 
+/* Le bloc déplié d'un module ne doit PAS se confondre avec l'en-tête du
+   chapitre, qui porte déjà --c-bg-element : on l'encadre et on le teinte
+   distinctement pour qu'on voie d'un coup d'œil à quel niveau on est. */
 .detail {
-  background: var(--c-bg-element);
+  background: var(--c-bg-card);
+}
+
+.detailBox {
+  background: rgba(45, 106, 90, 0.045);
+  border: 1px solid var(--c-border);
+  border-left: 3px solid var(--c-primary);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 2px 0 8px;
 }
 
 .detailGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
-  padding: 4px 2px 10px;
+  padding: 0 0 4px;
+  align-items: start;
+}
+
+/* Texte libre saisi avant le passage aux gestes — gardé sous le champ tant
+   qu'il dit quelque chose, pour ne rien perdre des premiers encodages */
+.ancienTexte {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--c-text-muted);
+  font-style: italic;
 }
 
 .detailLabel {
@@ -939,8 +1145,106 @@
   flex-wrap: wrap;
 }
 
+/* ── Fiches d'activité : c'est ICI que se saisit la didactique ── */
+
+.actTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.actTable thead th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  padding: 7px 9px;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.actTable tbody td {
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--c-border);
+  vertical-align: top;
+}
+
+.actTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.actCellTitle {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* ── Les trois genres de ligne ──
+   Même comportement, même colonnes : seule la couleur les distingue.
+   Certification en ambre (elle évalue), suggestion en violet estompé (elle
+   ne parle pas de cette année-ci). */
 .certRow {
-  background: rgba(212, 148, 76, 0.07);
+  background: rgba(212, 148, 76, 0.09);
+}
+
+.suggRow {
+  background: rgba(124, 95, 166, 0.07);
+}
+
+.suggRow .rowTitleInput {
+  font-style: italic;
+}
+
+.genreIcone {
+  flex-shrink: 0;
+  font-size: 13px;
+  padding-top: 4px;
+}
+
+.suggCard {
+  border-style: dashed !important;
+  opacity: 0.85;
+}
+
+.blkSugg {
+  background: rgba(124, 95, 166, 0.5);
+  font-style: italic;
+}
+
+.btnSugg {
+  border-style: dashed;
+}
+
+/* Avis du prof sur une activité — se lit comme une note manuscrite */
+.critiqueInput {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--c-text-secondary);
+}
+
+/* Mention « d'après les activités » : dit que le champ ne se saisit pas */
+.auto {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--c-text-muted);
+  margin-left: 6px;
+}
+
+/* Titre du chapitre + ses objectifs généraux, dans le bandeau */
+.chHeadMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .certTitle {
@@ -1007,13 +1311,15 @@
   font-size: 12px;
 }
 
+/* Rendu dans un portail à la racine du document : d'où `fixed` et des
+   coordonnées calculées. Placé dans la cellule, son bas était rogné par la
+   ligne suivante du tableau — un tableau crée son propre empilement, et
+   aucun z-index n'y changeait rien. */
 .tagMenu {
-  position: absolute;
-  z-index: 60;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 240px;
-  max-height: 300px;
+  position: fixed;
+  z-index: 1200;
+  min-width: 230px;
+  max-height: 320px;
   overflow-y: auto;
   background: var(--c-bg-card);
   border: 1px solid var(--c-border);
@@ -1033,6 +1339,74 @@
   padding: 3px 2px;
   cursor: pointer;
   border-radius: 6px;
+}
+
+/* ── Menu groupé par famille de gestes ──
+   On voit d'abord les grandes familles (gestes de lecture, d'écriture…) ;
+   on déplie celle qu'on veut. Une famille qui contient une valeur cochée
+   s'ouvre d'elle-même. */
+.tagGroup {
+  border-bottom: 1px solid var(--c-border);
+  padding-bottom: 3px;
+  margin-bottom: 3px;
+}
+
+.tagGroup:last-of-type {
+  border-bottom: none;
+}
+
+.tagGroupHead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 4px 2px;
+  font-family: inherit;
+  text-align: left;
+}
+
+.tagGroupName {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}
+
+.tagGroupCount {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--c-primary);
+  background: var(--c-bg-element);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.tagGroupBody {
+  padding-left: 6px;
+  border-left: 2px solid var(--c-border);
+  margin-left: 3px;
+}
+
+.tagPlaceholder {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  font-style: italic;
+}
+
+.chevron,
+.chevronOpen {
+  font-size: 10px;
+  color: var(--c-text-muted);
+  transition: transform 0.15s;
+}
+
+.chevron {
+  transform: rotate(-90deg);
 }
 
 .tagItem:hover {

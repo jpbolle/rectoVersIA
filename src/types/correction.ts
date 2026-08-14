@@ -1,4 +1,5 @@
 import type { RechercheQuestionScore } from './navigkid';
+import type { AutoEvalAnswer } from './autoevaluation';
 
 export type CorrectionStatus = 'draft' | 'finalized';
 
@@ -31,6 +32,12 @@ export interface Correction {
   // Activité de recherche (NavigKid) : deux notes par question — la réponse et
   // la démarche. Clé = index de la question. Voir lib/recherche-scoring.ts.
   rechercheScores?: Record<string, RechercheQuestionScore>;
+  // Auto-évaluation : le REGARD DU PROF sur l'élève, donné aux mêmes questions
+  // que lui. Ce n'est pas une note — c'est un second point de vue, dont l'écart
+  // avec celui de l'élève dit sa lucidité. Voir lib/autoeval-scoring.ts.
+  // Clé = AutoEvalQuestion.id. Le prof ne se prononce que sur les questions
+  // ordonnées (sentiment de compétence, échelle 1-5) : une émotion ne s'évalue pas.
+  autoEvalProf?: Record<string, AutoEvalAnswer>;
   score: number;                                 // Score total calcule
   status: CorrectionStatus;
   visibleParEleve: boolean;
@@ -59,6 +66,7 @@ export interface UpdateCorrectionData {
   commentairesCriteres?: Record<string, string>;
   questionScores?: Record<string, number>;
   rechercheScores?: Record<string, RechercheQuestionScore>;
+  autoEvalProf?: Record<string, AutoEvalAnswer>;
   score?: number;
   status?: CorrectionStatus;
   visibleParEleve?: boolean;

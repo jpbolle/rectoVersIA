@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { sanitizeLectureQuiz, lectureQuizForEleve } from '@/lib/lecture-server';
+import { sanitizeAutoEvalQuiz } from '@/lib/autoevaluation-server';
 import { atelierParDispositif, isTypeModal } from '@/types/didactique';
 
 export async function GET(
@@ -100,6 +101,8 @@ export async function GET(
         auth.role === 'eleve' && !corrigeAccessible
           ? lectureQuizForEleve(data.lectureQuiz)
           : data.lectureQuiz || null,
+      // Auto-évaluation : servie telle quelle, il n'y a rien à cacher
+      autoEvalQuiz: data.autoEvalQuiz || null,
     };
 
     return NextResponse.json({ success: true, data: devoir });
@@ -221,6 +224,11 @@ export async function PATCH(
     }
     if (body.lectureQuiz !== undefined) {
       updateData.lectureQuiz = body.lectureQuiz === null ? null : sanitizeLectureQuiz(body.lectureQuiz);
+    }
+
+    if (body.autoEvalQuiz !== undefined) {
+      updateData.autoEvalQuiz =
+        body.autoEvalQuiz === null ? null : sanitizeAutoEvalQuiz(body.autoEvalQuiz);
     }
 
     if (Object.keys(updateData).length === 0) {

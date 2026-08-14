@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { scoreLectureQuiz } from '@/lib/lecture-scoring';
 import { parseLectureAnswers } from '@/types/lecture';
 import type { LectureQuiz } from '@/types/lecture';
+import type { AutoEvalAnswer, AutoEvalQuestionnaire } from '@/types/autoevaluation';
 import type { HabileteStat } from '@/types/profil';
 import type { RechercheQuestionScore } from '@/types/navigkid';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
@@ -43,6 +44,8 @@ export type CorrEntry = {
   questionScores?: Record<string, number>;
   // Activités de recherche : notes de la réponse et de la démarche par question
   rechercheScores?: Record<string, RechercheQuestionScore>;
+  // Auto-évaluation : le regard du prof, à confronter à celui de l'élève
+  autoEvalProf?: Record<string, AutoEvalAnswer>;
 };
 
 export type ClassCorrEntry = {
@@ -56,12 +59,15 @@ export type DevoirInfo = {
   grille: string;
   intitule: string;
   date: string;
-  type: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
+  type: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation';
   questionnaireId?: string;
   vocabulaireThemes?: string[];
   // Questionnaire de lecture — nécessaire pour recalculer les scores par
   // habileté (les QCM ne sont jamais stockés, ils se recalculent)
   lectureQuiz?: LectureQuiz | null;
+  // Questionnaire d'auto-évaluation — nécessaire pour comparer les deux
+  // regards (onglet réflexif du profil)
+  autoEvalQuiz?: AutoEvalQuestionnaire | null;
 };
 
 export type TravailInfo = {
@@ -129,6 +135,7 @@ export async function loadStudentBase(
           score: data.score || 0,
           questionScores: data.questionScores || undefined,
           rechercheScores: data.rechercheScores || undefined,
+          autoEvalProf: data.autoEvalProf || undefined,
         });
       }
     }
@@ -157,6 +164,7 @@ export async function loadStudentBase(
         questionnaireId: data.questionnaireId || undefined,
         vocabulaireThemes: data.vocabulaireThemes || undefined,
         lectureQuiz: data.lectureQuiz || null,
+        autoEvalQuiz: data.autoEvalQuiz || null,
       });
     }
   }));
@@ -336,7 +344,16 @@ export function buildDevoirStats(
   const devoirStatsList: DevoirStat[] = [];
   for (const corr of corrsList) {
     const devoir = base.devoirs.get(corr.devoirId);
-    if (!devoir || devoir.type === 'rechercher' || devoir.type === 'vocabulaire') continue;
+    // Une auto-évaluation ne produit AUCUNE note : la compter ici la ferait
+    // apparaître comme un zéro dans les statistiques de l'élève.
+    if (
+      !devoir ||
+      devoir.type === 'rechercher' ||
+      devoir.type === 'vocabulaire' ||
+      devoir.type === 'autoevaluation'
+    ) {
+      continue;
+    }
 
     const grille = base.grilles.get(devoir.grille);
     const classCorrsList = classCorrsPerDevoir.get(corr.devoirId) || [];

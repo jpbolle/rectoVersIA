@@ -4,6 +4,19 @@
 //
 //   Parcours (une scénarisation par cours) > Chapitres > Modules > Activités
 //
+// Où se saisit quoi (décision de JP, 2026-08-14) :
+//  - le PARCOURS ne porte qu'un nom : un objectif général à ce niveau serait
+//    trop général pour dire quelque chose, et la certification appartient aux
+//    chapitres ;
+//  - le CHAPITRE porte plusieurs objectifs généraux, affichés dans son bandeau ;
+//  - ses lignes ont trois GENRES — module, certification, suggestion — qui se
+//    comportent exactement pareil : une certification s'intercale donc entre
+//    deux modules, et une suggestion note une idée pour l'année suivante ;
+//  - le MODULE porte ses objectifs particuliers en trois registres, et n'est
+//    plus qu'une SYNTHÈSE pour le reste : sa durée est la somme de ses
+//    activités, ses méthodes/UAA/gestes leur réunion ;
+//  - l'ACTIVITÉ porte la didactique fine : durée, méthode, UAA, gestes, outils.
+//
 // Deux vues d'un même contenu :
 //  - L'ANNÉE : vision spatiale. Par module (cartes dans les cinq périodes de
 //    l'année, avec la capacité de chacune) ou par chapitre (une bande par
@@ -11,31 +24,44 @@
 //  - ENCODAGE : un tableau par chapitre. Tout se modifie sur place — aucun
 //    crayon, aucune fenêtre d'édition : on clique dans la cellule.
 //
-// L'enregistrement part 2,5 s après la dernière frappe (useScenarisations).
+// Enregistrement (useScenarisations) : immédiat pour tout ce qui n'est pas de
+// la frappe (case cochée, menu, ajout, suppression), 1,2 s après la dernière
+// touche sinon, et de toute façon dès qu'on quitte un champ (onBlur du panneau).
 
 import { Fragment, useMemo, useState } from 'react';
 import { useDidactique } from '@/hooks/useDidactique';
 import { useScenarisations } from '@/hooks/useScenarisations';
-import { habileteLabel } from '@/types/didactique';
+import { TYPES_COGNITIFS, TYPES_SAVOIR_ETRE, gestesDeTypes } from '@/types/didactique';
 import {
+  GENRES,
   PERIODES_ANNEE,
   capacitePeriode,
+  comptePourLAnnee,
   formatDuree,
+  genreDe,
+  moduleGestes,
+  moduleMethodes,
+  moduleOutils,
+  modulePeriodes,
+  moduleUaa,
   nouveauChapitre,
   nouveauModule,
-  nouvelleCertification,
+  objectifsDe,
   periodesChapitre,
   periodesPlanifiees,
   semainesDe,
 } from '@/types/scenarisation';
 import type {
   ChapitreDidactique,
+  GenreModule,
   ModuleActivite,
   ModuleDidactique,
   PeriodeAnnee,
   Scenarisation,
 } from '@/types/scenarisation';
 import TagField from './TagField';
+import ListField from './ListField';
+import AutoTextarea from './AutoTextarea';
 import ModuleActivitesModal from './ModuleActivitesModal';
 import styles from './ScenarisationPanel.module.css';
 
@@ -46,8 +72,18 @@ const couleurChapitre = (i: number) => COULEURS[i % COULEURS.length];
 type Vue = 'annee' | 'encodage';
 type VueAnnee = 'module' | 'chapitre';
 
+// Déplace un élément d'un cran dans un tableau — sert au réordonnancement des
+// chapitres et des modules (l'ordre d'encodage EST l'ordre du cours)
+function deplacer<T>(liste: T[], i: number, sens: -1 | 1): T[] {
+  const j = i + sens;
+  if (j < 0 || j >= liste.length) return liste;
+  const copie = [...liste];
+  [copie[i], copie[j]] = [copie[j], copie[i]];
+  return copie;
+}
+
 export default function ScenarisationPanel() {
-  const { scenarisations, isLoading, isSaving, error, modifier, creer, supprimer, vider } =
+  const { scenarisations, isLoading, isSaving, dirty, error, modifier, creer, supprimer, vider } =
     useScenarisations();
   const { config } = useDidactique();
 
@@ -69,58 +105,114 @@ export default function ScenarisationPanel() {
   const methodeOptions = (config?.methodes ?? [])
     .filter((m) => m.visible)
     .map((m) => ({ id: m.id, label: m.label }));
-  const habileteOptions = (config?.habiletes ?? [])
-    .filter((h) => h.visible)
-    .map((h) => ({ id: h.id, label: habileteLabel(h) }));
+  // La scénarisation coche des GESTES, pas des habiletés : un geste englobe des
+  // habiletés, et c'est au geste qu'on planifie un cours (cf. init.md).
+  const gestesCognitifs = useMemo(() => gestesDeTypes(config, TYPES_COGNITIFS), [config]);
+  const gestesSavoirEtre = useMemo(() => gestesDeTypes(config, TYPES_SAVOIR_ETRE), [config]);
+  // Ce que propose la colonne Gestes d'une activité : toutes les familles,
+  // groupées — on voit d'abord « Gestes de lecture », « Gestes d'écriture »…
+  // et on déplie celle qu'on veut.
+  const tousLesGestes = useMemo(
+    () => [...gestesCognitifs, ...gestesSavoirEtre],
+    [gestesCognitifs, gestesSavoirEtre]
+  );
+
+  const ADMIN_NOTE = 'Liste gérée dans Administration du site → Gestion didactique';
 
   // ─── Mutations ───
 
-  const maj = (patch: Partial<Scenarisation>) => {
-    if (scen) modifier({ ...scen, ...patch });
+  // `immediat` : tout ce qui n'est pas de la frappe au clavier (case cochée,
+  // menu déroulant, ajout, suppression) part sans attendre le délai.
+  const maj = (patch: Partial<Scenarisation>, immediat = false) => {
+    if (scen) modifier({ ...scen, ...patch }, immediat);
   };
 
-  const majChapitre = (chId: string, patch: Partial<ChapitreDidactique>) => {
+  const majChapitres = (chapitres: ChapitreDidactique[], immediat = false) =>
+    maj({ chapitres }, immediat);
+
+  const majChapitre = (chId: string, patch: Partial<ChapitreDidactique>, immediat = false) => {
     if (!scen) return;
-    maj({ chapitres: scen.chapitres.map((c) => (c.id === chId ? { ...c, ...patch } : c)) });
+    majChapitres(
+      scen.chapitres.map((c) => (c.id === chId ? { ...c, ...patch } : c)),
+      immediat
+    );
   };
 
-  const majModule = (chId: string, modId: string, patch: Partial<ModuleDidactique>) => {
+  const majModule = (
+    chId: string,
+    modId: string,
+    patch: Partial<ModuleDidactique>,
+    immediat = false
+  ) => {
     if (!scen) return;
-    maj({
-      chapitres: scen.chapitres.map((c) =>
-        c.id === chId
-          ? { ...c, modules: c.modules.map((m) => (m.id === modId ? { ...m, ...patch } : m)) }
-          : c
-      ),
-    });
+    majChapitre(
+      chId,
+      {
+        modules:
+          scen.chapitres
+            .find((c) => c.id === chId)
+            ?.modules.map((m) => (m.id === modId ? { ...m, ...patch } : m)) ?? [],
+      },
+      immediat
+    );
+  };
+
+  const majActivite = (
+    chId: string,
+    modId: string,
+    actId: string,
+    patch: Partial<ModuleActivite>,
+    immediat = false
+  ) => {
+    if (!scen) return;
+    const mod = scen.chapitres.find((c) => c.id === chId)?.modules.find((m) => m.id === modId);
+    if (!mod) return;
+    majModule(
+      chId,
+      modId,
+      { activites: mod.activites.map((a) => (a.id === actId ? { ...a, ...patch } : a)) },
+      immediat
+    );
   };
 
   const ajouterChapitre = () => {
     if (!scen) return;
     const ch = nouveauChapitre();
-    maj({ chapitres: [...scen.chapitres, ch] });
+    majChapitres([...scen.chapitres, ch], true);
     setOuverts((prev) => new Set(prev).add(ch.id));
   };
 
   const supprimerChapitre = (chId: string) => {
     if (!scen) return;
     if (!confirm('Supprimer ce chapitre et tous ses modules ? Les activités Recto-versIA sont conservées.')) return;
-    maj({ chapitres: scen.chapitres.filter((c) => c.id !== chId) });
+    majChapitres(scen.chapitres.filter((c) => c.id !== chId), true);
   };
 
-  const ajouterModule = (chId: string) => {
+  const deplacerChapitre = (i: number, sens: -1 | 1) => {
+    if (!scen) return;
+    majChapitres(deplacer(scen.chapitres, i, sens), true);
+  };
+
+  const deplacerModule = (chId: string, i: number, sens: -1 | 1) => {
+    if (!scen) return;
+    const ch = scen.chapitres.find((c) => c.id === chId);
+    if (!ch) return;
+    majChapitre(chId, { modules: deplacer(ch.modules, i, sens) }, true);
+  };
+
+  const ajouterModule = (chId: string, genre: GenreModule = 'module') => {
     if (!scen) return;
     const ch = scen.chapitres.find((c) => c.id === chId);
     const derniere = ch?.modules[ch.modules.length - 1]?.periodeAnnee ?? 'sept-oct';
-    const m = nouveauModule(derniere as PeriodeAnnee);
-    majChapitre(chId, { modules: [...(ch?.modules ?? []), m] });
+    const m = nouveauModule(derniere as PeriodeAnnee, genre);
+    majChapitre(chId, { modules: [...(ch?.modules ?? []), m] }, true);
     setModulesDeplies((prev) => new Set(prev).add(m.id));
   };
 
   const supprimerModule = (chId: string, modId: string) => {
     if (!scen) return;
     const ch = scen.chapitres.find((c) => c.id === chId);
-    majChapitre(chId, { modules: (ch?.modules ?? []).filter((m) => m.id !== modId) });
+    majChapitre(chId, { modules: (ch?.modules ?? []).filter((m) => m.id !== modId) }, true);
   };
 
   const dupliquerModule = (chId: string, modId: string) => {
@@ -129,14 +221,18 @@ export default function ScenarisationPanel() {
     if (!ch) return;
     const i = ch.modules.findIndex((m) => m.id === modId);
     if (i === -1) return;
+    const suffixe = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    const source: ModuleDidactique = JSON.parse(JSON.stringify(ch.modules[i]));
     const copie: ModuleDidactique = {
-      ...JSON.parse(JSON.stringify(ch.modules[i])),
-      id: `MOD-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      ...source,
+      id: `MOD-${suffixe()}`,
       titre: `${ch.modules[i].titre} (copie)`,
+      // Les activités dupliquées reçoivent leur propre identifiant
+      activites: source.activites.map((a) => ({ ...a, id: `ACT-${suffixe()}` })),
     };
     const modules = [...ch.modules];
     modules.splice(i + 1, 0, copie);
-    majChapitre(chId, { modules });
+    majChapitre(chId, { modules }, true);
   };
 
   const toggle = (set: Set<string>, id: string, setter: (s: Set<string>) => void) => {
@@ -184,8 +280,44 @@ export default function ScenarisationPanel() {
   const totalPlanifie = PERIODES_ANNEE.reduce((s, p) => s + periodesPlanifiees(scen, p.id), 0);
   const totalCapacite = PERIODES_ANNEE.reduce((s, p) => s + capacitePeriode(scen, p.id), 0);
 
+  // Résumé en lecture seule d'une liste de valeurs (colonnes du module)
+  const resume = (valeurs: string[], libelle: (v: string) => string, vide = '—') => {
+    if (!valeurs.length) return <span className={styles.roVide}>{vide}</span>;
+    return (
+      <span className={styles.roTags}>
+        {valeurs.map((v) => (
+          <span key={v} className={styles.roTag} title={libelle(v)}>
+            {libelle(v)}
+          </span>
+        ))}
+      </span>
+    );
+  };
+
+  const labelDe = (options: { id: string; label: string }[], id: string) =>
+    options.find((o) => o.id === id)?.label ?? id;
+
+  // Les gestes d'un module viennent de ses activités ; on les range dans le
+  // registre auquel ils appartiennent (cognitif ou savoir-être), d'après la
+  // famille déclarée dans /admin. Un geste coché à la main autrefois, sur le
+  // module lui-même, reste compté — rien de ce qui a été saisi ne se perd.
+  const gestesDuModule = (m: ModuleDidactique, registre: 'cognitifs' | 'savoirEtre'): string[] => {
+    const reference = registre === 'cognitifs' ? gestesCognitifs : gestesSavoirEtre;
+    const connus = new Set(reference.map((g) => g.id));
+    const manuels =
+      registre === 'cognitifs'
+        ? (m.objectifs.gestesCognitifs ?? [])
+        : (m.objectifs.gestesSavoirEtre ?? []);
+    const out: string[] = [];
+    [...moduleGestes(m).filter((g) => connus.has(g)), ...manuels].forEach((g) => {
+      if (!out.includes(g)) out.push(g);
+    });
+    return out;
+  };
+
   return (
-    <div className={styles.panel}>
+    /* onBlur : quitter un champ enregistre — on ne compte pas sur le seul délai */
+    <div className={styles.panel} onBlur={() => vider()}>
       {/* ── Barre : choix du cours, réglages, bascule de vue ── */}
       <div className={styles.scenBar}>
         <select
@@ -227,7 +359,15 @@ export default function ScenarisationPanel() {
         </button>
 
         <span className={styles.saveState}>
-          {isSaving ? 'Enregistrement…' : error ? <span className={styles.err}>{error}</span> : ''}
+          {error ? (
+            <span className={styles.err}>⚠ {error}</span>
+          ) : isSaving ? (
+            'Enregistrement…'
+          ) : dirty ? (
+            <span className={styles.pending}>● Modifications en attente</span>
+          ) : (
+            <span className={styles.saved}>✓ Enregistré</span>
+          )}
         </span>
 
         <div className={styles.viewToggle}>
@@ -286,90 +426,19 @@ export default function ScenarisationPanel() {
         </div>
       )}
 
-      {/* ── Bandeau du parcours ── */}
+      {/* ── Bandeau du parcours : le nom, rien d'autre ── */}
       <div className={styles.parcoursHead}>
-        <input
+        <AutoTextarea
           className={styles.phTitle}
           value={scen.nom}
-          onChange={(e) => maj({ nom: e.target.value })}
+          onChange={(nom) => maj({ nom })}
           placeholder="Nom du cours"
         />
-        <div className={styles.phRow}>
-          <div className={styles.phObj}>
-            <span className={styles.phLabel}>Objectif général du parcours</span>
-            <textarea
-              className={styles.inlineArea}
-              value={scen.objectifGeneral}
-              onChange={(e) => maj({ objectifGeneral: e.target.value })}
-              placeholder="Ce que l’élève doit être capable de faire au terme du parcours…"
-              rows={2}
-            />
-          </div>
-          <div className={styles.phCert}>
-            <span className={styles.phLabel}>Certification du parcours</span>
-            {scen.certification ? (
-              <div className={styles.certEdit}>
-                <input
-                  className={styles.inlineInput}
-                  value={scen.certification.titre}
-                  onChange={(e) =>
-                    maj({ certification: { ...scen.certification!, titre: e.target.value } })
-                  }
-                />
-                <div className={styles.certMeta}>
-                  <select
-                    className={styles.inlineSelect}
-                    value={scen.certification.periodeAnnee ?? 'mai-juin'}
-                    onChange={(e) =>
-                      maj({
-                        certification: {
-                          ...scen.certification!,
-                          periodeAnnee: e.target.value as PeriodeAnnee,
-                        },
-                      })
-                    }
-                  >
-                    {PERIODES_ANNEE.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    min={0}
-                    className={styles.numInput}
-                    value={scen.certification.periodes}
-                    onChange={(e) =>
-                      maj({
-                        certification: {
-                          ...scen.certification!,
-                          periodes: Math.max(0, Number(e.target.value) || 0),
-                        },
-                      })
-                    }
-                  />
-                  <span className={styles.dim}>pér.</span>
-                  <button
-                    type="button"
-                    className={styles.linkBtn}
-                    onClick={() => maj({ certification: null })}
-                  >
-                    retirer
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className={styles.linkBtn}
-                onClick={() => maj({ certification: nouvelleCertification() })}
-              >
-                ＋ prévoir une certification
-              </button>
-            )}
-          </div>
-        </div>
+        <span className={styles.phHint}>
+          {scen.chapitres.length} chapitre{scen.chapitres.length > 1 ? 's' : ''} ·{' '}
+          {totalPlanifie} période{totalPlanifie > 1 ? 's' : ''} planifiée
+          {totalPlanifie > 1 ? 's' : ''} sur {totalCapacite}
+        </span>
       </div>
 
       {/* ══════════ VUE ANNÉE ══════════ */}
@@ -445,7 +514,13 @@ export default function ScenarisationPanel() {
                           .map((m) => (
                             <div
                               key={m.id}
-                              className={styles.modCard}
+                              className={`${styles.modCard} ${
+                                genreDe(m) === 'certification'
+                                  ? styles.certCard
+                                  : genreDe(m) === 'suggestion'
+                                    ? styles.suggCard
+                                    : ''
+                              }`}
                               style={{ borderLeftColor: couleurChapitre(ci) }}
                               onClick={() => {
                                 setVue('encodage');
@@ -454,10 +529,15 @@ export default function ScenarisationPanel() {
                               }}
                               title="Ouvrir dans l’encodage"
                             >
-                              <div className={styles.modTitle}>{m.titre || 'Module sans titre'}</div>
+                              <div className={styles.modTitle}>
+                                {GENRES[genreDe(m)].icone} {m.titre || 'Module sans titre'}
+                              </div>
                               <div className={styles.modMeta}>
-                                <span className={styles.per}>{m.periodes} pér.</span>
-                                {m.uaa.map((u) => (
+                                <span className={styles.per}>
+                                  {modulePeriodes(m)} pér.
+                                  {!comptePourLAnnee(m) && ' (hors calcul)'}
+                                </span>
+                                {moduleUaa(m).map((u) => (
                                   <span key={u} className={styles.tagMini}>
                                     UAA {u}
                                   </span>
@@ -473,26 +553,6 @@ export default function ScenarisationPanel() {
                               )}
                             </div>
                           ))
-                      )}
-                      {scen.chapitres
-                        .filter((c) => c.certification?.periodeAnnee === p.id)
-                        .map((c) => (
-                          <div key={`cert-${c.id}`} className={styles.certCard}>
-                            <div className={styles.modTitle}>⭐ {c.certification!.titre}</div>
-                            <div className={styles.modMeta}>
-                              <span>{c.certification!.periodes} pér.</span>
-                              <span className={styles.dim}>{c.titre}</span>
-                            </div>
-                          </div>
-                        ))}
-                      {scen.certification?.periodeAnnee === p.id && (
-                        <div className={styles.certCard}>
-                          <div className={styles.modTitle}>⭐ {scen.certification.titre}</div>
-                          <div className={styles.modMeta}>
-                            <span>{scen.certification.periodes} pér.</span>
-                            <span className={styles.dim}>parcours</span>
-                          </div>
-                        </div>
                       )}
                     </div>
                   </div>
@@ -511,70 +571,54 @@ export default function ScenarisationPanel() {
                 ))}
               </div>
 
-              {scen.chapitres.map((ch, ci) => (
-                <div key={ch.id} className={styles.lane}>
-                  <div className={styles.laneName} style={{ borderLeftColor: couleurChapitre(ci) }}>
-                    <div className={styles.laneTitle}>{ch.titre || 'Chapitre sans titre'}</div>
-                    {ch.objectifGeneral && <div className={styles.laneObj}>{ch.objectifGeneral}</div>}
-                    <div className={styles.laneTotal}>
-                      {periodesChapitre(ch)} périodes ·{' '}
-                      {formatDuree(periodesChapitre(ch), scen.dureePeriodeMin)} · {ch.modules.length}{' '}
-                      module{ch.modules.length > 1 ? 's' : ''}
-                      {!ch.certification && ' · pas de certification'}
-                    </div>
-                  </div>
-                  {PERIODES_ANNEE.map((p) => {
-                    const mods = ch.modules.filter((m) => m.periodeAnnee === p.id);
-                    const cert = ch.certification?.periodeAnnee === p.id ? ch.certification : null;
-                    return (
-                      <div key={p.id} className={styles.laneCell}>
-                        {mods.map((m) => (
-                          <div
-                            key={m.id}
-                            className={styles.blk}
-                            style={{ background: couleurChapitre(ci) }}
-                          >
-                            {m.titre || 'Module'}
-                            <span className={styles.blkPer}>{m.periodes} pér.</span>
-                          </div>
-                        ))}
-                        {cert && (
-                          <div className={`${styles.blk} ${styles.blkCert}`}>
-                            ⭐ {cert.titre}
-                            <span className={styles.blkPer}>{cert.periodes} pér.</span>
-                          </div>
-                        )}
-                        {mods.length === 0 && !cert && <span className={styles.laneEmpty}>·</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-
-              {scen.certification && (
-                <div className={styles.lane}>
-                  <div className={`${styles.laneName} ${styles.laneCertName}`}>
-                    <div className={styles.laneTitle}>⭐ {scen.certification.titre}</div>
-                    <div className={styles.laneObj}>Évalue l’objectif général du parcours.</div>
-                    <div className={styles.laneTotal}>
-                      {scen.certification.periodes} périodes ·{' '}
-                      {formatDuree(scen.certification.periodes, scen.dureePeriodeMin)}
-                    </div>
-                  </div>
-                  {PERIODES_ANNEE.map((p) => (
-                    <div key={p.id} className={styles.laneCell}>
-                      {scen.certification!.periodeAnnee === p.id ? (
-                        <div className={`${styles.blk} ${styles.blkCert}`}>
-                          {scen.certification!.titre}
-                          <span className={styles.blkPer}>{scen.certification!.periodes} pér.</span>
+              {scen.chapitres.map((ch, ci) => {
+                const certifs = ch.modules.filter((m) => genreDe(m) === 'certification');
+                return (
+                  <div key={ch.id} className={styles.lane}>
+                    <div className={styles.laneName} style={{ borderLeftColor: couleurChapitre(ci) }}>
+                      <div className={styles.laneTitle}>{ch.titre || 'Chapitre sans titre'}</div>
+                      {objectifsDe(ch).map((o, i) => (
+                        <div key={i} className={styles.laneObj}>
+                          {o}
                         </div>
-                      ) : (
-                        <span className={styles.laneEmpty}>·</span>
-                      )}
+                      ))}
+                      <div className={styles.laneTotal}>
+                        {periodesChapitre(ch)} périodes ·{' '}
+                        {formatDuree(periodesChapitre(ch), scen.dureePeriodeMin)} · {ch.modules.length}{' '}
+                        module{ch.modules.length > 1 ? 's' : ''}
+                        {certifs.length === 0 && ' · pas de certification'}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    {PERIODES_ANNEE.map((p) => {
+                      const mods = ch.modules.filter((m) => m.periodeAnnee === p.id);
+                      return (
+                        <div key={p.id} className={styles.laneCell}>
+                          {mods.map((m) => {
+                            const g = genreDe(m);
+                            return (
+                              <div
+                                key={m.id}
+                                className={`${styles.blk} ${
+                                  g === 'certification'
+                                    ? styles.blkCert
+                                    : g === 'suggestion'
+                                      ? styles.blkSugg
+                                      : ''
+                                }`}
+                                style={g === 'module' ? { background: couleurChapitre(ci) } : undefined}
+                              >
+                                {GENRES[g].icone} {m.titre || GENRES[g].label}
+                                <span className={styles.blkPer}>{modulePeriodes(m)} pér.</span>
+                              </div>
+                            );
+                          })}
+                          {mods.length === 0 && <span className={styles.laneEmpty}>·</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
 
               <div className={`${styles.lane} ${styles.laneTotalRow}`}>
                 <div className={styles.laneName} style={{ borderLeftColor: 'var(--c-border)' }}>
@@ -621,7 +665,10 @@ export default function ScenarisationPanel() {
             </div>
             <div className={styles.kpi}>
               <span className={styles.kpiVal}>
-                {scen.chapitres.filter((c) => c.certification).length + (scen.certification ? 1 : 0)}
+                {scen.chapitres.reduce(
+                  (s, c) => s + c.modules.filter((m) => genreDe(m) === 'certification').length,
+                  0
+                )}
               </span>
               <span className={styles.kpiLbl}>certifications prévues</span>
             </div>
@@ -634,14 +681,15 @@ export default function ScenarisationPanel() {
         <>
           {scen.chapitres.length === 0 && (
             <p className={styles.info}>
-              Aucun chapitre. Un chapitre regroupe des modules et vise un objectif général.
+              Aucun chapitre. Un chapitre regroupe des modules et vise un ou plusieurs objectifs
+              généraux.
             </p>
           )}
 
           {scen.chapitres.map((ch, ci) => {
             const ouvert = ouverts.has(ch.id);
             return (
-              <div key={ch.id} className={styles.chapter}>
+              <div key={ch.id} className={styles.chapter} style={{ borderLeftColor: couleurChapitre(ci) }}>
                 <div className={styles.chHead}>
                   <button
                     type="button"
@@ -651,22 +699,48 @@ export default function ScenarisationPanel() {
                     {ouvert ? '▾' : '▸'}
                   </button>
                   <span className={styles.chBadge} style={{ background: couleurChapitre(ci) }} />
-                  <input
-                    className={styles.chTitle}
-                    value={ch.titre}
-                    onChange={(e) => majChapitre(ch.id, { titre: e.target.value })}
-                    placeholder="Titre du chapitre"
-                  />
-                  <input
-                    className={styles.chObj}
-                    value={ch.objectifGeneral}
-                    onChange={(e) => majChapitre(ch.id, { objectifGeneral: e.target.value })}
-                    placeholder="Objectif général du chapitre…"
-                  />
+                  {/* Titre ET objectifs généraux dans le bandeau : ils se
+                      lisent chapitre fermé, sans avoir à déplier */}
+                  <div className={styles.chHeadMain}>
+                    <AutoTextarea
+                      className={styles.chTitle}
+                      value={ch.titre}
+                      onChange={(titre) => majChapitre(ch.id, { titre })}
+                      placeholder="Titre du chapitre"
+                    />
+                    <ListField
+                      values={objectifsDe(ch)}
+                      placeholder="Objectif général du chapitre…"
+                      ajouterLabel="＋ objectif"
+                      onChange={(objectifsGeneraux) => majChapitre(ch.id, { objectifsGeneraux })}
+                      onStructuralChange={(objectifsGeneraux) =>
+                        majChapitre(ch.id, { objectifsGeneraux }, true)
+                      }
+                    />
+                  </div>
                   <span className={styles.chMeta}>
                     <span className={styles.chip}>
                       {periodesChapitre(ch)} pér. · {formatDuree(periodesChapitre(ch), scen.dureePeriodeMin)}
                     </span>
+                    {/* Interchanger les chapitres : l'ordre d'encodage est celui du cours */}
+                    <button
+                      type="button"
+                      className={styles.iconBtn}
+                      title="Monter ce chapitre"
+                      disabled={ci === 0}
+                      onClick={() => deplacerChapitre(ci, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.iconBtn}
+                      title="Descendre ce chapitre"
+                      disabled={ci === scen.chapitres.length - 1}
+                      onClick={() => deplacerChapitre(ci, 1)}
+                    >
+                      ↓
+                    </button>
                     <button
                       type="button"
                       className={styles.iconBtn}
@@ -683,22 +757,32 @@ export default function ScenarisationPanel() {
                     <table className={styles.table}>
                       <thead>
                         <tr>
-                          <th style={{ width: '19%' }}>Module</th>
-                          <th style={{ width: '10%' }}>Période de l’année</th>
+                          <th style={{ width: '26%' }}>Module</th>
+                          <th style={{ width: '11%' }}>Période de l’année</th>
                           <th style={{ width: '9%' }}>Périodes</th>
-                          <th style={{ width: '15%' }}>Méthode</th>
-                          <th style={{ width: '9%' }}>UAA</th>
-                          <th style={{ width: '14%' }}>Habiletés</th>
-                          <th style={{ width: '12%' }}>Outils</th>
+                          <th style={{ width: '14%' }}>Méthodes</th>
+                          <th style={{ width: '8%' }}>UAA</th>
+                          <th style={{ width: '20%' }}>Gestes</th>
                           <th style={{ width: '12%' }}>Activités</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {ch.modules.map((m) => {
+                        {ch.modules.map((m, mi) => {
                           const deplie = modulesDeplies.has(m.id);
+                          const nbAct = m.activites.length;
+                          const genre = genreDe(m);
+                          const infos = GENRES[genre];
                           return (
                             <Fragment key={m.id}>
-                              <tr className={styles.modRow}>
+                              <tr
+                                className={`${styles.modRow} ${
+                                  genre === 'certification'
+                                    ? styles.certRow
+                                    : genre === 'suggestion'
+                                      ? styles.suggRow
+                                      : ''
+                                }`}
+                              >
                                 <td>
                                   <span className={styles.rowTitle}>
                                     <button
@@ -709,12 +793,39 @@ export default function ScenarisationPanel() {
                                     >
                                       {deplie ? '▾' : '▸'}
                                     </button>
-                                    <input
+                                    {infos.icone && (
+                                      <span className={styles.genreIcone} title={infos.label}>
+                                        {infos.icone}
+                                      </span>
+                                    )}
+                                    <AutoTextarea
                                       className={`${styles.cellInput} ${styles.rowTitleInput}`}
                                       value={m.titre}
-                                      onChange={(e) => majModule(ch.id, m.id, { titre: e.target.value })}
-                                      placeholder="Titre du module"
+                                      onChange={(titre) => majModule(ch.id, m.id, { titre })}
+                                      placeholder={`Titre ${
+                                        genre === 'module' ? 'du module' : 'de la ' + infos.label.toLowerCase()
+                                      }`}
                                     />
+                                    <span className={styles.rowMove}>
+                                      <button
+                                        type="button"
+                                        className={styles.iconBtn}
+                                        title="Monter ce module"
+                                        disabled={mi === 0}
+                                        onClick={() => deplacerModule(ch.id, mi, -1)}
+                                      >
+                                        ↑
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.iconBtn}
+                                        title="Descendre ce module"
+                                        disabled={mi === ch.modules.length - 1}
+                                        onClick={() => deplacerModule(ch.id, mi, 1)}
+                                      >
+                                        ↓
+                                      </button>
+                                    </span>
                                   </span>
                                 </td>
                                 <td>
@@ -722,9 +833,12 @@ export default function ScenarisationPanel() {
                                     className={styles.inlineSelect}
                                     value={m.periodeAnnee}
                                     onChange={(e) =>
-                                      majModule(ch.id, m.id, {
-                                        periodeAnnee: e.target.value as PeriodeAnnee,
-                                      })
+                                      majModule(
+                                        ch.id,
+                                        m.id,
+                                        { periodeAnnee: e.target.value as PeriodeAnnee },
+                                        true
+                                      )
                                     }
                                   >
                                     {PERIODES_ANNEE.map((p) => (
@@ -734,152 +848,298 @@ export default function ScenarisationPanel() {
                                     ))}
                                   </select>
                                 </td>
-                                <td>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    step={0.5}
-                                    className={`${styles.cellInput} ${styles.numInput}`}
-                                    value={m.periodes}
-                                    onChange={(e) =>
-                                      majModule(ch.id, m.id, {
-                                        periodes: Math.max(0, Number(e.target.value) || 0),
-                                      })
-                                    }
-                                  />
+                                {/* Les quatre colonnes qui suivent RÉSUMENT les activités :
+                                    la saisie se fait dans la fiche de chaque activité */}
+                                <td className={styles.roCell}>
+                                  <span className={styles.roPer}>{modulePeriodes(m)}</span>
                                   <span className={styles.duree}>
-                                    {formatDuree(m.periodes, scen.dureePeriodeMin)}
+                                    {comptePourLAnnee(m)
+                                      ? formatDuree(modulePeriodes(m), scen.dureePeriodeMin)
+                                      : 'hors calcul'}
                                   </span>
                                 </td>
-                                <td>
-                                  <TagField
-                                    value={m.methodes}
-                                    options={methodeOptions}
-                                    variant="methode"
-                                    footer="Liste gérée dans Administration du site → Gestion didactique"
-                                    onChange={(methodes) => majModule(ch.id, m.id, { methodes })}
-                                  />
+                                <td className={styles.roCell}>
+                                  {resume(moduleMethodes(m), (v) => labelDe(methodeOptions, v))}
                                 </td>
-                                <td>
-                                  <TagField
-                                    value={m.uaa}
-                                    options={uaaOptions}
-                                    labelCourt={(id) => `UAA ${id}`}
-                                    onChange={(uaa) => majModule(ch.id, m.id, { uaa })}
-                                  />
+                                <td className={styles.roCell}>
+                                  {resume(moduleUaa(m), (v) => `UAA ${v}`)}
                                 </td>
-                                <td>
-                                  <TagField
-                                    value={m.habiletes}
-                                    options={habileteOptions}
-                                    resume={(n) => `${n} habileté${n > 1 ? 's' : ''}`}
-                                    onChange={(habiletes) => majModule(ch.id, m.id, { habiletes })}
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    className={styles.cellInput}
-                                    value={m.outils}
-                                    onChange={(e) => majModule(ch.id, m.id, { outils: e.target.value })}
-                                    placeholder="Manuel, projecteur…"
-                                  />
+                                <td className={styles.roCell}>
+                                  {resume(moduleGestes(m), (v) => v)}
                                 </td>
                                 <td>
                                   <button
                                     type="button"
                                     className={styles.actCount}
-                                    onClick={() => setCibleActivite({ ch: ch.id, mod: m.id })}
+                                    onClick={() => {
+                                      setModulesDeplies((prev) => new Set(prev).add(m.id));
+                                      setCibleActivite({ ch: ch.id, mod: m.id });
+                                    }}
                                   >
-                                    {m.activites.length === 0
+                                    {nbAct === 0
                                       ? '＋ ajouter'
-                                      : `${m.activites.length} activité${m.activites.length > 1 ? 's' : ''}`}
+                                      : `${nbAct} activité${nbAct > 1 ? 's' : ''}`}
                                   </button>
                                 </td>
                               </tr>
 
                               {deplie && (
                                 <tr className={styles.detail}>
-                                  <td colSpan={8}>
-                                    <div className={styles.detailGrid}>
-                                      {(
-                                        [
-                                          ['concepts', 'Concepts et connaissances'],
-                                          ['habiletes', 'Habiletés'],
-                                          ['savoirEtre', 'Savoir-être'],
-                                        ] as const
-                                      ).map(([cle, label]) => (
-                                        <div key={cle}>
-                                          <span className={styles.detailLabel}>{label}</span>
+                                  <td colSpan={7}>
+                                    <div className={styles.detailBox}>
+                                      <div className={styles.detailGrid}>
+                                        <div>
+                                          <span className={styles.detailLabel}>
+                                            Concepts et connaissances
+                                          </span>
                                           <textarea
                                             className={styles.detailArea}
-                                            value={m.objectifs[cle]}
+                                            value={m.objectifs.concepts}
+                                            placeholder="Ce que l’élève doit savoir…"
                                             onChange={(e) =>
                                               majModule(ch.id, m.id, {
-                                                objectifs: { ...m.objectifs, [cle]: e.target.value },
+                                                objectifs: {
+                                                  ...m.objectifs,
+                                                  concepts: e.target.value,
+                                                },
                                               })
                                             }
                                           />
                                         </div>
-                                      ))}
-                                    </div>
-
-                                    <div className={styles.actList}>
-                                      <span className={styles.detailLabel}>Activités du module</span>
-                                      {m.activites.length === 0 && (
-                                        <p className={styles.dim}>Aucune activité pour l’instant.</p>
-                                      )}
-                                      {m.activites.map((a) => (
-                                        <div key={a.id} className={styles.act}>
-                                          <span className={styles.actIcon}>{a.devoirId ? '🔗' : '🗣'}</span>
-                                          <span className={styles.actName}>{a.titre}</span>
-                                          {a.devoirId ? (
-                                            <a
-                                              className={styles.actLink}
-                                              href={`/dashboard/travaux/${a.devoirId}`}
-                                            >
-                                              ouvrir dans Mes Activités
-                                            </a>
-                                          ) : (
-                                            <span className={styles.dim}>hors application</span>
+                                        {/* Les deux registres de gestes ne se
+                                            saisissent plus ici : ils se
+                                            REMPLISSENT à partir de la colonne
+                                            Gestes des activités, et se
+                                            répartissent selon la famille à
+                                            laquelle chaque geste appartient. */}
+                                        <div>
+                                          <span className={styles.detailLabel}>
+                                            Gestes cognitifs
+                                            <span className={styles.auto}>d’après les activités</span>
+                                          </span>
+                                          {resume(
+                                            gestesDuModule(m, 'cognitifs'),
+                                            (v) => v,
+                                            'Aucun — à cocher dans la colonne Gestes d’une activité'
                                           )}
+                                          {m.objectifs.habiletesTexte && (
+                                            <p className={styles.ancienTexte}>
+                                              Note d’avant les gestes : {m.objectifs.habiletesTexte}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <div>
+                                          <span className={styles.detailLabel}>
+                                            Savoir-être et gestes réflexifs
+                                            <span className={styles.auto}>d’après les activités</span>
+                                          </span>
+                                          {resume(
+                                            gestesDuModule(m, 'savoirEtre'),
+                                            (v) => v,
+                                            'Aucun — à cocher dans la colonne Gestes d’une activité'
+                                          )}
+                                          {m.objectifs.savoirEtreTexte && (
+                                            <p className={styles.ancienTexte}>
+                                              Note d’avant les gestes : {m.objectifs.savoirEtreTexte}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* ── Les activités : c'est ici que se saisit la didactique ── */}
+                                      <div className={styles.actList}>
+                                        <span className={styles.detailLabel}>
+                                          Activités du module — méthode, UAA, gestes et durée se
+                                          précisent ici
+                                        </span>
+
+                                        {nbAct === 0 && (
+                                          <p className={styles.dim}>
+                                            Aucune activité pour l’instant. Les périodes du module
+                                            sont la somme de celles de ses activités.
+                                          </p>
+                                        )}
+
+                                        {nbAct > 0 && (
+                                          <table className={styles.actTable}>
+                                            <thead>
+                                              <tr>
+                                                <th style={{ width: '22%' }}>Activité</th>
+                                                <th style={{ width: '7%' }}>Périodes</th>
+                                                <th style={{ width: '12%' }}>Méthode</th>
+                                                <th style={{ width: '7%' }}>UAA</th>
+                                                <th style={{ width: '16%' }}>Gestes</th>
+                                                <th style={{ width: '12%' }}>Outils</th>
+                                                <th style={{ width: '19%' }}>Critique</th>
+                                                <th style={{ width: '5%' }} />
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {m.activites.map((a) => (
+                                                <tr key={a.id}>
+                                                  <td>
+                                                    <span className={styles.actCellTitle}>
+                                                      <span className={styles.actIcon}>
+                                                        {a.devoirId ? '🔗' : '🗣'}
+                                                      </span>
+                                                      <AutoTextarea
+                                                        className={styles.cellInput}
+                                                        value={a.titre}
+                                                        placeholder="Intitulé de l’activité"
+                                                        onChange={(titre) =>
+                                                          majActivite(ch.id, m.id, a.id, { titre })
+                                                        }
+                                                      />
+                                                    </span>
+                                                    {a.devoirId ? (
+                                                      <a
+                                                        className={styles.actLink}
+                                                        href={`/dashboard/travaux/${a.devoirId}`}
+                                                      >
+                                                        ouvrir dans Mes Activités
+                                                      </a>
+                                                    ) : (
+                                                      <span className={styles.dim}>
+                                                        hors application
+                                                      </span>
+                                                    )}
+                                                  </td>
+                                                  <td>
+                                                    <input
+                                                      type="number"
+                                                      min={0}
+                                                      step={0.5}
+                                                      className={`${styles.cellInput} ${styles.numInput}`}
+                                                      value={a.periodes}
+                                                      onChange={(e) =>
+                                                        majActivite(ch.id, m.id, a.id, {
+                                                          periodes: Math.max(
+                                                            0,
+                                                            Number(e.target.value) || 0
+                                                          ),
+                                                        })
+                                                      }
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <TagField
+                                                      value={a.methodes ?? []}
+                                                      options={methodeOptions}
+                                                      variant="methode"
+                                                      footer={ADMIN_NOTE}
+                                                      onChange={(methodes) =>
+                                                        majActivite(
+                                                          ch.id,
+                                                          m.id,
+                                                          a.id,
+                                                          { methodes },
+                                                          true
+                                                        )
+                                                      }
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <TagField
+                                                      value={a.uaa ?? []}
+                                                      options={uaaOptions}
+                                                      labelCourt={(id) => `UAA ${id}`}
+                                                      onChange={(uaa) =>
+                                                        majActivite(ch.id, m.id, a.id, { uaa }, true)
+                                                      }
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <TagField
+                                                      value={a.gestes ?? []}
+                                                      options={tousLesGestes}
+                                                      resume={(n) => `${n} gestes`}
+                                                      footer={ADMIN_NOTE}
+                                                      placeholder="choisir…"
+                                                      onChange={(gestes) =>
+                                                        majActivite(
+                                                          ch.id,
+                                                          m.id,
+                                                          a.id,
+                                                          { gestes },
+                                                          true
+                                                        )
+                                                      }
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <AutoTextarea
+                                                      className={styles.cellInput}
+                                                      value={a.outils ?? ''}
+                                                      placeholder="Manuel, projecteur…"
+                                                      onChange={(outils) =>
+                                                        majActivite(ch.id, m.id, a.id, { outils })
+                                                      }
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    {/* L'avis du prof sur
+                                                        l'activité : la mémoire
+                                                        de l'année pour préparer
+                                                        la suivante */}
+                                                    <AutoTextarea
+                                                      className={`${styles.cellInput} ${styles.critiqueInput}`}
+                                                      value={a.critique ?? ''}
+                                                      placeholder="Ce qui a marché, ce qui serait à revoir…"
+                                                      onChange={(critique) =>
+                                                        majActivite(ch.id, m.id, a.id, { critique })
+                                                      }
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <button
+                                                      type="button"
+                                                      className={styles.iconBtn}
+                                                      title="Retirer du module"
+                                                      onClick={() =>
+                                                        majModule(
+                                                          ch.id,
+                                                          m.id,
+                                                          {
+                                                            activites: m.activites.filter(
+                                                              (x: ModuleActivite) => x.id !== a.id
+                                                            ),
+                                                          },
+                                                          true
+                                                        )
+                                                      }
+                                                    >
+                                                      ✕
+                                                    </button>
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        )}
+
+                                        <div className={styles.actBtns}>
                                           <button
                                             type="button"
-                                            className={styles.iconBtn}
-                                            title="Retirer du module"
-                                            onClick={() =>
-                                              majModule(ch.id, m.id, {
-                                                activites: m.activites.filter(
-                                                  (x: ModuleActivite) => x.id !== a.id
-                                                ),
-                                              })
-                                            }
+                                            className={`${styles.btn} ${styles.btnAccent}`}
+                                            onClick={() => setCibleActivite({ ch: ch.id, mod: m.id })}
                                           >
-                                            ✕
+                                            ➕ Activité
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className={styles.btn}
+                                            onClick={() => dupliquerModule(ch.id, m.id)}
+                                          >
+                                            ⧉ Dupliquer le module
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className={`${styles.btn} ${styles.btnDanger}`}
+                                            onClick={() => supprimerModule(ch.id, m.id)}
+                                          >
+                                            🗑 Supprimer le module
                                           </button>
                                         </div>
-                                      ))}
-                                      <div className={styles.actBtns}>
-                                        <button
-                                          type="button"
-                                          className={`${styles.btn} ${styles.btnAccent}`}
-                                          onClick={() => setCibleActivite({ ch: ch.id, mod: m.id })}
-                                        >
-                                          ➕ Activité
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className={styles.btn}
-                                          onClick={() => dupliquerModule(ch.id, m.id)}
-                                        >
-                                          ⧉ Dupliquer le module
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className={`${styles.btn} ${styles.btnDanger}`}
-                                          onClick={() => supprimerModule(ch.id, m.id)}
-                                        >
-                                          🗑 Supprimer le module
-                                        </button>
                                       </div>
                                     </div>
                                   </td>
@@ -889,96 +1149,28 @@ export default function ScenarisationPanel() {
                           );
                         })}
 
-                        {ch.certification && (
-                          <tr className={styles.certRow}>
-                            <td colSpan={5}>
-                              <span className={styles.certTitle}>
-                                ⭐
-                                <input
-                                  className={styles.cellInput}
-                                  value={ch.certification.titre}
-                                  onChange={(e) =>
-                                    majChapitre(ch.id, {
-                                      certification: { ...ch.certification!, titre: e.target.value },
-                                    })
-                                  }
-                                />
-                              </span>
-                              <div className={styles.certMeta}>
-                                Évalue l’objectif général du chapitre ·
-                                <select
-                                  className={styles.inlineSelect}
-                                  value={ch.certification.periodeAnnee ?? 'mai-juin'}
-                                  onChange={(e) =>
-                                    majChapitre(ch.id, {
-                                      certification: {
-                                        ...ch.certification!,
-                                        periodeAnnee: e.target.value as PeriodeAnnee,
-                                      },
-                                    })
-                                  }
-                                >
-                                  {PERIODES_ANNEE.map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                      {p.label}
-                                    </option>
-                                  ))}
-                                </select>
-                                <button
-                                  type="button"
-                                  className={styles.linkBtn}
-                                  onClick={() => majChapitre(ch.id, { certification: null })}
-                                >
-                                  retirer
-                                </button>
-                              </div>
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                min={0}
-                                className={`${styles.cellInput} ${styles.numInput}`}
-                                value={ch.certification.periodes}
-                                onChange={(e) =>
-                                  majChapitre(ch.id, {
-                                    certification: {
-                                      ...ch.certification!,
-                                      periodes: Math.max(0, Number(e.target.value) || 0),
-                                    },
-                                  })
-                                }
-                              />
-                            </td>
-                            <td colSpan={2} className={styles.dim}>
-                              {ch.certification.devoirId
-                                ? '🔗 activité certificative liée'
-                                : 'aucune activité liée'}
-                            </td>
-                          </tr>
-                        )}
                       </tbody>
                     </table>
 
+                    {/* Trois genres, trois boutons : ce qu'on ajoute prend
+                        place en fin de chapitre et se déplace ensuite là où on
+                        veut, entre deux modules s'il le faut. */}
                     <div className={styles.chFoot}>
-                      <button type="button" className={styles.btn} onClick={() => ajouterModule(ch.id)}>
-                        ＋ Module
-                      </button>
-                      {!ch.certification && (
+                      {(Object.keys(GENRES) as GenreModule[]).map((g) => (
                         <button
+                          key={g}
                           type="button"
-                          className={styles.btn}
-                          onClick={() =>
-                            majChapitre(ch.id, {
-                              certification: {
-                                ...nouvelleCertification(),
-                                titre: `Certification — ${ch.titre || 'chapitre'}`,
-                              },
-                            })
+                          className={`${styles.btn} ${g === 'suggestion' ? styles.btnSugg : ''}`}
+                          title={
+                            g === 'suggestion'
+                              ? 'Une idée pour l’année prochaine — ne compte pas dans les périodes'
+                              : undefined
                           }
+                          onClick={() => ajouterModule(ch.id, g)}
                         >
-                          ⭐ Prévoir une certification
+                          {GENRES[g].ajouter}
                         </button>
-                      )}
+                      ))}
                     </div>
                   </div>
                 )}
@@ -998,9 +1190,12 @@ export default function ScenarisationPanel() {
           module={moduleCible}
           onClose={() => setCibleActivite(null)}
           onAjouter={(activite) => {
-            majModule(cibleActivite.ch, cibleActivite.mod, {
-              activites: [...moduleCible.activites, activite],
-            });
+            majModule(
+              cibleActivite.ch,
+              cibleActivite.mod,
+              { activites: [...moduleCible.activites, activite] },
+              true
+            );
             setCibleActivite(null);
           }}
         />

@@ -112,6 +112,28 @@ export async function PATCH(
       }
       updateData.rechercheScores = clean;
     }
+
+    if (body.autoEvalProf !== undefined) {
+      // Auto-évaluation : le regard du prof, une position par question.
+      // Ce n'est pas une note — d'où l'absence de barème à valider ici.
+      const raw = body.autoEvalProf;
+      const clean: Record<string, { echelon?: string; likert?: number }> = {};
+      if (raw && typeof raw === 'object') {
+        for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+          if (!v || typeof v !== 'object') continue;
+          const src = v as Record<string, unknown>;
+          const entry: { echelon?: string; likert?: number } = {};
+          if (typeof src.echelon === 'string' && src.echelon.trim()) {
+            entry.echelon = src.echelon.trim().slice(0, 40);
+          }
+          if (typeof src.likert === 'number' && Number.isFinite(src.likert) && src.likert > 0) {
+            entry.likert = Math.min(5, Math.round(src.likert));
+          }
+          if (Object.keys(entry).length) clean[k.slice(0, 60)] = entry;
+        }
+      }
+      updateData.autoEvalProf = clean;
+    }
     if (body.draftAnnotations !== undefined) {
       updateData.draftAnnotations = body.draftAnnotations;
     }

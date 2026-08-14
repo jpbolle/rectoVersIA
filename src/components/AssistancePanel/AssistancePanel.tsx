@@ -8,6 +8,7 @@ import GrilleTab from '@/components/GrilleTab';
 import RemarquesTab from '@/components/RemarquesTab';
 import AiTab, { type AiTabUiState } from '@/components/AiTab/AiTab';
 import RechercheEvaluation from '@/components/RechercheEvaluation/RechercheEvaluation';
+import AutoEvalEvaluation from '@/components/AutoEvalEvaluation/AutoEvalEvaluation';
 import RechercheResume from '@/components/RechercheResume/RechercheResume';
 import VocabulaireStats from '@/components/VocabulaireStats/VocabulaireStats';
 import type { VocabulaireActivityState } from '@/types/vocabulaire';
@@ -151,6 +152,8 @@ export default function AssistancePanel({
   // Activité de recherche : même principe — pas de grille, l'évaluation se lit
   // dans les deux scores (réponses / démarche) et les habiletés des questions
   const isRecherche = !!navigkidQuestions && navigkidQuestions.length > 0;
+  // Auto-évaluation : l'onglet Évaluation montre la lucidité, pas une note
+  const isAutoEval = devoir.typeTravail === 'autoevaluation' && !!devoir.autoEvalQuiz;
   const handleTabChange = (tab: TabType) => {
     if (onTabChange) {
       onTabChange(tab);
@@ -277,10 +280,22 @@ export default function AssistancePanel({
             showScores={isProfessorView || correction?.visibleParEleve === true}
           />
         )}
+        {/* Auto-évaluation : écart entre les deux regards. Côté élève, rien
+            tant que la correction ne lui est pas rendue — il verrait le regard
+            du prof avant l'heure. */}
+        {currentTab === 'grille' && isAutoEval && (
+          <AutoEvalEvaluation
+            quiz={devoir.autoEvalQuiz!}
+            travailContent={studentContent}
+            profAnswers={correction?.autoEvalProf}
+            showComparaison={isProfessorView || correction?.visibleParEleve === true}
+          />
+        )}
         {currentTab === 'grille' &&
           devoir.typeTravail !== 'vocabulaire' &&
           !isLectureQuiz &&
-          !isRecherche && (
+          !isRecherche &&
+          !isAutoEval && (
           <GrilleTab
             grille={grille}
             hiddenCriteria={devoir.hiddenCriteria}

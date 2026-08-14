@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Toggle from '@/components/Toggle/Toggle';
 import DatePicker from '@/components/DatePicker/DatePicker';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
@@ -9,10 +9,12 @@ import QuestionnairePreviewModal from '@/components/QuestionnairePreviewModal/Qu
 import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import PlanDraft from '@/components/DraftEditor/PlanDraft';
 import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
+import AutoEvalBuilder from '@/components/AutoEvalBuilder/AutoEvalBuilder';
 import { getTodayString } from '@/lib/devoir-utils';
 import { createPlanItem, planHasContent } from '@/lib/draft-utils';
 import type { Devoir, Classe, DevoirRessource, EvaluationType, TypeTravail, CorrigeReference } from '@/types/devoir';
 import type { LectureQuiz } from '@/types/lecture';
+import type { AutoEvalQuestionnaire } from '@/types/autoevaluation';
 import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
@@ -29,6 +31,7 @@ const RESSOURCE_LABELS: Record<TypeTravail, string> = {
   lire: '📄 Texte à lire',
   rechercher: '📄 Documents d’appui (facultatif)',
   vocabulaire: '📄 Documents (facultatif)',
+  autoevaluation: '📄 Travail à commenter (facultatif)',
 };
 
 const TYPE_LABELS: Record<TypeTravail, string> = {
@@ -36,6 +39,7 @@ const TYPE_LABELS: Record<TypeTravail, string> = {
   lire: 'Lire',
   rechercher: 'Rechercher',
   vocabulaire: 'Vocabulaire',
+  autoevaluation: 'Auto-évaluation',
 };
 
 function createEmptyPlanDraft(): DraftContent {
@@ -107,7 +111,19 @@ export default function EditDevoirModal({
   // Questionnaire de lecture (type lire)
   const [lectureQuiz, setLectureQuiz] = useState<LectureQuiz | null>(null);
 
+  // Questionnaire d'auto-évaluation (type autoevaluation)
+  const [autoEvalQuiz, setAutoEvalQuiz] = useState<AutoEvalQuestionnaire | null>(null);
+
+  // `devoir` est un objet INSTABLE (recréé à chaque rendu du parent) : le mettre
+  // dans les dépendances rejouait cet effet en cours de saisie et écrasait le
+  // formulaire par les valeurs enregistrées — les habiletés cochées
+  // disparaissaient au moindre repli/dépli. On ne réinitialise donc que quand
+  // l'activité change vraiment d'identité, ou quand la modale se rouvre.
+  const devoirRef = useRef(devoir);
+  devoirRef.current = devoir;
+
   useEffect(() => {
+    const devoir = devoirRef.current;
     if (devoir) {
       setFace('recto');
       setIsFlipping(false);
@@ -131,6 +147,7 @@ export default function EditDevoirModal({
       setRessources(devoir.ressources || null);
       setRessourcesToIA(devoir.ressourcesToIA ?? false);
       setLectureQuiz(devoir.lectureQuiz || null);
+      setAutoEvalQuiz(devoir.autoEvalQuiz || null);
 
       // Corrigé de référence existant (type ecrire)
       const ref = devoir.corrigeReference;
@@ -165,7 +182,7 @@ export default function EditDevoirModal({
         setNkThemes([]);
       }
     }
-  }, [devoir, getAuthHeaders]);
+  }, [devoir?.id, isOpen, getAuthHeaders]);
 
   const typeTravail = devoir?.typeTravail ?? 'ecrire';
   const atelierId = devoir?.atelier ?? atelierParDispositif(typeTravail).id;
@@ -253,6 +270,12 @@ export default function EditDevoirModal({
     if (devoir.typeTravail === 'lire') {
       data.lectureQuiz =
         lectureQuiz && lectureQuiz.questions.length > 0 ? lectureQuiz : null;
+    }
+
+    // Questionnaire d'auto-évaluation — même règle
+    if (devoir.typeTravail === 'autoevaluation') {
+      data.autoEvalQuiz =
+        autoEvalQuiz && autoEvalQuiz.questions.length > 0 ? autoEvalQuiz : null;
     }
 
     await onSave(devoir.id, data);
@@ -518,6 +541,16 @@ export default function EditDevoirModal({
             </span>
           </h4>
         </div>
+      )}
+
+      {/* Questionnaire d'auto-évaluation (type autoevaluation) */}
+      {typeTravail === 'autoevaluation' && (
+        <AutoEvalBuilder
+          quiz={autoEvalQuiz}
+          onChange={setAutoEvalQuiz}
+          disabled={isSaving}
+          allowedHabiletes={habiletes}
+        />
       )}
 
       {/* Questionnaire de lecture (type lire) */}

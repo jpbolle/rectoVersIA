@@ -1,9 +1,13 @@
 import type { PlanItem } from './travail';
 import type { LectureQuiz } from './lecture';
+import type { AutoEvalQuestionnaire } from './autoevaluation';
 import type { TypeModal } from './didactique';
 
 export type Classe = string;
-export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
+// Le DISPOSITIF d'une activité : la machinerie que l'app sait afficher.
+// « autoevaluation » depuis le 2026-08-14 — l'élève se prononce sur son
+// propre travail (cf. src/types/autoevaluation.ts).
+export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation';
 // formatif : entraînement, ne compte pas — certificatif : compte pour la note
 export type EvaluationType = 'formatif' | 'certificatif';
 
@@ -86,6 +90,9 @@ export interface Devoir {
   submittedCount?: number;
   // Questionnaire de lecture (type lire) — côté élève, correctIndex est filtré
   lectureQuiz?: LectureQuiz | null;
+  // Questionnaire d'auto-évaluation (type autoevaluation). Rien n'y est filtré
+  // pour l'élève : il n'y a ni bonne réponse ni corrigé à protéger.
+  autoEvalQuiz?: AutoEvalQuestionnaire | null;
   // Passerelle en retour vers la scénarisation didactique : posée par
   // /api/scenarisations/[id] quand l'activité est rattachée à un module,
   // effacée quand le lien est rompu. Jamais écrite depuis les formulaires.
@@ -125,4 +132,6 @@ export interface CreateDevoirData {
   ressourcesToIA?: boolean;
   // Questionnaire de lecture (type lire uniquement)
   lectureQuiz?: LectureQuiz | null;
+  // Questionnaire d'auto-évaluation (type autoevaluation uniquement)
+  autoEvalQuiz?: AutoEvalQuestionnaire | null;
 }

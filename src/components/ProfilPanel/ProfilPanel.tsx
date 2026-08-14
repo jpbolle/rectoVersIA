@@ -14,7 +14,7 @@ import EmptyState from '@/components/EmptyState/EmptyState';
 import type {
   CriterionStats, DevoirCriterionStat, HabileteStat,
   ProfilGeneral, ProfilSection, ProfilRecherche, ProfilVocabulaire, ProfilVocabGroup,
-  VocabActiviteStat,
+  VocabActiviteStat, ProfilReflexif,
 } from '@/types/profil';
 import { useDidactique } from '@/hooks/useDidactique';
 import { habileteLabel } from '@/types/didactique';
@@ -24,7 +24,7 @@ import styles from '@/app/profil/profil.module.css';
 
 // ─── Onglets ─────────────────────────────────────────────────────────────────
 
-type TabId = 'general' | 'lire' | 'ecrire' | 'parler' | 'rechercher' | 'vocabulaire';
+type TabId = 'general' | 'lire' | 'ecrire' | 'parler' | 'rechercher' | 'vocabulaire' | 'reflexif';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'general', label: 'Général', icon: '🏠' },
@@ -33,6 +33,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'parler', label: 'Parler', icon: '🗣️' },
   { id: 'rechercher', label: 'Rechercher', icon: '🔍' },
   { id: 'vocabulaire', label: 'Vocabulaire', icon: '🧠' },
+  { id: 'reflexif', label: 'Me connaître', icon: '🪞' },
 ];
 
 // Pas d'endpoint pour « parler » : aucune activité orale n'existe encore,
@@ -43,6 +44,7 @@ const TAB_ENDPOINTS: Record<Exclude<TabId, 'parler'>, string> = {
   ecrire: '/api/profil/ecriture',
   rechercher: '/api/profil/recherche',
   vocabulaire: '/api/profil/vocabulaire',
+  reflexif: '/api/profil/reflexif',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -1038,6 +1040,140 @@ interface ProfilPanelProps {
   eleveId?: string;
 }
 
+// ─── Onglet « Me connaître » : la LUCIDITÉ ───────────────────────────────────
+//
+// Aucun score ici. Ce que l'élève lit, c'est l'écart entre le regard qu'il
+// porte sur lui-même et celui de son professeur, aux mêmes questions. Se
+// sous-estimer n'est pas une faute, se surestimer non plus : le ton de l'onglet
+// doit le dire.
+
+// Trois formulations par verdict : on tutoie l'élève, on parle du prof à la
+// troisième personne, et la forme courte tient dans une pastille.
+const LUCIDITE_META: Record<
+  'juste' | 'sousEstime' | 'surestime',
+  { eleve: string; prof: string; court: string; icone: string; couleur: string }
+> = {
+  juste: {
+    eleve: 'Tu te vois juste',
+    prof: 'Se voit juste',
+    court: 'juste',
+    icone: '✓',
+    couleur: 'var(--c-primary)',
+  },
+  sousEstime: {
+    eleve: 'Tu te sous-estimes',
+    prof: 'Se sous-estime',
+    court: 'sous-estimation',
+    icone: '↓',
+    couleur: '#4a7ba6',
+  },
+  surestime: {
+    eleve: 'Tu te surestimes',
+    prof: 'Se surestime',
+    court: 'surestimation',
+    icone: '↑',
+    couleur: 'var(--c-accent)',
+  },
+};
+
+function ReflexifTab({ data, profView }: { data: ProfilReflexif; profView: boolean }) {
+  const { items, total, gestes } = data;
+  const { config } = useDidactique();
+
+  if (items.length === 0) {
+    return <EmptyState icon="🪞" message="Aucune auto-évaluation pour le moment." />;
+  }
+
+  const meta = total.tendance ? LUCIDITE_META[total.tendance] : null;
+  const nomGeste = (id: string) => {
+    const h = config?.habiletes.find((x) => x.id === id);
+    return h ? habileteLabel(h) : id;
+  };
+
+  return (
+    <>
+      {/* Tendance générale */}
+      {meta && total.comparees > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Le regard que je porte sur moi</h2>
+          <div className={styles.questCard}>
+            <div className={styles.questInfo}>
+              <div className={styles.questTitle} style={{ color: meta.couleur }}>
+                {meta.icone} {profView ? meta.prof : meta.eleve}
+              </div>
+              <div className={styles.questMeta}>
+                Sur {total.comparees} question{total.comparees > 1 ? 's' : ''} comparée
+                {total.comparees > 1 ? 's' : ''} : {total.justes} fois d’accord avec le
+                professeur, {total.sousEstimations} sous-estimation
+                {total.sousEstimations > 1 ? 's' : ''}, {total.surestimations} surestimation
+                {total.surestimations > 1 ? 's' : ''}.
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Une carte par auto-évaluation */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Mes auto-évaluations</h2>
+        {items.map((item) => {
+          const m = item.tendance ? LUCIDITE_META[item.tendance] : null;
+          return (
+            <div key={item.devoirId} className={styles.questCard}>
+              <div className={styles.questInfo}>
+                <div className={styles.questTitle}>{item.titre}</div>
+                <div className={styles.questMeta}>
+                  {item.intention ? `${item.intention} · ` : ''}
+                  {item.comparees > 0
+                    ? `${item.comparees} question${item.comparees > 1 ? 's' : ''} comparée${
+                        item.comparees > 1 ? 's' : ''
+                      }`
+                    : item.enAttenteProf > 0
+                      ? 'En attente du regard du professeur'
+                      : 'Rien à comparer'}
+                  {item.humeurs.length > 0 && ` · ressenti : ${item.humeurs.join(', ')}`}
+                </div>
+              </div>
+              {m && item.comparees > 0 && (
+                <span className={styles.questBadge} style={{ color: m.couleur }}>
+                  {m.icone} {m.court}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </section>
+
+      {/* Lucidité par geste : sur quoi se trompe-t-il le plus ? */}
+      {gestes.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Par geste travaillé</h2>
+          {gestes.map((g) => {
+            const sens =
+              Math.abs(g.ecartMoyen) < 0.5 ? 'juste' : g.ecartMoyen < 0 ? 'sousEstime' : 'surestime';
+            const mg = LUCIDITE_META[sens];
+            return (
+              <div key={g.habileteId} className={styles.questCard}>
+                <div className={styles.questInfo}>
+                  <div className={styles.questTitle}>{nomGeste(g.habileteId)}</div>
+                  <div className={styles.questMeta}>
+                    {g.comparees} question{g.comparees > 1 ? 's' : ''} · écart moyen{' '}
+                    {g.ecartMoyen > 0 ? '+' : ''}
+                    {g.ecartMoyen.toFixed(1)} cran
+                  </div>
+                </div>
+                <span className={styles.questBadge} style={{ color: mg.couleur }}>
+                  {mg.icone}
+                </span>
+              </div>
+            );
+          })}
+        </section>
+      )}
+    </>
+  );
+}
+
 export default function ProfilPanel({ eleveId }: ProfilPanelProps) {
   const { isAuthenticated, getAuthHeaders } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>('general');
@@ -1048,6 +1184,7 @@ export default function ProfilPanel({ eleveId }: ProfilPanelProps) {
   const [ecriture, setEcriture] = useState<ProfilSection | null>(null);
   const [recherche, setRecherche] = useState<ProfilRecherche | null>(null);
   const [vocabulaire, setVocabulaire] = useState<ProfilVocabulaire | null>(null);
+  const [reflexif, setReflexif] = useState<ProfilReflexif | null>(null);
   const fetchedTabs = useRef(new Set<TabId>());
 
   useEffect(() => {
@@ -1071,6 +1208,7 @@ export default function ProfilPanel({ eleveId }: ProfilPanelProps) {
           case 'ecrire': setEcriture(json.data); break;
           case 'rechercher': setRecherche(json.data); break;
           case 'vocabulaire': setVocabulaire(json.data); break;
+          case 'reflexif': setReflexif(json.data); break;
         }
       } catch (err) {
         console.error(`Erreur fetch profil (${tab}):`, err);
@@ -1104,13 +1242,16 @@ export default function ProfilPanel({ eleveId }: ProfilPanelProps) {
         ecriture ? <SectionTab data={ecriture} /> : loadingState
       )}
       {activeTab === 'parler' && (
-        <EmptyState icon="🗣️" message="Aucune activité orale évaluée pour le moment." />
+         <EmptyState icon="🗣️" message="Aucune activité orale évaluée pour le moment." />
       )}
       {activeTab === 'rechercher' && (
         recherche ? <RechercheTab data={recherche} /> : loadingState
       )}
       {activeTab === 'vocabulaire' && (
         vocabulaire ? <VocabulaireTab data={vocabulaire} profView={!!eleveId} /> : loadingState
+      )}
+      {activeTab === 'reflexif' && (
+        reflexif ? <ReflexifTab data={reflexif} profView={!!eleveId} /> : loadingState
       )}
     </>
   );

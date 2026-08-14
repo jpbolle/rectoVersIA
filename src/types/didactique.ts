@@ -30,13 +30,13 @@ export interface DidactiqueItem {
 // « Rechercher » n'en fait pas partie — chercher, c'est lire (le tableau source
 // classe d'ailleurs tous les gestes de recherche en Lire ou Écrire). La
 // recherche est un ATELIER, pas une modalité.
-export type TypeModal = 'lire' | 'ecrire' | 'parler' | 'reflexif' | 'lexique';
+export type TypeModal = 'lire' | 'ecrire' | 'parler' | 'reflexif' | 'lexique' | 'savoirEtre';
 
 // Le DISPOSITIF d'un atelier : la machinerie que l'app sait afficher.
 // Correspond au champ historique devoir.typeTravail — d'où l'absence de
 // migration. Liste fermée : un atelier sans dispositif serait une activité que
 // l'app ne saurait pas ouvrir.
-export type Dispositif = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire';
+export type Dispositif = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation';
 
 export interface Atelier {
   id: string;
@@ -76,6 +76,16 @@ export const ATELIERS: Atelier[] = [
     court: 'Vocabulaire',
     dispositif: 'vocabulaire',
     modeParDefaut: 'lexique',
+  },
+  {
+    // L'élève porte un regard sur son propre travail ou sur son attitude :
+    // rien n'y est juste ou faux, donc pas de grille et pas de points. Le
+    // mode principal est réflexif — c'est un geste sur soi.
+    id: 'autoevaluation',
+    label: 'Activité d’auto-évaluation',
+    court: 'Auto-évaluation',
+    dispositif: 'autoevaluation',
+    modeParDefaut: 'reflexif',
   },
 ];
 
@@ -136,7 +146,51 @@ export const TYPES_MODAUX: { id: TypeModal; title: string; court: string }[] = [
   { id: 'parler', title: 'Gestes de parole', court: 'Parler' },
   { id: 'reflexif', title: 'Gestes réflexifs', court: 'Réfléchir' },
   { id: 'lexique', title: 'Gestes lexicaux', court: 'Lexique' },
+  { id: 'savoirEtre', title: 'Gestes de savoir-être', court: 'Savoir-être' },
 ];
+
+// ─── Gestes ───
+//
+// Un GESTE COGNITIF englobe des habiletés (cf. init.md § contexte métier) : il
+// est le niveau macro — celui auquel on PLANIFIE un cours. Les habiletés en
+// sont les déclinaisons évaluables, niveau auquel on NOTE une activité.
+// D'où deux vocabulaires assumés : la scénarisation coche des gestes, la
+// création d'activité coche des habiletés.
+
+// Les familles de gestes qui relèvent du cognitif (par opposition au
+// savoir-être et au réflexif, qui portent l'attitude et la métacognition)
+export const TYPES_COGNITIFS: TypeModal[] = ['lire', 'ecrire', 'parler', 'lexique'];
+
+// Les familles qui portent l'attitude : savoir-être et gestes méta
+export const TYPES_SAVOIR_ETRE: TypeModal[] = ['reflexif', 'savoirEtre'];
+
+// Gestes distincts des familles demandées, dédoublonnés et ordonnés.
+// L'id d'un geste EST son libellé : le geste n'est pas une entité stockée,
+// c'est le libellé partagé par plusieurs habiletés.
+//
+// Chaque geste porte sa FAMILLE (« Gestes de lecture »…) : les listes à cocher
+// s'en servent pour montrer d'abord les grandes familles, puis les gestes de
+// celle qu'on déplie — même logique que le sélecteur d'habiletés.
+export function gestesDeTypes(
+  config: DidactiqueConfig | null,
+  types: TypeModal[]
+): { id: string; label: string; groupe: string; type: TypeModal }[] {
+  if (!config) return [];
+  const vus = new Set<string>();
+  const out: { id: string; label: string; groupe: string; type: TypeModal }[] = [];
+  // On suit l'ordre des familles, pas celui du stockage : le menu doit se lire
+  types.forEach((type) => {
+    const famille = TYPES_MODAUX.find((t) => t.id === type)?.title ?? type;
+    config.habiletes.forEach((h) => {
+      if (!h.visible || h.type !== type) return;
+      const geste = h.geste?.trim();
+      if (!geste || vus.has(geste)) return;
+      vus.add(geste);
+      out.push({ id: geste, label: geste, groupe: famille, type });
+    });
+  });
+  return out;
+}
 
 export const TYPE_MODAL_IDS: TypeModal[] = TYPES_MODAUX.map((t) => t.id);
 
@@ -192,6 +246,17 @@ export function habiletesPourAtelier(
   mode: TypeModal | undefined
 ): { items: Habilete[]; fallback: boolean } {
   const visibles = config.habiletes.filter((h) => h.visible);
+  // L'auto-évaluation ne travaille ni la lecture ni l'écriture : elle exerce
+  // le savoir-être et la réflexivité. On les propose donc d'emblée, sans
+  // attendre qu'un rattachement ait été fait dans /admin.
+  if (atelier === 'autoevaluation') {
+    const parAtelier = visibles.filter((h) => h.ateliers.includes(atelier));
+    if (parAtelier.length) return { items: parAtelier, fallback: false };
+    return {
+      items: visibles.filter((h) => TYPES_SAVOIR_ETRE.includes(h.type)),
+      fallback: false,
+    };
+  }
   if (atelier) {
     const parAtelier = visibles.filter((h) => h.ateliers.includes(atelier));
     if (parAtelier.length) return { items: parAtelier, fallback: false };
