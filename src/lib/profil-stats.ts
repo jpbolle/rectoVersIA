@@ -7,6 +7,7 @@ import { scoreLectureQuiz } from '@/lib/lecture-scoring';
 import { parseLectureAnswers } from '@/types/lecture';
 import type { LectureQuiz } from '@/types/lecture';
 import type { HabileteStat } from '@/types/profil';
+import type { RechercheQuestionScore } from '@/types/navigkid';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
 import {
@@ -40,6 +41,8 @@ export type CorrEntry = {
   score: number;
   // Questionnaires de lecture : points des questions ouvertes
   questionScores?: Record<string, number>;
+  // Activités de recherche : notes de la réponse et de la démarche par question
+  rechercheScores?: Record<string, RechercheQuestionScore>;
 };
 
 export type ClassCorrEntry = {
@@ -125,6 +128,7 @@ export async function loadStudentBase(
           evaluation: data.evaluation as Record<string, number>,
           score: data.score || 0,
           questionScores: data.questionScores || undefined,
+          rechercheScores: data.rechercheScores || undefined,
         });
       }
     }

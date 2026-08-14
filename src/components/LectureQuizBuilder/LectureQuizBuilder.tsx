@@ -167,9 +167,13 @@ export default function LectureQuizBuilder({
       formData.append('files', compressed.blob, compressed.name);
       const headers = await getAuthHeaders();
       if (!headers) return;
+      // Ne garder que l'Authorization : le navigateur fixe lui-même le
+      // Content-Type multipart (avec sa boundary). Envoyer le
+      // 'Content-Type: application/json' de getAuthHeaders rend le fichier
+      // illisible côté serveur.
       const res = await fetch('/api/ressources/upload', {
         method: 'POST',
-        headers,
+        headers: { Authorization: headers.Authorization },
         body: formData,
       });
       const json = await res.json();
@@ -205,9 +209,10 @@ export default function LectureQuizBuilder({
       formData.append('files', blob, name);
       const headers = await getAuthHeaders();
       if (!headers) return;
+      // Idem : seule l'Authorization, sinon le fichier est illisible côté serveur
       const res = await fetch('/api/ressources/upload', {
         method: 'POST',
-        headers,
+        headers: { Authorization: headers.Authorization },
         body: formData,
       });
       const json = await res.json();
@@ -503,8 +508,38 @@ export default function LectureQuizBuilder({
                     >
                       {uploadingAudioId === q.id ? '⏳' : '🎧'}
                     </button>
+                    <button
+                      type="button"
+                      className={`${styles.iconBtn} ${q.document !== undefined ? styles.iconOn : ''}`}
+                      onClick={() =>
+                        updateQuestion(q.id, { document: q.document === undefined ? '' : undefined })
+                      }
+                      disabled={disabled}
+                      title={
+                        q.document !== undefined
+                          ? 'Retirer le texte joint'
+                          : "Joindre un texte à la question — un extrait, un document court, une consigne longue."
+                      }
+                    >
+                      📄
+                    </button>
                   </div>
                 </div>
+
+                {/* Texte joint à la question */}
+                {q.document !== undefined && (
+                  <div className={styles.docBlock}>
+                    <label className={styles.docLabel}>Texte joint à la question</label>
+                    <textarea
+                      className={styles.docTextarea}
+                      value={q.document}
+                      onChange={(e) => updateQuestion(q.id, { document: e.target.value })}
+                      placeholder="Texte que l'élève lira sous l'énoncé, avant de répondre…"
+                      rows={5}
+                      disabled={disabled}
+                    />
+                  </div>
+                )}
 
                 {/* Image jointe : vignette + remplacer / retirer */}
                 {q.image && (

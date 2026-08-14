@@ -86,6 +86,10 @@ export interface Devoir {
   submittedCount?: number;
   // Questionnaire de lecture (type lire) — côté élève, correctIndex est filtré
   lectureQuiz?: LectureQuiz | null;
+  // Passerelle en retour vers la scénarisation didactique : posée par
+  // /api/scenarisations/[id] quand l'activité est rattachée à un module,
+  // effacée quand le lien est rompu. Jamais écrite depuis les formulaires.
+  scenarisationRef?: { scenarisationId: string; nom: string } | null;
 }
 
 export interface CreateDevoirData {

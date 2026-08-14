@@ -1,0 +1,193 @@
+/* RechercheEvaluation — onglet Évaluation d'une activité de recherche */
+
+.container {
+  padding: 16px;
+}
+
+/* ─── Les deux scores ─── */
+
+.scores {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.scoreCard {
+  flex: 1;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 13px;
+  text-align: center;
+  background: var(--c-bg-card);
+}
+
+.reponses {
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.06);
+}
+
+.demarche {
+  border-color: var(--c-accent);
+  background: rgba(212, 148, 76, 0.08);
+}
+
+.scoreLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}
+
+.scoreValue {
+  font-family: var(--c-font-title);
+  font-size: 26px;
+  font-weight: 700;
+  margin: 4px 0 1px;
+}
+
+.reponses .scoreValue {
+  color: var(--c-primary);
+}
+
+.demarche .scoreValue {
+  color: var(--c-accent);
+}
+
+.scorePercent {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+}
+
+/* ─── Sections ─── */
+
+.section {
+  margin-top: 18px;
+}
+
+.sectionTitle {
+  font-family: var(--c-font-title);
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: var(--c-text);
+}
+
+.hint {
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  background: var(--c-bg-element);
+  border-left: 3px solid var(--c-accent);
+  border-radius: 0 var(--c-radius) var(--c-radius) 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--c-text-secondary);
+}
+
+.note {
+  margin: 10px 0 0;
+  padding-left: 9px;
+  border-left: 3px solid var(--c-accent);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--c-text-secondary);
+}
+
+/* ─── Habiletés ─── */
+
+.habilete {
+  margin-bottom: 10px;
+}
+
+.habileteRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  margin-bottom: 4px;
+}
+
+.habileteName {
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.habileteScore {
+  color: var(--c-text-secondary);
+  flex-shrink: 0;
+}
+
+.bar {
+  height: 7px;
+  background: var(--c-bg-element);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.barGood {
+  background: var(--c-primary);
+}
+
+.barMid {
+  background: var(--c-accent);
+}
+
+.barLow {
+  background: #c55764;
+}
+
+/* ─── Statistiques ─── */
+
+.statGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.stat {
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  padding: 10px;
+  background: var(--c-bg-card);
+}
+
+.statValue {
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--c-primary);
+}
+
+.statLabel {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--c-text-secondary);
+}
+
+.statSub {
+  color: var(--c-text-dim);
+}
+
+/* ─── Détail replié ─── */
+
+.details {
+  margin-top: 18px;
+  border-top: 1px solid var(--c-border);
+  padding-top: 12px;
+}
+
+.detailsSummary {
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+
+.detailsSummary:hover {
+  color: var(--c-primary);
+}

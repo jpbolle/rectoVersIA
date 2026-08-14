@@ -18,7 +18,10 @@ export function formatDateRemise(dateString: string): string {
 }
 
 export function formatDateShort(dateString: string): string {
+  // La date de remise est facultative
+  if (!dateString) return 'date non fixée';
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return 'date non fixée';
   return date.toLocaleDateString('fr-FR', {
     day: '2-digit',
     month: '2-digit',

@@ -64,6 +64,7 @@ export async function GET(
       intitule: data.intitule || '',
       consignes: data.consignes || '',
       ressources: data.ressources || null,
+      scenarisationRef: data.scenarisationRef || null,
       accesIA: data.accesIA ?? false,
       disponible: data.disponible ?? true,
       archive: data.archive ?? false,
@@ -163,7 +164,8 @@ export async function PATCH(
       updateData.classes = body.classes;
     }
     if (body.dateRemise !== undefined) {
-      updateData.dateRemise = new Date(body.dateRemise);
+      // Date facultative : null plutôt qu'une Invalid Date
+      updateData.dateRemise = body.dateRemise ? new Date(body.dateRemise) : null;
     }
     if (body.grille !== undefined) {
       updateData.grille = body.grille;

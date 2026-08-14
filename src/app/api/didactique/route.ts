@@ -1,7 +1,7 @@
  import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { ATELIER_IDS, DEFAULT_DIDACTIQUE, isTypeModal } from '@/types/didactique';
+import { ATELIER_IDS, DEFAULT_DIDACTIQUE, DEFAULT_METHODES, isTypeModal } from '@/types/didactique';
 import type { DidactiqueConfig, DidactiqueItem, Habilete } from '@/types/didactique';
 
 // Configuration « Didactique du français » (UAA + habiletés), document unique
@@ -35,6 +35,9 @@ export async function GET(request: NextRequest) {
     const config: DidactiqueConfig = {
       uaa: Array.isArray(stored.uaa) && stored.uaa.length ? stored.uaa : DEFAULT_DIDACTIQUE.uaa,
       habiletes,
+      // Champ ajouté après coup : les documents antérieurs n'en ont pas
+      methodes:
+        Array.isArray(stored.methodes) && stored.methodes.length ? stored.methodes : DEFAULT_METHODES,
     };
     return NextResponse.json({ success: true, data: config });
   } catch (error) {
@@ -115,9 +118,11 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
     const uaa = sanitizeItems(body?.uaa);
+    const methodes = sanitizeItems(body?.methodes);
     const config: DidactiqueConfig = {
       uaa: uaa.length ? uaa : DEFAULT_DIDACTIQUE.uaa,
       habiletes: sanitizeHabiletes(body?.habiletes, new Set(uaa.map((u) => u.id))),
+      methodes: methodes.length ? methodes : DEFAULT_METHODES,
     };
     await DOC_REF().set(config);
     return NextResponse.json({ success: true, data: config });

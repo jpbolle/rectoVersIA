@@ -5,6 +5,7 @@ import Toggle from '@/components/Toggle/Toggle';
 import DatePicker from '@/components/DatePicker/DatePicker';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
 import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/QuestionnaireBuilder';
+import QuestionnairePreviewModal from '@/components/QuestionnairePreviewModal/QuestionnairePreviewModal';
 import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import PlanDraft from '@/components/DraftEditor/PlanDraft';
 import VocabListEditor from '@/components/VocabListEditor/VocabListEditor';
@@ -155,7 +156,13 @@ export default function CreationForm({
   // Inversion recto/verso (type ecrire uniquement)
   const [flipInverted, setFlipInverted] = useState(false);
 
-  const baseValid = selectedClasses.length > 0 && dateRemise && intitule.trim();
+  // Aperçu du questionnaire de recherche (popup)
+  const [showQuestionnairePreview, setShowQuestionnairePreview] = useState(false);
+
+  // Classes et date de remise sont FACULTATIVES : un prof prépare ses activités
+  // avant de connaître ses classes de l'année. Sans classe, l'activité n'est
+  // simplement visible d'aucun élève ; sans date, la remise n'a pas d'échéance.
+  const baseValid = intitule.trim();
   // Seules les activités d'écriture s'appuient sur une grille ; lecture,
   // recherche et vocabulaire portent leur didactique dans leurs habiletés
   const usesGrille = typeTravail === 'ecrire';
@@ -346,7 +353,7 @@ export default function CreationForm({
 
         <div className={styles.formGroup}>
           <label className={styles.label}>
-            Classe(s) <span className={styles.required}>*</span>
+            Classe(s) <span className={styles.optional}>— facultatif</span>
           </label>
           <ClassesDropdown
             options={classeNames}
@@ -358,11 +365,10 @@ export default function CreationForm({
 
         <div className={styles.formGroup}>
           <DatePicker
-            label="Date de remise"
+            label="Date de remise — facultatif"
             value={dateRemise}
             onChange={setDateRemise}
             min={getTodayString()}
-            required
           />
         </div>
 
@@ -716,6 +722,7 @@ export default function CreationForm({
             titre={intitule}
             disabled={isSubmitting}
             getAuthHeaders={getAuthHeaders}
+            allowedHabiletes={habiletes}
           />
         </div>
       )}
@@ -751,21 +758,48 @@ export default function CreationForm({
         )
       )}
 
-      {/* Prévisualisation de l'espace élève (tous les types) */}
-      {onPreview && (
+      {/* Prévisualisation. Sur une activité de recherche, la page élève est
+          voilée tant que rien n'a été envoyé : on montre le questionnaire dans
+          une popup, tel que l'élève le lira dans l'extension. */}
+      {typeTravail === 'rechercher' ? (
         <div className={styles.previewBar}>
           <button
             type="button"
             className={`${styles.btn} ${styles.btnAccent}`}
-            onClick={handlePreview}
-            disabled={isSubmitting || !isValid}
+            onClick={() => setShowQuestionnairePreview(true)}
+            disabled={isSubmitting || nkQuestions.length === 0}
           >
-            👁 Prévisualiser l’espace élève
+            👁 Aperçu du questionnaire
           </button>
           <span className={styles.previewNote}>
-            Enregistre l’activité (non disponible pour les élèves) puis ouvre la vraie page élève.
+            Le questionnaire tel que l’élève le lira dans le panneau NavigKid!.
           </span>
         </div>
+      ) : (
+        onPreview && (
+          <div className={styles.previewBar}>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnAccent}`}
+              onClick={handlePreview}
+              disabled={isSubmitting || !isValid}
+            >
+              👁 Prévisualiser l’espace élève
+            </button>
+            <span className={styles.previewNote}>
+              Enregistre l’activité (non disponible pour les élèves) puis ouvre la vraie page élève.
+            </span>
+          </div>
+        )
+      )}
+
+      {showQuestionnairePreview && (
+        <QuestionnairePreviewModal
+          titre={intitule}
+          consignes={consignes}
+          questions={nkQuestions}
+          onClose={() => setShowQuestionnairePreview(false)}
+        />
       )}
     </>
   );

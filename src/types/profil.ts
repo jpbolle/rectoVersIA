@@ -96,6 +96,17 @@ export interface RechercheItem {
   nbReponses: number;         // questions avec une réponse non vide
   sitesConsultes: number;
   passages: number;           // passages surlignés
+  // Notes du prof, seulement si la correction a été rendue visible.
+  // Deux volets distincts — voir src/lib/recherche-scoring.ts
+  reponses?: { points: number; max: number; percent: number | null } | null;
+  demarche?: { points: number; max: number; percent: number | null } | null;
+  motsCles?: number;
+}
+
+// Onglet Rechercher : les activités + le cumul par habileté
+export interface ProfilRecherche {
+  items: RechercheItem[];
+  habiletes: HabileteStat[];
 }
 
 // Onglet Vocabulaire

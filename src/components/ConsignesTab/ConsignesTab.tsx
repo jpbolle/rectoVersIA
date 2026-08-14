@@ -52,12 +52,14 @@ export default function ConsignesTab({ devoir }: ConsignesTabProps) {
           <div className={styles.infoItem}>
             <span className={styles.infoLabel}>Date de remise</span>
             <span className={styles.infoValue}>
-              {new Date(devoir.dateRemise).toLocaleDateString('fr-BE', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
+              {devoir.dateRemise
+                ? new Date(devoir.dateRemise).toLocaleDateString('fr-BE', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })
+                : 'non fixée'}
             </span>
           </div>
           <div className={styles.infoItem}>

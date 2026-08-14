@@ -7,7 +7,7 @@ import type { DrawShape } from '@/types/draw';
 import GrilleTab from '@/components/GrilleTab';
 import RemarquesTab from '@/components/RemarquesTab';
 import AiTab, { type AiTabUiState } from '@/components/AiTab/AiTab';
-import RechercheStatsTab from '@/components/RechercheStatsTab/RechercheStatsTab';
+import RechercheEvaluation from '@/components/RechercheEvaluation/RechercheEvaluation';
 import RechercheResume from '@/components/RechercheResume/RechercheResume';
 import VocabulaireStats from '@/components/VocabulaireStats/VocabulaireStats';
 import type { VocabulaireActivityState } from '@/types/vocabulaire';
@@ -21,7 +21,7 @@ import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
 import LectureEvaluation from '@/components/LectureEvaluation/LectureEvaluation';
 import styles from './AssistancePanel.module.css';
 
-export type TabType = 'consignes' | 'ressources' | 'grille' | 'remarques' | 'ia' | 'recherche';
+export type TabType = 'consignes' | 'ressources' | 'grille' | 'remarques' | 'ia';
 
 interface AssistancePanelProps {
   devoir: Devoir;
@@ -148,6 +148,9 @@ export default function AssistancePanel({
   // habiletés des questions, pas par une grille
   const isLectureQuiz =
     devoir.typeTravail === 'lire' && (devoir.lectureQuiz?.questions.length ?? 0) > 0;
+  // Activité de recherche : même principe — pas de grille, l'évaluation se lit
+  // dans les deux scores (réponses / démarche) et les habiletés des questions
+  const isRecherche = !!navigkidQuestions && navigkidQuestions.length > 0;
   const handleTabChange = (tab: TabType) => {
     if (onTabChange) {
       onTabChange(tab);
@@ -205,24 +208,8 @@ export default function AssistancePanel({
               Remarques du professeur
             </button>
           )}
-          {rechercheMode && navigkidQuestions && navigkidQuestions.length > 0 && (
-            <button
-              type="button"
-              className={`${styles.tab} ${currentTab === 'recherche' ? styles.tabActive : ''}`}
-              onClick={() => handleTabChange('recherche')}
-            >
-              Statistiques
-            </button>
-          )}
-          {!rechercheMode && navigkidQuestions && navigkidQuestions.length > 0 && (
-            <button
-              type="button"
-              className={`${styles.tab} ${currentTab === 'recherche' ? styles.tabActive : ''}`}
-              onClick={() => handleTabChange('recherche')}
-            >
-              Recherche
-            </button>
-          )}
+          {/* Recherche : pas d'onglet séparé — scores, habiletés et statistiques
+              tiennent tous dans Évaluation (RechercheEvaluation) */}
           <button
             type="button"
             className={`${styles.tab} ${currentTab === 'grille' ? styles.tabActive : ''}`}
@@ -262,12 +249,22 @@ export default function AssistancePanel({
             selectedEvalIndex={selectedVocabEvalIndex}
           />
         )}
-        {/* Recherche : récapitulatif de l'envoi en tête de l'onglet Évaluation */}
+        {/* Recherche : récapitulatif de l'envoi, puis scores / habiletés / stats.
+            Le récapitulatif serveur reste la seule information chiffrée dont
+            dispose l'élève tant que la correction ne lui est pas rendue. */}
         {currentTab === 'grille' && !isProfessorView && navigkidReponse?.resume && (
           <RechercheResume
             resume={navigkidReponse.resume}
             soumisLe={navigkidReponse.soumisLe}
             corrigeDisponible={devoir.corrigeDisponible === true}
+          />
+        )}
+        {currentTab === 'grille' && isRecherche && (
+          <RechercheEvaluation
+            questions={navigkidQuestions!}
+            reponse={navigkidReponse ?? null}
+            scores={correction?.rechercheScores}
+            showScores={isProfessorView || correction?.visibleParEleve === true}
           />
         )}
         {/* Questionnaire de lecture : pas de grille — le score et le détail par
@@ -280,7 +277,10 @@ export default function AssistancePanel({
             showScores={isProfessorView || correction?.visibleParEleve === true}
           />
         )}
-        {currentTab === 'grille' && devoir.typeTravail !== 'vocabulaire' && !isLectureQuiz && (
+        {currentTab === 'grille' &&
+          devoir.typeTravail !== 'vocabulaire' &&
+          !isLectureQuiz &&
+          !isRecherche && (
           <GrilleTab
             grille={grille}
             hiddenCriteria={devoir.hiddenCriteria}
@@ -308,12 +308,6 @@ export default function AssistancePanel({
             correction={correction}
             studentContent={studentContent}
             profProduction={devoir.corrigeReference?.production}
-          />
-        )}
-        {currentTab === 'recherche' && navigkidQuestions && (
-          <RechercheStatsTab
-            questions={navigkidQuestions}
-            reponse={navigkidReponse ?? null}
           />
         )}
         {!isProfessorView && (accesIA || showAiData) && currentTab === 'ia' && aiSuggestions && (

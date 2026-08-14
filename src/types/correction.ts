@@ -1,3 +1,5 @@
+import type { RechercheQuestionScore } from './navigkid';
+
 export type CorrectionStatus = 'draft' | 'finalized';
 
 export interface AudioAnnotation {
@@ -26,6 +28,9 @@ export interface Correction {
   // ouvertes ({questionId: points}). Les QCM ne sont PAS stockés ici — ils sont
   // recalculés à la lecture (voir lib/lecture-scoring.ts).
   questionScores?: Record<string, number>;
+  // Activité de recherche (NavigKid) : deux notes par question — la réponse et
+  // la démarche. Clé = index de la question. Voir lib/recherche-scoring.ts.
+  rechercheScores?: Record<string, RechercheQuestionScore>;
   score: number;                                 // Score total calcule
   status: CorrectionStatus;
   visibleParEleve: boolean;
@@ -53,6 +58,7 @@ export interface UpdateCorrectionData {
   commentaireGeneralAudio?: string;
   commentairesCriteres?: Record<string, string>;
   questionScores?: Record<string, number>;
+  rechercheScores?: Record<string, RechercheQuestionScore>;
   score?: number;
   status?: CorrectionStatus;
   visibleParEleve?: boolean;

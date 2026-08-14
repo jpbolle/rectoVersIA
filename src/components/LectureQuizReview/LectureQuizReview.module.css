@@ -307,3 +307,16 @@
   color: var(--c-text-secondary);
   white-space: nowrap;
 }
+
+/* Texte joint à la question par le prof */
+.questionDoc {
+  margin: 8px 0 10px;
+  padding: 10px 13px;
+  background: var(--c-bg-element);
+  border-left: 3px solid var(--c-accent);
+  border-radius: 0 8px 8px 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--c-text);
+}

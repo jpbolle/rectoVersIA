@@ -115,7 +115,20 @@ export interface Habilete {
 export interface DidactiqueConfig {
   uaa: DidactiqueItem[];
   habiletes: Habilete[];
+  // Méthodes d'enseignement proposées aux modules d'une scénarisation
+  // (cours explicite, atelier collaboratif…). Liste ouverte, tenue par l'admin.
+  methodes: DidactiqueItem[];
 }
+
+// Méthodes livrées par défaut — l'admin en ajoute, en masque, en renomme
+export const DEFAULT_METHODES: DidactiqueItem[] = [
+  { id: 'cours-explicite', label: 'Cours explicite', visible: true },
+  { id: 'cours-dialogique', label: 'Cours dialogique', visible: true },
+  { id: 'atelier-autonomie', label: 'Atelier en autonomie', visible: true },
+  { id: 'atelier-collaboratif', label: 'Atelier collaboratif', visible: true },
+  { id: 'echanges', label: 'Échanges', visible: true },
+  { id: 'jeu-de-role', label: 'Jeu de rôle', visible: true },
+];
 
 export const TYPES_MODAUX: { id: TypeModal; title: string; court: string }[] = [
   { id: 'lire', title: 'Gestes de lecture', court: 'Lire' },
@@ -136,7 +149,13 @@ export function isTypeModal(value: unknown): value is TypeModal {
 export const DEFAULT_DIDACTIQUE: DidactiqueConfig = {
   uaa: UAA_LIST.map((u) => ({ id: String(u.id), label: u.label, visible: true })),
   habiletes: [],
+  methodes: DEFAULT_METHODES,
 };
+
+// Libellé d'une méthode — repli sur l'id pour les valeurs supprimées depuis
+export function methodeLabel(config: DidactiqueConfig | null, id: string): string {
+  return config?.methodes?.find((m) => m.id === id)?.label ?? id;
+}
 
 // Habiletés d'un type modal, dans l'ordre d'apparition
 export function habiletesOfType(config: DidactiqueConfig, type: TypeModal): Habilete[] {

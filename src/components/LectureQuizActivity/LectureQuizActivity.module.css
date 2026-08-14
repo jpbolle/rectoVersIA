@@ -507,3 +507,16 @@
   padding: 1px 4px;
   border-radius: 4px;
 }
+
+/* Texte joint à la question par le prof */
+.questionDoc {
+  margin: 10px 0 12px;
+  padding: 12px 14px;
+  background: var(--c-bg-element);
+  border-left: 3px solid var(--c-accent);
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  color: var(--c-text);
+}

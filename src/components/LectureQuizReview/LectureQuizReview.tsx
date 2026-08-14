@@ -141,6 +141,9 @@ export default function LectureQuizReview({
 
             <p className={styles.enonce}>{q.enonce}</p>
 
+            {/* Texte joint à la question par le prof */}
+            {q.document && <div className={styles.questionDoc}>{q.document}</div>}
+
             {/* Audio de la question + nombre d'écoutes consommées par l'élève */}
             {q.audio && (
               <div className={styles.audioBlock}>

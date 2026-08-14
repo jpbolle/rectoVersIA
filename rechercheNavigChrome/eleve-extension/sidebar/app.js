@@ -367,6 +367,7 @@ async function ouvrirActivite(activite) {
         const btn = $("#btn-soumettre");
         btn.disabled = true;
         btn.textContent = "Déjà envoyé ✓";
+        afficherRetourApp();
         return;
       }
     }
@@ -422,6 +423,7 @@ function afficherQuestionnaireRestaure() {
   btn.disabled = false;
   btn.textContent = "Envoyer mes réponses";
   $("#message-soumission").hidden = true;
+  $("#btn-retour-app").hidden = true;
 
   // Reset feedback IA
   state.feedbackIA = null;
@@ -826,6 +828,21 @@ async function sauvegarderRecherches() {
   }
 }
 
+// ─── Retour à l'app une fois les réponses envoyées ───
+// L'activité n'est plus voilée côté app : l'élève y retrouve ses réponses et,
+// quand le prof l'aura rendue, sa correction.
+function afficherRetourApp() {
+  const btn = $("#btn-retour-app");
+  if (!btn) return;
+  btn.hidden = false;
+}
+
+$("#btn-retour-app")?.addEventListener("click", () => {
+  const devoirId = state.activiteEnCours?.id;
+  const url = devoirId ? `${API_BASE}/activites/${devoirId}` : `${API_BASE}/activites`;
+  chrome.tabs.create({ url });
+});
+
 // ─── Soumission des réponses ───
 $("#btn-soumettre").addEventListener("click", async () => {
   sauvegarderReponseCourante();
@@ -870,6 +887,7 @@ $("#btn-soumettre").addEventListener("click", async () => {
     msg.className = "succes";
     msg.hidden = false;
     btn.textContent = "Envoyé ✓";
+    afficherRetourApp();
   } catch (err) {
     console.error("Erreur soumission:", err);
     msg.textContent = "Erreur lors de l'envoi. Réessaie.";

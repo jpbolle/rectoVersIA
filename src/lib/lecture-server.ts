@@ -69,6 +69,11 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
       }
     }
 
+    // Texte joint à la question (extrait, document court) — visible de l'élève
+    if (typeof question.document === 'string' && question.document.trim()) {
+      cleaned.document = question.document;
+    }
+
     // Réponse idéale du prof (pas pour les blocs informatifs)
     if (type !== 'info' && typeof question.reponseIdeale === 'string' && question.reponseIdeale.trim()) {
       cleaned.reponseIdeale = question.reponseIdeale.trim();

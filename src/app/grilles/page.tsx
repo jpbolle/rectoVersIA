@@ -10,6 +10,7 @@ import Footer from '@/components/Footer/Footer';
 import GrilleCard from '@/components/GrilleCard/GrilleCard';
 import CreateGrilleCard from '@/components/CreateGrilleCard/CreateGrilleCard';
 import GrilleBuilder from '@/components/GrilleBuilder/GrilleBuilder';
+import ScenarisationPanel from '@/components/ScenarisationPanel/ScenarisationPanel';
 import GrilleViewer from '@/components/GrilleViewer/GrilleViewer';
 import VocabCard from '@/components/VocabCard/VocabCard';
 import CreateVocabCard from '@/components/CreateVocabCard/CreateVocabCard';
@@ -19,7 +20,7 @@ import EmptyState from '@/components/EmptyState/EmptyState';
 import type { Grille, GrilleCriterion } from '@/types/grille';
 import styles from './grilles.module.css';
 
-type Tab = 'grilles' | 'vocabulaire';
+type Tab = 'grilles' | 'vocabulaire' | 'scenarisation';
 
 export default function GrillesPage() {
   const { isAuthenticated, isLoading: authLoading, role, isAdmin: userIsAdmin, getAuthHeaders } = useAuth();
@@ -274,7 +275,16 @@ export default function GrillesPage() {
           >
             Listes de vocabulaire
           </button>
+          <button
+            className={`${styles.tabButton} ${activeTab === 'scenarisation' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('scenarisation')}
+          >
+            Design &amp; scénarisation didactique
+          </button>
         </div>
+
+        {/* ===== TAB SCÉNARISATION ===== */}
+        {activeTab === 'scenarisation' && <ScenarisationPanel />}
 
         {/* ===== TAB GRILLES ===== */}
         {activeTab === 'grilles' && (

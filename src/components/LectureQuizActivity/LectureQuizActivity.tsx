@@ -215,6 +215,9 @@ function QuestionCard({
 
       <p className={styles.enonce}>{question.enonce}</p>
 
+      {/* Texte joint à la question par le prof (extrait, document court) */}
+      {question.document && <div className={styles.questionDoc}>{question.document}</div>}
+
       {/* Audio de la question (dictée, compréhension orale), écoutes limitées ou non */}
       {question.audio && (
         <QuestionAudio

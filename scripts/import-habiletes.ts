@@ -216,7 +216,11 @@ async function main() {
   }
 
   const uaa = Array.isArray(stored.uaa) && stored.uaa.length ? stored.uaa : DEFAULT_DIDACTIQUE.uaa;
-  await ref.set({ uaa, habiletes } satisfies DidactiqueConfig);
+  // Les méthodes existantes ne sont jamais touchées par cet import
+  const methodes = Array.isArray(stored.methodes) && stored.methodes.length
+    ? stored.methodes
+    : DEFAULT_DIDACTIQUE.methodes;
+  await ref.set({ uaa, habiletes, methodes } satisfies DidactiqueConfig);
   console.log(`✅ configuration/didactique mis à jour — ${habiletes.length} habiletés.`);
 }
 

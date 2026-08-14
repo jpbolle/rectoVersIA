@@ -84,6 +84,7 @@ export default function TravailDetailPage() {
     updateCommentaireGeneral,
     updateCommentaireGeneralAudio,
     updateQuestionScore,
+    updateRechercheScore,
     toggleVisibility,
   } = useCorrection(
     travailId || null,
@@ -494,7 +495,11 @@ export default function TravailDetailPage() {
 
         <div className={styles.headerRight}>
           <div className={styles.headerActions}>
-            {travail.status === 'submitted' && (
+            {/* Rien à corriger pour la lecture et la recherche : l'élève répond
+                à un questionnaire, il ne réécrit pas sa copie */}
+            {travail.status === 'submitted' &&
+              devoir?.typeTravail !== 'lire' &&
+              devoir?.typeTravail !== 'rechercher' && (
               <button
                 className={styles.returnBtn}
                 onClick={handleReturnForCorrection}
@@ -542,6 +547,8 @@ export default function TravailDetailPage() {
                 <RechercheResponseViewer
                   questions={nkQuestions}
                   reponse={nkReponse}
+                  scores={correction?.rechercheScores}
+                  onScoreChange={updateRechercheScore}
                 />
               </div>
             ) : devoir.typeTravail === 'lire' && devoir.lectureQuiz ? (

@@ -72,6 +72,9 @@ export interface LectureQuestion {
   // Toute question peut porter un audio (dictée, compréhension orale),
   // avec un nombre d'écoutes limité ou non
   audio?: LectureQuestionAudio | null;
+  // Texte joint à la question — un extrait, un document court, une consigne
+  // longue. Affiché sous l'énoncé, avant la zone de réponse.
+  document?: string;
   // Réponse idéale du prof — jamais exposée à l'élève (filtrée côté serveur),
   // affichée dans la correction pour comparaison
   reponseIdeale?: string;

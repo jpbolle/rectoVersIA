@@ -724,6 +724,16 @@
   margin-top: 4px;
 }
 
+/* Recherche : les deux notes (réponses / démarche) à la place du badge */
+.questScores {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .questBadge {
   font-size: 12px;
   font-weight: 600;

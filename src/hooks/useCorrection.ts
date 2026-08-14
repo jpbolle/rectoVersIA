@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth';
 import type { Correction, UpdateCorrectionData, AudioAnnotation, DraftItemAnnotation } from '@/types/correction';
 import type { Grille } from '@/types/grille';
+import type { RechercheQuestionScore } from '@/types/navigkid';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
 
 const DEBOUNCE_DELAY = 2000;
@@ -190,6 +191,30 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
     });
   }, [saveWithDebounce]);
 
+  // Correction d'une question de recherche : note et/ou remarque, sur la
+  // réponse ou sur la démarche (debounce — le prof tape au clavier).
+  // Un champ mis à null est retiré : la note redevient automatique (QCM) ou
+  // absente (question ouverte, démarche).
+  const updateRechercheScore = useCallback(
+    (questionIndex: number, patch: Partial<RechercheQuestionScore>) => {
+      setCorrection((prev) => {
+        const next = { ...(prev?.rechercheScores ?? {}) };
+        const cle = String(questionIndex);
+        const entry: RechercheQuestionScore = { ...(next[cle] ?? {}) };
+        (Object.keys(patch) as (keyof RechercheQuestionScore)[]).forEach((champ) => {
+          const valeur = patch[champ];
+          if (valeur === null || valeur === undefined || valeur === '') delete entry[champ];
+          else (entry as Record<string, unknown>)[champ] = valeur;
+        });
+        if (Object.keys(entry).length === 0) delete next[cle];
+        else next[cle] = entry;
+        saveWithDebounce({ rechercheScores: next });
+        return prev ? { ...prev, rechercheScores: next } : prev;
+      });
+    },
+    [saveWithDebounce]
+  );
+
   // Sauvegarde du commentaire général écrit (debounce)
   const updateCommentaireGeneral = useCallback((text: string) => {
     saveWithDebounce({ commentaireGeneral: text });
@@ -237,6 +262,7 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
     updateCommentaireGeneral,
     updateCommentaireGeneralAudio,
     updateQuestionScore,
+    updateRechercheScore,
     toggleVisibility,
     refetch: fetchCorrection,
   };

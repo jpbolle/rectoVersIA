@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
           commentaireGeneralAudio: data.commentaireGeneralAudio || undefined,
           commentairesCriteres: data.commentairesCriteres || {},
           questionScores: data.questionScores || {},
+          rechercheScores: data.rechercheScores || {},
           score: data.score || 0,
           status: data.status || 'draft',
           visibleParEleve: data.visibleParEleve || false,
@@ -107,6 +108,8 @@ export async function GET(request: NextRequest) {
       // Notes des questions ouvertes : même règle que le reste de la correction
       // — l'élève ne les voit qu'une fois le corrigé rendu
       questionScores: (auth.role !== 'eleve' || visible) ? (data.questionScores || {}) : {},
+      // Recherche : notes et remarques du prof, même règle de visibilité
+      rechercheScores: (auth.role !== 'eleve' || visible) ? (data.rechercheScores || {}) : {},
       score: (auth.role !== 'eleve' || visible) ? (data.score || 0) : 0,
       status: data.status || 'draft',
       visibleParEleve: visible,
@@ -161,6 +164,7 @@ export async function POST(request: NextRequest) {
       commentaireGeneral: body.commentaireGeneral || '',
       commentairesCriteres: {},
       questionScores: {},
+      rechercheScores: {},
       score: body.score || 0,
       status: 'draft',
       visibleParEleve: false,

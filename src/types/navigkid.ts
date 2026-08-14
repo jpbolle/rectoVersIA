@@ -7,9 +7,24 @@ export interface NavigKidQuestion {
   options?: string[];
   correctes?: number[];           // Indices des bonnes réponses QCM
   nbSources: number;              // Sources web requises (1-5)
-  points?: number;
+  points?: number;                // Barème de la RÉPONSE
+  // Barème de la DÉMARCHE : 1 point par source demandée (= nbSources), donc
+  // jamais saisi. Le champ ne subsiste que pour un éventuel réglage à la main.
+  pointsDemarche?: number;
+  competences?: string[];         // Habiletés travaillées (ids de la config didactique)
+  document?: string;              // Texte joint à la question (affiché sous l'énoncé dans l'extension)
   reponseAttendue?: string;       // Éléments de correction (prof uniquement)
   referencesProf?: string[];      // URLs de référence (prof uniquement)
+}
+
+// Correction d'une question de recherche, stockée dans
+// corrections/{id}.rechercheScores (clé = index de la question).
+// Deux notes distinctes : ce que l'élève a trouvé et comment il l'a cherché.
+export interface RechercheQuestionScore {
+  reponse?: number | null;        // absent = verdict automatique du QCM non contredit
+  reponseComment?: string;
+  demarche?: number | null;
+  demarcheComment?: string;
 }
 
 // Document Firestore : questionnaires/{id}

@@ -105,6 +105,13 @@ export default function DevoirCard({
         </div>
       )}
 
+      {/* Passerelle en retour : l'activité fait partie d'une scénarisation */}
+      {devoir.scenarisationRef && (
+        <div className={styles.scenarisationRow} title="Cette activité est rattachée à un module">
+          🧭 {devoir.scenarisationRef.nom}
+        </div>
+      )}
+
       <div className={styles.metaRow}>
         <span className={styles.metaItem}>
           <span className={styles.metaIcon}>📚</span>
@@ -116,7 +123,7 @@ export default function DevoirCard({
         </span>
         <span className={styles.metaItem}>
           <span className={styles.metaIcon}>🎓</span>
-          <span>{devoir.classes.join(', ')}</span>
+          <span>{devoir.classes.length ? devoir.classes.join(', ') : 'aucune classe'}</span>
         </span>
         {variant === 'prof' && devoir.submittedCount !== undefined && (
           <span className={styles.metaItem}>

@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import type {
   CriterionStats, DevoirCriterionStat, HabileteStat,
-  ProfilGeneral, ProfilSection, RechercheItem, ProfilVocabulaire, ProfilVocabGroup,
+  ProfilGeneral, ProfilSection, ProfilRecherche, ProfilVocabulaire, ProfilVocabGroup,
   VocabActiviteStat,
 } from '@/types/profil';
 import { useDidactique } from '@/hooks/useDidactique';
@@ -668,29 +668,56 @@ function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab:
 }
 
 // ─── Onglet Rechercher ───────────────────────────────────────────────────────
-function RechercheTab({ items }: { items: RechercheItem[] }) {
+function RechercheTab({ data }: { data: ProfilRecherche }) {
+  const { items, habiletes } = data;
   if (items.length === 0) {
     return <EmptyState icon="📊" message="Absence de données" />;
   }
   return (
-    <section className={styles.section}>
-      <h2 className={styles.sectionTitle}>Mes recherches guidées (NavigKid)</h2>
-      {items.map((item) => (
-        <div key={item.devoirId} className={styles.questCard}>
-          <div className={styles.questInfo}>
-            <div className={styles.questTitle}>{item.titre}</div>
-            <div className={styles.questMeta}>
-              {item.soumise
-                ? `Remise le ${formatDate(item.date)} · ${item.nbReponses}/${item.nbQuestions} questions répondues · ${item.sitesConsultes} sites consultés · ${item.passages} passages surlignés`
-                : `${item.nbQuestions} questions · pas encore remise`}
+    <>
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Mes recherches guidées (NavigKid)</h2>
+        {items.map((item) => {
+          // Deux notes : ce qui a été trouvé, et comment ça a été cherché
+          const rep = item.reponses;
+          const dem = item.demarche;
+          const hasScore = (rep && rep.max > 0) || (dem && dem.max > 0);
+          return (
+            <div key={item.devoirId} className={styles.questCard}>
+              <div className={styles.questInfo}>
+                <div className={styles.questTitle}>{item.titre}</div>
+                <div className={styles.questMeta}>
+                  {item.soumise
+                    ? `Remise le ${formatDate(item.date)} · ${item.nbReponses}/${item.nbQuestions} questions répondues · ${item.motsCles ?? 0} mots-clés · ${item.sitesConsultes} sites consultés · ${item.passages} passages surlignés`
+                    : `${item.nbQuestions} questions · pas encore remise`}
+                </div>
+              </div>
+              {hasScore ? (
+                <span className={styles.questScores}>
+                  {rep && rep.max > 0 && (
+                    <ScoreChip pct={rep.percent ?? 0} detail={`Réponses ${rep.points}/${rep.max}`} />
+                  )}
+                  {dem && dem.max > 0 && (
+                    <ScoreChip pct={dem.percent ?? 0} detail={`Démarche ${dem.points}/${dem.max}`} />
+                  )}
+                </span>
+              ) : (
+                <span
+                  className={`${styles.questBadge} ${item.soumise ? styles.questBadgeDone : styles.questBadgeTodo}`}
+                >
+                  {item.soumise ? 'Remise ✓' : 'À faire'}
+                </span>
+              )}
             </div>
-          </div>
-          <span className={`${styles.questBadge} ${item.soumise ? styles.questBadgeDone : styles.questBadgeTodo}`}>
-            {item.soumise ? 'Remise ✓' : 'À faire'}
-          </span>
-        </div>
-      ))}
-    </section>
+          );
+        })}
+      </section>
+      {habiletes.length > 0 && (
+        <section className={styles.section}>
+          <HabiletesBlock habiletes={habiletes} />
+        </section>
+      )}
+    </>
   );
 }
 
@@ -1019,7 +1046,7 @@ export default function ProfilPanel({ eleveId }: ProfilPanelProps) {
   const [general, setGeneral] = useState<ProfilGeneral | null>(null);
   const [lecture, setLecture] = useState<ProfilSection | null>(null);
   const [ecriture, setEcriture] = useState<ProfilSection | null>(null);
-  const [recherche, setRecherche] = useState<RechercheItem[] | null>(null);
+  const [recherche, setRecherche] = useState<ProfilRecherche | null>(null);
   const [vocabulaire, setVocabulaire] = useState<ProfilVocabulaire | null>(null);
   const fetchedTabs = useRef(new Set<TabId>());
 
@@ -1080,7 +1107,7 @@ export default function ProfilPanel({ eleveId }: ProfilPanelProps) {
         <EmptyState icon="🗣️" message="Aucune activité orale évaluée pour le moment." />
       )}
       {activeTab === 'rechercher' && (
-        recherche ? <RechercheTab items={recherche} /> : loadingState
+        recherche ? <RechercheTab data={recherche} /> : loadingState
       )}
       {activeTab === 'vocabulaire' && (
         vocabulaire ? <VocabulaireTab data={vocabulaire} profView={!!eleveId} /> : loadingState

@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
         atelier: data.atelier || atelierParDispositif(data.typeTravail || 'ecrire').id,
         habiletes: Array.isArray(data.habiletes) ? data.habiletes : null,
         questionnaireId: data.questionnaireId || undefined,
+        scenarisationRef: data.scenarisationRef || null,
         codeAcces: data.codeAcces || undefined,
         vocabulaireThemes: data.vocabulaireThemes || undefined,
         vocabulaireDiagnostic: data.vocabulaireDiagnostic ?? undefined,
@@ -219,10 +220,11 @@ export async function POST(request: NextRequest) {
     // Validation des champs requis. Seules les activités d'écriture s'appuient
     // sur une grille : lecture, recherche et vocabulaire portent leur
     // didactique dans leurs habiletés.
+    // Classes et date de remise sont facultatives (activité préparée à l'avance).
     const grilleRequired = (typeTravail || 'ecrire') === 'ecrire';
-    if (!Array.isArray(classes) || !dateRemise || (grilleRequired && !grille) || !intitule) {
+    if (!Array.isArray(classes) || (grilleRequired && !grille) || !intitule) {
       return NextResponse.json(
-        { success: false, message: 'Date de remise, grille et intitulé requis' },
+        { success: false, message: 'Grille et intitulé requis' },
         { status: 400 }
       );
     }
@@ -234,7 +236,8 @@ export async function POST(request: NextRequest) {
     const devoirData: Record<string, unknown> = {
       id,
       classes,
-      dateRemise: new Date(dateRemise),
+      // null (et non champ absent) : orderBy('dateRemise') exclurait le document
+      dateRemise: dateRemise ? new Date(dateRemise) : null,
       grille,
       intitule,
       consignes: consignes || '',

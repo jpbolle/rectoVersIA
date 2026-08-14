@@ -90,13 +90,11 @@ travaillées » de l'onglet Lire du profil.
 
 ## TODO
 
-- [ ] **Tester à l'écran** — seul `/admin → Gestion didactique` a été vérifié.
-      Restent la création d'activité (les 4 ateliers), la correction d'un
-      questionnaire de lecture, l'onglet Évaluation élève, le profil.
-- [ ] **`competences` sur les questions NavigKid** (`NavigKidQuestion`) : une
-      activité de recherche déclare ses habiletés mais aucune trace **par
-      habileté** ne remonte au profil, faute de savoir quelle question travaille
-      quoi. Le pendant de ce qui a été fait pour la lecture.
+- [x] **Testé à l'écran et déployé** (constaté le 2026-08-14 : aucun bug relevé).
+- [x] **`competences` sur les questions NavigKid** — livré le 2026-08-14 avec
+      la notation des recherches (voir `rollup_recherche.md`). Les habiletés se
+      cochent question par question dans le constructeur ; l'agrégation suit la
+      même règle qu'en lecture. **Reste à tester.**
 - [ ] Associer habiletés d'écriture et grilles (roadmap, dit par JP).
 - [ ] `eslint` : « Compilation Skipped » sur `CreationForm` — le React Compiler
       renonce à mémoriser le composant depuis les changements du jour. Sans

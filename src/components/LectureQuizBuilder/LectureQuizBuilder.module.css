@@ -715,3 +715,35 @@
   color: var(--c-text-muted);
   padding: 2px;
 }
+
+/* ── Texte joint à la question (icône 📄) ── */
+.docBlock {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+}
+
+.docLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-secondary);
+  margin-bottom: 6px;
+}
+
+.docTextarea {
+  width: 100%;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  font-family: inherit;
+  color: var(--c-text);
+  resize: vertical;
+  background: var(--c-bg-card);
+}

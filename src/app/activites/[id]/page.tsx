@@ -490,13 +490,8 @@ export default function TravailPage() {
       highlight: hasRemarques,
     });
   }
-  if (hasNavigkid) {
-    railTabs.push({
-      id: 'recherche',
-      label: isRecherche ? 'Statistiques' : 'Recherche',
-      icon: ICON_RECHERCHE,
-    });
-  }
+  // Pas d'onglet Recherche : scores, habiletés et statistiques sont réunis
+  // dans Évaluation (RechercheEvaluation)
   railTabs.push({ id: 'grille', label: 'Évaluation', icon: ICON_GRILLE });
 
   const PANEL_TITLES: Partial<Record<TabType, string>> = {
@@ -505,7 +500,6 @@ export default function TravailPage() {
     grille: 'Évaluation',
     ia: 'Aide IA à la réécriture',
     remarques: 'Remarques du professeur',
-    recherche: isRecherche ? 'Statistiques' : 'Recherche',
   };
   const panelTitle = PANEL_TITLES[activeTab] ?? '';
 
@@ -603,6 +597,8 @@ export default function TravailPage() {
                 questions={nkQuestions}
                 reponse={nkReponse}
                 studentView={!isPreviewMode}
+                scores={correction?.rechercheScores}
+                showScores={correction?.visibleParEleve === true}
               />
               {!hasRechercheReponse && devoir.questionnaireId && (
                 <RechercheStartOverlay

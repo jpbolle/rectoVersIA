@@ -114,8 +114,10 @@ Trois couches qui doivent rester cohérentes : **interface ⊆ route serveur ⊆
 ```typescript
 interface Devoir {
   id: string;                    // DEV-YYYYMMDD-XXXX
-  classes: string[];             // noms de classes (["4A", "4B"])
-  dateRemise: Timestamp;
+  classes: string[];             // noms de classes (["4A", "4B"]) — peut être VIDE
+  dateRemise: Timestamp | null;  // FACULTATIVE (null) : une activité se prépare
+                                 // avant de connaître ses classes de l'année.
+                                 // null et non « champ absent » : orderBy l'exclurait.
   grille: string;
   intitule: string;
   consignes: string;
@@ -181,6 +183,9 @@ interface Correction {
   profId: string;
   evaluation: Record<string, number>;
   questionScores?: Record<string, number>; // questionnaire de lecture : points des questions ouvertes
+  // Recherche : deux notes par question (clé = index) — la réponse et la
+  // démarche, jamais mélangées. Voir src/lib/recherche-scoring.ts.
+  rechercheScores?: Record<string, { reponse?, reponseComment?, demarche?, demarcheComment? }>;
   commentaireGeneral: string;
   annotatedContent?: string;     // HTML annote par le prof
   audioAnnotations?: AudioAnnotation[];   // base64 dans Firestore, pas de Storage
@@ -233,7 +238,12 @@ interface Questionnaire {
 ```
 
 ### Autres collections
-- `configuration/didactique` : UAA + **habiletés**. Une habileté =
+- `scenarisations` : une par cours. `chapitres[].modules[].activites[]` imbriqués —
+  accès **serveur uniquement**, donc **aucune règle Firestore**. Une activité de
+  module peut être hors application (pas de `devoirId`).
+- `configuration/didactique` : UAA + **habiletés** + **méthodes d'enseignement**
+  (`methodes`, liste ouverte tenue par l'admin, lue par la colonne Méthode des
+  modules). Une habileté =
   `{ id, type (mode principal), geste, label, objets[], uaa[], ateliers[], visible }`.
   Le **geste** n'est pas une entité : c'est le libellé partagé par plusieurs
   habiletés. Importée une fois depuis `scripts/data/ceintures-et-habiletes.csv`
@@ -286,7 +296,7 @@ interface Questionnaire {
 | `/dashboard/travaux/[devoirId]` | prof | Travaux par devoir (3 colonnes) |
 | `/dashboard/travaux/[devoirId]/[travailId]` | prof | Correction + annotations (`ResizableSplit`) |
 | `/classes` | prof | Gestion classes et élèves + bloc « Mes Élèves » (tous les élèves, filtre actifs/archivés, recherche) ; clic sur un élève (bloc ou détail de classe) → fiche complète en popup (`EleveProfilModal` → `ProfilPanel`) |
-| `/grilles` | prof | Mes Ressources : onglets Grilles + Listes de vocabulaire |
+| `/grilles` | prof | Mes Ressources : onglets Grilles + Listes de vocabulaire + **Design & scénarisation didactique** (`ScenarisationPanel`) |
 | `/archives` | prof | Devoirs archivés |
 | `/admin` | admin | Titre de page = nom de l'onglet actif (`ADMIN_TABS`, source unique dans `Header.tsx`). Header dédié (variant `admin`) en onglets : Vue d'ensemble (stats) / Gestion des membres (professeurs) / Gestion didactique (UAA + habiletés, `DidactiquePanel`) / Gestion des coûts (compteurs d'usage IA — pas de suivi tokens) |
 | `/roadmap` | tous | Nouveautés + à venir — **pilotée par Firestore**, éditable par l'admin (drag « À venir » → « Nouveautés » pour marquer fait) |
@@ -318,7 +328,8 @@ interface Questionnaire {
 | `/api/eleves`, `/api/eleves/[id]`, `/api/eleves/bulk`, `/api/eleves/link` | CRUD | Import masse (max 500), liaison UID |
 | `/api/grilles`, `/api/grilles/[name]` | CRUD | Mes grilles + shared + autres profs |
 | `/api/preferences` | GET, PUT | Préférences éditeur |
-| `/api/profil/{general,lecture,ecriture,recherche,vocabulaire}` | GET | Profil élève, un endpoint par onglet — helpers dans `src/lib/profil-stats.ts` ; `?eleveId=` réservé au prof (fiche élève — `src/lib/profil-target.ts` vérifie l'appartenance à ses classes) |
+| `/api/profil/{general,lecture,ecriture,recherche,vocabulaire}` | GET | Profil élève, un endpoint par onglet — `recherche` renvoie `{ items, habiletes }` — helpers dans `src/lib/profil-stats.ts` ; `?eleveId=` réservé au prof (fiche élève — `src/lib/profil-target.ts` vérifie l'appartenance à ses classes) |
+| `/api/scenarisations`, `/api/scenarisations/[id]` | CRUD | Scénarisations didactiques (une par cours) — document unique par scénarisation, chapitres et modules **imbriqués**. Le PUT réécrit tout et pose/efface `devoir.scenarisationRef` (passerelle en retour) |
 | `/api/didactique` | GET, PUT | Config didactique (UAA + habiletés) — doc `configuration/didactique`, GET tout connecté, PUT admin ; le GET **normalise** les champs absents des documents anciens (`objets`, `ateliers`) ; hook client `useDidactique` (cache partagé) |
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |
 | `/api/professeurs`, `/api/admin/stats`, `/api/admin/prof-stats/[profId]` | — | Admin (profId = email encodé) |
@@ -342,8 +353,17 @@ interface Questionnaire {
   difficiles/flashcards), `VocabulaireList`, `VocabulaireExercises`,
   `VocabulaireEvaluation` (mots croisés + syn/ant + composition), `VocabulaireStats`,
   `VocabulaireListReadOnly` (vue prof)
-- NavigKid : `QuestionnaireBuilder`, `RechercheResponseViewer` (✅/❌ + bonne réponse
-  sur les QCM quand le corrigé est disponible), `RechercheStatsTab`,
+- NavigKid : `QuestionnaireBuilder` (blocs repliables, drag & drop, duplication,
+  habiletés et **deux barèmes** par question — réponse / démarche —, icône 📄
+  texte joint ; même forme que `LectureQuizBuilder`), `QuestionnairePreviewModal`
+  (aperçu du questionnaire tel que l'élève le lit dans l'extension — la page
+  élève étant voilée, elle ne peut pas servir d'aperçu),
+  `RechercheResponseViewer` (**écran de correction** : une carte par question,
+  deux blocs Démarche/Réponse, chacun avec sa **gouttière de correction à
+  droite** — ✔ / ? / ✘ + points + remarque ; sous 1150 px la gouttière repasse
+  dessous), `RechercheEvaluation` (onglet Évaluation : les deux scores, les
+  habiletés, les statistiques — **il n'y a plus d'onglet « Recherche »**),
+  `RechercheStatsTab` (replié dans Évaluation),
   `RechercheStartOverlay` (voile flouté + popup **non fermable** sur la colonne 1 tant
   que l'élève n'a pas envoyé ses réponses ; le bouton ouvre Google + le panneau de
   l'extension), `RechercheResume` (compteurs justes/erreurs/à corriger, en tête de
@@ -451,6 +471,15 @@ branchements existants.
 La duplication d'activité copie l'intitulé ET le tableau `classes` : côté élève, deux
 cartes homonymes peuvent coexister légitimement dans des blocs différents.
 
+### Envoi de fichier : ne jamais passer `getAuthHeaders()` tel quel
+`getAuthHeaders()` pose `Content-Type: application/json`. Passé à un `fetch`
+dont le corps est un `FormData`, il empêche le navigateur d'écrire son propre
+`multipart/form-data; boundary=…` → le serveur ne sait plus lire l'envoi.
+**Symptôme** : « erreur d'upload : content-type was not one of
+multipart/form-data or application/x-www-form-urlencoded ».
+**Remède** : `headers: { Authorization: headers.Authorization }` uniquement
+(voir `RessourcesInput`, `LectureQuizBuilder`).
+
 ### Pseudo-élément ::highlight non parsé par Turbopack
 Le parseur CSS de Turbopack rejette `::highlight(...)` (API CSS Custom Highlight) dans
 les fichiers CSS → **build cassé**. **Remède** : injecter la règle en JavaScript
@@ -538,11 +567,21 @@ prof.
   ignoré par git). NavigKid : l'extension n'accède plus à Firestore — `reponses` et
   `recherches` passent par `/api/navigkid/reponse` (POST) et `/api/navigkid/recherches`
   (POST), qui chiffrent `eleveNom`/`eleveEmail`.
+- `src/types/scenarisation.ts` — modèle de la scénarisation (parcours >
+  chapitres > modules > activités) et ses calculs : `capacitePeriode`
+  (semaines × heures/semaine ÷ durée d'une période), `periodesPlanifiees`,
+  `formatDuree`. **Le prof saisit des périodes, jamais des heures.**
+- `src/lib/scenarisation-server.ts` — nettoyage avant écriture : le PUT
+  réécrit le document entier, tout champ non reconnu est perdu.
 - `src/types/didactique.ts` — modèle didactique : `TypeModal` (mode principal),
   `ATELIERS` (liste **fermée**, chaque atelier lié à un dispositif = `typeTravail`),
   `Habilete`, `habiletesPourAtelier`, `ATELIER_PAR_MODE`.
 - `src/lib/lecture-scoring.ts` — notation d'un questionnaire de lecture et
   agrégation par habileté. Partagé serveur (profil) et client (onglets Évaluation).
+- `src/lib/recherche-scoring.ts` — son pendant pour la recherche : **deux
+  volets** (réponses / démarche), QCM recalculés à chaque lecture, note du prof
+  prioritaire sur l'automatique, agrégation par habileté, statistiques de
+  recherche. Un volet dont le barème vaut 0 n'est pas noté.
 - `src/lib/navigkid-server.ts` — filtrage des éléments de correction NavigKid
   (`correctes`, `reponseAttendue`, `referencesProf`) pour le rôle élève + calcul du
   récapitulatif. **Serveur uniquement** — pendant de `lecture-server.ts`. Rappel :

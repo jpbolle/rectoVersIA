@@ -89,6 +89,29 @@ export async function PATCH(
       }
       updateData.questionScores = clean;
     }
+
+    if (body.rechercheScores !== undefined) {
+      // Activité de recherche : deux notes + deux commentaires par question
+      const raw = body.rechercheScores;
+      const clean: Record<string, Record<string, number | string>> = {};
+      if (raw && typeof raw === 'object') {
+        for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+          if (!v || typeof v !== 'object') continue;
+          const src = v as Record<string, unknown>;
+          const entry: Record<string, number | string> = {};
+          for (const champ of ['reponse', 'demarche'] as const) {
+            const n = src[champ];
+            if (typeof n === 'number' && Number.isFinite(n) && n >= 0) entry[champ] = n;
+          }
+          for (const champ of ['reponseComment', 'demarcheComment'] as const) {
+            const t = src[champ];
+            if (typeof t === 'string' && t.trim()) entry[champ] = t;
+          }
+          if (Object.keys(entry).length) clean[k] = entry;
+        }
+      }
+      updateData.rechercheScores = clean;
+    }
     if (body.draftAnnotations !== undefined) {
       updateData.draftAnnotations = body.draftAnnotations;
     }

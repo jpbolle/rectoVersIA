@@ -5,6 +5,7 @@ import Toggle from '@/components/Toggle/Toggle';
 import DatePicker from '@/components/DatePicker/DatePicker';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
 import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/QuestionnaireBuilder';
+import QuestionnairePreviewModal from '@/components/QuestionnairePreviewModal/QuestionnairePreviewModal';
 import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import PlanDraft from '@/components/DraftEditor/PlanDraft';
 import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
@@ -71,6 +72,8 @@ export default function EditDevoirModal({
 
   const [selectedClasses, setSelectedClasses] = useState<Classe[]>([]);
   const [dateRemise, setDateRemise] = useState('');
+  // Aperçu du questionnaire de recherche (popup)
+  const [showQuestionnairePreview, setShowQuestionnairePreview] = useState(false);
   const [grille, setGrille] = useState('');
   const [intitule, setIntitule] = useState('');
   // Critères de la grille masqués pour cette activité (popup au choix de la grille)
@@ -172,11 +175,8 @@ export default function EditDevoirModal({
     ? grilles.filter((g) => !g.ateliers.length || g.ateliers.includes(atelierId)).map((g) => g.name)
     : grilleTypes;
 
-  const isValid =
-    selectedClasses.length > 0 &&
-    dateRemise &&
-    (!usesGrille || grille) &&
-    intitule.trim();
+  // Classes et date de remise facultatives — cf. CreationForm
+  const isValid = (!usesGrille || grille) && intitule.trim();
 
   // Le verso porte-t-il du contenu ? (point orange sur l'onglet Verso)
   const versoHasContent =
@@ -281,7 +281,7 @@ export default function EditDevoirModal({
       {/* Classes */}
       <div className={styles.formGroup}>
         <label className={styles.label}>
-          Classe(s) <span className={styles.required}>*</span>
+          Classe(s) <span className={styles.optional}>— facultatif</span>
         </label>
         <ClassesDropdown
           options={classeNames}
@@ -323,11 +323,10 @@ export default function EditDevoirModal({
       <div className={styles.formRow}>
         <div className={styles.formGroup}>
           <DatePicker
-            label="Date de remise"
+            label="Date de remise — facultatif"
             value={dateRemise}
             onChange={setDateRemise}
             min={getTodayString()}
-            required
           />
         </div>
 
@@ -586,8 +585,26 @@ export default function EditDevoirModal({
             titre={intitule}
             disabled={isSaving}
             getAuthHeaders={getAuthHeaders}
+            allowedHabiletes={habiletes}
           />
+          <button
+            type="button"
+            className={styles.previewBtn}
+            onClick={() => setShowQuestionnairePreview(true)}
+            disabled={isSaving || nkQuestions.length === 0}
+          >
+            👁 Aperçu du questionnaire — tel que l’élève le lira dans NavigKid!
+          </button>
         </div>
+      )}
+
+      {showQuestionnairePreview && (
+        <QuestionnairePreviewModal
+          titre={intitule}
+          consignes={consignes}
+          questions={nkQuestions}
+          onClose={() => setShowQuestionnairePreview(false)}
+        />
       )}
 
       {/* Type vocabulaire : rien de spécifique */}

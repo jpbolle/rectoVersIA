@@ -25,18 +25,170 @@
 }
 
 .questionCard {
-  margin-bottom: 24px;
-  padding: 16px;
+  margin-bottom: 20px;
   background: var(--c-bg-card);
   border: 1px solid var(--c-border);
   border-radius: var(--c-radius-lg);
+  overflow: hidden;
 }
 
 .questionHeader {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin-bottom: 12px;
+  padding: 13px 15px;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.questionScore {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-primary);
+  background: var(--c-bg-card);
+  border: 1.5px solid var(--c-primary);
+  border-radius: var(--c-radius);
+  padding: 3px 10px;
+}
+
+/* ─── Le bloc à deux colonnes : production | correction ─── */
+
+.block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  border-bottom: 1px dashed var(--c-border);
+}
+
+.block:last-child {
+  border-bottom: none;
+}
+
+.prod {
+  padding: 12px 15px;
+  min-width: 0;
+}
+
+.prod > * + * {
+  margin-top: 9px;
+}
+
+/* ─── Gouttière de correction ─── */
+
+.gutter {
+  border-left: 1px dashed var(--c-border);
+  background: rgba(212, 148, 76, 0.05);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.gutterLabel {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}
+
+.gutterScore {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--c-primary);
+}
+
+.gutterScoreMax {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-text-secondary);
+}
+
+.gutterComment {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--c-text);
+  border-left: 3px solid var(--c-accent);
+  padding-left: 8px;
+}
+
+.gutterNote {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--c-text-dim);
+}
+
+.verdicts {
+  display: flex;
+  gap: 5px;
+}
+
+.vBtn {
+  flex: 1;
+  height: 34px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  font-size: 15px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.vBtn:hover {
+  border-color: var(--c-text-secondary);
+}
+
+.vBtnOn.vOk {
+  background: rgba(45, 106, 90, 0.12);
+  border-color: var(--c-primary);
+}
+
+.vBtnOn.vHalf {
+  background: rgba(212, 148, 76, 0.18);
+  border-color: var(--c-accent);
+}
+
+.vBtnOn.vNo {
+  background: rgba(197, 87, 100, 0.12);
+  border-color: #c55764;
+}
+
+.ptsRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ptsInput {
+  width: 60px;
+  padding: 6px 8px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: center;
+  background: var(--c-bg-card);
+  color: var(--c-text);
+}
+
+.ptsMax {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+}
+
+.gutterTextarea {
+  width: 100%;
+  min-height: 62px;
+  padding: 7px 9px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+  resize: vertical;
+  background: var(--c-bg-card);
+  color: var(--c-text);
 }
 
 .questionNumber {
@@ -127,29 +279,65 @@
   font-style: italic;
 }
 
-.qcmReponse {
-  padding: 8px 14px;
-  background: var(--c-bg-element);
-  border-radius: var(--c-radius);
-  font-size: 14px;
-  color: var(--c-text);
-  border-left: 3px solid var(--c-accent);
-}
+/* ─── Verdict porté par la réponse elle-même ─── */
 
-/* ─── Corrigé (visible seulement quand le prof l'a rendu disponible) ─── */
-
-.qcmCorrect {
+.reponseJuste {
   background: rgba(45, 106, 90, 0.1);
-  border-left-color: var(--c-primary);
+  border-left: 4px solid var(--c-primary);
 }
 
-.qcmIncorrect {
+.reponsePartielle {
+  background: rgba(212, 148, 76, 0.14);
+  border-left: 4px solid var(--c-accent);
+}
+
+.reponseFausse {
   background: rgba(197, 87, 100, 0.1);
-  border-left-color: #c55764;
+  border-left: 4px solid #c55764;
 }
 
-.corrigeMarque {
-  margin-right: 8px;
+.autoRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  font-size: 12.5px;
+}
+
+.autoJuste {
+  font-weight: 600;
+  color: var(--c-primary);
+}
+
+.autoFausse {
+  font-weight: 600;
+  color: #c55764;
+}
+
+.autoOverride {
+  font-weight: 600;
+  color: var(--c-accent);
+}
+
+.autoNeutre {
+  color: var(--c-text-secondary);
+  font-style: italic;
+}
+
+.contesterBtn {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  padding: 5px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.contesterBtn:hover {
+  background: var(--c-bg-element);
+  color: var(--c-text);
 }
 
 .bonneReponse {
@@ -329,12 +517,38 @@
 
 /* ─── Responsive ─── */
 
-@media (max-width: 768px) {
-  .container {
-    padding: 12px;
+/* Colonne étroite (Chromebook, panneau de droite ouvert) : la gouttière
+   repasse sous la production, en ligne compacte */
+@media (max-width: 1150px) {
+  .block {
+    grid-template-columns: 1fr;
   }
 
-  .questionCard {
+  .gutter {
+    border-left: none;
+    border-top: 1px dashed var(--c-border);
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .verdicts {
+    flex: 0 0 auto;
+  }
+
+  .vBtn {
+    width: 36px;
+    flex: 0 0 auto;
+  }
+
+  .gutterTextarea {
+    flex: 1 1 100%;
+    min-height: 46px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
     padding: 12px;
   }
 

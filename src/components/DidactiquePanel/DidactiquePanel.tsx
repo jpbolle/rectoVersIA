@@ -68,6 +68,7 @@ export default function DidactiquePanel() {
 
   // Ajout d'une UAA
   const [uaaDraft, setUaaDraft] = useState('');
+  const [methodeDraft, setMethodeDraft] = useState('');
 
   // Popup de création d'habileté
   const [creating, setCreating] = useState<TypeModal | null>(null);
@@ -193,6 +194,34 @@ export default function DidactiquePanel() {
     const id = String(Math.max(-1, ...config.uaa.map((u) => Number(u.id) || 0)) + 1);
     updateUaa([...config.uaa, { id, label, visible: true }]);
     setUaaDraft('');
+  };
+
+  // ── Méthodes d'enseignement ────────────────────────────────────────────
+  // Alimentent la colonne « Méthode » des modules d'une scénarisation
+  // (Mes Ressources → Design & scénarisation didactique).
+  const updateMethodes = (items: DidactiqueItem[]) => {
+    if (!config) return;
+    persist({ ...config, methodes: items });
+  };
+
+  const addMethode = () => {
+    if (!config) return;
+    const label = methodeDraft.trim();
+    if (!label) return;
+    // Identifiant lisible dérivé du libellé — stable une fois posé
+    const base = label
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40);
+    const existants = new Set(config.methodes.map((m) => m.id));
+    let id = base || `methode-${config.methodes.length + 1}`;
+    let n = 2;
+    while (existants.has(id)) id = `${base}-${n++}`;
+    updateMethodes([...config.methodes, { id, label, visible: true }]);
+    setMethodeDraft('');
   };
 
   // ── Filtrage ───────────────────────────────────────────────────────────
@@ -483,6 +512,100 @@ export default function DidactiquePanel() {
               placeholder="Intitulé de la nouvelle UAA..."
             />
             <button type="button" className={styles.addBtn} onClick={addUaa} disabled={isSaving}>
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Méthodes d'enseignement — liste ouverte, alimentée par l'admin, lue
+          par la colonne « Méthode » des modules d'une scénarisation */}
+      <div className={`${styles.card} ${styles.card_uaa}`}>
+        <div className={styles.cardHeadStatic}>
+          <span className={styles.cardTitle}>Méthodes d&apos;enseignement</span>
+          <span className={styles.cardCount}>
+            Proposées aux modules d&apos;une scénarisation — {config.methodes.length} au total
+          </span>
+        </div>
+        <div className={styles.cardBody}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th className={styles.colEye} />
+                <th>Intitulé</th>
+                <th className={styles.colAct} />
+              </tr>
+            </thead>
+            <tbody>
+              {config.methodes.map((m) => (
+                <tr key={m.id} className={m.visible ? '' : styles.rowHidden}>
+                  <td>
+                    <button
+                      type="button"
+                      className={styles.iconBtn}
+                      onClick={() =>
+                        updateMethodes(
+                          config.methodes.map((x) =>
+                            x.id === m.id ? { ...x, visible: !x.visible } : x
+                          )
+                        )
+                      }
+                      title={m.visible ? 'Masquer dans les formulaires' : 'Afficher dans les formulaires'}
+                    >
+                      {m.visible ? '👁' : '🚫'}
+                    </button>
+                  </td>
+                  <td>
+                    <input
+                      className={styles.cell}
+                      value={m.label}
+                      onChange={(e) =>
+                        setConfig((c) =>
+                          c
+                            ? {
+                                ...c,
+                                methodes: c.methodes.map((x) =>
+                                  x.id === m.id ? { ...x, label: e.target.value } : x
+                                ),
+                              }
+                            : c
+                        )
+                      }
+                      onBlur={commit}
+                    />
+                  </td>
+                  <td className={styles.actions}>
+                    <button
+                      type="button"
+                      className={`${styles.iconBtn} ${styles.iconDelete}`}
+                      onClick={() => {
+                        if (window.confirm(`Supprimer la méthode « ${m.label} » ?`)) {
+                          updateMethodes(config.methodes.filter((x) => x.id !== m.id));
+                        }
+                      }}
+                      title="Supprimer définitivement"
+                    >
+                      🗑
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className={styles.addRow}>
+            <input
+              className={styles.addInput}
+              value={methodeDraft}
+              onChange={(e) => setMethodeDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addMethode();
+                }
+              }}
+              placeholder="Nouvelle méthode : cours magistral, classe inversée…"
+            />
+            <button type="button" className={styles.addBtn} onClick={addMethode} disabled={isSaving}>
               +
             </button>
           </div>
