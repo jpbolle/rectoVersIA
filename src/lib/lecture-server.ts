@@ -122,9 +122,13 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
 }
 
 // Version élève : retire les bonnes réponses des QCM, les réponses idéales
-// et le soulignage attendu. À n'appliquer que tant que le corrigé n'est pas
-// disponible — une fois corrigeDisponible, l'élève reçoit le quiz complet
-// pour voir ce qu'il a réussi ou raté.
+// et le soulignage attendu. À n'appliquer que tant qu'aucune des deux portes
+// n'est ouverte pour cet élève :
+//  - `devoir.corrigeDisponible` — le prof ouvre le corrigé à toute la classe ;
+//  - `correction.visibleParEleve` — la correction de CET élève lui est rendue.
+// La seconde n'est pas un confort : l'onglet Évaluation calcule le score côté
+// client, et sans ces champs les QCM et les soulignages sortent du total.
+// Voir /api/devoirs/[id] (`quizComplet`).
 export function lectureQuizForEleve(quiz: LectureQuiz | null | undefined): LectureQuiz | null {
   if (!quiz) return null;
   return {

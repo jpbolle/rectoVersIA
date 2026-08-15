@@ -12,6 +12,8 @@
 import { useDidactique } from '@/hooks/useDidactique';
 import { habileteLabel, habileteObjets } from '@/types/didactique';
 import { scoreLectureQuiz } from '@/lib/lecture-scoring';
+import { bilanConfiance } from '@/lib/confiance-scoring';
+import ConfianceBilan from '@/components/ConfianceBilan';
 import { parseLectureAnswers, LECTURE_COMPETENCE_LABELS } from '@/types/lecture';
 import type { LectureCompetence, LectureQuiz } from '@/types/lecture';
 import styles from './LectureEvaluation.module.css';
@@ -22,6 +24,8 @@ interface Props {
   questionScores?: Record<string, number>;
   // false = la correction n'est pas encore rendue : on masque les chiffres
   showScores?: boolean;
+  // Vue prof : le bilan de lucidité s'adresse au professeur, pas à l'élève
+  isProfessorView?: boolean;
 }
 
 function couleur(percent: number): string {
@@ -36,6 +40,7 @@ export default function LectureEvaluation({
   travailContent,
   questionScores,
   showScores = true,
+  isProfessorView = false,
 }: Props) {
   const { config } = useDidactique();
 
@@ -65,6 +70,23 @@ export default function LectureEvaluation({
     );
   }
 
+  // Lucidité : ce que l'élève annonçait, confronté à ce qu'il a obtenu.
+  // Une question non notée n'a rien à confronter — elle sort du calcul.
+  const bilan = bilanConfiance(
+    (quiz.questions ?? [])
+      .filter((q) => q.type !== 'info')
+      .map((q) => {
+        const s = score.parQuestion.find((x) => x.questionId === q.id);
+        return {
+          questionId: q.id,
+          enonce: q.enonce,
+          percent:
+            s && s.points !== null && s.max > 0 ? Math.round((s.points / s.max) * 100) : null,
+          confiance: answers[q.id]?.confiance,
+        };
+      })
+  );
+
   const rows = [...score.parHabilete].sort((a, b) => {
     const pa = a.max ? a.points / a.max : 0;
     const pb = b.max ? b.points / b.max : 0;
@@ -73,23 +95,25 @@ export default function LectureEvaluation({
 
   return (
     <div className={styles.wrap}>
+      {/* Même bandeau de total que la recherche (RechercheEvaluation) : les
+          deux dispositifs se notent par habiletés, ils s'annoncent pareil. */}
       <div className={styles.total}>
+        <span className={styles.totalLabel}>Total</span>
         <span className={styles.totalValue}>
-          {score.points}<span className={styles.totalMax}>/{score.max}</span>
+          {score.points} / {score.max}
         </span>
         {score.percent !== null && (
-          <span className={styles.totalPercent} style={{ color: couleur(score.percent) }}>
-            {score.percent}%
+          <span className={styles.totalPercent}>{score.percent} %</span>
+        )}
+        {score.aNoter > 0 && (
+          <span className={styles.totalPartiel}>
+            Score partiel — {score.aNoter} question{score.aNoter > 1 ? 's' : ''} pas encore
+            notée{score.aNoter > 1 ? 's' : ''} par ton professeur, et donc hors total.
           </span>
         )}
       </div>
 
-      {score.aNoter > 0 && (
-        <p className={styles.pending}>
-          {score.aNoter} question{score.aNoter > 1 ? 's' : ''} pas encore notée
-          {score.aNoter > 1 ? 's' : ''} — hors du total.
-        </p>
-      )}
+      <ConfianceBilan bilan={bilan} isProfessorView={isProfessorView} />
 
       <h4 className={styles.title}>Par habileté</h4>
 

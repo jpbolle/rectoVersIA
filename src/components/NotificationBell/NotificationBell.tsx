@@ -6,22 +6,26 @@
 // désactiver les notifications depuis le menu.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { PAGES_APP } from '@/types/annonce';
 import styles from './NotificationBell.module.css';
 
 const POLL_MS = 5 * 60 * 1000; // rafraîchissement en arrière-plan
 
 interface NotifItem {
   id: string;
-  type: 'remise' | 'activite' | 'corrige';
+  type: 'remise' | 'activite' | 'corrige' | 'annonce';
   title: string;
   sub: string;
   date: string;
+  href?: string;                 // annonce avec lien : l'item devient cliquable
 }
 
 interface NotifData {
   notifications: NotifItem[];
   lastSeen: string | null;
+  read: string[];                // ids éteints un par un (clic sur la notification)
   enabled: boolean;
   isAdmin: boolean;
 }
@@ -30,7 +34,17 @@ const TYPE_ICONS: Record<NotifItem['type'], string> = {
   remise: '📥',
   activite: '📝',
   corrige: '✅',
+  annonce: '📢',
 };
+
+// Nom lisible de la page pointée par une annonce. Un chemin tapé à la main
+// (une activité précise) n'est dans aucune liste : on annonce alors « Ouvrir
+// la page » plutôt que d'afficher une adresse brute à l'élève.
+function pageLabel(href: string): string {
+  const page = PAGES_APP.find((p) => p.path === href);
+  if (page) return page.label.replace(/\s*\((prof|élève)\)$/, '');
+  return 'Ouvrir la page';
+}
 
 // « 14:32 » aujourd'hui, « 2 mai » sinon
 function formatNotifDate(iso: string): string {
@@ -80,7 +94,11 @@ export default function NotificationBell({ variant }: { variant: 'prof' | 'stude
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const save = useCallback(async (payload: { lastSeen?: string; enabled?: boolean }) => {
+  const save = useCallback(async (payload: {
+    lastSeen?: string;
+    enabled?: boolean;
+    read?: string;
+  }) => {
     try {
       const headers = await getAuthHeaders();
       if (!headers) return;
@@ -99,14 +117,23 @@ export default function NotificationBell({ variant }: { variant: 'prof' | 'stude
   const enabled = data?.enabled !== false;
   const notifications = data?.notifications || [];
   const lastSeen = data?.lastSeen || '';
-  const unread = enabled
-    ? notifications.filter((n) => !lastSeen || n.date > lastSeen).length
-    : 0;
+  const read = data?.read || [];
+  // Non lue : postérieure au dernier « tout marquer » ET jamais cliquée
+  const isUnreadNotif = (n: NotifItem) =>
+    (!lastSeen || n.date > lastSeen) && !read.includes(n.id);
+  const unread = enabled ? notifications.filter(isUnreadNotif).length : 0;
 
   const markAllSeen = () => {
     const now = new Date().toISOString();
     setData((prev) => (prev ? { ...prev, lastSeen: now } : prev));
     save({ lastSeen: now });
+  };
+
+  // Clic sur une notification : elle seule s'éteint, les autres restent
+  const markRead = (id: string) => {
+    if (read.includes(id)) return;
+    setData((prev) => (prev ? { ...prev, read: [...(prev.read || []), id] } : prev));
+    save({ read: id });
   };
 
   const toggleEnabled = () => {
@@ -164,9 +191,41 @@ export default function NotificationBell({ variant }: { variant: 'prof' | 'stude
           ) : (
             <div className={styles.list}>
               {notifications.map((n) => {
-                const isUnread = !lastSeen || n.date > lastSeen;
-                return (
-                  <div key={n.id} className={`${styles.item} ${isUnread ? styles.itemUnread : ''}`}>
+                const isUnread = isUnreadNotif(n);
+
+                // Une annonce n'est pas un intitulé d'activité : c'est un texte
+                // à lire en entier, avec parfois une page à ouvrir. Elle a donc
+                // sa propre mise en page, en hauteur plutôt qu'en largeur.
+                // Le clic sur la carte l'éteint, qu'elle porte un lien ou non.
+                if (n.type === 'annonce') {
+                  return (
+                    <div
+                      key={n.id}
+                      className={`${styles.annonce} ${isUnread ? styles.itemUnread : ''}`}
+                      onClick={() => markRead(n.id)}
+                    >
+                      <div className={styles.annonceHead}>
+                        <span className={styles.itemIcon}>{TYPE_ICONS.annonce}</span>
+                        <span className={styles.annonceFrom}>{n.sub}</span>
+                        <span className={styles.itemDate}>{formatNotifDate(n.date)}</span>
+                        {isUnread && <span className={styles.unreadDot} />}
+                      </div>
+                      <p className={styles.annonceText}>{n.title}</p>
+                      {n.href && (
+                        <Link
+                          href={n.href}
+                          className={styles.annonceLink}
+                          onClick={() => setOpen(false)}
+                        >
+                          → {pageLabel(n.href)}
+                        </Link>
+                      )}
+                    </div>
+                  );
+                }
+
+                const body = (
+                  <>
                     <span className={styles.itemIcon}>{TYPE_ICONS[n.type]}</span>
                     <div className={styles.itemBody}>
                       <span className={styles.itemTitle}>{n.title}</span>
@@ -174,6 +233,27 @@ export default function NotificationBell({ variant }: { variant: 'prof' | 'stude
                     </div>
                     <span className={styles.itemDate}>{formatNotifDate(n.date)}</span>
                     {isUnread && <span className={styles.unreadDot} />}
+                  </>
+                );
+                const className = `${styles.item} ${isUnread ? styles.itemUnread : ''}`;
+
+                // Chaque notification mène à ce qu'elle annonce : la copie à
+                // corriger pour le prof, l'activité pour l'élève.
+                return n.href ? (
+                  <Link
+                    key={n.id}
+                    href={n.href}
+                    className={`${className} ${styles.itemLink}`}
+                    onClick={() => {
+                      markRead(n.id);
+                      setOpen(false);
+                    }}
+                  >
+                    {body}
+                  </Link>
+                ) : (
+                  <div key={n.id} className={className} onClick={() => markRead(n.id)}>
+                    {body}
                   </div>
                 );
               })}

@@ -8,6 +8,8 @@ import { LEVEL_LABELS, LEVEL_PERCENTAGES } from '@/types/grille';
 import type { Correction } from '@/types/correction';
 import type { AiGridResult } from '@/types/ai-grid';
 import type { NonRenduStatus } from '@/types/travail';
+import LuciditeBilan from '@/components/LuciditeBilan';
+import { BILAN_GRILLE_VIDE, bilanGrille, niveauLabel, phraseGrille } from '@/lib/grille-lucidite';
 import styles from './GrilleTab.module.css';
 
 interface GrilleTabProps {
@@ -30,6 +32,8 @@ interface GrilleTabProps {
   studentContent?: string;
   // Critères masqués pour CE devoir (choisis à la création de l'activité)
   hiddenCriteria?: string[];
+  /** Auto-évaluation désactivée sur l'activité : l'élève ne se prononce pas */
+  autoEvaluation?: boolean;
   // Travail non rendu (décision du prof) — toggle en vue prof, bandeau en vue élève
   nonRendu?: NonRenduStatus | null;
   onNonRenduChange?: (nonRendu: NonRenduStatus | null) => void;
@@ -67,6 +71,7 @@ export default function GrilleTab({
   onRequestAiGrid,
   studentContent = '',
   hiddenCriteria,
+  autoEvaluation = true,
   nonRendu = null,
   onNonRenduChange,
 }: GrilleTabProps) {
@@ -217,6 +222,17 @@ export default function GrilleTab({
     ? (correction?.evaluation || null)
     : (correction?.visibleParEleve ? correction.evaluation : null);
 
+  // Lucidité : l'élève et le prof se sont prononcés sur les MÊMES critères et
+  // la MÊME échelle — l'écart se lit directement en crans. Le bloc n'apparaît
+  // qu'une fois la correction lisible : avant, il n'y a rien à confronter.
+  const lucidite = React.useMemo(
+    () =>
+      autoEvaluation
+        ? bilanGrille(grille, selfEvaluation, profEvaluation, hiddenCriteria)
+        : BILAN_GRILLE_VIDE,
+    [autoEvaluation, grille, selfEvaluation, profEvaluation, hiddenCriteria]
+  );
+
   return (
     <div className={styles.container}>
       {!isProfessorView && (
@@ -255,7 +271,9 @@ export default function GrilleTab({
 
           <div className={styles.instructionRow}>
             <p className={styles.instructionText}>
-              Evalue ton travail en choisissant pour chaque critère l&apos;indicateur qui te semble le plus pertinent.
+              {autoEvaluation
+                ? 'Evalue ton travail en choisissant pour chaque critère l’indicateur qui te semble le plus pertinent.'
+                : 'La grille d’évaluation de cette activité. Ton professeur ne t’a pas demandé de t’y situer.'}
             </p>
             {selfEvaluation && Object.keys(selfEvaluation).length > 0 && (
               <div className={styles.summary}>
@@ -298,6 +316,35 @@ export default function GrilleTab({
           ) : null}
         </div>
       )}
+
+      {/* Écart entre l'auto-évaluation de l'élève et la correction du prof.
+          Le même bloc des deux côtés : le prof voit ce que voit l'élève. */}
+      <LuciditeBilan
+        titre="Ton regard sur ton travail, face à celui du professeur"
+        tendance={lucidite.tendance}
+        comparees={lucidite.comparees}
+        justes={lucidite.justes}
+        sousEstimations={lucidite.sousEstimations}
+        surestimations={lucidite.surestimations}
+        unite="critère"
+        phrase={phraseGrille(lucidite)}
+        lignes={lucidite.ecarts
+          .filter((e) => e.net)
+          .map((e) => ({
+            id: e.criterionId,
+            label: e.nom,
+            gauche: niveauLabel(e.eleve),
+            droite: niveauLabel(e.prof),
+          }))}
+        note={
+          lucidite.sansAutoEval > 0
+            ? `${lucidite.sansAutoEval} critère${lucidite.sansAutoEval > 1 ? 's' : ''} corrigé${
+                lucidite.sansAutoEval > 1 ? 's' : ''
+              } sans auto-évaluation — hors de cette comparaison.`
+            : undefined
+        }
+        isProfessorView={isProfessorView}
+      />
 
       {/* Travail non rendu — décision du prof (jamais automatique) */}
       {isProfessorView && onNonRenduChange && (

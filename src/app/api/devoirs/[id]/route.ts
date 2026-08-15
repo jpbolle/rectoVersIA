@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { sanitizeLectureQuiz, lectureQuizForEleve } from '@/lib/lecture-server';
 import { sanitizeAutoEvalQuiz } from '@/lib/autoevaluation-server';
+import { generateTravailId } from '@/lib/travail-utils';
 import { atelierParDispositif, isTypeModal } from '@/types/didactique';
 
 export async function GET(
@@ -57,6 +58,23 @@ export async function GET(
       }
     }
 
+    // Questionnaire de lecture : l'onglet Évaluation calcule le score CÔTÉ
+    // CLIENT (lecture-scoring). Sans `correctIndex` ni `fluoAttendu`, les QCM
+    // et les soulignages sortent du total et l'élève lit un score amputé sans
+    // savoir pourquoi. Le quiz complet part donc aussi dès que SA correction
+    // lui est rendue visible — ce qui ne bascule pas le questionnaire en mode
+    // corrigé pour autant : celui-ci suit `corrigeDisponible` (voir
+    // `showCorrection` dans /activites/[id]). Même règle que les QCM d'une
+    // recherche dans /api/navigkid/questionnaire.
+    let quizComplet = corrigeAccessible;
+    if (auth.role === 'eleve' && !quizComplet && data.lectureQuiz) {
+      const correctionSnap = await adminDb
+        .collection('corrections')
+        .doc(`CORR-${generateTravailId(data.id || docSnap.id, auth.uid)}`)
+        .get();
+      quizComplet = correctionSnap.exists && correctionSnap.data()!.visibleParEleve === true;
+    }
+
     const devoir = {
       id: data.id || docSnap.id,
       classes: data.classes || [],
@@ -85,6 +103,7 @@ export async function GET(
       vocabulaireDiagnostic: data.vocabulaireDiagnostic ?? undefined,
       hiddenCriteria: data.hiddenCriteria || undefined,
       flipInverted: data.flipInverted ?? false,
+      autoEvaluation: data.autoEvaluation !== false,
       ressourcesToIA: data.ressourcesToIA ?? false,
       // Côté élève : seule la production est exposée, et uniquement quand la
       // correction est disponible (jamais le plan de référence)
@@ -95,10 +114,10 @@ export async function GET(
               : null)
           : data.corrigeReference || null,
       // Questionnaire de lecture : bonnes réponses filtrées côté élève tant
-      // que le corrigé n'est pas disponible ; quiz complet ensuite (l'élève
-      // voit ce qu'il a réussi ou raté)
+      // que ni le corrigé ni sa correction ne lui sont ouverts (voir
+      // `quizComplet` plus haut)
       lectureQuiz:
-        auth.role === 'eleve' && !corrigeAccessible
+        auth.role === 'eleve' && !quizComplet
           ? lectureQuizForEleve(data.lectureQuiz)
           : data.lectureQuiz || null,
       // Auto-évaluation : servie telle quelle, il n'y a rien à cacher
@@ -212,6 +231,9 @@ export async function PATCH(
       if (body.corrigeDisponible === true && docSnap.data()?.corrigeDisponible !== true) {
         updateData.corrigeDisponibleAt = new Date();
       }
+    }
+    if (body.autoEvaluation !== undefined) {
+      updateData.autoEvaluation = body.autoEvaluation;
     }
     if (body.flipInverted !== undefined) {
       updateData.flipInverted = body.flipInverted;

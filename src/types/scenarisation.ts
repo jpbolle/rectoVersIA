@@ -59,6 +59,9 @@ export interface ModuleActivite {
   methodes: string[];          // ids de configuration/didactique.methodes
   uaa: string[];
   gestes: string[];            // libellés de gestes (config didactique)
+  // Concepts et connaissances propres à CETTE activité — le module, lui, porte
+  // les siens dans objectifs.concepts (fiche descriptive).
+  concepts?: string;
   outils: string;
   // Avis du prof sur l'activité, écrit après coup : ce qui a marché, ce qui
   // serait à revoir. C'est la mémoire de l'année pour préparer la suivante.
@@ -99,14 +102,38 @@ export interface Certification {
   devoirId?: string | null; // l'activité certificative, si elle existe
 }
 
+// Palette d'identité des chapitres. Toutes tiennent 4,5:1 avec du blanc :
+// la couleur porte du texte dans les deux vues, elle ne peut pas être choisie
+// au seul goût. (#b7950b — 2,87:1 — et #4a9a6a — 3,43:1 — ont été assombries
+// le 2026-08-15 : elles rendaient trois chapitres sur six illisibles.)
+export const COULEURS_CHAPITRE = [
+  '#2d6a5a', // vert Classica
+  '#4a7ba6', // bleu
+  '#a6674a', // terre
+  '#7c5fa6', // violet
+  '#8a6f08', // ocre  (était #b7950b)
+  '#3d7d55', // vert clair (était #4a9a6a)
+];
+
 export interface ChapitreDidactique {
   id: string;
   titre: string;
+  // Identité visuelle du chapitre. Elle était déduite de la POSITION dans la
+  // liste : déplacer un chapitre changeait sa couleur, et donc le repère que
+  // le prof s'était construit. Elle est désormais posée à la création et suit
+  // le chapitre. Absente = repli sur la position (documents antérieurs).
+  couleur?: string;
   // Plusieurs objectifs généraux possibles — un chapitre en vise rarement un seul
   objectifsGeneraux: string[];
-  // Modules, certifications et suggestions vivent dans la MÊME liste : c'est ce
-  // qui leur permet de s'intercaler librement (cf. GenreModule)
+  // Modules et certifications vivent dans la MÊME liste : c'est ce qui leur
+  // permet de s'intercaler librement (cf. GenreModule)
   modules: ModuleDidactique[];
+  // SUGGESTIONS — des idées pour l'année prochaine, rien de plus. Ce ne sont
+  // ni des modules ni des certifications : elles ne durent pas, ne s'évaluent
+  // pas, ne se placent pas dans une période. Les glisser dans la suite des
+  // modules leur donnait un poids qu'elles n'ont pas ; elles vivent donc à
+  // part, sous une icône du bandeau de chapitre (décision JP, 2026-08-15).
+  suggestions?: string[];
   // Champs d'avant le 2026-08-14, relus une fois puis convertis en modules
   objectifGeneral?: string;
   certification?: Certification | null;
@@ -241,7 +268,7 @@ export function periodesChapitre(chapitre: ChapitreDidactique): number {
 export function normaliserScenarisation(scen: Scenarisation): Scenarisation {
   return {
     ...scen,
-    chapitres: (scen.chapitres ?? []).map((c) => {
+    chapitres: (scen.chapitres ?? []).map((c, ci) => {
       const anciennes: Certification[] = c.certifications?.length
         ? c.certifications
         : c.certification
@@ -258,13 +285,25 @@ export function normaliserScenarisation(scen: Scenarisation): Scenarisation {
           : [],
         periodes: cert.periodes || 0,
       }));
+      // Les suggestions encodées comme modules (avant le 2026-08-15) sortent
+      // de la liste et redeviennent ce qu'elles ont toujours été : du texte.
+      const modules = [...(c.modules ?? []), ...converties];
+      const ancienneSuggestions = modules
+        .filter((m) => m.genre === 'suggestion')
+        .map((m) => m.titre.trim())
+        .filter(Boolean);
+
       return {
         ...c,
         objectifsGeneraux: objectifsDe(c),
         objectifGeneral: undefined,
         certification: null,
         certifications: undefined,
-        modules: [...(c.modules ?? []), ...converties],
+        // La couleur se fige à la première lecture : celle qu'affichait le
+        // chapitre jusqu'ici devient la sienne pour de bon.
+        couleur: c.couleur || COULEURS_CHAPITRE[ci % COULEURS_CHAPITRE.length],
+        modules: modules.filter((m) => m.genre !== 'suggestion'),
+        suggestions: [...(c.suggestions ?? []), ...ancienneSuggestions],
       };
     }),
   };
@@ -303,15 +342,26 @@ export function nouveauModule(
 export const GENRES: Record<GenreModule, { label: string; icone: string; ajouter: string }> = {
   module: { label: 'Module', icone: '', ajouter: '＋ Module' },
   certification: { label: 'Certification', icone: '⭐', ajouter: '⭐ Certification' },
+  // Conservée pour relire les documents d'avant le 2026-08-15 ; plus jamais
+  // proposée à la création (voir GENRES_AJOUTABLES).
   suggestion: { label: 'Suggestion', icone: '💡', ajouter: '💡 Suggestion' },
 };
 
-export function nouveauChapitre(): ChapitreDidactique {
+// Ce qu'on peut réellement ajouter à un chapitre aujourd'hui
+export const GENRES_AJOUTABLES: GenreModule[] = ['module', 'certification'];
+
+export function couleurDeChapitre(chapitre: ChapitreDidactique, index: number): string {
+  return chapitre.couleur || COULEURS_CHAPITRE[index % COULEURS_CHAPITRE.length];
+}
+
+export function nouveauChapitre(rang = 0): ChapitreDidactique {
   return {
     id: rid('CHA'),
     titre: 'Nouveau chapitre',
+    couleur: COULEURS_CHAPITRE[rang % COULEURS_CHAPITRE.length],
     objectifsGeneraux: [],
     modules: [],
+    suggestions: [],
   };
 }
 

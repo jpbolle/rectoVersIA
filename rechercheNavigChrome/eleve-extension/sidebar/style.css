@@ -1084,3 +1084,60 @@ body::before {
 .btn-retour-app:hover {
   background: rgba(45, 106, 90, 0.1);
 }
+
+/* ─── Degré d'assurance ───
+   Même geste que dans l'application (ConfiancePicker) : trois pastilles, la
+   choisie se détache. Discret : c'est un geste second, après la réponse. */
+
+.confiance-bloc {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--border, #e0d9cc);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.confiance-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #7a6f5e);
+}
+
+.confiance-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.confiance-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1.5px solid var(--border, #e0d9cc);
+  border-radius: 999px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--text-secondary, #7a6f5e);
+  cursor: pointer;
+}
+
+.confiance-choice:hover {
+  border-color: var(--primary, #2d6a5a);
+}
+
+.confiance-choice.selected {
+  border-color: var(--primary, #2d6a5a);
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--text, #3d3832);
+  font-weight: 600;
+}
+
+.confiance-emoji {
+  font-size: 15px;
+  line-height: 1;
+}

@@ -1,0 +1,190 @@
+/* Popup d'envoi d'une annonce — reprend la forme des popups du panneau
+   didactique (overlay, carte, pied à deux boutons). */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(61, 56, 50, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 200;
+}
+
+.modal {
+  background: var(--c-bg-card, #fff);
+  border-radius: 14px;
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+}
+
+.head {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.head h3 {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.head p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+.body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field > label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}
+
+.cibles {
+  display: flex;
+  gap: 8px;
+}
+
+.cibleBtn {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 8px;
+  background: none;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.cibleBtn:hover {
+  border-color: var(--c-primary);
+}
+
+.cibleActive {
+  border-color: var(--c-primary);
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.modal textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.modal textarea,
+.select,
+.input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: var(--c-bg, #fff);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--c-text);
+}
+
+.modal textarea:focus,
+.select:focus,
+.input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.lienModes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+.help {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--c-text-secondary);
+}
+
+.helpError {
+  color: #b4453a;
+}
+
+.error {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(180, 69, 58, 0.1);
+  font-size: 13px;
+  color: #b4453a;
+}
+
+.foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--c-border);
+}
+
+.btnPrimary,
+.btnGhost {
+  min-height: 42px;
+  padding: 0 22px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.btnPrimary {
+  border: none;
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btnGhost {
+  border: 1.5px solid var(--c-border);
+  background: none;
+  color: var(--c-text);
+}
+
+.btnGhost:hover {
+  border-color: var(--c-primary);
+}

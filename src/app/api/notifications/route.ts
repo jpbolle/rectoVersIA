@@ -5,24 +5,68 @@ import { decrypt } from '@/lib/crypto';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 
 // ── Notifications calculées à la lecture (pas de collection dédiée) ──
-// GET : événements récents selon le rôle, comparés côté client à
-// users/{uid}.notifsLastSeen pour le badge « non lu ».
-// PUT : { lastSeen?, enabled? } → notifsLastSeen / notifsEnabled du user.
+// GET : événements récents selon le rôle. Une notification est « non lue »
+// tant que sa date dépasse users/{uid}.notifsLastSeen ET que son id n'est pas
+// dans users/{uid}.notifsRead — deux mécanismes complémentaires : la date
+// solde tout d'un coup (« Tout marquer comme lu »), la liste éteint une
+// notification précise quand on clique dessus.
+// PUT : { lastSeen?, enabled?, read? } → notifsLastSeen / notifsEnabled /
+// notifsRead du user.
 //
 // Élève : nouvelles activités disponibles (devoirs.disponibleAt) + corrigés
 // rendus visibles (corrections.visibleAt, devoirs.corrigeDisponibleAt).
 // Prof : copies remises (travaux.submittedAt) sur ses devoirs.
 // Admin : notifs prof + section admin (vide pour l'instant).
+//
+// Seule exception au « calculé à la lecture » : les ANNONCES de l'admin
+// (collection `annonces`), qui n'ont aucun événement derrière elles. Elles
+// s'ajoutent aux deux rôles selon leur cible, dans la même fenêtre de 14 jours.
 
 const WINDOW_DAYS = 14;      // fenêtre de calcul des événements
 const MAX_NOTIFS = 20;
+// Ids lus conservés : au-delà, les plus anciens sortent d'eux-mêmes de la
+// fenêtre de 14 jours et n'ont plus besoin d'être mémorisés.
+const MAX_READ_IDS = 60;
 
 interface NotifItem {
   id: string;                          // stable (déduit de l'événement)
-  type: 'remise' | 'activite' | 'corrige';
+  type: 'remise' | 'activite' | 'corrige' | 'annonce';
   title: string;
   sub: string;
   date: string;                        // ISO
+  href?: string;                       // chemin interne à ouvrir au clic
+}
+
+// Annonces de l'administration adressées à ce rôle
+async function annonceNotifications(
+  role: 'prof' | 'eleve',
+  cutoffIso: string
+): Promise<NotifItem[]> {
+  const cibles = role === 'prof' ? ['profs', 'tous'] : ['eleves', 'tous'];
+  const snap = await adminDb
+    .collection('annonces')
+    .where('createdAt', '>', cutoffIso)
+    .orderBy('createdAt', 'desc')
+    .limit(MAX_NOTIFS)
+    .get();
+
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as {
+      id: string;
+      message?: string;
+      cible?: string;
+      lien?: string | null;
+      createdAt?: string;
+    })
+    .filter((a) => cibles.includes(a.cible || '') && a.message)
+    .map((a) => ({
+      id: `ann-${a.id}`,
+      type: 'annonce' as const,
+      title: a.message!,
+      sub: "Message de l'administration",
+      date: a.createdAt || '',
+      ...(a.lien ? { href: a.lien } : {}),
+    }));
 }
 
 // Timestamp Firestore | Date | string ISO → ISO string ('' si absent)
@@ -76,6 +120,7 @@ async function profNotifications(uid: string, cutoffIso: string): Promise<NotifI
       title: devoir.intitule || 'Activité',
       sub: `${decrypt(t.studentName) || 'Un élève'} a remis sa copie`,
       date: t.submittedAt,
+      href: `/dashboard/travaux/${t.devoirId}/${t.id}`,
     });
   }
   return notifs;
@@ -119,6 +164,7 @@ async function eleveNotifications(
           title: d.intitule || 'Activité',
           sub: 'Nouvelle activité disponible',
           date: openedAt,
+          href: `/activites/${doc.id}`,
         });
       }
       // Corrigé global du devoir rendu disponible (ex. questionnaire de lecture)
@@ -130,6 +176,7 @@ async function eleveNotifications(
           title: d.intitule || 'Activité',
           sub: 'Le corrigé est disponible',
           date: corrigeAt,
+          href: `/activites/${doc.id}`,
         });
       }
     }
@@ -152,6 +199,7 @@ async function eleveNotifications(
         title: devoirs.get(c.devoirId)?.intitule || 'Activité',
         sub: 'Ta copie corrigée est disponible',
         date: toIso(c.visibleAt) || toIso(c.updatedAt),
+        href: `/activites/${c.devoirId}`,
       });
     }
   }
@@ -170,19 +218,24 @@ export async function GET(request: NextRequest) {
     const userData = userDoc.exists ? userDoc.data() : null;
     const enabled = userData?.notifsEnabled !== false;
     const lastSeen: string | null = userData?.notifsLastSeen || null;
+    const read: string[] = Array.isArray(userData?.notifsRead) ? userData.notifsRead : [];
 
     if (!enabled) {
       return NextResponse.json({
         success: true,
-        data: { notifications: [], lastSeen, enabled: false, isAdmin: auth.isAdmin },
+        data: { notifications: [], lastSeen, read, enabled: false, isAdmin: auth.isAdmin },
       });
     }
 
     const cutoffIso = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString();
-    const notifications =
-      auth.role === 'prof'
-        ? await profNotifications(auth.uid, cutoffIso)
-        : await eleveNotifications(auth.uid, auth.email, cutoffIso);
+    const role = auth.role === 'prof' ? 'prof' : 'eleve';
+    const [evenements, annonces] = await Promise.all([
+      role === 'prof'
+        ? profNotifications(auth.uid, cutoffIso)
+        : eleveNotifications(auth.uid, auth.email, cutoffIso),
+      annonceNotifications(role, cutoffIso),
+    ]);
+    const notifications = [...evenements, ...annonces];
 
     notifications.sort((a, b) => b.date.localeCompare(a.date));
 
@@ -191,6 +244,7 @@ export async function GET(request: NextRequest) {
       data: {
         notifications: notifications.slice(0, MAX_NOTIFS),
         lastSeen,
+        read,
         enabled: true,
         isAdmin: auth.isAdmin,
       },
@@ -212,6 +266,19 @@ export async function PUT(request: NextRequest) {
     const update: Record<string, unknown> = {};
     if (typeof body.lastSeen === 'string') update.notifsLastSeen = body.lastSeen;
     if (typeof body.enabled === 'boolean') update.notifsEnabled = body.enabled;
+
+    // `read` : un id (ou plusieurs) à marquer lu. On relit la liste existante
+    // pour ne pas écraser ce qu'un autre onglet vient d'y poser, et on ne garde
+    // que les plus récents — au-delà, la fenêtre de 14 jours a déjà fait le tri.
+    const nouveaux = (Array.isArray(body.read) ? body.read : [body.read]).filter(
+      (id: unknown): id is string => typeof id === 'string' && !!id
+    );
+    if (nouveaux.length > 0) {
+      const snap = await adminDb.collection('users').doc(auth.uid).get();
+      const actuels: string[] = Array.isArray(snap.data()?.notifsRead) ? snap.data()!.notifsRead : [];
+      update.notifsRead = [...new Set([...actuels, ...nouveaux])].slice(-MAX_READ_IDS);
+    }
+
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ success: false, message: 'Rien à mettre à jour' }, { status: 400 });
     }

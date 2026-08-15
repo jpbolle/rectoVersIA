@@ -852,3 +852,73 @@
 .hiddenCriteriaNote:hover {
   text-decoration: underline;
 }
+
+/* Ligne « Type d'activité / Grille ou Habiletés / Auto-évaluation ».
+   Le troisième encadré ne porte qu'un interrupteur : il n'a pas besoin
+   d'autant de place que les deux autres. */
+.formRowAutoEval {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.7fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .formRowAutoEval {
+    grid-template-columns: 1fr;
+  }
+}
+
+.autoEvalToggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* `help` plutôt que `pointer` : le survol livre l'explication */
+  cursor: help;
+  user-select: none;
+  /* Aligné sur la hauteur des <select> voisins */
+  min-height: 42px;
+}
+
+.autoEvalToggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.autoEvalSwitch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--c-border);
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.autoEvalSwitch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.autoEvalToggle input:checked + .autoEvalSwitch {
+  background: var(--c-primary);
+}
+
+.autoEvalToggle input:checked + .autoEvalSwitch::after {
+  transform: translateX(18px);
+}
+
+.autoEvalText {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+}

@@ -133,6 +133,30 @@
   font-family: inherit;
 }
 
+/* Actions de fin d'entête — même forme que les autres constructeurs.
+   `.qPts` porte déjà la marge qui pousse le groupe à droite ; un bloc
+   informatif n'a pas de points, c'est alors ce bouton qui s'en charge. */
+.qAction {
+  margin-left: auto;
+  border: none;
+  background: none;
+  cursor: pointer;
+  /* Le glyphe ⧉ dessine petit dans son cadratin : il lui faut deux points de
+     plus que la corbeille pour peser autant à l'oeil */
+  font-size: 19px;
+  line-height: 1;
+  padding: 3px 4px;
+  color: var(--c-text-secondary);
+}
+
+.qPts + .qAction {
+  margin-left: 0;
+}
+
+.qAction:hover:not(:disabled) {
+  color: var(--c-primary);
+}
+
 .qDel {
   border: none;
   background: none;
@@ -162,6 +186,14 @@
   font-size: 13.5px;
   font-family: inherit;
   color: var(--c-text);
+}
+
+/* L'énoncé grandit avec le texte (AutoGrowTextarea) : pas de poignée de
+   redimensionnement, elle entrerait en conflit avec la hauteur calculée */
+.enonceInput {
+  display: block;
+  resize: none;
+  line-height: 1.45;
 }
 
 .fluoTextarea {
@@ -746,4 +778,56 @@
   color: var(--c-text);
   resize: vertical;
   background: var(--c-bg-card);
+}
+
+/* Bloc « Corrigé » replié — même forme que « Corrigé & références » dans le
+   constructeur de recherche (QuestionnaireBuilder), sans les références :
+   une question de lecture porte sur un texte fourni, il n'y a pas de source
+   à retrouver. */
+.details {
+  border-top: 1px dashed var(--c-border);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.detailsSummary {
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+
+.detailsSummary:hover {
+  color: var(--c-primary);
+}
+
+.detailsContent {
+  margin-top: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detailsLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-secondary);
+}
+
+.detailsTextarea {
+  width: 100%;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 13px;
+  line-height: 1.45;
+  font-family: inherit;
+  color: var(--c-text);
+  resize: none;
+  display: block;
 }

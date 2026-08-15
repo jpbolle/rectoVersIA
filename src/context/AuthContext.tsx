@@ -71,8 +71,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userRef = useRef<User | null>(null);
   const currentUidRef = useRef<string | null>(null);
 
+  // Premier verdict de Firebase. Tant qu'il n'est pas tombé, `userRef` est vide
+  // alors que le cache sessionStorage a déjà dit « connecté » : une page qui
+  // lance son chargement sur `isAuthenticated` obtenait un jeton nul, sortait
+  // de son fetch, et ne réessayait jamais (ses dépendances sont stables) —
+  // d'où les pages qui restent vides après un F5 et se remplissent dès qu'on
+  // navigue ailleurs et qu'on revient. `getAuthHeaders` attend ce verdict.
+  const authSettledRef = useRef<{ promise: Promise<void>; resolve: () => void } | null>(null);
+  if (!authSettledRef.current) {
+    let resolveFn: () => void = () => {};
+    const promise = new Promise<void>((r) => {
+      resolveFn = r;
+    });
+    authSettledRef.current = { promise, resolve: resolveFn };
+  }
+
   useEffect(() => {
     const unsubscribe = onTokenRefresh(async (user) => {
+      try {
       if (user && user.email) {
         // Token refresh for same user — update ref silently, no setState
         if (currentUidRef.current === user.uid) {
@@ -136,6 +152,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isAuthenticated: false,
         });
       }
+      } finally {
+        // Verdict rendu (connecté ou non) : les appels en attente peuvent partir
+        authSettledRef.current?.resolve();
+      }
     });
 
     return () => unsubscribe();
@@ -143,6 +163,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Stable getAuthHeaders — never changes reference, uses userRef internally
   const getAuthHeaders = useCallback(async (): Promise<AuthHeaders | null> => {
+    // Attendre le premier verdict de Firebase plutôt que d'abandonner : au
+    // rechargement d'une page, le cache dit « connecté » avant que l'utilisateur
+    // Firebase existe (voir authSettledRef).
+    if (!userRef.current) await authSettledRef.current?.promise;
     if (!userRef.current) return null;
     const token = await userRef.current.getIdToken();
     return {

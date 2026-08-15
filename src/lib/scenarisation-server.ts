@@ -75,6 +75,7 @@ function sanitizeActivite(raw: unknown, i: number): ModuleActivite | null {
     methodes: ids(a.methodes),
     uaa: ids(a.uaa),
     gestes: ids(a.gestes, MAX_TITRE),
+    concepts: texte(a.concepts),
     outils: texte(a.outils, MAX_TITRE),
     critique: texte(a.critique),
   };
@@ -160,11 +161,25 @@ function sanitizeChapitre(raw: unknown, i: number): ChapitreDidactique | null {
     // Une certification déjà convertie côté client ne doit pas revenir en double
     .filter((mod) => !modules.some((m) => m.id === mod.id));
 
+  const tous = [...modules, ...converties];
+
+  // Une suggestion n'est plus un module : si le client en renvoie encore une
+  // (document d'avant le 2026-08-15 jamais rouvert), elle redevient du texte
+  // plutôt que d'être perdue au premier enregistrement.
+  const suggestionsHeritees = tous
+    .filter((m) => m.genre === 'suggestion')
+    .map((m) => m.titre.trim())
+    .filter(Boolean);
+
   return {
     id: texte(c.id, 60) || `CHA-${i}`,
     titre: texte(c.titre, MAX_TITRE),
+    // Identité visuelle du chapitre — sans elle, la couleur redeviendrait
+    // fonction de la position à chaque relecture
+    couleur: typeof c.couleur === 'string' && /^#[0-9a-f]{6}$/i.test(c.couleur) ? c.couleur : undefined,
     objectifsGeneraux: objectifs.length ? objectifs : ancienObjectif ? [ancienObjectif] : [],
-    modules: [...modules, ...converties],
+    modules: tous.filter((m) => m.genre !== 'suggestion'),
+    suggestions: [...ids(c.suggestions, MAX_TEXTE), ...suggestionsHeritees],
   };
 }
 

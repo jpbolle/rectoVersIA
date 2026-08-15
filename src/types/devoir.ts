@@ -93,6 +93,14 @@ export interface Devoir {
   // Questionnaire d'auto-évaluation (type autoevaluation). Rien n'y est filtré
   // pour l'élève : il n'y a ni bonne réponse ni corrigé à protéger.
   autoEvalQuiz?: AutoEvalQuestionnaire | null;
+  // AUTO-ÉVALUATION INTÉGRÉE — l'élève se prononce sur son propre travail
+  // avant d'en connaître la note. Ce qu'elle recouvre dépend du dispositif :
+  //  - écriture  : il s'auto-évalue sur la grille ;
+  //  - lecture et recherche : il pose un smiley d'assurance sous chaque réponse.
+  // L'écart avec la correction nourrit son onglet « Me connaître ».
+  // ABSENT = ACTIVÉ : les activités antérieures gardent le comportement
+  // qu'elles avaient, où l'auto-évaluation a toujours existé.
+  autoEvaluation?: boolean;
   // Passerelle en retour vers la scénarisation didactique : posée par
   // /api/scenarisations/[id] quand l'activité est rattachée à un module,
   // effacée quand le lien est rompu. Jamais écrite depuis les formulaires.
@@ -134,4 +142,12 @@ export interface CreateDevoirData {
   lectureQuiz?: LectureQuiz | null;
   // Questionnaire d'auto-évaluation (type autoevaluation uniquement)
   autoEvalQuiz?: AutoEvalQuestionnaire | null;
+  // AUTO-ÉVALUATION INTÉGRÉE — l'élève se prononce sur son propre travail
+  // avant d'en connaître la note. Ce qu'elle recouvre dépend du dispositif :
+  //  - écriture  : il s'auto-évalue sur la grille ;
+  //  - lecture et recherche : il pose un smiley d'assurance sous chaque réponse.
+  // L'écart avec la correction nourrit son onglet « Me connaître ».
+  // ABSENT = ACTIVÉ : les activités antérieures gardent le comportement
+  // qu'elles avaient, où l'auto-évaluation a toujours existé.
+  autoEvaluation?: boolean;
 }

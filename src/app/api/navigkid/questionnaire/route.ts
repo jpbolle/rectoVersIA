@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { sanitizeQuestionsForStudent } from '@/lib/navigkid-server';
+import { generateTravailId } from '@/lib/travail-utils';
 import type { NavigKidQuestion } from '@/types/navigkid';
 
 export async function PATCH(request: NextRequest) {
@@ -63,15 +64,36 @@ export async function GET(request: NextRequest) {
     const data = doc.data()!;
     let questions: NavigKidQuestion[] = data.questions || [];
 
-    // Élève : jamais les éléments de correction. Les bonnes réponses QCM ne
-    // partent que si le prof a rendu le corrigé disponible sur l'activité.
+    // Réglage porté par l'activité, pas par le questionnaire — absent = activé
+    let autoEvalActivite = true;
+    if (data.devoirId) {
+      const devSnap = await adminDb.collection('devoirs').doc(data.devoirId).get();
+      autoEvalActivite = devSnap.exists && devSnap.data()?.autoEvaluation !== false;
+    }
+
+    // Élève : jamais les éléments de correction. Deux portes mènent aux bonnes
+    // réponses QCM — le corrigé rendu disponible sur l'activité (tout le monde),
+    // ou la correction de CET élève rendue visible.
+    //
+    // La seconde n'est pas un confort : l'onglet Évaluation compte les QCM
+    // côté client (recherche-scoring). Sans les bonnes réponses, chaque QCM
+    // bascule en « à noter » et ses points disparaissent du total — l'élève
+    // lirait un score amputé sans savoir pourquoi.
     if (auth.role === 'eleve') {
-      let corrigeDisponible = false;
+      let avecCorrectes = false;
       if (data.devoirId) {
-        const devoirSnap = await adminDb.collection('devoirs').doc(data.devoirId).get();
-        corrigeDisponible = devoirSnap.exists && devoirSnap.data()?.corrigeDisponible === true;
+        const [devoirSnap, correctionSnap] = await Promise.all([
+          adminDb.collection('devoirs').doc(data.devoirId).get(),
+          adminDb
+            .collection('corrections')
+            .doc(`CORR-${generateTravailId(data.devoirId, auth.uid)}`)
+            .get(),
+        ]);
+        avecCorrectes =
+          (devoirSnap.exists && devoirSnap.data()?.corrigeDisponible === true) ||
+          (correctionSnap.exists && correctionSnap.data()?.visibleParEleve === true);
       }
-      questions = sanitizeQuestionsForStudent(questions, corrigeDisponible);
+      questions = sanitizeQuestionsForStudent(questions, avecCorrectes);
     }
 
     return NextResponse.json({
@@ -85,6 +107,9 @@ export async function GET(request: NextRequest) {
         codeAcces: data.codeAcces || '',
         profId: data.profId || '',
         devoirId: data.devoirId || '',
+        // Auto-évaluation intégrée : l'extension y lit s'il faut proposer les
+        // smileys d'assurance. Elle n'a pas accès au document devoir.
+        autoEvaluation: autoEvalActivite,
       },
     });
   } catch (error) {

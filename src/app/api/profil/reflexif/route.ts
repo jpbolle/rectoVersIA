@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/api-auth';
 import { resolveProfilTarget, isProfilTargetError } from '@/lib/profil-target';
-import { loadStudentBase } from '@/lib/profil-stats';
+import { buildAssuranceProfil, loadStudentBase } from '@/lib/profil-stats';
 import { comparer } from '@/lib/autoeval-scoring';
 import { echelonLabel, parseAutoEvalAnswers } from '@/types/autoevaluation';
 import type { ProfilReflexif, ReflexifItem } from '@/types/profil';
@@ -41,9 +41,20 @@ export async function GET(request: NextRequest) {
         tendance: null,
       },
       gestes: [],
+      assurance: {
+        items: [],
+        total: {
+          comparees: 0,
+          justes: 0,
+          sousEstimations: 0,
+          surestimations: 0,
+          ecartMoyen: 0,
+          tendance: null,
+        },
+      },
     };
 
-    const base = await loadStudentBase(target.uid, target.email, { withContent: true });
+    const base = await loadStudentBase(target.uid, target.email, { withContent: true, withGrilles: true });
     if (!base) return NextResponse.json({ success: true, data: vide });
 
     const corrParDevoir = new Map(base.corrections.map((c) => [c.devoirId, c]));
@@ -122,6 +133,9 @@ export async function GET(request: NextRequest) {
           ecartMoyen: v.comparees ? v.somme / v.comparees : 0,
         }))
         .sort((a, b) => b.comparees - a.comparees),
+      // L'autre lucidité : celle des activités notées (lecture, recherche),
+      // où l'élève se confronte à un résultat et non au regard du prof.
+      assurance: await buildAssuranceProfil(target.uid, base),
     };
 
     return NextResponse.json({ success: true, data });

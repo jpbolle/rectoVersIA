@@ -146,6 +146,10 @@ interface Devoir {
   vocabulaireThemes?: string[];   // serie lexicale imposee (type vocabulaire)
   vocabulaireDiagnostic?: boolean;
   flipInverted?: boolean;         // recto = planification au lieu de redaction
+  // Auto-évaluation intégrée : grille (écriture) ou smileys d'assurance
+  // (lecture, recherche). ABSENT = ACTIVÉ — les activités antérieures gardent
+  // leur comportement. Sans objet en vocabulaire et en auto-évaluation.
+  autoEvaluation?: boolean;
 }
 ```
 
@@ -255,6 +259,11 @@ interface Questionnaire {
   Le **geste** n'est pas une entité : c'est le libellé partagé par plusieurs
   habiletés. Importée une fois depuis `scripts/data/ceintures-et-habiletes.csv`
   (63 lignes) — le tableau Google n'est plus la source de vérité.
+- `annonces` : messages poussés par l'admin dans la cloche (`message`, `cible`, `lien`,
+  `auteurUid`) — accès **serveur uniquement**, donc aucune règle Firestore. Sortent
+  d'elles-mêmes de la cloche après 14 jours
+- `users` : gagne `notifsRead: string[]` (60 ids max) — une notification est non lue si
+  sa date dépasse `notifsLastSeen` **ET** que son id n'est pas dans `notifsRead`
 - `professeurs` : doc ID = email, géré par admin via `/admin` (supporte `expiresAt`)
 - `dictionaryCache` : doc ID = mot — cache des consultations dictionnaire (accès serveur uniquement)
 - `vocabulairePersonnel/{uid}` : mots dont l'élève a demandé la définition (app + NavigKid),
@@ -341,6 +350,7 @@ interface Questionnaire {
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |
 | `/api/professeurs`, `/api/admin/stats`, `/api/admin/prof-stats/[profId]` | — | Admin (profId = email encodé) |
 | `/api/roadmap` | GET, POST | Roadmap Firestore (POST admin) |
+| `/api/annonces`, `/api/annonces/[id]` | GET, POST, DELETE | Annonces de l'administration — **admin uniquement**. Collection `annonces`, accès serveur seul (aucune règle Firestore). Lues par `/api/notifications`, filtrées par cible (profs / élèves / tous) |
 | `/api/notifications` | GET, PUT | Notifications calculées à la lecture (aucune collection) ; PUT : `lastSeen` / `enabled` |
 | `/api/travaux/status` | GET | Élève : statut `{ status, nonRendu }` de ses travaux par devoir (classement page /activites) |
 | `/api/classes/[id]/archive` | GET | Archive ZIP de la classe avant suppression : HTML par élève (nommé + évaluation) + notes.csv par activité + récapitulatif — ZIP maison `src/lib/zip.ts`, zéro dépendance |
@@ -393,7 +403,23 @@ interface Questionnaire {
   `AutoEvalReview` (**prof : il répond à l'aveugle, la réponse de l'élève se découvre
   question par question**), `AutoEvalEvaluation` (onglet Évaluation : lucidité).
   Aucune note nulle part — voir `harnais/memoire/rollup_autoevaluation.md`
-- Admin : `DidactiquePanel` (UAA + gestes : œil/poubelle/+ — alimente `useDidactique`)
+- Admin : `DidactiquePanel` (bloc « Référentiel du cours » — UAA et méthodes en deux
+  colonnes — puis les familles de gestes : Lecture, Écriture, Parole, Lexique, Réflexifs,
+  Savoir-être ; alimente `useDidactique`), `AnnonceModal` (envoi d'une notification)
+- **Lucidité** (« est-ce que l'élève se voit juste ? ») : `ConfiancePicker` (3 smileys
+  d'assurance sous chaque réponse — lecture, et son portage JS dans l'extension),
+  `LuciditeBilan` (**présentation partagée** des trois bilans), `ConfianceBilan`
+  (adaptateur smileys). Calculs : `src/types/confiance.ts`, `src/lib/confiance-scoring.ts`
+  (smiley ↔ score, par tranches ≥70 / 45-69 / <45) et `src/lib/grille-lucidite.ts`
+  (auto-évaluation ↔ correction, en crans). Réglage par activité : `devoir.autoEvaluation`
+  (absent = activé ; masqué en vocabulaire et en auto-évaluation)
+- `AutoGrowTextarea` : champ dont la hauteur est **mesurée** sur le contenu — partagé par
+  les trois constructeurs de questionnaires (leurs formules maison estimaient `rows` au
+  nombre de caractères, ce qui ne peut pas être juste)
+- Scénarisation : `ModuleFicheModal` (fiche descriptive d'un module — concepts éditables,
+  tout le reste déduit des activités, activités en résumé). Les **suggestions** ne sont
+  plus des lignes de module : ce sont des textes portés par le chapitre
+  (`ChapitreDidactique.suggestions`), repliés derrière une ampoule 💡 du bandeau
 - Fiche élève : `ProfilPanel` (profil 5 onglets partagé élève/prof),
   `EleveProfilModal` (grande popup), `MesElevesSection` (bloc Mes Élèves)
 - `DrawTools` (`DrawToolbar` + `DrawCanvas`) : atelier de tracé sur image (6 outils,
@@ -529,10 +555,10 @@ obtient un jeton nul, sort de son `fetch`, et **ne rejoue jamais l'effet** — l
 sur son spinner pour toujours.
 **Symptôme** : « page blanche qui tourne dans le vide » après un clic sur un lien `<a>`
 (rechargement complet) ou un F5, alors que la navigation interne fonctionne.
-**Remède** : attendre `user?.uid`, pas seulement `isAuthenticated`, et ne jamais sortir
-d'un chargement sans remettre `isLoading` à `false`. Corrigé le 2026-08-15 sur
-`/dashboard/travaux/[devoirId]` et `.../[travailId]` — **le motif existe peut-être
-ailleurs**.
+**Remède, posé à la source le 2026-08-15** : `getAuthHeaders` **attend** le premier
+verdict de Firebase au lieu de renvoyer `null` (`authSettledRef` dans `AuthContext.tsx`).
+Les 52 endroits qui abandonnaient sur `if (!headers) return;` sont réparés d'un coup —
+inutile de les corriger un par un.
 
 ### Menu déroulant rogné dans un tableau
 Un `<table>` crée son propre contexte d'empilement : un menu en `position: absolute`
@@ -546,6 +572,21 @@ Le constructeur de questionnaire de recherche était peint en `--c-bg-element`, 
 même de ses bandeaux de question : ceux-ci s'y noyaient et les blocs ne se détachaient
 plus. Les constructeurs (lecture, recherche, auto-évaluation) ont un conteneur
 **transparent** ; ce sont les cartes qui portent la couleur.
+
+### Un score calculé côté client a besoin du corrigé
+Les onglets Évaluation de la **lecture** et de la **recherche** calculent le score
+dans le navigateur. Sans les bonnes réponses QCM (`correctIndex`, `correctes`), ces
+questions basculent en « à noter » et **leurs points disparaissent du total** : l'élève
+lit un score amputé sans savoir pourquoi.
+**Règle** : le corrigé part si `devoir.corrigeDisponible` **ou** si la correction de CET
+élève est visible (`quizComplet` dans `/api/devoirs/[id]`, et le pendant dans
+`/api/navigkid/questionnaire`). Cela ne bascule pas le questionnaire en mode corrigé —
+les ✅/❌ inline suivent toujours `corrigeDisponible`.
+
+### Le PUT d'une scénarisation réécrit tout
+Rappel qui coûte cher : tout champ non reconnu par `src/lib/scenarisation-server.ts` est
+**perdu au premier enregistrement**. Un champ ajouté au modèle sans être ajouté au
+sanitizer disparaît silencieusement.
 
 ### Cache Turbopack corrompu
 **Symptôme** : comportement bizarre en dev, fichiers `.sst` manquants, erreurs 500

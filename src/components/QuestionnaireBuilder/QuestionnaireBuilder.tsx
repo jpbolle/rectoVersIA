@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { useDidactique } from '@/hooks/useDidactique';
 import { habileteLabel, habiletesOfType } from '@/types/didactique';
 import type { NavigKidQuestion } from '@/types/navigkid';
+import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import styles from './QuestionnaireBuilder.module.css';
 
 interface QuestionnaireBuilderProps {
@@ -391,14 +392,15 @@ export default function QuestionnaireBuilder({
 
               {isOpen && (
                 <div className={styles.qBody}>
-                  {/* Énoncé — redimensionnable, et il grandit avec le texte */}
+                  {/* Énoncé — hauteur mesurée sur le contenu (AutoGrowTextarea) */}
                   <div className={styles.enonceRow}>
-                    <textarea
+                    <AutoGrowTextarea
                       className={styles.enonceTextarea}
                       value={q.texte}
                       onChange={(e) => updateQuestion(index, { texte: e.target.value })}
                       placeholder="Ex : Trouvez un article sur... puis expliquez..."
-                      rows={Math.min(12, Math.max(3, q.texte.split('\n').length + Math.floor(q.texte.length / 90)))}
+                      minRows={3}
+                      maxRows={14}
                       disabled={disabled}
                     />
                     <div className={styles.enonceIcons}>

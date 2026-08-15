@@ -230,12 +230,16 @@
   white-space: nowrap;
 }
 
+/* Ici les actions sont des boutons encadrés (singularité de ce constructeur) :
+   on agrandit le glyphe sans toucher au cadre, qui doit rester aligné sur les
+   autres boutons de l'entête. */
 .qAction {
   border: 1px solid var(--c-border);
   background: var(--c-bg-card);
   border-radius: 7px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 16px;
+  line-height: 1;
   padding: 4px 8px;
   color: var(--c-text-secondary);
 }

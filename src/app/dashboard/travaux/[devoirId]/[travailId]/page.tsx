@@ -409,10 +409,15 @@ export default function TravailDetailPage() {
     updateEvaluation(newEval);
   }, [correction, updateEvaluation]);
 
-  // Score prof
-  const profScore = correction?.evaluation
-    ? calculateScore(correction.evaluation, grille)
-    : null;
+  // Score affiché dans le bandeau, à côté du titre. Il ne vaut que pour les
+  // dispositifs notés par une GRILLE : lecture, recherche et auto-évaluation
+  // portent leur total en tête de leur onglet Évaluation, et l'afficher aussi
+  // ici le montrerait deux fois à trente centimètres d'écart.
+  const profScore = useMemo<number | null>(() => {
+    if (!devoir || !grille || !correction?.evaluation) return null;
+    if (devoir.typeTravail !== 'ecrire') return null;
+    return calculateScore(correction.evaluation, grille);
+  }, [devoir, grille, correction]);
 
   // Travail remis en retard ?
   const isLate = useMemo(() => {
@@ -723,9 +728,7 @@ export default function TravailDetailPage() {
                       <span className={styles.savingIndicator}>Sauvegarde...</span>
                     )}
                     {profScore !== null && (
-                      <span className={styles.scoreDisplay}>
-                        {profScore}%
-                      </span>
+                      <span className={styles.scoreDisplay}>{profScore}%</span>
                     )}
                   </div>
                 </div>

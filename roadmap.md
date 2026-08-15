@@ -16,6 +16,21 @@
 
 ## Ensuite
 
+**Système d'icônes (relevé à l'audit design du 2026-08-15)** :
+
+- [ ] **Remplacer les émoji par un vrai jeu d'icônes** — toute l'application
+  emploie des émoji comme iconographie fonctionnelle (🗓 ⭐ 💡 🔗 🗣 📋 ⧉ 🗑 ⚙ 👁 🙈 🎧 🖼).
+  Trois défauts : le rendu **change selon le système** (Windows, macOS, ChromeOS
+  — or les élèves sont sur Chromebook), le poids optique est incohérent avec
+  Inter, et la taille apparente varie d'un glyphe à l'autre (⧉ dessine deux fois
+  plus petit que 🗑 à taille égale). Sur le même écran cohabitent déjà `＋`
+  (U+FF0B) et `➕`.
+  **Chantier à mener à l'échelle de l'application, jamais panneau par panneau** :
+  le faire dans un seul écran casserait la cohérence avec tous les autres.
+  Piste : un fichier de SVG inline maison (une seule graisse de trait), sans
+  dépendance nouvelle — la contrainte « zéro dépendance sans accord » tient.
+
+
 **Vocabulaire personnel (suites de la session du 2026-08-08)** :
 
 - [x] **Exercices de vocabulaire** — quand un élève travaille une série lexicale

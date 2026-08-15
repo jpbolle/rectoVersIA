@@ -9,7 +9,10 @@ import Header, { ADMIN_TABS } from '@/components/Header/Header';
 import type { AdminHeaderTab } from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import DidactiquePanel from '@/components/DidactiquePanel/DidactiquePanel';
+import AnnonceModal from '@/components/AnnonceModal/AnnonceModal';
 import type { CreateProfesseurData } from '@/types/professeur';
+import { CIBLE_LABELS } from '@/types/annonce';
+import type { Annonce, AnnonceCible } from '@/types/annonce';
 import styles from './admin.module.css';
 
 interface ClasseStat { id: string; nom: string; nbEleves: number; }
@@ -57,6 +60,10 @@ export default function AdminPage() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
 
+  // Annonces poussées dans la cloche
+  const [annonces, setAnnonces] = useState<Annonce[] | null>(null);
+  const [showAnnonceModal, setShowAnnonceModal] = useState(false);
+
   // Panel stats prof
   const [selectedProfEmail, setSelectedProfEmail] = useState<string | null>(null);
   const [profStats, setProfStats] = useState<ProfStats | null>(null);
@@ -99,6 +106,61 @@ export default function AdminPage() {
   useEffect(() => {
     if (isAuthenticated) fetchStats();
   }, [isAuthenticated, fetchStats]);
+
+  // ── Annonces ───────────────────────────────────────────────────────────
+  const fetchAnnonces = useCallback(async () => {
+    const headers = await getAuthHeaders();
+    if (!headers) return;
+    try {
+      const res = await fetch('/api/annonces', { headers });
+      const json = await res.json();
+      setAnnonces(json.success ? json.data : []);
+    } catch {
+      setAnnonces([]);
+    }
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    if (isAuthenticated) fetchAnnonces();
+  }, [isAuthenticated, fetchAnnonces]);
+
+  const sendAnnonce = useCallback(
+    async (data: { message: string; cible: AnnonceCible; lien: string | null }) => {
+      const headers = await getAuthHeaders();
+      if (!headers) return false;
+      try {
+        const res = await fetch('/api/annonces', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(data),
+        });
+        const json = await res.json();
+        if (!json.success) return false;
+        setAnnonces((prev) => [json.data, ...(prev || [])]);
+        setMessage({ text: 'Notification envoyée.', type: 'success' });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [getAuthHeaders]
+  );
+
+  const deleteAnnonce = useCallback(
+    async (annonce: Annonce) => {
+      if (!window.confirm(`Retirer cette notification ?\n\n« ${annonce.message} »`)) return;
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      try {
+        const res = await fetch(`/api/annonces/${annonce.id}`, { method: 'DELETE', headers });
+        const json = await res.json();
+        if (json.success) setAnnonces((prev) => (prev || []).filter((a) => a.id !== annonce.id));
+      } catch {
+        setMessage({ text: 'Suppression impossible.', type: 'error' });
+      }
+    },
+    [getAuthHeaders]
+  );
 
   const openProfPanel = useCallback(async (profEmail: string) => {
     setSelectedProfEmail(profEmail);
@@ -266,6 +328,62 @@ export default function AdminPage() {
               </div>
             </div>
           </section>
+        )}
+
+        {/* Annonces — le seul message poussé à la main dans la cloche */}
+        {activeTab === 'vue' && (
+          <section className={styles.annoncesSection}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Notifications envoyées</h2>
+              <button
+                type="button"
+                className={styles.addButton}
+                onClick={() => setShowAnnonceModal(true)}
+              >
+                📢 Envoyer une notification
+              </button>
+            </div>
+
+            {annonces === null ? (
+              <p className={styles.annonceEmpty}>Chargement…</p>
+            ) : annonces.length === 0 ? (
+              <p className={styles.annonceEmpty}>
+                Aucune notification envoyée. Elles apparaissent dans la cloche des
+                destinataires pendant 14 jours, puis disparaissent d&apos;elles-mêmes.
+              </p>
+            ) : (
+              <div className={styles.annonceList}>
+                {annonces.map((a) => (
+                  <div key={a.id} className={styles.annonceItem}>
+                    <span className={styles.annonceCible}>{CIBLE_LABELS[a.cible]}</span>
+                    <div className={styles.annonceBody}>
+                      <span className={styles.annonceMessage}>{a.message}</span>
+                      {a.lien && <span className={styles.annonceLien}>→ {a.lien}</span>}
+                    </div>
+                    <span className={styles.annonceDate}>
+                      {new Date(a.createdAt).toLocaleDateString('fr-BE', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.annonceDelete}
+                      onClick={() => deleteAnnonce(a)}
+                      title="Retirer cette notification"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {showAnnonceModal && (
+          <AnnonceModal onClose={() => setShowAnnonceModal(false)} onSend={sendAnnonce} />
         )}
 
         {/* Didactique du français : UAA + gestes (listes dynamiques des formulaires) */}

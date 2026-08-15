@@ -16,6 +16,7 @@ import type {
   LectureAnswer,
   LectureAnswersState,
 } from '@/types/lecture';
+import ConfiancePicker from '@/components/ConfiancePicker';
 import styles from './LectureQuizActivity.module.css';
 
 const TYPE_LABELS: Record<LectureQuestion['type'], string> = {
@@ -43,6 +44,8 @@ interface LectureQuizActivityProps {
   // Corrigé disponible : montre les bonnes réponses QCM, la réponse idéale du
   // prof et la comparaison du soulignage (le quiz reçu du serveur est complet)
   showCorrection?: boolean;
+  /** Auto-évaluation désactivée sur l'activité : pas de smileys d'assurance */
+  autoEvaluation?: boolean;
 }
 
 export default function LectureQuizActivity({
@@ -52,6 +55,7 @@ export default function LectureQuizActivity({
   disabled = false,
   onOpenRessources,
   showCorrection = false,
+  autoEvaluation = true,
 }: LectureQuizActivityProps) {
   const [answers, setAnswers] = useState<Record<string, LectureAnswer>>(
     savedState?.answers || {}
@@ -118,6 +122,7 @@ export default function LectureQuizActivity({
           onOpenRessources={onOpenRessources}
           onZoomImage={setPopupImage}
           showCorrection={showCorrection}
+          autoEvaluation={autoEvaluation}
         />
       ))}
 
@@ -158,6 +163,7 @@ function QuestionCard({
   onOpenRessources,
   onZoomImage,
   showCorrection,
+  autoEvaluation,
 }: {
   question: LectureQuestion;
   number: number;
@@ -167,6 +173,7 @@ function QuestionCard({
   onOpenRessources?: () => void;
   onZoomImage: (url: string) => void;
   showCorrection: boolean;
+  autoEvaluation: boolean;
 }) {
   // Bloc informatif : texte du prof, pas de réponse attendue
   if (question.type === 'info') {
@@ -347,6 +354,17 @@ function QuestionCard({
           value={answer.text ?? ''}
           onChange={(e) => onAnswerChange({ text: e.target.value })}
           placeholder="Commente ce que tu as souligné (facultatif, selon la question)..."
+          disabled={disabled}
+        />
+      )}
+
+      {/* Degré d'assurance — après la réponse, avant de connaître la note.
+          Il disparaît en mode corrigé : se prononcer en voyant le résultat
+          n'aurait aucun sens, et le choix déjà posé reste enregistré. */}
+      {!showCorrection && autoEvaluation && (
+        <ConfiancePicker
+          value={answer.confiance}
+          onChange={(confiance) => onAnswerChange({ confiance })}
           disabled={disabled}
         />
       )}

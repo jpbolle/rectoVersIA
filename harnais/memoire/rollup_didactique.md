@@ -144,3 +144,40 @@ produit plus : auto-évaluation élève, évaluation IA, moyenne et médiane du
 devoir, ni alimentation du profil **par critère**. Pour la lecture, la notation
 par habileté prend le relais. Pour la recherche, **rien ne prend encore le
 relais** — d'où le TODO ci-dessus. Les activités déjà créées gardent leur grille.
+
+---
+
+## Session du 2026-08-15
+
+- **Gestion didactique** : UAA et Méthodes réunies dans un seul bloc
+  « Référentiel du cours », en **deux colonnes** séparées par un filet (une
+  seule colonne sous 900 px).
+- **Ordre des familles de gestes** : Lecture → Écriture → Parole → **Lexique**
+  → **Réflexifs** → **Savoir-être**. Les deux familles d'attitude ferment la
+  marche, ce qui rejoint le regroupement déjà posé par `TYPES_SAVOIR_ETRE`.
+  L'ordre vit dans `TYPES_MODAUX` ; seul le panneau d'administration le parcourt
+  (les deux autres lecteurs y cherchent un libellé par identifiant).
+
+## `AutoGrowTextarea` — un champ, trois constructeurs
+
+Les trois constructeurs de questionnaires posaient le même problème de trois
+façons : un `<input>` d'une seule ligne pour la lecture, et **deux formules
+maison distinctes** estimant `rows` d'après le NOMBRE DE CARACTÈRES pour la
+recherche et l'auto-évaluation. Cette estimation ne peut pas être juste : elle
+ignore la largeur réelle du champ, la police et les retours à la ligne saisis.
+
+`src/components/AutoGrowTextarea/` MESURE (`scrollHeight`) après chaque
+changement, se réajuste quand le panneau est redimensionné (`ResizeObserver`),
+et cesse de grandir au-delà d'un plafond (il défile alors).
+
+**Ce qui reste volontairement différent d'un constructeur à l'autre** — règle
+donnée par JP : « unifier le mécanisme, jamais les singularités ».
+
+| Singularité | Où | Pourquoi |
+|---|---|---|
+| Éditeur Tiptap pour les blocs informatifs | Lecture | c'est du texte mis en forme |
+| Icônes 🖼 / 🎧 à droite de l'énoncé | Lecture | image et audio n'existent que là |
+| Icône 📄 texte joint | Recherche | — |
+| `minRows` 3 | Recherche | les consignes de recherche sont longues |
+| `minRows` 2 | Lecture, auto-évaluation | questions plus brèves |
+| Placeholders distincts, dont un pour les blocs informatifs | Auto-évaluation | un bloc informatif et une question ne s'amorcent pas pareil |

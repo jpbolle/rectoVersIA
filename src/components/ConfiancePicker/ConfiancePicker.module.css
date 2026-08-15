@@ -1,0 +1,76 @@
+/* Degré d'assurance — discret par défaut : c'est un geste secondaire, il ne
+   doit pas peser autant que la réponse elle-même. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--c-border);
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 999px;
+  background: var(--c-bg-card, #fff);
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.choice:hover:not(:disabled) {
+  border-color: var(--c-primary);
+}
+
+.choice:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.choiceOn {
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.1);
+  color: var(--c-text);
+  font-weight: 600;
+}
+
+.emoji {
+  font-size: 17px;
+  line-height: 1;
+}
+
+/* Version compacte : les smileys seuls, l'intitulé est porté par le contexte */
+.compact {
+  margin-top: 6px;
+  padding-top: 0;
+  border-top: none;
+}
+
+.compact .text {
+  display: none;
+}
+
+.compact .choice {
+  padding: 5px 9px;
+}

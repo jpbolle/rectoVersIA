@@ -537,6 +537,7 @@ function SectionTab({ data }: { data: ProfilSection }) {
 // ─── Onglet Général ──────────────────────────────────────────────────────────
 function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab: TabId) => void }) {
   const voc = data.vocabulaire;
+  const rech = data.rechercher;
   const vocTotal = voc?.total || 1;
   const vocPctMaitrise = voc ? Math.round((voc.maitrise / vocTotal) * 100) : 0;
 
@@ -572,13 +573,26 @@ function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab:
       pct: 0,
       color: 'var(--c-border)',
     },
+    // Rechercher : c'est le pourcentage qui compte, avec le détail des deux
+    // volets. Le nombre de recherches ne dit rien de la qualité du travail —
+    // il passe en mention de fin de ligne. Tant que rien n'est corrigé, il ne
+    // reste que lui.
     {
       tab: 'rechercher', icon: '🔍', name: 'Rechercher',
-      value: data.rechercher ? `${data.rechercher.remises}/${data.rechercher.total}` : '—',
-      sub: data.rechercher ? 'recherches remises' : 'Aucune recherche guidée',
-      pct: data.rechercher && data.rechercher.total > 0
-        ? Math.round((data.rechercher.remises / data.rechercher.total) * 100) : 0,
-      color: 'var(--c-primary)',
+      value: rech?.percent !== null && rech ? `${rech.percent}%` : '—',
+      sub: !rech
+        ? 'Aucune recherche guidée'
+        : rech.percent === null
+          ? `${rech.remises}/${rech.total} remise${rech.total > 1 ? 's' : ''} · pas encore corrigée${rech.remises > 1 ? 's' : ''}`
+          : [
+              rech.reponsesPercent !== null ? `réponses ${rech.reponsesPercent} %` : null,
+              rech.demarchePercent !== null ? `démarche ${rech.demarchePercent} %` : null,
+              // Corrigées sur assignées : « 1/3 » dit à la fois sur quoi porte
+              // le pourcentage et ce qui reste à venir
+              `${rech.notees}/${rech.total} recherche${rech.total > 1 ? 's' : ''}`,
+            ].filter(Boolean).join(' · '),
+      pct: rech?.percent ?? 0,
+      color: rech?.percent != null ? scoreColor(rech.percent) : 'var(--c-border)',
     },
     {
       tab: 'vocabulaire', icon: '🧠', name: 'Vocabulaire',
@@ -1076,12 +1090,29 @@ const LUCIDITE_META: Record<
   },
 };
 
+// Ce qui est comparé n'est pas la même chose selon le dispositif : des
+// critères de grille en écriture, des questions ailleurs. L'unité change donc
+// avec l'icône.
+const ASSURANCE_META: Record<'ecrire' | 'lire' | 'rechercher', { icone: string; unite: string }> = {
+  ecrire: { icone: '✍️', unite: 'critère' },
+  lire: { icone: '📖', unite: 'question' },
+  rechercher: { icone: '🔍', unite: 'question' },
+};
+
 function ReflexifTab({ data, profView }: { data: ProfilReflexif; profView: boolean }) {
-  const { items, total, gestes } = data;
+  const { items, total, gestes, assurance } = data;
   const { config } = useDidactique();
 
-  if (items.length === 0) {
-    return <EmptyState icon="🪞" message="Aucune auto-évaluation pour le moment." />;
+  // L'onglet réunit DEUX mesures de lucidité, l'une pouvant exister sans
+  // l'autre : l'auto-évaluation (l'élève face au regard du prof) et le degré
+  // d'assurance (l'élève face à un résultat, en lecture et en recherche).
+  if (items.length === 0 && assurance.items.length === 0) {
+    return (
+      <EmptyState
+        icon="🪞"
+        message="Rien à te montrer pour l’instant : ni auto-évaluation, ni degré d’assurance annoncé sur tes questionnaires."
+      />
+    );
   }
 
   const meta = total.tendance ? LUCIDITE_META[total.tendance] : null;
@@ -1113,7 +1144,62 @@ function ReflexifTab({ data, profView }: { data: ProfilReflexif; profView: boole
         </section>
       )}
 
+      {/* Degré d'assurance — l'autre lucidité, celle des activités notées.
+          Elle vit à côté de l'auto-évaluation, jamais mêlée : là l'élève se
+          compare au regard du prof, ici à un résultat chiffré. */}
+      {assurance.total.comparees > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Est-ce que je me vois juste ?</h2>
+          {(() => {
+            const am = assurance.total.tendance ? LUCIDITE_META[assurance.total.tendance] : null;
+            return am ? (
+              <div className={styles.questCard}>
+                <div className={styles.questInfo}>
+                  <div className={styles.questTitle} style={{ color: am.couleur }}>
+                    {am.icone} {profView ? am.prof : am.eleve}
+                  </div>
+                  <div className={styles.questMeta}>
+                    Sur {assurance.total.comparees} point
+                    {assurance.total.comparees > 1 ? 's' : ''} de comparaison —
+                    critères d’écriture auto-évalués, degré d’assurance annoncé en
+                    lecture et en recherche — {profView ? 'l’élève a vu' : 'tu as vu'} juste{' '}
+                    {assurance.total.justes} fois, avec {assurance.total.sousEstimations}{' '}
+                    sous-estimation{assurance.total.sousEstimations > 1 ? 's' : ''} et{' '}
+                    {assurance.total.surestimations} surestimation
+                    {assurance.total.surestimations > 1 ? 's' : ''}.
+                  </div>
+                </div>
+              </div>
+            ) : null;
+          })()}
+
+          {assurance.items.map((item) => {
+            const m = item.tendance ? LUCIDITE_META[item.tendance] : null;
+            return (
+              <div key={`${item.dispositif}-${item.devoirId}`} className={styles.questCard}>
+                <div className={styles.questInfo}>
+                  <div className={styles.questTitle}>
+                    {ASSURANCE_META[item.dispositif].icone} {item.titre}
+                  </div>
+                  <div className={styles.questMeta}>
+                    {item.comparees} {ASSURANCE_META[item.dispositif].unite}
+                    {item.comparees > 1 ? 's' : ''} · {item.justes} vu
+                    {item.justes > 1 ? 's' : ''} juste
+                  </div>
+                </div>
+                {m && (
+                  <span className={styles.questBadge} style={{ color: m.couleur }}>
+                    {m.icone}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      )}
+
       {/* Une carte par auto-évaluation */}
+      {items.length > 0 && (
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Mes auto-évaluations</h2>
         {items.map((item) => {
@@ -1143,6 +1229,7 @@ function ReflexifTab({ data, profView }: { data: ProfilReflexif; profView: boole
           );
         })}
       </section>
+      )}
 
       {/* Lucidité par geste : sur quoi se trompe-t-il le plus ? */}
       {gestes.length > 0 && (

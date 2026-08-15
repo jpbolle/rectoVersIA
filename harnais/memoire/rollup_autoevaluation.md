@@ -98,3 +98,12 @@ libellés peuvent changer sans rendre illisibles les réponses déjà données.
 - [ ] Un prof qui n'a pas répondu ne voit jamais les réponses de l'élève : à
       confirmer que c'est bien ce que JP veut sur la durée (aucune échappatoire
       n'est prévue).
+
+---
+
+## Session du 2026-08-15 (suite)
+
+- Constructeur : énoncé en `AutoGrowTextarea`, icône de duplication agrandie.
+- **`devoir.autoEvaluation`** — le réglage d'auto-évaluation intégrée est
+  MASQUÉ sur ce dispositif : une activité d'auto-évaluation EST déjà cela.
+  Voir `rollup_lucidite`.

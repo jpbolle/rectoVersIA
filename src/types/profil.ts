@@ -54,7 +54,19 @@ export interface ProfilGeneral {
   nonRendusSanctionnes: { intitule: string; date: string }[];
   lire: { score: number; evaluations: number } | null;
   ecrire: { score: number; evaluations: number } | null;
-  rechercher: { remises: number; total: number } | null;
+  // Recherches guidées : le pourcentage d'ensemble et son détail par volet.
+  // `percent` est null tant qu'aucune recherche n'est corrigée — il reste alors
+  // le nombre de recherches remises à annoncer.
+  rechercher: {
+    percent: number | null;
+    reponsesPercent: number | null;
+    demarchePercent: number | null;
+    points: number;
+    max: number;
+    notees: number;            // recherches dont la correction est rendue
+    total: number;             // recherches assignées
+    remises: number;           // recherches envoyées depuis l'extension
+  } | null;
   vocabulaire: {
     // Répartition des mots par niveau de maîtrise (mêmes seuils que l'onglet Vocabulaire)
     maitrise: number;
@@ -148,6 +160,37 @@ export interface ProfilReflexif {
   // Gestes de savoir-être et gestes réflexifs travaillés, avec la lucidité
   // constatée sur chacun
   gestes: { habileteId: string; comparees: number; ecartMoyen: number }[];
+  // L'autre mesure de lucidité, celle des activités NOTÉES — trois dispositifs
+  // y contribuent :
+  //  - ÉCRITURE  : l'élève s'auto-évalue sur la grille, le prof note la même ;
+  //  - LECTURE et RECHERCHE : l'élève annonce un degré d'assurance avant de
+  //    connaître sa note.
+  // Elle est tenue à part de l'auto-évaluation : là, l'élève se compare au
+  // regard du prof sur les mêmes questions ; ici, à un résultat chiffré.
+  // Les mêler produirait une moyenne qui ne veut rien dire.
+  assurance: {
+    items: AssuranceItem[];
+    total: BilanLucidite;
+  };
+}
+
+export interface BilanLucidite {
+  comparees: number;
+  justes: number;
+  sousEstimations: number;
+  surestimations: number;
+  ecartMoyen: number;
+  tendance: 'juste' | 'sousEstime' | 'surestime' | null;
+}
+
+export interface AssuranceItem extends BilanLucidite {
+  devoirId: string;
+  titre: string;
+  date: string;
+  // Les trois dispositifs notés. L'auto-évaluation n'est pas ici : elle
+  // compare l'élève au REGARD DU PROF, pas à un résultat — elle a son propre
+  // bloc dans l'onglet.
+  dispositif: 'ecrire' | 'lire' | 'rechercher';
 }
 
 // Onglet Vocabulaire

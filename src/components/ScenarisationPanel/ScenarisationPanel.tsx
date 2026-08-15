@@ -29,13 +29,16 @@
 // touche sinon, et de toute façon dès qu'on quitte un champ (onBlur du panneau).
 
 import { Fragment, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useDidactique } from '@/hooks/useDidactique';
 import { useScenarisations } from '@/hooks/useScenarisations';
 import { TYPES_COGNITIFS, TYPES_SAVOIR_ETRE, gestesDeTypes } from '@/types/didactique';
 import {
   GENRES,
+  GENRES_AJOUTABLES,
   PERIODES_ANNEE,
   capacitePeriode,
+  couleurDeChapitre,
   comptePourLAnnee,
   formatDuree,
   genreDe,
@@ -63,11 +66,9 @@ import TagField from './TagField';
 import ListField from './ListField';
 import AutoTextarea from './AutoTextarea';
 import ModuleActivitesModal from './ModuleActivitesModal';
+import ModuleFicheModal from './ModuleFicheModal';
 import styles from './ScenarisationPanel.module.css';
 
-// Couleurs de chapitre : la même teinte porte le chapitre dans les deux vues
-const COULEURS = ['#2d6a5a', '#4a7ba6', '#a6674a', '#7c5fa6', '#b7950b', '#4a9a6a'];
-const couleurChapitre = (i: number) => COULEURS[i % COULEURS.length];
 
 type Vue = 'annee' | 'encodage';
 type VueAnnee = 'module' | 'chapitre';
@@ -91,9 +92,13 @@ export default function ScenarisationPanel() {
   const [vue, setVue] = useState<Vue>('encodage');
   const [vueAnnee, setVueAnnee] = useState<VueAnnee>('module');
   const [ouverts, setOuverts] = useState<Set<string>>(new Set());
+  // Chapitres dont le tiroir à suggestions est ouvert
+  const [suggOuvertes, setSuggOuvertes] = useState<Set<string>>(new Set());
   const [modulesDeplies, setModulesDeplies] = useState<Set<string>>(new Set());
   const [reglagesOuverts, setReglagesOuverts] = useState(false);
   // Module dont on ajoute une activité : { chapitreId, moduleId }
+  // Fiche descriptive ouverte — { chapitre, module }
+  const [fiche, setFiche] = useState<{ ch: string; mod: string } | null>(null);
   const [cibleActivite, setCibleActivite] = useState<{ ch: string; mod: string } | null>(null);
 
   const scen = useMemo(
@@ -177,7 +182,9 @@ export default function ScenarisationPanel() {
 
   const ajouterChapitre = () => {
     if (!scen) return;
-    const ch = nouveauChapitre();
+    // Le rang décide de la couleur INITIALE ; elle est ensuite figée sur le
+    // chapitre et ne bouge plus quand on le déplace.
+    const ch = nouveauChapitre(scen.chapitres.length);
     majChapitres([...scen.chapitres, ch], true);
     setOuverts((prev) => new Set(prev).add(ch.id));
   };
@@ -210,6 +217,16 @@ export default function ScenarisationPanel() {
   };
 
   const supprimerModule = (chId: string, modId: string) => {
+    // Un module emporte ses activités : la confirmation n'est pas du confort.
+    // (La suppression de chapitre en demandait une, pas celle-ci — incohérence
+    // relevée à l'audit du 2026-08-15.)
+    const mod = scen.chapitres.find((c) => c.id === chId)?.modules.find((m) => m.id === modId);
+    const nb = mod?.activites.length ?? 0;
+    const ok = window.confirm(
+      `Supprimer « ${mod?.titre?.trim() || 'ce module'} » ?` +
+        (nb > 0 ? `\n\nSes ${nb} activité${nb > 1 ? 's' : ''} seront supprimées avec lui.` : '')
+    );
+    if (!ok) return;
     if (!scen) return;
     const ch = scen.chapitres.find((c) => c.id === chId);
     majChapitre(chId, { modules: (ch?.modules ?? []).filter((m) => m.id !== modId) }, true);
@@ -275,6 +292,10 @@ export default function ScenarisationPanel() {
 
   const moduleCible = cibleActivite
     ? scen.chapitres.find((c) => c.id === cibleActivite.ch)?.modules.find((m) => m.id === cibleActivite.mod)
+    : null;
+
+  const moduleFiche = fiche
+    ? scen.chapitres.find((c) => c.id === fiche.ch)?.modules.find((m) => m.id === fiche.mod)
     : null;
 
   const totalPlanifie = PERIODES_ANNEE.reduce((s, p) => s + periodesPlanifiees(scen, p.id), 0);
@@ -346,7 +367,7 @@ export default function ScenarisationPanel() {
             }
           }}
         >
-          ＋ Nouvelle
+          ＋ Nouvelle scénarisation
         </button>
 
         <button
@@ -439,6 +460,37 @@ export default function ScenarisationPanel() {
           {totalPlanifie} période{totalPlanifie > 1 ? 's' : ''} planifiée
           {totalPlanifie > 1 ? 's' : ''} sur {totalCapacite}
         </span>
+
+        {/* La charge de l'année, DANS LES DEUX VUES. Les jauges n'existaient
+            que dans la vue « année », c'est-à-dire là où l'on ne saisit rien :
+            le prof devait changer de vue, lire, mémoriser, revenir. C'est aussi
+            la seule chose de l'écran qui bouge quand on encode. */}
+        <div className={styles.capaBar}>
+          {PERIODES_ANNEE.map((p) => {
+            const plan = periodesPlanifiees(scen, p.id);
+            const capa = capacitePeriode(scen, p.id);
+            const pct = capa > 0 ? Math.min(100, Math.round((plan / capa) * 100)) : 0;
+            const etat = capa > 0 && plan > capa ? 'over' : capa > 0 && plan / capa > 0.85 ? 'warn' : '';
+            return (
+              <div
+                key={p.id}
+                className={styles.capaCell}
+                title={`${p.label} — ${plan} période${plan > 1 ? 's' : ''} planifiée${plan > 1 ? 's' : ''} sur ${capa}`}
+              >
+                <span className={styles.capaLabel}>{p.label}</span>
+                <span className={styles.capaTrack}>
+                  <span
+                    className={`${styles.capaFill} ${etat ? styles[`capa_${etat}`] : ''}`}
+                    style={{ transform: `scaleX(${pct / 100})` }}
+                  />
+                </span>
+                <span className={`${styles.capaNum} ${etat ? styles[`capaNum_${etat}`] : ''}`}>
+                  {plan}/{capa}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* ══════════ VUE ANNÉE ══════════ */}
@@ -521,7 +573,7 @@ export default function ScenarisationPanel() {
                                     ? styles.suggCard
                                     : ''
                               }`}
-                              style={{ borderLeftColor: couleurChapitre(ci) }}
+                              style={{ '--ch-color': couleurDeChapitre(ch, ci) } as CSSProperties}
                               onClick={() => {
                                 setVue('encodage');
                                 setOuverts((prev) => new Set(prev).add(ch.id));
@@ -575,7 +627,10 @@ export default function ScenarisationPanel() {
                 const certifs = ch.modules.filter((m) => genreDe(m) === 'certification');
                 return (
                   <div key={ch.id} className={styles.lane}>
-                    <div className={styles.laneName} style={{ borderLeftColor: couleurChapitre(ci) }}>
+                    <div
+                      className={styles.laneName}
+                      style={{ '--ch-color': couleurDeChapitre(ch, ci) } as CSSProperties}
+                    >
                       <div className={styles.laneTitle}>{ch.titre || 'Chapitre sans titre'}</div>
                       {objectifsDe(ch).map((o, i) => (
                         <div key={i} className={styles.laneObj}>
@@ -605,7 +660,7 @@ export default function ScenarisationPanel() {
                                       ? styles.blkSugg
                                       : ''
                                 }`}
-                                style={g === 'module' ? { background: couleurChapitre(ci) } : undefined}
+                                style={g === 'module' ? { background: couleurDeChapitre(ch, ci) } : undefined}
                               >
                                 {GENRES[g].icone} {m.titre || GENRES[g].label}
                                 <span className={styles.blkPer}>{modulePeriodes(m)} pér.</span>
@@ -689,7 +744,11 @@ export default function ScenarisationPanel() {
           {scen.chapitres.map((ch, ci) => {
             const ouvert = ouverts.has(ch.id);
             return (
-              <div key={ch.id} className={styles.chapter} style={{ borderLeftColor: couleurChapitre(ci) }}>
+              <div
+                key={ch.id}
+                className={styles.chapter}
+                style={{ '--ch-color': couleurDeChapitre(ch, ci) } as CSSProperties}
+              >
                 <div className={styles.chHead}>
                   <button
                     type="button"
@@ -698,7 +757,6 @@ export default function ScenarisationPanel() {
                   >
                     {ouvert ? '▾' : '▸'}
                   </button>
-                  <span className={styles.chBadge} style={{ background: couleurChapitre(ci) }} />
                   {/* Titre ET objectifs généraux dans le bandeau : ils se
                       lisent chapitre fermé, sans avoir à déplier */}
                   <div className={styles.chHeadMain}>
@@ -722,6 +780,27 @@ export default function ScenarisationPanel() {
                     <span className={styles.chip}>
                       {periodesChapitre(ch)} pér. · {formatDuree(periodesChapitre(ch), scen.dureePeriodeMin)}
                     </span>
+                    {/* Les suggestions ne sont ni des modules ni des
+                        certifications : elles ne durent pas et ne se placent
+                        pas dans l'année. Elles vivent donc ici, repliées
+                        derrière une ampoule qui annonce leur nombre. */}
+                    <button
+                      type="button"
+                      className={`${styles.suggBtn} ${
+                        (ch.suggestions ?? []).length > 0 ? styles.suggBtnOn : ''
+                      }`}
+                      onClick={() => toggle(suggOuvertes, ch.id, setSuggOuvertes)}
+                      title={
+                        (ch.suggestions ?? []).length > 0
+                          ? `${(ch.suggestions ?? []).length} idée${(ch.suggestions ?? []).length > 1 ? 's' : ''} pour l’an prochain`
+                          : 'Noter une idée pour l’an prochain'
+                      }
+                    >
+                      💡
+                      {(ch.suggestions ?? []).length > 0 && (
+                        <span className={styles.suggCompte}>{(ch.suggestions ?? []).length}</span>
+                      )}
+                    </button>
                     {/* Interchanger les chapitres : l'ordre d'encodage est celui du cours */}
                     <button
                       type="button"
@@ -752,18 +831,40 @@ export default function ScenarisationPanel() {
                   </span>
                 </div>
 
+                {suggOuvertes.has(ch.id) && (
+                  <div className={styles.suggPanel}>
+                    <span className={styles.suggTitre}>
+                      💡 Idées pour l’an prochain
+                      <span className={styles.auto}>
+                        ne comptent ni dans les périodes ni dans l’année
+                      </span>
+                    </span>
+                    <ListField
+                      values={ch.suggestions ?? []}
+                      placeholder="Ex. : reprendre ce chapitre après les vacances, tester le débat filmé…"
+                      ajouterLabel="＋ idée"
+                      onChange={(suggestions) => majChapitre(ch.id, { suggestions })}
+                      onStructuralChange={(suggestions) =>
+                        majChapitre(ch.id, { suggestions }, true)
+                      }
+                    />
+                  </div>
+                )}
+
                 {ouvert && (
                   <div className={styles.chBody}>
                     <table className={styles.table}>
                       <thead>
                         <tr>
-                          <th style={{ width: '26%' }}>Module</th>
-                          <th style={{ width: '11%' }}>Période de l’année</th>
-                          <th style={{ width: '9%' }}>Périodes</th>
-                          <th style={{ width: '14%' }}>Méthodes</th>
-                          <th style={{ width: '8%' }}>UAA</th>
-                          <th style={{ width: '20%' }}>Gestes</th>
-                          <th style={{ width: '12%' }}>Activités</th>
+                          {/* Le module replié dit l'ESSENTIEL : ce qu'il vise,
+                              combien il dure, combien il contient. Méthodes et
+                              gestes ont rejoint la fiche descriptive — ils se
+                              déduisent des activités et alourdissaient la ligne. */}
+                          <th style={{ width: '38%' }}>Module</th>
+                          <th style={{ width: '14%' }}>Période de l’année</th>
+                          <th style={{ width: '12%' }}>Périodes</th>
+                          <th style={{ width: '18%' }}>UAA</th>
+                          <th style={{ width: '18%' }}>Activités</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -841,9 +942,14 @@ export default function ScenarisationPanel() {
                                       )
                                     }
                                   >
+                                    {/* Chaque option dit la charge de sa période :
+                                        c'est le contrôle le plus lourd de
+                                        conséquences de l'écran, il ne peut pas
+                                        rester muet sur ce qu'il déclenche. */}
                                     {PERIODES_ANNEE.map((p) => (
                                       <option key={p.id} value={p.id}>
-                                        {p.label}
+                                        {p.label} · {periodesPlanifiees(scen, p.id)}/
+                                        {capacitePeriode(scen, p.id)}
                                       </option>
                                     ))}
                                   </select>
@@ -859,13 +965,7 @@ export default function ScenarisationPanel() {
                                   </span>
                                 </td>
                                 <td className={styles.roCell}>
-                                  {resume(moduleMethodes(m), (v) => labelDe(methodeOptions, v))}
-                                </td>
-                                <td className={styles.roCell}>
                                   {resume(moduleUaa(m), (v) => `UAA ${v}`)}
-                                </td>
-                                <td className={styles.roCell}>
-                                  {resume(moduleGestes(m), (v) => v)}
                                 </td>
                                 <td>
                                   <button
@@ -885,66 +985,14 @@ export default function ScenarisationPanel() {
 
                               {deplie && (
                                 <tr className={styles.detail}>
-                                  <td colSpan={7}>
+                                  <td colSpan={5}>
                                     <div className={styles.detailBox}>
-                                      <div className={styles.detailGrid}>
-                                        <div>
-                                          <span className={styles.detailLabel}>
-                                            Concepts et connaissances
-                                          </span>
-                                          <textarea
-                                            className={styles.detailArea}
-                                            value={m.objectifs.concepts}
-                                            placeholder="Ce que l’élève doit savoir…"
-                                            onChange={(e) =>
-                                              majModule(ch.id, m.id, {
-                                                objectifs: {
-                                                  ...m.objectifs,
-                                                  concepts: e.target.value,
-                                                },
-                                              })
-                                            }
-                                          />
-                                        </div>
-                                        {/* Les deux registres de gestes ne se
-                                            saisissent plus ici : ils se
-                                            REMPLISSENT à partir de la colonne
-                                            Gestes des activités, et se
-                                            répartissent selon la famille à
-                                            laquelle chaque geste appartient. */}
-                                        <div>
-                                          <span className={styles.detailLabel}>
-                                            Gestes cognitifs
-                                            <span className={styles.auto}>d’après les activités</span>
-                                          </span>
-                                          {resume(
-                                            gestesDuModule(m, 'cognitifs'),
-                                            (v) => v,
-                                            'Aucun — à cocher dans la colonne Gestes d’une activité'
-                                          )}
-                                          {m.objectifs.habiletesTexte && (
-                                            <p className={styles.ancienTexte}>
-                                              Note d’avant les gestes : {m.objectifs.habiletesTexte}
-                                            </p>
-                                          )}
-                                        </div>
-                                        <div>
-                                          <span className={styles.detailLabel}>
-                                            Savoir-être et gestes réflexifs
-                                            <span className={styles.auto}>d’après les activités</span>
-                                          </span>
-                                          {resume(
-                                            gestesDuModule(m, 'savoirEtre'),
-                                            (v) => v,
-                                            'Aucun — à cocher dans la colonne Gestes d’une activité'
-                                          )}
-                                          {m.objectifs.savoirEtreTexte && (
-                                            <p className={styles.ancienTexte}>
-                                              Note d’avant les gestes : {m.objectifs.savoirEtreTexte}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
+                                      {/* Concepts, méthodes et gestes ont
+                                          rejoint la FICHE DESCRIPTIVE (bouton
+                                          ci-dessous) : ils décrivent le module,
+                                          ils ne s'y saisissent pas. Ce menu
+                                          déroulant reste celui des ACTIVITÉS,
+                                          là où la didactique se pose vraiment. */}
 
                                       {/* ── Les activités : c'est ici que se saisit la didactique ── */}
                                       <div className={styles.actList}>
@@ -961,16 +1009,18 @@ export default function ScenarisationPanel() {
                                         )}
 
                                         {nbAct > 0 && (
+                                          <div className={styles.actScroll}>
                                           <table className={styles.actTable}>
                                             <thead>
                                               <tr>
-                                                <th style={{ width: '22%' }}>Activité</th>
-                                                <th style={{ width: '7%' }}>Périodes</th>
-                                                <th style={{ width: '12%' }}>Méthode</th>
-                                                <th style={{ width: '7%' }}>UAA</th>
-                                                <th style={{ width: '16%' }}>Gestes</th>
-                                                <th style={{ width: '12%' }}>Outils</th>
-                                                <th style={{ width: '19%' }}>Critique</th>
+                                                <th style={{ width: '18%' }}>Activité</th>
+                                                <th style={{ width: '6%' }}>Périodes</th>
+                                                <th style={{ width: '11%' }}>Méthode</th>
+                                                <th style={{ width: '6%' }}>UAA</th>
+                                                <th style={{ width: '14%' }}>Gestes</th>
+                                                <th style={{ width: '15%' }}>Concepts</th>
+                                                <th style={{ width: '10%' }}>Outils</th>
+                                                <th style={{ width: '15%' }}>Critique</th>
                                                 <th style={{ width: '5%' }} />
                                               </tr>
                                             </thead>
@@ -1067,6 +1117,19 @@ export default function ScenarisationPanel() {
                                                     />
                                                   </td>
                                                   <td>
+                                                    {/* Concepts propres à CETTE
+                                                        activité — le module a
+                                                        les siens, dans sa fiche */}
+                                                    <AutoTextarea
+                                                      className={styles.cellInput}
+                                                      value={a.concepts ?? ''}
+                                                      placeholder="Ce que l’élève doit savoir…"
+                                                      onChange={(concepts) =>
+                                                        majActivite(ch.id, m.id, a.id, { concepts })
+                                                      }
+                                                    />
+                                                  </td>
+                                                  <td>
                                                     <AutoTextarea
                                                       className={styles.cellInput}
                                                       value={a.outils ?? ''}
@@ -1115,6 +1178,7 @@ export default function ScenarisationPanel() {
                                               ))}
                                             </tbody>
                                           </table>
+                                          </div>
                                         )}
 
                                         <div className={styles.actBtns}>
@@ -1124,6 +1188,13 @@ export default function ScenarisationPanel() {
                                             onClick={() => setCibleActivite({ ch: ch.id, mod: m.id })}
                                           >
                                             ➕ Activité
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className={styles.btn}
+                                            onClick={() => setFiche({ ch: ch.id, mod: m.id })}
+                                          >
+                                            📋 Fiche du module
                                           </button>
                                           <button
                                             type="button"
@@ -1156,7 +1227,7 @@ export default function ScenarisationPanel() {
                         place en fin de chapitre et se déplace ensuite là où on
                         veut, entre deux modules s'il le faut. */}
                     <div className={styles.chFoot}>
-                      {(Object.keys(GENRES) as GenreModule[]).map((g) => (
+                      {GENRES_AJOUTABLES.map((g) => (
                         <button
                           key={g}
                           type="button"
@@ -1182,6 +1253,32 @@ export default function ScenarisationPanel() {
             ＋ Chapitre
           </button>
         </>
+      )}
+
+      {/* ── Popup : fiche descriptive du module ── */}
+      {fiche && moduleFiche && (
+        <ModuleFicheModal
+          module={moduleFiche}
+          genreLabel={GENRES[genreDe(moduleFiche)].label}
+          genreIcone={GENRES[genreDe(moduleFiche)].icone}
+          periodes={modulePeriodes(moduleFiche)}
+          dureeLabel={
+            comptePourLAnnee(moduleFiche)
+              ? formatDuree(modulePeriodes(moduleFiche), scen.dureePeriodeMin)
+              : 'hors calcul de l’année'
+          }
+          methodes={moduleMethodes(moduleFiche).map((v) => labelDe(methodeOptions, v))}
+          uaa={moduleUaa(moduleFiche).map((v) => `UAA ${v}`)}
+          gestesCognitifs={gestesDuModule(moduleFiche, 'cognitifs')}
+          gestesSavoirEtre={gestesDuModule(moduleFiche, 'savoirEtre')}
+          labelMethode={(id) => labelDe(methodeOptions, id)}
+          onConceptsChange={(concepts) =>
+            majModule(fiche.ch, fiche.mod, {
+              objectifs: { ...moduleFiche.objectifs, concepts },
+            })
+          }
+          onClose={() => setFiche(null)}
+        />
       )}
 
       {/* ── Popup : ajouter une activité au module ── */}

@@ -87,6 +87,8 @@ export default function EditDevoirModal({
   const [accesIA, setAccesIA] = useState(false);
   const [disponible, setDisponible] = useState(false);
   const [flipInverted, setFlipInverted] = useState(false);
+  // Auto-évaluation intégrée — absent = activé (activités antérieures)
+  const [autoEvaluation, setAutoEvaluation] = useState(true);
   const [evaluation, setEvaluation] = useState<EvaluationType>('formatif');
   // Didactique : le mode principal et les habiletés se modifient ; l'atelier
   // non — il commande le dispositif, le changer transformerait l'activité
@@ -138,6 +140,7 @@ export default function EditDevoirModal({
       setAccesIA(devoir.accesIA || false);
       setDisponible(devoir.disponible || false);
       setFlipInverted(devoir.flipInverted ?? false);
+      setAutoEvaluation(devoir.autoEvaluation !== false);
       setEvaluation(devoir.evaluation ?? 'formatif');
       setModePrincipal(
         devoir.modePrincipal ??
@@ -188,6 +191,10 @@ export default function EditDevoirModal({
   const atelierId = devoir?.atelier ?? atelierParDispositif(typeTravail).id;
   // Seules les activités d'écriture s'appuient sur une grille
   const usesGrille = typeTravail === 'ecrire';
+  // Sans objet en vocabulaire (tout y est automatisé) et sur une activité
+  // d'auto-évaluation, qui EST déjà cela.
+  const supporteAutoEval =
+    typeTravail === 'ecrire' || typeTravail === 'lire' || typeTravail === 'rechercher';
   const grillesDeLAtelier = grilles.length
     ? grilles.filter((g) => !g.ateliers.length || g.ateliers.includes(atelierId)).map((g) => g.name)
     : grilleTypes;
@@ -278,6 +285,11 @@ export default function EditDevoirModal({
         autoEvalQuiz && autoEvalQuiz.questions.length > 0 ? autoEvalQuiz : null;
     }
 
+    // Auto-évaluation intégrée (écriture, lecture, recherche)
+    if (supporteAutoEval) {
+      data.autoEvaluation = autoEvaluation;
+    }
+
     await onSave(devoir.id, data);
   };
 
@@ -343,7 +355,7 @@ export default function EditDevoirModal({
       </div>
 
       {/* Date et Grille */}
-      <div className={styles.formRow}>
+      <div className={supporteAutoEval ? styles.formRowAutoEval : styles.formRow}>
         <div className={styles.formGroup}>
           <DatePicker
             label="Date de remise — facultatif"
@@ -386,6 +398,34 @@ export default function EditDevoirModal({
                   : 'Masquer certains critères...'}
               </button>
             )}
+          </div>
+        )}
+
+        {supporteAutoEval && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Auto-évaluation</label>
+            {/* L'explication vit dans l'infobulle : la ligne porte déjà deux
+                sélecteurs, une phrase de plus l'alourdirait pour rien. */}
+            <label
+              className={styles.autoEvalToggle}
+              title={
+                autoEvaluation
+                  ? usesGrille
+                    ? 'L’élève s’évalue sur la grille avant la correction.'
+                    : 'L’élève pose un smiley d’assurance sous chaque réponse.'
+                  : 'L’élève ne se prononce pas sur son travail.'
+              }
+            >
+              <input
+                type="checkbox"
+                checked={autoEvaluation}
+                onChange={(e) => setAutoEvaluation(e.target.checked)}
+              />
+              <span className={styles.autoEvalSwitch} />
+              <span className={styles.autoEvalText}>
+                {autoEvaluation ? 'Activée' : 'Désactivée'}
+              </span>
+            </label>
           </div>
         )}
       </div>

@@ -216,6 +216,7 @@ export async function POST(request: NextRequest) {
       questionnaire,
       vocabulaireConfig,
       flipInverted,
+      autoEvaluation,
       corrigeReference,
       ressourcesToIA,
       lectureQuiz,
@@ -266,6 +267,8 @@ export async function POST(request: NextRequest) {
         : null,
       evaluation: evaluation === 'certificatif' ? 'certificatif' : 'formatif',
       flipInverted: flipInverted ?? false,
+      // Absent = activé (activités antérieures au réglage)
+      autoEvaluation: autoEvaluation !== false,
       // Horodatage de l'ouverture aux élèves (notifications)
       ...(disponible ?? true ? { disponibleAt: new Date() } : {}),
     };

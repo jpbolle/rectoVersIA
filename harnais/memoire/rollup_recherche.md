@@ -141,3 +141,32 @@ un seul clic.
        aujourd'hui côté panneau).
 6. [ ] Image et audio par question dans le constructeur de recherche — même
        traitement qu'en lecture, mais suppose aussi l'extension.
+
+---
+
+## Session du 2026-08-15
+
+**Livré, non testé.**
+
+- **Onglet « Remarques du professeur » retiré** de la vue élève d'une
+  recherche : il montrait la copie annotée, vide ici — le prof commente dans la
+  gouttière, question par question. Le rail passe de 4 icônes à 3.
+- **Total en tête de l'onglet Évaluation** : les deux volets réunis
+  (`percentGlobalRecherche`), au-dessus des cartes Réponses / Démarche. Il ne
+  les remplace pas — « mal cherché » et « mal répondu » ne veulent pas dire la
+  même chose. « Score partiel » annoncé en clair, pas en astérisque.
+- **Le bloc « Tes réponses ont bien été envoyées » disparaît** dès que la
+  correction est rendue : c'était un pis-aller en attendant la note, le garder
+  ferait cohabiter deux comptages du même travail.
+- **Badge du bandeau bleu (vue prof) retiré** — même raison qu'en lecture.
+  Avant : il affichait « 0 % » quoi qu'il arrive, `calculateScore` retombant à
+  zéro faute de grille.
+- **Smileys d'assurance dans l'extension** — voir `rollup_lucidite`.
+- **Le trou des QCM, bouché** : `/api/navigkid/questionnaire` envoie désormais
+  les bonnes réponses QCM si le corrigé est ouvert **ou** si la correction de
+  cet élève est visible. Sans elles, `autoScoreQcm` renvoyait `null` et chaque
+  QCM basculait en « à noter », ses points disparaissant du total.
+  Effet de bord assumé : publier une copie dévoile le corrigé QCM de SES
+  questions à cet élève-là.
+- Constructeur : icône de duplication agrandie (14 → 19 px — le glyphe ⧉ dessine
+  petit dans son cadratin), énoncé en `AutoGrowTextarea`.

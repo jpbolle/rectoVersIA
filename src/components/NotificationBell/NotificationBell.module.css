@@ -47,7 +47,8 @@
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  width: 340px;
+  /* Assez large pour qu'un message d'annonce se lise sans être haché */
+  width: 400px;
   max-width: calc(100vw - 24px);
   background: var(--c-bg-card, #fff);
   border: 1px solid var(--c-border);
@@ -87,7 +88,9 @@
 }
 
 .list {
-  max-height: 320px;
+  /* Une annonce prend plus de hauteur qu'une ligne d'activité : on laisse
+     respirer, sans jamais dépasser l'écran */
+  max-height: min(440px, 60vh);
   overflow-y: auto;
 }
 
@@ -105,6 +108,77 @@
 
 .itemUnread {
   background: rgba(45, 106, 90, 0.06);
+}
+
+/* Notification menant à ce qu'elle annonce : la ligne entière est cliquable */
+.itemLink {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.itemLink:hover {
+  background: rgba(45, 106, 90, 0.12);
+}
+
+/* ── Annonce de l'administration ──
+   Un texte à lire en entier, pas un intitulé : elle se déploie en hauteur,
+   sans troncature, et son lien est montré explicitement. */
+
+.annonce {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--c-border);
+  cursor: pointer;
+}
+
+.annonce:last-child {
+  border-bottom: none;
+}
+
+.annonceHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.annonceFrom {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}
+
+.annonceText {
+  margin: 0;
+  padding-left: 24px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--c-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.annonceLink {
+  align-self: flex-start;
+  margin-left: 24px;
+  padding: 4px 10px;
+  border: 1px solid var(--c-accent);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-accent);
+  text-decoration: none;
+}
+
+.annonceLink:hover {
+  background: var(--c-accent);
+  color: #fff;
 }
 
 .itemIcon {

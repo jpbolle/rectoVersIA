@@ -20,6 +20,7 @@ import type {
   LectureQuestion,
   LectureQuestionType,
 } from '@/types/lecture';
+import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import styles from './LectureQuizBuilder.module.css';
 
 // Éditeur riche des blocs informatifs (même éditeur que l'onglet Texte des ressources)
@@ -131,6 +132,22 @@ export default function LectureQuizBuilder({
 
   const removeQuestion = (id: string) => {
     update({ questions: quiz.questions.filter((q) => q.id !== id) });
+  };
+
+  // Duplication : la copie se place juste après l'originale et s'ouvre seule.
+  // Même geste que dans les constructeurs de recherche et d'auto-évaluation —
+  // seul l'identifiant change, sinon les deux blocs seraient la même question.
+  const duplicateQuestion = (id: string) => {
+    const index = quiz.questions.findIndex((q) => q.id === id);
+    if (index === -1) return;
+    const copie: LectureQuestion = {
+      ...JSON.parse(JSON.stringify(quiz.questions[index])),
+      id: generateLectureQuestionId(),
+    };
+    const next = [...quiz.questions];
+    next.splice(index + 1, 0, copie);
+    update({ questions: next });
+    setOpenIds(new Set([copie.id]));
   };
 
   const moveQuestion = (from: number, to: number) => {
@@ -447,6 +464,15 @@ export default function LectureQuizBuilder({
                 )}
                 <button
                   type="button"
+                  className={styles.qAction}
+                  onClick={() => duplicateQuestion(q.id)}
+                  title="Dupliquer ce bloc"
+                  disabled={disabled}
+                >
+                  ⧉
+                </button>
+                <button
+                  type="button"
                   className={styles.qDel}
                   onClick={() => removeQuestion(q.id)}
                   title="Supprimer ce bloc"
@@ -471,8 +497,7 @@ export default function LectureQuizBuilder({
                         placeholder="Texte d'introduction ou de commentaire, affiché tel quel à l'élève dans le questionnaire..."
                       />
                     ) : (
-                      <input
-                        type="text"
+                      <AutoGrowTextarea
                         className={styles.enonceInput}
                         value={q.enonce}
                         onChange={(e) => updateQuestion(q.id, { enonce: e.target.value })}
@@ -751,27 +776,35 @@ export default function LectureQuizBuilder({
                   </div>
                 )}
 
-                {/* Réponse idéale du prof (toutes les questions, pas les blocs info) */}
+                {/* Réponse idéale du prof (toutes les questions, pas les blocs
+                    info) — repliée, comme « Corrigé & références » dans le
+                    constructeur de recherche. Pas de références ici : une
+                    question de lecture porte sur un texte fourni, l'élève n'a
+                    aucune source à retrouver. */}
                 {q.type !== 'info' && (
-                  <>
-                    <div className={styles.fieldLabel}>
-                      Votre réponse idéale
-                      <span
-                        className={styles.info}
-                        title="Affichée dans votre page de correction pour comparer avec la réponse de l'élève, puis montrée à l'élève une fois le corrigé disponible."
-                      >
-                        i
-                      </span>
+                  <details className={styles.details}>
+                    <summary className={styles.detailsSummary}>Corrigé</summary>
+                    <div className={styles.detailsContent}>
+                      <label className={styles.detailsLabel}>
+                        Votre réponse idéale
+                        <span
+                          className={styles.info}
+                          title="Affichée dans votre page de correction pour comparer avec la réponse de l'élève, puis montrée à l'élève une fois le corrigé disponible."
+                        >
+                          i
+                        </span>
+                      </label>
+                      <AutoGrowTextarea
+                        className={styles.detailsTextarea}
+                        value={q.reponseIdeale ?? ''}
+                        onChange={(e) => updateQuestion(q.id, { reponseIdeale: e.target.value })}
+                        placeholder="Rédigez la réponse attendue (facultatif)..."
+                        minRows={2}
+                        maxRows={12}
+                        disabled={disabled}
+                      />
                     </div>
-                    <textarea
-                      className={styles.fluoTextarea}
-                      rows={2}
-                      value={q.reponseIdeale ?? ''}
-                      onChange={(e) => updateQuestion(q.id, { reponseIdeale: e.target.value })}
-                      placeholder="Rédigez la réponse attendue (facultatif)..."
-                      disabled={disabled}
-                    />
-                  </>
+                  </details>
                 )}
               </div>
             </div>

@@ -123,3 +123,76 @@ au défilement (et retournement vers le haut s'il manque de place en bas).
 - [ ] Certification : la relier à une activité certificative (`devoirId` existe
       dans le modèle, l'interface ne le pose pas).
 - [ ] Archivage d'une scénarisation (`archive` existe, aucun bouton).
+
+---
+
+## Session du 2026-08-15 — fiche de module, suggestions, refonte visuelle
+
+**Livré, non testé.**
+
+### La ligne de module ne dit plus que l'essentiel
+Module · Période de l'année · **Périodes** · **UAA** · **Activités**.
+Les colonnes *Méthodes* et *Gestes* ont disparu : elles se déduisaient déjà des
+activités et alourdissaient la ligne.
+
+### Fiche descriptive du module (`ModuleFicheModal.tsx`)
+Popup ouverte par **📋 Fiche du module**, dans le menu du module. Elle porte :
+- les chiffres en tête, sur bandeau plein (périodes / activités / UAA) ;
+- **Concepts et connaissances** — seul champ éditable ;
+- méthodes, UAA, gestes cognitifs, savoir-être — **tout se déduit** des
+  activités, regroupé sur un fond retiré pour qu'on voie d'un regard ce qui se
+  saisit et ce qui se calcule ;
+- les activités **en résumé**.
+
+Le menu déroulant du module reste celui des **ACTIVITÉS**, où se fait la saisie.
+Une colonne **Concepts** y a été ajoutée (`ModuleActivite.concepts`) — distincte
+de `objectifs.concepts`, qui appartient au module.
+
+### Les suggestions sortent de la liste des modules
+Une suggestion n'a ni durée, ni période, ni évaluation : la ranger parmi les
+modules lui donnait un poids qu'elle n'a pas. Elle devient **du texte attaché
+au chapitre** (`ChapitreDidactique.suggestions`), repliée derrière une **ampoule
+💡 dans le bandeau** qui annonce leur nombre.
+`GENRES` garde `suggestion` pour relire l'ancien ; `GENRES_AJOUTABLES` ne
+propose plus que module et certification. **Double migration** (client +
+serveur) : un document jamais rouvert ne perd rien au premier enregistrement.
+
+### Refonte visuelle (audit Impeccable)
+JP trouvait l'écran « fort terne ». L'audit l'a confirmé, chiffres à l'appui :
+trois plans de surface séparés par **1,19:1** au maximum, **77 % des bordures**
+en `1px --c-border` (1,56:1), une amplitude typographique réelle de 3 px, et
+**3 transitions en 1836 lignes**. Score Nielsen moyen : **2,0/4**.
+
+Corrigé :
+- **Bandeau de chapitre en aplat plein** de sa couleur, texte blanc (recette de
+  `DidactiquePanel`). C'est le point d'entrée qui manquait. La pastille de
+  couleur, redondante, a disparu.
+- **La couleur du chapitre est persistée** (`ChapitreDidactique.couleur`) et
+  descend en propriété CSS `--ch-color`. Elle était indexée sur la POSITION :
+  déplacer un chapitre changeait sa couleur. Deux teintes assombries
+  (`#b7950b` → `#8a6f08`, `#4a9a6a` → `#3d7d55`) — elles rendaient trois
+  chapitres sur six illisibles.
+- **Bande de charge de l'année dans l'en-tête**, visible dans les DEUX vues, et
+  chaque option du menu « Période de l'année » annonce sa charge (`Nov — Déc ·
+  12/16`). Les jauges n'existaient que dans la vue où l'on ne saisit rien.
+- Survol de ligne, transitions, deux poids de bordure, tableau des activités
+  qui **défile** au lieu de se comprimer.
+- Accessibilité : `--c-text-muted` (3,92:1) → `--c-text-secondary` (7,57:1) sur
+  tous les en-têtes ; anneau de focus visible ; bloc `:focus-visible` ;
+  `:focus-within` pour les commandes révélées au survol (inatteignables au
+  clavier) ; cibles à 26 px ; `TagField` devient un vrai bouton.
+- **`supprimerModule` demande confirmation** — il n'en demandait aucune, alors
+  que la suppression de chapitre en demandait une.
+
+Détecteur Impeccable : **0 constat** (5 au départ, tous `side-tab`).
+
+### Ce que l'audit a soulevé et qui n'est PAS fait
+- **« La belle vue est celle qu'on ne peut pas toucher »** : la vue par chapitre
+  est la seule où l'année ressemble à une année, et elle est en lecture seule.
+  La rendre manipulable (glisser un module d'une période à l'autre) ferait du
+  tableau le mode de repli. C'est une refonte, arbitrage de JP en attente.
+- Les **émoji comme iconographie** : refusés par le référentiel Impeccable,
+  gardés ici — les remplacer dans ce seul panneau casserait la cohérence avec
+  le reste de l'app. Chantier à mener à l'échelle de l'application.
+- `prompt()` / `confirm()` natifs dans un système entièrement custom.
+- Pas d'annulation, pas de déplacement d'un module d'un chapitre à l'autre.

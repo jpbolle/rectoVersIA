@@ -90,3 +90,39 @@ enrichissements restent à tester et l'ensemble à déployer.** Maquette d'origi
 - [ ] Soulignage « ressource » : le surlignage vit dans `ressourceAnnotations` (global au
   travail), pas rattaché finement à la question — suffisant pour v1, à raffiner si besoin.
 - [ ] Roadmap app (`/roadmap`) à mettre à jour via l'interface admin.
+
+---
+
+## Session du 2026-08-15
+
+**Livré, non testé.**
+
+- **Bloc « Corrigé » replié** : la réponse idéale du prof passe dans un
+  `<details>`, comme « Corrigé & références » côté recherche — sans les
+  références (une question de lecture porte sur un texte fourni, l'élève n'a
+  aucune source à retrouver).
+- **Duplication de question** ajoutée au constructeur (⧉ avant la corbeille) :
+  elle existait en recherche et en auto-évaluation, pas ici.
+- **Champ énoncé** : c'était un `<input>` d'UNE SEULE LIGNE, l'énoncé long
+  était coupé. Remplacé par `AutoGrowTextarea` (composant partagé, hauteur
+  MESURÉE sur le contenu — voir `rollup_didactique`).
+- **Bandeau de total** aligné sur celui de la recherche (TOTAL · points ·
+  pourcentage, et « Score partiel » en clair quand des questions attendent).
+  Conséquence : la couleur du pourcentage par seuil a disparu du total ; elle
+  reste sur les barres par habileté.
+- **Smileys d'assurance** sous chaque réponse — voir `rollup_lucidite`.
+- **Le badge de pourcentage du bandeau bleu (vue prof) ne s'affiche plus** pour
+  la lecture : le total est en tête de l'onglet Évaluation, l'afficher deux
+  fois à trente centimètres d'écart n'avait pas de sens. Il ne reste que pour
+  l'écriture, seul dispositif noté par une grille.
+
+### Le trou trouvé et bouché : le quiz complet
+L'onglet Évaluation calcule le score **côté client**. Sans `correctIndex` ni
+`fluoAttendu`, les QCM et les soulignages sortaient du total : un élève dont la
+correction était publiée sans que le corrigé global soit ouvert lisait un score
+**amputé**, sans savoir pourquoi.
+Désormais (`/api/devoirs/[id]`, `quizComplet`) le quiz complet part si le
+corrigé est ouvert **ou** si la correction de CET élève lui est visible.
+Cela ne bascule pas le questionnaire en mode corrigé pour autant : les ✅/❌
+inline suivent toujours `corrigeDisponible` (`showCorrection`).
+Le garde-fou « non rendu » reste intact.

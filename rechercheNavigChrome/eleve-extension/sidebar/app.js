@@ -398,7 +398,10 @@ function afficherQuestionnaire() {
     reponse: "",
     motsCles: [],
     sitesConsultes: [],
-    passages: []
+    passages: [],
+    // Degré d'assurance : 3 = sûr, 2 = doute, 1 = je sais que c'est faux.
+    // null tant que l'élève ne s'est pas prononcé — c'est facultatif.
+    confiance: null
   }));
 
   sauvegarderLocal();
@@ -521,6 +524,9 @@ function afficherQuestionCourante() {
     });
   }
 
+  // Degré d'assurance
+  afficherConfiance(idx, qData);
+
   // Mots-clés
   afficherMotsCles(qData);
 
@@ -546,6 +552,52 @@ function afficherQuestionCourante() {
 
   // Dots
   afficherDots();
+}
+
+// ─── Degré d'assurance ───
+//
+// Les trois mêmes échelons que dans l'application (src/types/confiance.ts) :
+// l'élève doit retrouver le même geste des deux côtés. Un second clic sur
+// l'échelon déjà choisi le retire — personne n'est contraint de se prononcer,
+// et une question sans smiley sort simplement du calcul de lucidité.
+const ECHELLE_CONFIANCE = [
+  { niveau: 3, emoji: "😀", label: "Je suis sûr de ma réponse" },
+  { niveau: 2, emoji: "😐", label: "J'ai un doute" },
+  { niveau: 1, emoji: "😟", label: "Je sais que c'est faux" }
+];
+
+function afficherConfiance(idx, qData) {
+  const bloc = document.querySelector(".confiance-bloc");
+  const zone = $("#question-confiance");
+  if (!zone) return;
+
+  // Le prof a pu retirer l'auto-évaluation de cette activité
+  const actif = state.questionnaire && state.questionnaire.autoEvaluation !== false;
+  if (bloc) bloc.hidden = !actif;
+  if (!actif) {
+    zone.innerHTML = "";
+    return;
+  }
+
+  zone.innerHTML = ECHELLE_CONFIANCE.map((e) => {
+    const actif = qData.confiance === e.niveau;
+    return `
+      <button type="button" class="confiance-choice${actif ? " selected" : ""}"
+              data-niveau="${e.niveau}" title="${e.label}">
+        <span class="confiance-emoji">${e.emoji}</span>
+        <span class="confiance-text">${e.label}</span>
+      </button>
+    `;
+  }).join("");
+
+  zone.querySelectorAll(".confiance-choice").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const niveau = parseInt(btn.dataset.niveau, 10);
+      state.questions[idx].confiance = qData.confiance === niveau ? null : niveau;
+      afficherConfiance(idx, state.questions[idx]);
+      sauvegarderLocal();
+    });
+  });
 }
 
 function afficherMotsCles(qData) {

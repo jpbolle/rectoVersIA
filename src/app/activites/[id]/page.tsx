@@ -484,8 +484,11 @@ export default function TravailPage() {
       hasBadge: hasAiSuggestions,
     });
   }
-  // En vocabulaire, le prof n'intervient que dans l'evaluation : pas d'onglet remarques
-  if (!isVocabulaire) {
+  // L'onglet Remarques montre la copie annotée par le prof : il n'a de sens
+  // que pour une production écrite. En vocabulaire (tout est automatisé) et en
+  // recherche (le prof commente dans la gouttière de correction, question par
+  // question), il resterait vide.
+  if (!isVocabulaire && !isRecherche) {
     railTabs.push({
       id: 'remarques',
       label: 'Remarques du professeur',
@@ -642,6 +645,7 @@ export default function TravailPage() {
                 setPanelOpen(true);
               }}
               showCorrection={!isPreviewMode && isSubmitted && devoir.corrigeDisponible === true}
+              autoEvaluation={devoir.autoEvaluation !== false}
             />
           </div>
         ) : (
@@ -694,7 +698,7 @@ export default function TravailPage() {
             studentName={travail?.studentName}
             correction={correction}
             studentContent={travail?.content || ''}
-            showRemarquesTab={!isVocabulaire}
+            showRemarquesTab={!isVocabulaire && !isRecherche}
             ressourceAnnotations={travail?.ressourceAnnotations}
             onRessourceAnnotationsChange={isPreviewMode ? undefined : updateRessourceAnnotations}
             ressourceNotes={travail?.ressourceNotes}

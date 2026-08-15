@@ -3,6 +3,7 @@
 // l'élève y répond dans sa colonne de gauche (mode worksheet ou quiz).
 
 import type { DrawShape } from './draw';
+import type { NiveauConfiance } from './confiance';
 
 export type LectureQuizMode = 'worksheet' | 'quiz';
 
@@ -103,6 +104,9 @@ export interface LectureAnswer {
   shapes?: DrawShape[];             // tracés sur l'image de la question
   fluoWords?: number[];             // indices des mots fluorés (fluorage « extrait »)
   audioPlays?: number;              // nombre d'écoutes de l'audio déjà consommées
+  // Degré d'assurance annoncé par l'élève au moment de répondre — facultatif,
+  // n'entre dans AUCUN score. Voir src/types/confiance.ts.
+  confiance?: NiveauConfiance;
 }
 
 export interface LectureAnswersState {

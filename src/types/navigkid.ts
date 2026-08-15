@@ -1,5 +1,7 @@
 // ─── Types NavigKid (recherche guidée web) ───
 
+import type { NiveauConfiance } from './confiance';
+
 // Question créée par le prof
 export interface NavigKidQuestion {
   texte: string;
@@ -74,6 +76,10 @@ export interface NavigKidQuestionData {
   motsCles: { texte: string; timestamp: number }[];
   sitesConsultes: NavigKidSiteConsulte[];
   passages?: NavigKidPassage[];
+  // Degré d'assurance posé par l'élève DANS L'EXTENSION, au moment de
+  // répondre — facultatif, n'entre dans aucun score.
+  // Voir src/types/confiance.ts et src/lib/confiance-scoring.ts.
+  confiance?: NiveauConfiance;
 }
 
 // Récapitulatif calculé par le serveur (voir src/lib/navigkid-server.ts) : il évite

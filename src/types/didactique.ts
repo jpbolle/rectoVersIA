@@ -144,8 +144,10 @@ export const TYPES_MODAUX: { id: TypeModal; title: string; court: string }[] = [
   { id: 'lire', title: 'Gestes de lecture', court: 'Lire' },
   { id: 'ecrire', title: 'Gestes d’écriture', court: 'Écrire' },
   { id: 'parler', title: 'Gestes de parole', court: 'Parler' },
-  { id: 'reflexif', title: 'Gestes réflexifs', court: 'Réfléchir' },
   { id: 'lexique', title: 'Gestes lexicaux', court: 'Lexique' },
+  // Les deux familles d'attitude ferment la marche (cf. TYPES_SAVOIR_ETRE) :
+  // les gestes cognitifs d'abord, la métacognition et le savoir-être ensuite.
+  { id: 'reflexif', title: 'Gestes réflexifs', court: 'Réfléchir' },
   { id: 'savoirEtre', title: 'Gestes de savoir-être', court: 'Savoir-être' },
 ];
 

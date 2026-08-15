@@ -188,6 +188,24 @@ export function scoreRecherche(
   };
 }
 
+// Pourcentage d'ensemble, les deux volets réunis — ce qu'affiche le bandeau
+// de correction. Il est PARTIEL tant que des questions attendent leur note :
+// celles-ci restent hors total (cf. `volet`), si bien que le pourcentage porte
+// sur ce qui est déjà corrigé. C'est volontairement plus parlant qu'un 0 %,
+// qui laisserait croire à un travail nul alors qu'il n'est pas encore lu.
+// `null` quand rien n'est notable : aucun barème, ou rien de corrigé.
+export function percentGlobalRecherche(score: RechercheScore): number | null {
+  const points = score.reponses.points + score.demarche.points;
+  const max = score.reponses.max + score.demarche.max;
+  if (max === 0) return null;
+  return Math.round((points / max) * 100);
+}
+
+// Reste-t-il des questions à noter, l'un ou l'autre volet confondu ?
+export function resteANoter(score: RechercheScore): number {
+  return score.reponses.aNoter + score.demarche.aNoter;
+}
+
 // Affichage : 2,5 plutôt que 2.5
 export function formatPoints(n: number): string {
   return String(Math.round(n * 10) / 10).replace('.', ',');

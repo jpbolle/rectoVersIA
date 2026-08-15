@@ -125,9 +125,22 @@ export default function TagField({
 
   return (
     <div className={styles.tagWrap} ref={ref}>
+      {/* Un <div onClick> rendait ce champ — coeur de la saisie didactique —
+          inatteignable au clavier. Il annonce désormais ce qu'il est. */}
       <div
         className={`${styles.tagField} ${ouvert ? styles.tagFieldOpen : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-expanded={ouvert}
         onClick={() => setOuvert((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOuvert((v) => !v);
+          } else if (e.key === 'Escape' && ouvert) {
+            setOuvert(false);
+          }
+        }}
       >
         {value.length === 0 && placeholder && (
           <span className={styles.tagPlaceholder}>{placeholder}</span>

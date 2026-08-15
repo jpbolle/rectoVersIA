@@ -4,11 +4,21 @@
 
 import { adminDb } from '@/lib/firebase/admin';
 import { scoreLectureQuiz } from '@/lib/lecture-scoring';
+import { scoreRecherche } from '@/lib/recherche-scoring';
 import { parseLectureAnswers } from '@/types/lecture';
 import type { LectureQuiz } from '@/types/lecture';
 import type { AutoEvalAnswer, AutoEvalQuestionnaire } from '@/types/autoevaluation';
-import type { HabileteStat } from '@/types/profil';
-import type { RechercheQuestionScore } from '@/types/navigkid';
+import { bilanConfiance } from '@/lib/confiance-scoring';
+import { bilanGrille } from '@/lib/grille-lucidite';
+import type {
+  AssuranceItem, BilanLucidite,
+  HabileteStat, ProfilRecherche, RechercheItem,
+} from '@/types/profil';
+import type {
+  NavigKidQuestion,
+  NavigKidReponse,
+  RechercheQuestionScore,
+} from '@/types/navigkid';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
 import {
@@ -62,6 +72,8 @@ export type DevoirInfo = {
   type: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation';
   questionnaireId?: string;
   vocabulaireThemes?: string[];
+  // Critères retirés de CETTE activité — ils sortent de toute comparaison
+  hiddenCriteria?: string[];
   // Questionnaire de lecture — nécessaire pour recalculer les scores par
   // habileté (les QCM ne sont jamais stockés, ils se recalculent)
   lectureQuiz?: LectureQuiz | null;
@@ -76,6 +88,9 @@ export type TravailInfo = {
   status: string;
   nonRendu?: 'justifie' | 'nonJustifie' | null;
   content?: string;
+  // Auto-évaluation sur la grille (écriture) — à confronter à la correction
+  // du prof pour mesurer la lucidité (voir buildAssuranceProfil)
+  selfEvaluation?: Record<string, number> | null;
 };
 
 export interface StudentBase {
@@ -110,6 +125,7 @@ export async function loadStudentBase(
       status: data.status || 'draft',
       nonRendu: data.nonRendu || null,
       content: opts.withContent ? (data.content as string | undefined) : undefined,
+      selfEvaluation: (data.selfEvaluation as Record<string, number> | null) || null,
     };
   });
 
@@ -163,6 +179,7 @@ export async function loadStudentBase(
         type: data.typeTravail || 'ecrire',
         questionnaireId: data.questionnaireId || undefined,
         vocabulaireThemes: data.vocabulaireThemes || undefined,
+        hiddenCriteria: data.hiddenCriteria || undefined,
         lectureQuiz: data.lectureQuiz || null,
         autoEvalQuiz: data.autoEvalQuiz || null,
       });
@@ -600,4 +617,312 @@ export function buildHabileteStats(base: StudentBase): HabileteStat[] {
       activites: v.activites.size,
     }))
     .sort((a, b) => a.percent - b.percent);
+}
+
+// ─── Recherches guidées (NavigKid) ───
+//
+// Une seule construction pour l'onglet Rechercher ET la tuile de la Vue
+// d'ensemble : le pourcentage affiché sur la carte et celui du détail ne
+// doivent pas pouvoir diverger.
+//
+// Comme pour la lecture, rien n'est comptabilisé tant que la correction n'a pas
+// été rendue visible : le profil ne montre que ce que l'élève a le droit de voir.
+export async function buildRechercheProfil(
+  uid: string,
+  base: StudentBase
+): Promise<ProfilRecherche> {
+  const rechercheDevoirs = [...base.devoirs.entries()].filter(
+    ([, d]) => d.type === 'rechercher' && d.questionnaireId
+  );
+  const corrParDevoir = new Map(base.corrections.map((c) => [c.devoirId, c]));
+
+  const items: RechercheItem[] = [];
+  const cumul = new Map<
+    string,
+    { points: number; max: number; questions: number; activites: Set<string> }
+  >();
+
+  await Promise.all(
+    rechercheDevoirs.map(async ([devoirId, devoir]) => {
+      const qRef = adminDb.collection('questionnaires').doc(devoir.questionnaireId!);
+      const [qSnap, repSnap] = await Promise.all([
+        qRef.get(),
+        qRef.collection('reponses').doc(uid).get(),
+      ]);
+      if (!qSnap.exists) return;
+
+      const qData = qSnap.data()!;
+      const questions: NavigKidQuestion[] = Array.isArray(qData.questions) ? qData.questions : [];
+
+      let date = devoir.date;
+      let reponse: NavigKidReponse | null = null;
+      if (repSnap.exists) {
+        const rep = repSnap.data()!;
+        date = rep.soumisLe?.toDate?.()?.toISOString?.() || rep.soumisLe || date;
+        reponse = rep as NavigKidReponse;
+      }
+
+      const corr = corrParDevoir.get(devoirId);
+      const score = scoreRecherche(questions, reponse, corr?.rechercheScores);
+
+      items.push({
+        devoirId,
+        titre: qData.titre || devoir.intitule,
+        date,
+        soumise: repSnap.exists,
+        nbQuestions: questions.length,
+        nbReponses: score.stats.questionsRepondues,
+        sitesConsultes: score.stats.sites,
+        passages: score.stats.passages,
+        motsCles: score.stats.motsCles,
+        // Sans correction rendue, aucune note ne remonte
+        reponses: corr ? score.reponses : null,
+        demarche: corr ? score.demarche : null,
+      });
+
+      if (!corr) return;
+      score.parHabilete.forEach((h) => {
+        const cur = cumul.get(h.habileteId) ?? {
+          points: 0,
+          max: 0,
+          questions: 0,
+          activites: new Set<string>(),
+        };
+        cur.points += h.points;
+        cur.max += h.max;
+        cur.questions += h.questions;
+        cur.activites.add(devoirId);
+        cumul.set(h.habileteId, cur);
+      });
+    })
+  );
+
+  items.sort((a, b) => b.date.localeCompare(a.date));
+
+  const habiletes: HabileteStat[] = [...cumul.entries()]
+    .map(([habileteId, v]) => ({
+      habileteId,
+      points: Math.round(v.points * 10) / 10,
+      max: v.max,
+      percent: v.max > 0 ? Math.round((v.points / v.max) * 100) : 0,
+      questions: v.questions,
+      activites: v.activites.size,
+    }))
+    .sort((a, b) => a.percent - b.percent);
+
+  return { items, habiletes };
+}
+
+// Résumé de la tuile « Rechercher » de la Vue d'ensemble : le pourcentage
+// d'ensemble et son détail par volet, cumulés sur toutes les recherches
+// corrigées. Les recherches non corrigées ne pèsent sur aucun total — seul
+// leur nombre est reporté.
+export function resumeRecherche(profil: ProfilRecherche): {
+  percent: number | null;
+  reponsesPercent: number | null;
+  demarchePercent: number | null;
+  points: number;
+  max: number;
+  notees: number;
+  total: number;
+  remises: number;
+} | null {
+  const { items } = profil;
+  if (items.length === 0) return null;
+
+  let rPoints = 0, rMax = 0, dPoints = 0, dMax = 0, notees = 0;
+  for (const item of items) {
+    if (!item.reponses && !item.demarche) continue;
+    notees++;
+    rPoints += item.reponses?.points ?? 0;
+    rMax += item.reponses?.max ?? 0;
+    dPoints += item.demarche?.points ?? 0;
+    dMax += item.demarche?.max ?? 0;
+  }
+
+  const pct = (p: number, m: number) => (m > 0 ? Math.round((p / m) * 100) : null);
+  return {
+    percent: pct(rPoints + dPoints, rMax + dMax),
+    reponsesPercent: pct(rPoints, rMax),
+    demarchePercent: pct(dPoints, dMax),
+    points: Math.round((rPoints + dPoints) * 10) / 10,
+    max: rMax + dMax,
+    notees,
+    total: items.length,
+    remises: items.filter((i) => i.soumise).length,
+  };
+}
+
+// ─── Degré d'assurance (lecture + recherche) ───
+//
+// La seconde mesure de lucidité du profil, à côté de l'auto-évaluation. Ici
+// l'élève ne se compare pas au regard du prof mais à un RÉSULTAT : sur chaque
+// question, il a annoncé un degré d'assurance avant de connaître sa note.
+//
+// Rien n'est comptabilisé tant que la correction n'est pas rendue : sans note,
+// il n'y a rien à confronter.
+export async function buildAssuranceProfil(
+  uid: string,
+  base: StudentBase
+): Promise<{ items: AssuranceItem[]; total: BilanLucidite }> {
+  const corrParDevoir = new Map(base.corrections.map((c) => [c.devoirId, c]));
+  const items: AssuranceItem[] = [];
+
+  // ── Activités d'écriture : auto-évaluation sur la grille ──
+  // Le cas le plus direct : l'élève et le prof se prononcent sur les mêmes
+  // critères et la même échelle, l'écart se lit en crans.
+  for (const travail of base.travaux) {
+    const devoir = base.devoirs.get(travail.devoirId);
+    if (!devoir || devoir.type !== 'ecrire') continue;
+    const corr = corrParDevoir.get(travail.devoirId);
+    if (!corr) continue;
+
+    const grille = base.grilles.get(devoir.grille);
+    const bilan = bilanGrille(
+      grille,
+      travail.selfEvaluation,
+      corr.evaluation,
+      devoir.hiddenCriteria
+    );
+    if (bilan.comparees === 0) continue;
+    items.push({
+      devoirId: travail.devoirId,
+      titre: devoir.intitule,
+      date: devoir.date,
+      dispositif: 'ecrire',
+      comparees: bilan.comparees,
+      justes: bilan.justes,
+      sousEstimations: bilan.sousEstimations,
+      surestimations: bilan.surestimations,
+      ecartMoyen: bilan.ecartMoyen,
+      tendance: bilan.tendance,
+    });
+  }
+
+  // ── Questionnaires de lecture ──
+  for (const travail of base.travaux) {
+    const devoir = base.devoirs.get(travail.devoirId);
+    if (!devoir || devoir.type !== 'lire' || !devoir.lectureQuiz) continue;
+    const corr = corrParDevoir.get(travail.devoirId);
+    if (!corr) continue;
+
+    const answers = parseLectureAnswers(travail.content)?.answers ?? {};
+    const score = scoreLectureQuiz(devoir.lectureQuiz, answers, corr.questionScores);
+    const bilan = bilanConfiance(
+      devoir.lectureQuiz.questions
+        .filter((q) => q.type !== 'info')
+        .map((q) => {
+          const s = score.parQuestion.find((x) => x.questionId === q.id);
+          return {
+            questionId: q.id,
+            enonce: q.enonce,
+            percent:
+              s && s.points !== null && s.max > 0 ? Math.round((s.points / s.max) * 100) : null,
+            confiance: answers[q.id]?.confiance,
+          };
+        })
+    );
+    if (bilan.comparees === 0) continue;
+    items.push({
+      devoirId: travail.devoirId,
+      titre: devoir.intitule,
+      date: devoir.date,
+      dispositif: 'lire',
+      comparees: bilan.comparees,
+      justes: bilan.justes,
+      sousEstimations: bilan.sousEstimations,
+      surestimations: bilan.surestimations,
+      ecartMoyen: bilan.ecartMoyen,
+      tendance: bilan.tendance,
+    });
+  }
+
+  // ── Questionnaires de recherche (smiley posé dans l'extension) ──
+  const rechercheDevoirs = [...base.devoirs.entries()].filter(
+    ([, d]) => d.type === 'rechercher' && d.questionnaireId
+  );
+  await Promise.all(
+    rechercheDevoirs.map(async ([devoirId, devoir]) => {
+      const corr = corrParDevoir.get(devoirId);
+      if (!corr) return;
+
+      const qRef = adminDb.collection('questionnaires').doc(devoir.questionnaireId!);
+      const [qSnap, repSnap] = await Promise.all([
+        qRef.get(),
+        qRef.collection('reponses').doc(uid).get(),
+      ]);
+      if (!qSnap.exists || !repSnap.exists) return;
+
+      const questions: NavigKidQuestion[] = Array.isArray(qSnap.data()!.questions)
+        ? qSnap.data()!.questions
+        : [];
+      const reponse = repSnap.data() as NavigKidReponse;
+      const score = scoreRecherche(questions, reponse, corr.rechercheScores);
+
+      // On confronte au volet RÉPONSE : l'élève se prononçait sur ce qu'il
+      // avait trouvé, jamais sur la façon dont il avait cherché.
+      const bilan = bilanConfiance(
+        questions.map((q, index) => {
+          const volet = score.parQuestion.find((p) => p.index === index);
+          return {
+            questionId: String(index),
+            enonce: q.texte,
+            percent:
+              volet && volet.reponsePoints !== null && volet.reponseMax > 0
+                ? Math.round((volet.reponsePoints / volet.reponseMax) * 100)
+                : null,
+            confiance: reponse.questions?.find((d) => d.questionIndex === index)?.confiance,
+          };
+        })
+      );
+      if (bilan.comparees === 0) return;
+      items.push({
+        devoirId,
+        titre: qSnap.data()!.titre || devoir.intitule,
+        date: devoir.date,
+        dispositif: 'rechercher',
+        comparees: bilan.comparees,
+        justes: bilan.justes,
+        sousEstimations: bilan.sousEstimations,
+        surestimations: bilan.surestimations,
+        ecartMoyen: bilan.ecartMoyen,
+        tendance: bilan.tendance,
+      });
+    })
+  );
+
+  items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+  const comparees = items.reduce((s, i) => s + i.comparees, 0);
+  if (comparees === 0) {
+    return {
+      items,
+      total: {
+        comparees: 0,
+        justes: 0,
+        sousEstimations: 0,
+        surestimations: 0,
+        ecartMoyen: 0,
+        tendance: null,
+      },
+    };
+  }
+
+  // Moyenne PONDÉRÉE par le nombre de questions : une activité de dix
+  // questions pèse plus qu'une de deux, sinon la tendance serait faussée.
+  const sommePonderee = items.reduce((s, i) => s + i.ecartMoyen * i.comparees, 0);
+  const ecartMoyen = Math.round((sommePonderee / comparees) * 100) / 100;
+
+  return {
+    items,
+    total: {
+      comparees,
+      justes: items.reduce((s, i) => s + i.justes, 0),
+      sousEstimations: items.reduce((s, i) => s + i.sousEstimations, 0),
+      surestimations: items.reduce((s, i) => s + i.surestimations, 0),
+      ecartMoyen,
+      tendance:
+        Math.abs(ecartMoyen) < 0.5 ? 'juste' : ecartMoyen > 0 ? 'surestime' : 'sousEstime',
+    },
+  };
 }

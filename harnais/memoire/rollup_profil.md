@@ -57,3 +57,23 @@ Refonte complète en **5 onglets** : Général / Lire / Écrire / Rechercher / V
 - EmptyState : les mots-clés (`hourglass`, `chart`…) s'affichaient littéralement —
   hourglass = spinner, partout ailleurs de vrais emojis + « Absence de données ».
 - TODO : test + déploiement.
+
+---
+
+## Session du 2026-08-15
+
+- **Carte « Rechercher » de la Vue d'ensemble** : elle affichait `3/4` /
+  « recherches remises ». Elle dit maintenant le RÉSULTAT —
+  `82%` / « réponses 69 % · démarche 94 % · **1/3 recherches** » (corrigées sur
+  assignées). Tant que rien n'est corrigé : `—` et « 2/4 remises · pas encore
+  corrigées ». La barre prend enfin la couleur du score.
+- **`buildRechercheProfil` déplacé dans `profil-stats.ts`** : la tuile et
+  l'onglet viennent du MÊME calcul. Les faire diverger était le risque
+  principal. Coût : la Vue d'ensemble lit un document questionnaire par
+  recherche, là où elle ne lisait que les réponses.
+- **Onglet 🪞 Me connaître, élargi** — voir `rollup_lucidite`. Deux sections :
+  « Est-ce que je me vois juste ? » (écriture, lecture, recherche) et
+  « Mes auto-évaluations ». Séparées volontairement : dans l'une l'élève se
+  compare à un résultat chiffré, dans l'autre au regard d'une personne.
+- `loadStudentBase` charge désormais `travail.selfEvaluation` et
+  `devoir.hiddenCriteria` ; la route réflexive demande aussi les grilles.

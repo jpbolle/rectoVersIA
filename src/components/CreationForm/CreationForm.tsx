@@ -161,6 +161,9 @@ export default function CreationForm({
 
   // Inversion recto/verso (type ecrire uniquement)
   const [flipInverted, setFlipInverted] = useState(false);
+  // Auto-évaluation intégrée — activée par défaut : c'est le geste qu'on
+  // veut voir posé, le prof la retire quand elle n'a pas lieu d'être.
+  const [autoEvaluation, setAutoEvaluation] = useState(true);
 
   // Aperçu du questionnaire de recherche (popup)
   const [showQuestionnairePreview, setShowQuestionnairePreview] = useState(false);
@@ -172,6 +175,12 @@ export default function CreationForm({
   // Seules les activités d'écriture s'appuient sur une grille ; lecture,
   // recherche et vocabulaire portent leur didactique dans leurs habiletés
   const usesGrille = typeTravail === 'ecrire';
+
+  // Auto-évaluation intégrée. Sans objet sur deux dispositifs : le vocabulaire
+  // n'a rien à s'auto-évaluer (tout y est automatisé), et une activité
+  // d'auto-évaluation EST déjà cela — le réglage y serait absurde.
+  const supporteAutoEval =
+    typeTravail === 'ecrire' || typeTravail === 'lire' || typeTravail === 'rechercher';
   const grilleValid = !usesGrille || grille;
   const isValid = baseValid && grilleValid
     && (typeTravail !== 'rechercher' || nkQuestions.some(q => q.texte.trim()));
@@ -249,6 +258,9 @@ export default function CreationForm({
       accesIA,
       disponible,
       typeTravail,
+      // Toujours transmis : « absent = activé » ne vaut que pour les activités
+      // antérieures au réglage, pas pour celles qu'on crée maintenant.
+      autoEvaluation: supporteAutoEval ? autoEvaluation : false,
       modePrincipal,
       atelier,
       habiletes,
@@ -440,7 +452,7 @@ export default function CreationForm({
 
       {/* Ligne 2 : Type d'activité (+ mode principal, qui en découle) puis, à
           droite, la grille pour l'écriture — les habiletés à sa place ailleurs */}
-      <div className={styles.formRow}>
+      <div className={supporteAutoEval ? styles.formRowAutoEval : styles.formRow}>
         <div className={styles.formGroup}>
           <label className={styles.label}>
             Type d&apos;activité <span className={styles.required}>*</span>
@@ -508,6 +520,35 @@ export default function CreationForm({
               onChange={setHabiletes}
               disabled={isSubmitting}
             />
+          </div>
+        )}
+
+        {supporteAutoEval && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Auto-évaluation</label>
+            {/* L'explication vit dans l'infobulle : la ligne porte déjà deux
+                sélecteurs, une phrase de plus l'alourdirait pour rien. */}
+            <label
+              className={styles.autoEvalToggle}
+              title={
+                autoEvaluation
+                  ? usesGrille
+                    ? 'L’élève s’évalue sur la grille avant la correction.'
+                    : 'L’élève pose un smiley d’assurance sous chaque réponse.'
+                  : 'L’élève ne se prononce pas sur son travail.'
+              }
+            >
+              <input
+                type="checkbox"
+                checked={autoEvaluation}
+                onChange={(e) => setAutoEvaluation(e.target.checked)}
+                disabled={isSubmitting}
+              />
+              <span className={styles.autoEvalSwitch} />
+              <span className={styles.autoEvalText}>
+                {autoEvaluation ? 'Activée' : 'Désactivée'}
+              </span>
+            </label>
           </div>
         )}
       </div>

@@ -420,16 +420,22 @@ export default function DidactiquePanel() {
         ))}
       </datalist>
 
-      {/* UAA du programme — socle du cours de français en FWB : toujours
-          visible, jamais replié */}
+      {/* UAA et méthodes — deux listes courtes du référentiel, côte à côte dans
+          un seul bloc : toujours visibles, jamais repliées */}
       <div className={`${styles.card} ${styles.card_uaa}`}>
         <div className={styles.cardHeadStatic}>
-          <span className={styles.cardTitle}>UAA de français</span>
+          <span className={styles.cardTitle}>Référentiel du cours</span>
           <span className={styles.cardCount}>
-            Unités d&apos;acquis d&apos;apprentissage du programme — {config.uaa.length} au total
+            {config.uaa.length} UAA · {config.methodes.length} méthode
+            {config.methodes.length > 1 ? 's' : ''} d&apos;enseignement
           </span>
         </div>
-        <div className={styles.cardBody}>
+        <div className={styles.twoCols}>
+        <div className={styles.colBlock}>
+          <p className={styles.colTitle}>
+            UAA de français
+            <span>Unités d&apos;acquis d&apos;apprentissage du programme</span>
+          </p>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -516,18 +522,14 @@ export default function DidactiquePanel() {
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Méthodes d'enseignement — liste ouverte, alimentée par l'admin, lue
-          par la colonne « Méthode » des modules d'une scénarisation */}
-      <div className={`${styles.card} ${styles.card_uaa}`}>
-        <div className={styles.cardHeadStatic}>
-          <span className={styles.cardTitle}>Méthodes d&apos;enseignement</span>
-          <span className={styles.cardCount}>
-            Proposées aux modules d&apos;une scénarisation — {config.methodes.length} au total
-          </span>
-        </div>
-        <div className={styles.cardBody}>
+        {/* Méthodes d'enseignement — liste ouverte, alimentée par l'admin, lue
+            par la colonne « Méthode » des modules d'une scénarisation */}
+        <div className={styles.colBlock}>
+          <p className={styles.colTitle}>
+            Méthodes d&apos;enseignement
+            <span>Proposées aux modules d&apos;une scénarisation</span>
+          </p>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -609,6 +611,7 @@ export default function DidactiquePanel() {
               +
             </button>
           </div>
+        </div>
         </div>
       </div>
 

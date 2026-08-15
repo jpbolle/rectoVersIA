@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { resolveProfilTarget, isProfilTargetError } from '@/lib/profil-target';
 import {
   loadStudentBase, buildSectionStats, buildVocabulaireProfil,
+  buildRechercheProfil, resumeRecherche,
 } from '@/lib/profil-stats';
 import type { ProfilGeneral } from '@/types/profil';
 
@@ -58,17 +58,11 @@ export async function GET(request: NextRequest) {
     const avg = (scores: number[]) =>
       Math.round(scores.reduce((s, v) => s + v, 0) / scores.length);
 
-    // Tuile Rechercher : recherches remises / total
-    const rechercheDevoirs = base.travaux
-      .map((t) => ({ devoirId: t.devoirId, devoir: base.devoirs.get(t.devoirId) }))
-      .filter((e) => e.devoir?.type === 'rechercher' && e.devoir.questionnaireId);
-    let remises = 0;
-    await Promise.all(rechercheDevoirs.map(async (e) => {
-      const rep = await adminDb
-        .collection('questionnaires').doc(e.devoir!.questionnaireId!)
-        .collection('reponses').doc(target.uid).get();
-      if (rep.exists) remises++;
-    }));
+    // Tuile Rechercher : le pourcentage d'ensemble et son détail par volet.
+    // Le nombre de recherches ne dit rien du travail — il n'est plus qu'une
+    // mention en second plan. Même construction que l'onglet Rechercher, pour
+    // que la carte et le détail ne puissent pas afficher deux chiffres.
+    const rechercher = resumeRecherche(await buildRechercheProfil(target.uid, base));
 
     // Tuile Vocabulaire : répartition par niveau de maîtrise (agrégat des
     // activités, comme la Vue d'ensemble de l'onglet Vocabulaire) + moyenne
@@ -120,9 +114,7 @@ export async function GET(request: NextRequest) {
       lire: corrLire.length > 0
         ? { score: avg(corrLire.map((c) => c.score)), evaluations: corrLire.length }
         : null,
-      rechercher: rechercheDevoirs.length > 0
-        ? { remises, total: rechercheDevoirs.length }
-        : null,
+      rechercher,
       vocabulaire,
     };
 

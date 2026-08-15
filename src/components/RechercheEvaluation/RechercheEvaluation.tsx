@@ -10,7 +10,12 @@
 
 import { useDidactique } from '@/hooks/useDidactique';
 import { habileteLabel } from '@/types/didactique';
-import { formatPoints, scoreRecherche } from '@/lib/recherche-scoring';
+import {
+  formatPoints,
+  percentGlobalRecherche,
+  resteANoter,
+  scoreRecherche,
+} from '@/lib/recherche-scoring';
 import type { RechercheVolet } from '@/lib/recherche-scoring';
 import type {
   NavigKidQuestion,
@@ -18,6 +23,8 @@ import type {
   RechercheQuestionScore,
 } from '@/types/navigkid';
 import RechercheStatsTab from '@/components/RechercheStatsTab/RechercheStatsTab';
+import ConfianceBilan from '@/components/ConfianceBilan';
+import { bilanConfiance } from '@/lib/confiance-scoring';
 import styles from './RechercheEvaluation.module.css';
 
 interface Props {
@@ -26,6 +33,8 @@ interface Props {
   scores?: Record<string, RechercheQuestionScore>;
   // Le score est-il montrable ? (prof : toujours ; élève : correction rendue)
   showScores: boolean;
+  // Vue prof : le bilan de lucidité s'adresse au professeur, pas à l'élève
+  isProfessorView?: boolean;
 }
 
 function formatTemps(ms: number): string {
@@ -59,7 +68,13 @@ function ScoreCard({
   );
 }
 
-export default function RechercheEvaluation({ questions, reponse, scores, showScores }: Props) {
+export default function RechercheEvaluation({
+  questions,
+  reponse,
+  scores,
+  showScores,
+  isProfessorView = false,
+}: Props) {
   const { config } = useDidactique();
   const score = scoreRecherche(questions, reponse, scores);
 
@@ -71,10 +86,51 @@ export default function RechercheEvaluation({ questions, reponse, scores, showSc
 
   const aDesNotes = score.reponses.max > 0 || score.demarche.max > 0;
 
+  // Total des deux volets. Il ne remplace pas le détail — « mal cherché » et
+  // « mal répondu » ne disent pas la même chose — mais c'est la note du travail,
+  // et l'élève la cherchait sans la trouver.
+  const totalPoints = score.reponses.points + score.demarche.points;
+  const totalMax = score.reponses.max + score.demarche.max;
+  const totalPercent = percentGlobalRecherche(score);
+  const aNoter = resteANoter(score);
+
+  // Lucidité : le smiley posé dans l'extension, confronté à la note de la
+  // RÉPONSE (jamais celle de la démarche — l'élève se prononçait sur ce qu'il
+  // avait trouvé, pas sur la façon dont il avait cherché).
+  const bilan = bilanConfiance(
+    questions.map((q, index) => {
+      const volet = score.parQuestion.find((p) => p.index === index);
+      return {
+        questionId: String(index),
+        enonce: q.texte,
+        percent:
+          volet && volet.reponsePoints !== null && volet.reponseMax > 0
+            ? Math.round((volet.reponsePoints / volet.reponseMax) * 100)
+            : null,
+        confiance: reponse?.questions?.find((d) => d.questionIndex === index)?.confiance,
+      };
+    })
+  );
+
   return (
     <div className={styles.container}>
       {showScores ? (
         <>
+          {totalPercent !== null && (
+            <div className={styles.total}>
+              <span className={styles.totalLabel}>Total</span>
+              <span className={styles.totalValue}>
+                {formatPoints(totalPoints)} / {totalMax}
+              </span>
+              <span className={styles.totalPercent}>{totalPercent} %</span>
+              {aNoter > 0 && (
+                <span className={styles.totalPartiel}>
+                  Score partiel — {aNoter} question{aNoter > 1 ? 's' : ''} pas encore notée
+                  {aNoter > 1 ? 's' : ''} par ton professeur, et donc hors total.
+                </span>
+              )}
+            </div>
+          )}
           <div className={styles.scores}>
             <ScoreCard titre="Réponses" volet={score.reponses} variant="reponses" />
             <ScoreCard titre="Démarche" volet={score.demarche} variant="demarche" />
@@ -92,6 +148,8 @@ export default function RechercheEvaluation({ questions, reponse, scores, showSc
           Ta note apparaîtra ici quand ton professeur aura rendu la correction.
         </p>
       )}
+
+      {showScores && <ConfianceBilan bilan={bilan} isProfessorView={isProfessorView} />}
 
       {showScores && score.parHabilete.length > 0 && (
         <section className={styles.section}>

@@ -252,22 +252,28 @@ export default function AssistancePanel({
             selectedEvalIndex={selectedVocabEvalIndex}
           />
         )}
-        {/* Recherche : récapitulatif de l'envoi, puis scores / habiletés / stats.
-            Le récapitulatif serveur reste la seule information chiffrée dont
-            dispose l'élève tant que la correction ne lui est pas rendue. */}
-        {currentTab === 'grille' && !isProfessorView && navigkidReponse?.resume && (
-          <RechercheResume
-            resume={navigkidReponse.resume}
-            soumisLe={navigkidReponse.soumisLe}
-            corrigeDisponible={devoir.corrigeDisponible === true}
-          />
-        )}
+        {/* Recherche : le récapitulatif de l'envoi (justes / erreurs / à
+            corriger) est un PIS-ALLER — la seule information chiffrée dont
+            l'élève dispose tant que le prof n'a pas rendu sa correction. Dès
+            qu'elle l'est, les deux scores le remplacent : garder les deux
+            afficherait deux comptages concurrents du même travail. */}
+        {currentTab === 'grille' &&
+          !isProfessorView &&
+          navigkidReponse?.resume &&
+          correction?.visibleParEleve !== true && (
+            <RechercheResume
+              resume={navigkidReponse.resume}
+              soumisLe={navigkidReponse.soumisLe}
+              corrigeDisponible={devoir.corrigeDisponible === true}
+            />
+          )}
         {currentTab === 'grille' && isRecherche && (
           <RechercheEvaluation
             questions={navigkidQuestions!}
             reponse={navigkidReponse ?? null}
             scores={correction?.rechercheScores}
             showScores={isProfessorView || correction?.visibleParEleve === true}
+            isProfessorView={isProfessorView}
           />
         )}
         {/* Questionnaire de lecture : pas de grille — le score et le détail par
@@ -278,6 +284,7 @@ export default function AssistancePanel({
             travailContent={studentContent}
             questionScores={correction?.questionScores}
             showScores={isProfessorView || correction?.visibleParEleve === true}
+            isProfessorView={isProfessorView}
           />
         )}
         {/* Auto-évaluation : écart entre les deux regards. Côté élève, rien
@@ -299,6 +306,7 @@ export default function AssistancePanel({
           <GrilleTab
             grille={grille}
             hiddenCriteria={devoir.hiddenCriteria}
+            autoEvaluation={devoir.autoEvaluation !== false}
             nonRendu={nonRendu}
             onNonRenduChange={onNonRenduChange}
             isLoading={grilleLoading}

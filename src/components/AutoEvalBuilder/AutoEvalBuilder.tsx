@@ -30,6 +30,7 @@ import type {
   AutoEvalQuestionType,
   AutoEvalQuestionnaire,
 } from '@/types/autoevaluation';
+import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import styles from './AutoEvalBuilder.module.css';
 
 interface Props {
@@ -298,7 +299,10 @@ export default function AutoEvalBuilder({
 
               {isOpen && (
                 <div className={styles.qBody}>
-                  <textarea
+                  {/* Hauteur mesurée sur le contenu (AutoGrowTextarea). Le
+                      placeholder reste propre à ce constructeur : un bloc
+                      informatif et une question ne s'amorcent pas pareil. */}
+                  <AutoGrowTextarea
                     className={styles.enonce}
                     value={q.enonce}
                     onChange={(e) => majQuestion(q.id, { enonce: e.target.value })}
@@ -307,7 +311,8 @@ export default function AutoEvalBuilder({
                         ? 'Texte affiché à l’élève — une consigne, une transition, un encouragement…'
                         : 'Ex. : Où en es-tu dans ta capacité à organiser un texte en paragraphes ?'
                     }
-                    rows={Math.min(10, Math.max(2, Math.ceil(q.enonce.length / 90) + 1))}
+                    minRows={2}
+                    maxRows={12}
                     disabled={disabled}
                   />
 
