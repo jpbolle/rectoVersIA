@@ -1,0 +1,570 @@
+/* ═══ La liseuse — colonne de gauche d'une activité « lecture d'une œuvre » ═══
+   Elle prend la place que l'éditeur occupe pour l'écriture et le questionnaire
+   pour la lecture. Le sommaire, lui, vit à droite (OeuvreSommaire). */
+
+.liseuse {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--c-bg-card);
+}
+
+.vide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+  color: var(--c-text-muted);
+  text-align: center;
+}
+
+/* ── En-tête de la scène ── */
+.entete {
+  padding: 16px 30px 12px;
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0;
+}
+
+.surtitre {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--c-text-muted);
+  margin-bottom: 4px;
+}
+
+.titre {
+  font-family: var(--c-font-title);
+  font-size: 25px;
+  color: var(--c-text);
+  margin: 0;
+}
+
+/* ── Corps défilant ── */
+.corps {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px 30px 20px;
+}
+
+.info,
+.erreur {
+  color: var(--c-text-muted);
+  font-size: 14px;
+}
+
+.erreur {
+  color: var(--c-danger);
+}
+
+.chapeau {
+  color: var(--c-text-secondary);
+  font-style: italic;
+  border-left: 3px solid var(--c-accent);
+  padding: 2px 0 2px 14px;
+  margin: 0 0 20px;
+}
+
+/* ── Deux colonnes ──
+   Une scène de théâtre en colonnes gagne beaucoup : les répliques sont
+   courtes et laissent la moitié droite de la ligne vide. Réglage porté par la
+   section (`colonnes`), jamais imposé — une scène brève se lit mieux d'un
+   seul tenant. En dessous de 900 px, on repasse à une colonne : sur un écran
+   de Chromebook, deux colonnes de 30 caractères seraient illisibles. */
+.texteDeuxColonnes {
+  column-count: 2;
+  column-gap: 38px;
+  column-rule: 1px solid var(--c-border);
+}
+
+@media (max-width: 900px) {
+  .texteDeuxColonnes {
+    column-count: 1;
+  }
+}
+
+.prose {
+  color: var(--c-text);
+  line-height: 1.6;
+}
+
+.prose p {
+  margin: 0 0 11px;
+}
+
+/* ── Tirades ──
+   Un vers ne se coupe pas et ne se justifie pas. `break-inside` empêche la
+   colonne de fendre une réplique en deux. */
+.tirade {
+  margin: 0 0 14px;
+  break-inside: avoid;
+}
+
+.locuteur {
+  margin: 16px 0 5px;
+  font-family: var(--c-font-body);
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.09em;
+  color: var(--c-primary);
+}
+
+.vers {
+  margin: 0 0 2px;
+  padding-left: 22px;
+  text-indent: -22px;
+  font-family: var(--c-font-title);
+  font-size: 16.5px;
+  line-height: 1.65;
+  color: var(--c-text);
+}
+
+/* ── Médias ──
+   Images et vidéos sont CENTRÉES et traversent les deux colonnes : une vidéo
+   coincée dans une demi-colonne serait inregardable. */
+.media {
+  margin: 24px auto;
+  max-width: 640px;
+  column-span: all;
+  text-align: center;
+}
+
+.image {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  display: block;
+  margin: 0 auto;
+}
+
+.cadreVideo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--c-radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  background: #000;
+}
+
+.cadreVideo iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.legende {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--c-text-muted);
+}
+
+/* ── Ligne d'actions ──
+   Forme imposée du projet : deux traits horizontaux encadrent les boutons
+   (cf. VocabulaireActivity et LectureQuizActivity). Navigation et vérification
+   y tiennent ensemble, à la demande de JP. */
+.bottomActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 44px -30px 0;
+  padding-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.bottomActionsLine {
+  flex: 1;
+  height: 1px;
+  background: var(--c-border);
+}
+
+.bottomActionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 22px;
+  border: none;
+  border-radius: var(--c-radius);
+  background: var(--c-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.35);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Vérification déjà faite : le bouton reste cliquable (on peut relire son
+   corrigé) mais il ne sollicite plus. */
+.actionBtnFaite {
+  background: var(--c-bg-element);
+  color: var(--c-success);
+  box-shadow: inset 0 0 0 1.5px var(--c-success);
+}
+
+.actionBtnFaite:hover:not(:disabled) {
+  background: #eef7f1;
+  box-shadow: inset 0 0 0 1.5px var(--c-success);
+}
+
+.navBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1.5px solid var(--c-primary);
+  background: var(--c-bg-card);
+  color: var(--c-primary);
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.navBtn:hover:not(:disabled) {
+  background: var(--c-bg-element);
+}
+
+.navBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.indiceActions {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--c-text-dim);
+  margin: 9px 0 0;
+}
+
+/* ═══ Le questionnaire en popup ═══ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(45, 40, 35, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  z-index: 1000;
+}
+
+.popup {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  box-shadow: var(--c-shadow-popup);
+  width: min(680px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.popupEntete {
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg-element);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.popupEntete h3 {
+  font-family: var(--c-font-title);
+  font-size: 17px;
+  margin: 0;
+}
+
+.popupSurtitre {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  margin: 2px 0 0;
+}
+
+.popupFermer {
+  background: none;
+  border: 0;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--c-text-muted);
+}
+
+.popupCorps {
+  overflow-y: auto;
+}
+
+.popupPied {
+  padding: 13px 20px;
+  border-top: 1px solid var(--c-border);
+  background: #fdfbf8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.popupNote {
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.question {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--c-bg-element);
+}
+
+.question:last-child {
+  border-bottom: 0;
+}
+
+.enonce {
+  font-weight: 600;
+  margin: 0 0 11px;
+}
+
+.documentJoint {
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+  padding: 11px 14px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--c-text-secondary);
+}
+
+.choix {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.choixItem {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 9px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--c-text);
+  transition: border-color 0.15s ease;
+}
+
+.choixItem:hover:not(:disabled) {
+  border-color: var(--c-primary-light);
+}
+
+.choixItem:disabled {
+  cursor: default;
+}
+
+.choixLettre {
+  font-weight: 600;
+  color: var(--c-text-muted);
+}
+
+/* Corrigé ouvert : la bonne réponse s'affiche dès le clic. Comportement
+   PROPRE À CET ATELIER — ailleurs, le corrigé attend la correction du prof. */
+.choixJuste {
+  border-color: var(--c-success);
+  background: #eef7f1;
+}
+
+.choixFaux {
+  border-color: var(--c-danger);
+  background: #fbefef;
+}
+
+.choixMarque {
+  margin-left: auto;
+  font-weight: 700;
+}
+
+.choixJuste .choixMarque {
+  color: var(--c-success);
+}
+
+.choixFaux .choixMarque {
+  color: var(--c-danger);
+}
+
+.zoneTexte {
+  width: 100%;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  padding: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  background: var(--c-bg-card);
+  color: var(--c-text);
+  margin-bottom: 9px;
+}
+
+.corrige {
+  margin-top: 11px;
+  padding: 11px 14px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+  font-size: 13.5px;
+}
+
+.corrige p {
+  margin: 0;
+}
+
+.corrigeLabel {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--c-text-muted);
+  margin-bottom: 4px;
+}
+
+/* ═══ Le sommaire — rendu dans la colonne de droite ═══ */
+
+.sommaire {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sommaireVide {
+  color: var(--c-text-muted);
+  font-size: 13.5px;
+}
+
+.sommaireChapitre {
+  display: flex;
+  flex-direction: column;
+}
+
+.sommaireTitre {
+  font-family: var(--c-font-title);
+  font-size: 15px;
+  margin: 0 0 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sommaireDate {
+  font-family: var(--c-font-body);
+  font-size: 11px;
+  color: var(--c-text-muted);
+  font-weight: 400;
+}
+
+.sommaireActe {
+  padding: 10px 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+}
+
+.sommaireItem {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-left: 3px solid transparent;
+  padding: 7px 10px 7px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+  border-radius: 0 var(--c-radius) var(--c-radius) 0;
+}
+
+.sommaireItem:hover {
+  background: var(--c-bg-element);
+}
+
+.sommaireItemActif {
+  background: var(--c-bg-element);
+  border-left-color: var(--c-primary);
+  color: var(--c-text);
+  font-weight: 600;
+}
+
+.puce {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  border: 1.5px solid var(--c-border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  margin-top: 1px;
+  color: #fff;
+}
+
+/* Ouverte mais sans vérification : l'élève est passé, on ne sait pas plus */
+.puceVue {
+  background: var(--c-border-strong);
+  border-color: var(--c-border-strong);
+}
+
+/* Vérification complétée : la seule chose qui compte dans son total */
+.puceFaite {
+  background: var(--c-success);
+  border-color: var(--c-success);
+}
+
+.sommaireLabel {
+  min-width: 0;
+}
+
+.sommaireIndice {
+  display: block;
+  font-size: 11px;
+  color: var(--c-text-dim);
+  font-weight: 400;
+}

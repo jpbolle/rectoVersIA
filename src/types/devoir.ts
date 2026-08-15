@@ -90,6 +90,19 @@ export interface Devoir {
   submittedCount?: number;
   // Questionnaire de lecture (type lire) — côté élève, correctIndex est filtré
   lectureQuiz?: LectureQuiz | null;
+  // ─── Lecture d'une œuvre (atelier `lecture-oeuvre`) ───
+  // L'œuvre n'est PAS copiée dans l'activité : elle vit dans la bibliothèque
+  // (collection `oeuvres`) et l'activité y renvoie. Corriger une coquille dans
+  // l'œuvre profite du coup à toutes les classes qui l'ont reçue.
+  oeuvreId?: string | null;
+  // Chapitres donnés à lire — vide ou absent = l'œuvre entière. C'est ce qui
+  // permet de donner les deux premiers actes à une classe et tout à une autre.
+  oeuvreChapitres?: string[] | null;
+  // Nombre de vérifications de lecture à compléter. L'élève CHOISIT lesquelles :
+  // il n'est pas tenu de tout lire. Avec `dateRemise` (lue ici comme une
+  // ÉCHÉANCE de lecture, puisque rien ne se remet), il donne le rythme attendu
+  // — voir calculerRythme() dans src/types/oeuvre.ts.
+  oeuvreMinimum?: number | null;
   // Récapitulatif de remise (justes / erreurs / à corriger) — ENRICHI À LA
   // LECTURE par /api/devoirs/[id], jamais stocké. Servi au seul élève, entre sa
   // remise et la correction du prof : c'est le calcul que son navigateur ne
@@ -147,6 +160,10 @@ export interface CreateDevoirData {
   lectureQuiz?: LectureQuiz | null;
   // Questionnaire d'auto-évaluation (type autoevaluation uniquement)
   autoEvalQuiz?: AutoEvalQuestionnaire | null;
+  // Lecture d'une œuvre (atelier lecture-oeuvre uniquement)
+  oeuvreId?: string | null;
+  oeuvreChapitres?: string[] | null;
+  oeuvreMinimum?: number | null;
   // AUTO-ÉVALUATION INTÉGRÉE — l'élève se prononce sur son propre travail
   // avant d'en connaître la note. Ce qu'elle recouvre dépend du dispositif :
   //  - écriture  : il s'auto-évalue sur la grille ;

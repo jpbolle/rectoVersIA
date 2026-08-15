@@ -72,6 +72,11 @@ export async function GET(request: NextRequest) {
         ressourcesToIA: data.ressourcesToIA ?? false,
         lectureQuiz: data.lectureQuiz || null,
         autoEvalQuiz: data.autoEvalQuiz || null,
+        // Lecture d'une œuvre : l'activité ne porte qu'un renvoi vers la
+        // bibliothèque, jamais le contenu
+        oeuvreId: data.oeuvreId || null,
+        oeuvreChapitres: Array.isArray(data.oeuvreChapitres) ? data.oeuvreChapitres : null,
+        oeuvreMinimum: typeof data.oeuvreMinimum === 'number' ? data.oeuvreMinimum : null,
         submittedCount: undefined as number | undefined,
       };
     });
@@ -221,6 +226,9 @@ export async function POST(request: NextRequest) {
       ressourcesToIA,
       lectureQuiz,
       autoEvalQuiz,
+      oeuvreId,
+      oeuvreChapitres,
+      oeuvreMinimum,
     } = body;
 
     // Validation des champs requis. Seules les activités d'écriture s'appuient
@@ -306,6 +314,18 @@ export async function POST(request: NextRequest) {
     if (typeTravail === 'lire' && lectureQuiz) {
       const cleaned = sanitizeLectureQuiz(lectureQuiz);
       if (cleaned) devoirData.lectureQuiz = cleaned;
+    }
+
+    // Lecture d'une œuvre : renvoi vers la bibliothèque + rythme attendu.
+    // `dateRemise` se lit ici comme une ÉCHÉANCE DE LECTURE — rien ne se remet
+    // dans cet atelier, le parcours reste ouvert.
+    if (typeTravail === 'lire' && typeof oeuvreId === 'string' && oeuvreId) {
+      devoirData.oeuvreId = oeuvreId;
+      devoirData.oeuvreChapitres = Array.isArray(oeuvreChapitres)
+        ? oeuvreChapitres.filter((c: unknown) => typeof c === 'string')
+        : null;
+      const minimum = Number(oeuvreMinimum);
+      devoirData.oeuvreMinimum = Number.isFinite(minimum) && minimum > 0 ? Math.round(minimum) : null;
     }
 
     // Si type "autoevaluation", questionnaire d'auto-évaluation

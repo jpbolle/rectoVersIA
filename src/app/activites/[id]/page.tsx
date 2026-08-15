@@ -22,6 +22,9 @@ import RechercheResponseViewer from '@/components/RechercheResponseViewer/Recher
 import RechercheStartOverlay from '@/components/RechercheStartOverlay/RechercheStartOverlay';
 import VocabulaireActivity from '@/components/VocabulaireActivity/VocabulaireActivity';
 import LectureQuizActivity from '@/components/LectureQuizActivity/LectureQuizActivity';
+import OeuvreReader from '@/components/OeuvreReader/OeuvreReader';
+import OeuvreSommaire from '@/components/OeuvreReader/OeuvreSommaire';
+import { useOeuvreLecture } from '@/hooks/useOeuvreLecture';
 import AutoEvalActivity from '@/components/AutoEvalActivity/AutoEvalActivity';
 import { parseLectureAnswers } from '@/types/lecture';
 import WorkspaceRail, { type RailTab } from '@/components/WorkspaceRail';
@@ -304,6 +307,14 @@ export default function TravailPage() {
     }
   }, [updateContent, isPreviewMode]);
 
+  // Lecture d'une œuvre — appelé sans condition (règle des hooks) : sans
+  // `devoir.oeuvreId`, le hook ne charge rien et ne coûte rien.
+  const oeuvreLecture = useOeuvreLecture({
+    devoir,
+    content: isPreviewMode ? null : travail?.content,
+    onProgression: isPreviewMode ? undefined : handleContentChange,
+  });
+
   const handleDraftChange = useCallback((draft: DraftContent) => {
     if (!isPreviewMode) {
       updateDraftContent(draft);
@@ -478,6 +489,9 @@ export default function TravailPage() {
   const isLecture = devoir?.typeTravail === 'lire';
   // Type lire avec questionnaire : la colonne de gauche devient le questionnaire
   const isLectureQuiz = devoir?.typeTravail === 'lire' && !!devoir?.lectureQuiz;
+  // Lecture d'une œuvre : la colonne de gauche devient la liseuse, et la
+  // navigation dans le livre s'installe à droite, sous la consigne.
+  const isOeuvre = devoir?.typeTravail === 'lire' && !!devoir?.oeuvreId;
   // Auto-évaluation : l'élève se prononce sur son travail ou son attitude
   const isAutoEval = devoir?.typeTravail === 'autoevaluation' && !!devoir?.autoEvalQuiz;
 
@@ -648,6 +662,26 @@ export default function TravailPage() {
               readOnly={isDisabled}
             />
           </div>
+        ) : isOeuvre ? (
+          <div className={styles.editorSection}>
+            <div className={styles.editorHeader}>
+              <h2>{oeuvreLecture.oeuvre?.titre || 'Lecture'}</h2>
+            </div>
+            <OeuvreReader
+              oeuvreId={devoir.oeuvreId!}
+              sectionId={oeuvreLecture.sectionId}
+              titreSection={oeuvreLecture.sectionCourante?.titre}
+              groupeSection={oeuvreLecture.sectionCourante?.groupe}
+              progression={oeuvreLecture.progression}
+              peutReculer={oeuvreLecture.peutReculer}
+              peutAvancer={oeuvreLecture.peutAvancer}
+              onReculer={oeuvreLecture.reculer}
+              onAvancer={oeuvreLecture.avancer}
+              onSectionVue={oeuvreLecture.marquerVue}
+              onVerificationTerminee={oeuvreLecture.marquerTerminee}
+              lectureSeule={isPreviewMode}
+            />
+          </div>
         ) : isLectureQuiz ? (
           <div className={styles.editorSection}>
             <div className={styles.editorHeader}>
@@ -715,6 +749,16 @@ export default function TravailPage() {
           <AssistancePanel
             nonRendu={travail?.nonRendu ?? null}
             devoir={devoir}
+            oeuvreNav={
+              isOeuvre && oeuvreLecture.oeuvre ? (
+                <OeuvreSommaire
+                  chapitres={oeuvreLecture.oeuvre.chapitres}
+                  sectionCourante={oeuvreLecture.sectionId}
+                  progression={oeuvreLecture.progression}
+                  onAller={oeuvreLecture.allerA}
+                />
+              ) : undefined
+            }
             grille={grille}
             grilleLoading={grilleLoading}
             grilleError={grilleError}

@@ -1,0 +1,445 @@
+/* ═══ Constructeur d'œuvre — écran plein ═══ */
+
+.plein {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: var(--c-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.entete {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 22px;
+  background: var(--c-gradient-header);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.entete h2 {
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  margin: 0;
+}
+
+.sous {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  opacity: 0.85;
+}
+
+.enteteActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.pastilleModifiee {
+  font-size: 11.5px;
+  background: var(--c-accent);
+  color: #fff;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.message {
+  padding: 10px 22px;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
+  font-size: 13.5px;
+  color: var(--c-text);
+  flex-shrink: 0;
+}
+
+.corps {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* ── Sommaire éditable ── */
+.sommaire {
+  width: 296px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sommaireBarre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg-element);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+
+.sommaireListe {
+  overflow-y: auto;
+  padding: 10px 8px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chapitre {
+  display: flex;
+  flex-direction: column;
+}
+
+.chapitreEntete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px 4px;
+}
+
+.chapitreTitre {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: var(--c-font-title);
+  font-size: 15px;
+  color: var(--c-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.chapitreTitre:hover {
+  color: var(--c-primary);
+  text-decoration: underline;
+}
+
+.acte {
+  padding: 8px 6px 2px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+}
+
+.ligneSection {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--c-radius-sm);
+  border-left: 3px solid transparent;
+}
+
+.ligneSection:hover {
+  background: var(--c-bg-element);
+}
+
+.ligneActive {
+  background: var(--c-bg-element);
+  border-left-color: var(--c-primary);
+}
+
+.lienSection {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 6px 6px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.ligneActive .lienSection {
+  color: var(--c-text);
+  font-weight: 600;
+}
+
+.pastille {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--c-success);
+  font-weight: 700;
+}
+
+.ligneOutils {
+  display: flex;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.ligneSection:hover .ligneOutils,
+.ligneActive .ligneOutils {
+  opacity: 1;
+}
+
+.ligneOutils button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--c-text-muted);
+  padding: 3px 5px;
+  border-radius: var(--c-radius-sm);
+}
+
+.ligneOutils button:hover {
+  background: var(--c-border);
+  color: var(--c-text);
+}
+
+.outilDanger:hover {
+  background: #fbefef !important;
+  color: var(--c-danger) !important;
+}
+
+/* ── Éditeur de section ── */
+.editeur {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 22px 26px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.aide {
+  font-size: 12.5px;
+  color: var(--c-text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.aideCentre {
+  margin: auto;
+  color: var(--c-text-muted);
+  font-size: 14px;
+}
+
+.champsSection {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 860px) {
+  .champsSection {
+    grid-template-columns: 1fr;
+  }
+}
+
+.champ,
+.champLarge {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+
+.champ input,
+.champ select,
+.champLarge textarea,
+.champLocuteur,
+.zoneVers,
+.bloc input {
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  background: var(--c-bg-card);
+  color: var(--c-text);
+  width: 100%;
+}
+
+.titreSection {
+  font-family: var(--c-font-title);
+  font-size: 16.5px;
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--c-border);
+  color: var(--c-text);
+}
+
+/* ── Blocs ── */
+.bloc {
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg-card);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.blocEntete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.blocType {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-primary);
+}
+
+.blocOutils {
+  display: flex;
+  gap: 2px;
+}
+
+.blocOutils button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--c-text-muted);
+  padding: 3px 7px;
+  border-radius: var(--c-radius-sm);
+}
+
+.blocOutils button:hover {
+  background: var(--c-bg-element);
+  color: var(--c-text);
+}
+
+/* Un vers ne se justifie pas : la saisie doit ressembler au rendu */
+.zoneVers {
+  font-family: var(--c-font-title);
+  font-size: 15.5px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.apercuImage {
+  max-width: 260px;
+  height: auto;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+}
+
+.ajoutBlocs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.piedEditeur {
+  position: sticky;
+  bottom: 0;
+  padding: 14px 0 0;
+  margin-top: 10px;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-bg);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.inputCache {
+  display: none;
+}
+
+/* ── Boutons ── */
+.btnPrimary,
+.btnGhost,
+.btnMini {
+  border-radius: var(--c-radius);
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.btnPrimary {
+  border: none;
+  background: var(--c-primary);
+  color: #fff;
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btnGhost {
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-bg-card);
+  color: var(--c-text-secondary);
+  padding: 8px 15px;
+  font-size: 13.5px;
+}
+
+.btnGhost:hover:not(:disabled) {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.btnGhost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Le bouton Fermer vit sur l'en-tête vert */
+.entete .btnGhost {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+.entete .btnGhost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.24);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.btnMini {
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-bg-card);
+  color: var(--c-text-secondary);
+  padding: 3px 9px;
+  font-size: 11.5px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.btnMini:hover:not(:disabled) {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.btnMini:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

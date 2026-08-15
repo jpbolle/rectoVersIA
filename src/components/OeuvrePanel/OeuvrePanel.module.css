@@ -1,0 +1,337 @@
+/* ═══ Bibliothèque d'œuvres — onglet de « Mes Ressources » ═══ */
+
+.panneau {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.barre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.intro {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+  max-width: 62ch;
+}
+
+.message {
+  padding: 11px 15px;
+  background: var(--c-bg-element);
+  border-left: 3px solid var(--c-primary);
+  border-radius: var(--c-radius);
+  font-size: 13.5px;
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+/* ── Groupes : les miennes / partagées / celles des autres ── */
+.groupe {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.groupeTitre {
+  font-family: var(--c-font-title);
+  font-size: 17px;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.groupeAide {
+  font-family: var(--c-font-body);
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--c-text-muted);
+}
+
+.grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+  gap: 14px;
+}
+
+/* ── Carte d'œuvre ── */
+.carte {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  box-shadow: var(--c-shadow-card);
+  padding: 15px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.carteArchivee {
+  opacity: 0.6;
+}
+
+.carteEntete {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.carteTitre {
+  font-family: var(--c-font-title);
+  font-size: 16.5px;
+  margin: 0;
+  color: var(--c-text);
+}
+
+.carteAuteur {
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.carteChiffres {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-primary);
+  font-weight: 600;
+}
+
+.carteDescription {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  line-height: 1.45;
+}
+
+.carteProf {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--c-text-dim);
+  font-style: italic;
+}
+
+.carteActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+/* ── Boutons ── */
+.btnPrimary,
+.btnGhost,
+.btnDanger {
+  border-radius: var(--c-radius);
+  padding: 8px 15px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.btnPrimary {
+  border: none;
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnGhost {
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-bg-card);
+  color: var(--c-text-secondary);
+}
+
+.btnGhost:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.btnDanger {
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-bg-card);
+  color: var(--c-danger);
+}
+
+.btnDanger:hover {
+  border-color: var(--c-danger);
+  background: #fbefef;
+}
+
+/* ── Popups ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(45, 40, 35, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  z-index: 1000;
+}
+
+.popup {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  box-shadow: var(--c-shadow-popup);
+  width: min(460px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.popupLarge {
+  width: min(720px, 100%);
+}
+
+.popupEntete {
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg-element);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.popupEntete h3 {
+  font-family: var(--c-font-title);
+  font-size: 17px;
+  margin: 0;
+}
+
+.popupSous {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.popupFermer {
+  background: none;
+  border: 0;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--c-text-muted);
+}
+
+.popupCorps {
+  overflow-y: auto;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.popupPied {
+  padding: 13px 20px;
+  border-top: 1px solid var(--c-border);
+  background: #fdfbf8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.popupNote {
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+
+.champ input {
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  background: var(--c-bg-card);
+  color: var(--c-text);
+}
+
+/* ── Sommaire ── */
+.chapitre {
+  display: flex;
+  flex-direction: column;
+}
+
+.chapitreTitre {
+  font-family: var(--c-font-title);
+  font-size: 15.5px;
+  margin: 0 0 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chapitreDate {
+  font-family: var(--c-font-body);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--c-text-muted);
+}
+
+/* L'acte n'est pas un niveau de navigation : juste un intertitre */
+.acte {
+  padding: 9px 0 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+}
+
+.section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+  border-radius: var(--c-radius-sm);
+}
+
+.section:hover {
+  background: var(--c-bg-element);
+}
+
+.pastille {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--c-bg-element);
+  color: var(--c-primary);
+  white-space: nowrap;
+}

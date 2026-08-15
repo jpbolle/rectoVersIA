@@ -922,3 +922,39 @@
   font-weight: 600;
   color: var(--c-text);
 }
+
+/* ── Lecture d'une œuvre : chapitres donnés à lire ──
+   Liste à cocher plutôt qu'un multi-select : le prof doit voir d'un coup
+   d'œil combien de sections pèse chaque chapitre. */
+.chapitresListe {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  padding: 8px 10px;
+  background: var(--c-bg-card);
+}
+
+.chapitreItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 5px 4px;
+  font-size: 13.5px;
+  color: var(--c-text);
+  cursor: pointer;
+  border-radius: var(--c-radius-sm);
+}
+
+.chapitreItem:hover {
+  background: var(--c-bg-element);
+}
+
+.chapitreCompte {
+  display: block;
+  font-size: 11px;
+  color: var(--c-text-dim);
+}

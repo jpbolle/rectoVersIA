@@ -253,6 +253,15 @@ interface Questionnaire {
 ```
 
 ### Autres collections
+- `oeuvres` + `oeuvres/{id}/sections` : **bibliothèque d'œuvres** (atelier « Lecture
+  d'une œuvre »). Le document parent ne porte que le **sommaire** (chapitres → titres de
+  sections) ; le contenu vit dans la **sous-collection**, chargée à la demande — une
+  anthologie fait 150 à 300 Ko, retéléchargés sinon par chaque élève à chaque ouverture.
+  Une section = un écran : `blocs[]` (texte / vers / vidéo / image) + `questions[]`
+  (des `LectureQuestion`, les mêmes que le questionnaire de lecture). Partage calqué sur
+  les grilles (`profId` / `profName` / `shared` + duplication). Accès **serveur
+  uniquement**, donc aucune règle Firestore. L'**acte** n'est pas un niveau
+  d'imbrication : c'est l'étiquette `groupe` d'une section.
 - `scenarisations` : une par cours. `chapitres[].modules[].activites[]` imbriqués —
   accès **serveur uniquement**, donc **aucune règle Firestore**. Une activité de
   module peut être hors application (pas de `devoirId`).
@@ -487,6 +496,15 @@ interface Questionnaire {
 
 > Les gotchas **critiques** (boucles de hooks, redirections, ContentLock, échelle des
 > grilles) sont dans `AGENTS.md`. Ici : les pièges opérationnels.
+
+### Firestore refuse les champs `undefined`
+Écrire un objet dont une clé vaut `undefined` fait échouer la requête entière
+(« Cannot use "undefined" as a Firestore value »). Le piège se referme quand un objet
+**relu** est réécrit : les fonctions de normalisation posent `undefined` sur les valeurs
+vides (pratique à l'affichage, fatal à l'écriture). D'où `chapitresPourFirestore()` dans
+`src/lib/oeuvre-server.ts`, par où passe **toute** route qui réécrit un sommaire.
+**Symptôme** : 500 sur une route qui lit puis réécrit un document.
+*(rencontré deux fois le 2026-08-15 : import Molière, puis ajout de section)*
 
 ### Les devoirs référencent les classes par NOM
 `devoirs.classes` contient des **noms** de classes, pas des ids. Le renommage d'une

@@ -64,6 +64,18 @@ export const ATELIERS: Atelier[] = [
     modeParDefaut: 'lire',
   },
   {
+    // Même dispositif que l'atelier de lecture — c'est le MÊME questionnaire,
+    // dans une autre enveloppe : un parcours paginé au lieu d'une page. Ce qui
+    // change tient dans l'activité (une œuvre rattachée, une échéance, un
+    // minimum de vérifications), pas dans la machinerie.
+    // Toujours FORMATIF : « je suis juste là pour les inviter à lire » (JP).
+    id: 'lecture-oeuvre',
+    label: 'Lecture d’une œuvre',
+    court: 'Œuvre',
+    dispositif: 'lire',
+    modeParDefaut: 'lire',
+  },
+  {
     id: 'recherche',
     label: 'Atelier de recherche',
     court: 'Recherche',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import ConsignesTab from '@/components/ConsignesTab';
 import RessourcesTab from '@/components/RessourcesTab';
 import type { DrawShape } from '@/types/draw';
@@ -89,6 +89,14 @@ interface AssistancePanelProps {
   // Cache la barre d'onglets interne (utilise quand un parent gere la navigation,
   // ex. WorkspaceRail cote eleve)
   hideTabs?: boolean;
+  /**
+   * Lecture d'une œuvre : le sommaire du livre, rendu SOUS la consigne.
+   * Il vit ici plutôt qu'en colonne de gauche parce que la liseuse occupe
+   * toute cette colonne — et parce qu'un sommaire à demeure y prendrait la
+   * place du texte (décision de JP du 2026-08-15). Quand il est fourni,
+   * l'onglet se renomme « Consignes et navigation dans le texte ».
+   */
+  oeuvreNav?: ReactNode;
 }
 
 export default function AssistancePanel({
@@ -144,6 +152,7 @@ export default function AssistancePanel({
   onSelectVocabEvalAttempt,
   selectedVocabEvalIndex,
   hideTabs = false,
+  oeuvreNav,
 }: AssistancePanelProps) {
   // Mode contrôlé vs interne
   const [internalTab, setInternalTab] = useState<TabType>('consignes');
@@ -184,7 +193,7 @@ export default function AssistancePanel({
             className={`${styles.tab} ${currentTab === 'consignes' ? styles.tabActive : ''}`}
             onClick={() => handleTabChange('consignes')}
           >
-            Consignes
+            {oeuvreNav ? 'Consignes et navigation dans le texte' : 'Consignes'}
           </button>
           {!rechercheMode && (
             <button
@@ -228,7 +237,10 @@ export default function AssistancePanel({
 
       <div className={styles.content}>
         {currentTab === 'consignes' && (
-          <ConsignesTab devoir={devoir} />
+          <>
+            <ConsignesTab devoir={devoir} />
+            {oeuvreNav}
+          </>
         )}
         {currentTab === 'ressources' && (
           <RessourcesTab

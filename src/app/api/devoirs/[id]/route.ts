@@ -146,6 +146,12 @@ export async function GET(
           : data.lectureQuiz || null,
       // Auto-évaluation : servie telle quelle, il n'y a rien à cacher
       autoEvalQuiz: data.autoEvalQuiz || null,
+      // Lecture d'une œuvre : un renvoi vers la bibliothèque, le contenu vit
+      // dans /api/oeuvres. Rien à filtrer — dans CET atelier, le corrigé est
+      // ouvert (cf. src/lib/oeuvre-server.ts).
+      oeuvreId: data.oeuvreId || null,
+      oeuvreChapitres: Array.isArray(data.oeuvreChapitres) ? data.oeuvreChapitres : null,
+      oeuvreMinimum: typeof data.oeuvreMinimum === 'number' ? data.oeuvreMinimum : null,
       // Enrichi à la lecture, jamais stocké (comme `uaa` et `submittedCount`)
       lectureResume,
     };
@@ -272,6 +278,19 @@ export async function PATCH(
     }
     if (body.lectureQuiz !== undefined) {
       updateData.lectureQuiz = body.lectureQuiz === null ? null : sanitizeLectureQuiz(body.lectureQuiz);
+    }
+
+    if (body.oeuvreId !== undefined) {
+      updateData.oeuvreId = typeof body.oeuvreId === 'string' && body.oeuvreId ? body.oeuvreId : null;
+    }
+    if (body.oeuvreChapitres !== undefined) {
+      updateData.oeuvreChapitres = Array.isArray(body.oeuvreChapitres)
+        ? body.oeuvreChapitres.filter((c: unknown) => typeof c === 'string')
+        : null;
+    }
+    if (body.oeuvreMinimum !== undefined) {
+      const minimum = Number(body.oeuvreMinimum);
+      updateData.oeuvreMinimum = Number.isFinite(minimum) && minimum > 0 ? Math.round(minimum) : null;
     }
 
     if (body.autoEvalQuiz !== undefined) {

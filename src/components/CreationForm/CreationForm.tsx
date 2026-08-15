@@ -22,6 +22,7 @@ import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
 import HabiletesPicker from '@/components/HabiletesPicker/HabiletesPicker';
+import { useOeuvres } from '@/hooks/useOeuvres';
 import { ATELIERS, findAtelier, TYPES_MODAUX } from '@/types/didactique';
 import type { TypeModal } from '@/types/didactique';
 import styles from './CreationForm.module.css';
@@ -39,6 +40,21 @@ const RESSOURCE_LABELS: Record<TypeTravail, string> = {
 
 function createEmptyPlanDraft(): DraftContent {
   return { type: 'plan', plan: [createPlanItem()] };
+}
+
+// Rythme de lecture annoncé au prof pendant qu'il règle l'activité : autant
+// qu'il voie tout de suite ce qu'il demande — 20 vérifications en 40 jours,
+// c'est une tous les deux jours.
+function rythmeLisible(minimum: number, echeance: string): string {
+  const jours = Math.max(
+    1,
+    Math.round((new Date(echeance).getTime() - Date.now()) / 86_400_000)
+  );
+  const cadence = jours / minimum;
+  const arrondi = cadence >= 1 ? Math.round(cadence * 10) / 10 : null;
+  return arrondi
+    ? `${minimum} vérifications en ${jours} jours — une tous les ${String(arrondi).replace('.', ',')} jours.`
+    : `${minimum} vérifications en ${jours} jours — plus d’une par jour.`;
 }
 
 // Valeur spéciale du menu « Série lexicale » : créer une nouvelle liste au verso
@@ -117,6 +133,8 @@ export default function CreationForm({
     // qui portent la didactique
     setGrille('');
     setHiddenCriteria([]);
+    setOeuvreId('');
+    setOeuvreChapitres([]);
     const a = findAtelier(id);
     if (a) setModePrincipal(a.modeParDefaut);
   };
@@ -141,6 +159,15 @@ export default function CreationForm({
 
   // Questionnaire de lecture (type lire) — composé au verso
   const [lectureQuiz, setLectureQuiz] = useState<LectureQuiz | null>(null);
+
+  // ── Lecture d'une œuvre ──
+  // L'œuvre n'est pas recopiée dans l'activité : on y renvoie. Le minimum de
+  // vérifications, croisé avec la date, donne le rythme attendu.
+  const [oeuvreId, setOeuvreId] = useState<string>('');
+  const [oeuvreChapitres, setOeuvreChapitres] = useState<string[]>([]);
+  const [oeuvreMinimum, setOeuvreMinimum] = useState<number>(8);
+  const { oeuvres, loading: oeuvresLoading } = useOeuvres(atelier === 'lecture-oeuvre');
+  const oeuvreChoisie = oeuvres.find((o) => o.id === oeuvreId) || null;
 
   // Questionnaire d'auto-évaluation (type autoevaluation) — composé au verso
   const [autoEvalQuiz, setAutoEvalQuiz] = useState<AutoEvalQuestionnaire | null>(null);
@@ -179,11 +206,16 @@ export default function CreationForm({
   // Auto-évaluation intégrée. Sans objet sur deux dispositifs : le vocabulaire
   // n'a rien à s'auto-évaluer (tout y est automatisé), et une activité
   // d'auto-évaluation EST déjà cela — le réglage y serait absurde.
+  // La lecture d'une œuvre en est exclue : le smiley d'assurance se compare à
+  // un résultat, et il n'y en a aucun ici. Même raison que le vocabulaire et
+  // l'activité d'auto-évaluation.
   const supporteAutoEval =
-    typeTravail === 'ecrire' || typeTravail === 'lire' || typeTravail === 'rechercher';
+    atelier !== 'lecture-oeuvre' &&
+    (typeTravail === 'ecrire' || typeTravail === 'lire' || typeTravail === 'rechercher');
   const grilleValid = !usesGrille || grille;
   const isValid = baseValid && grilleValid
-    && (typeTravail !== 'rechercher' || nkQuestions.some(q => q.texte.trim()));
+    && (typeTravail !== 'rechercher' || nkQuestions.some(q => q.texte.trim()))
+    && (atelier !== 'lecture-oeuvre' || !!oeuvreId);
 
   // Liste de vocabulaire sélectionnée (type vocabulaire : intitule = id du thème).
   // La liste d'un autre prof n'est modifiable que par son auteur → lecture seule
@@ -243,6 +275,9 @@ export default function CreationForm({
     setVocabCreatingNew(false);
     setLectureQuiz(null);
     setAutoEvalQuiz(null);
+    setOeuvreId('');
+    setOeuvreChapitres([]);
+    setOeuvreMinimum(8);
     setHiddenCriteria([]);
     setShowHideCriteria(false);
   }, []);
@@ -303,6 +338,20 @@ export default function CreationForm({
 
     if (typeTravail === 'lire' && lectureQuiz && lectureQuiz.questions.length > 0) {
       data.lectureQuiz = lectureQuiz;
+    }
+
+    if (atelier === 'lecture-oeuvre') {
+      // Verrouillages propres à l'atelier — le formulaire les montre, le
+      // payload doit les tenir.
+      data.evaluation = 'formatif';
+      data.autoEvaluation = false;
+    }
+
+    if (atelier === 'lecture-oeuvre' && oeuvreId) {
+      data.oeuvreId = oeuvreId;
+      // Aucun chapitre coché = l'œuvre entière
+      data.oeuvreChapitres = oeuvreChapitres.length ? oeuvreChapitres : null;
+      data.oeuvreMinimum = oeuvreMinimum > 0 ? oeuvreMinimum : null;
     }
 
     if (
@@ -393,7 +442,14 @@ export default function CreationForm({
 
         <div className={styles.formGroup}>
           <DatePicker
-            label="Date de remise — facultatif"
+            /* Dans la lecture d'une œuvre, RIEN NE SE REMET : le parcours
+               reste ouvert et le prof suit la progression. La date y est une
+               échéance de lecture, et le libellé doit le dire. */
+            label={
+              atelier === 'lecture-oeuvre'
+                ? 'À lire pour le — facultatif'
+                : 'Date de remise — facultatif'
+            }
             value={dateRemise}
             onChange={setDateRemise}
             min={getTodayString()}
@@ -404,13 +460,22 @@ export default function CreationForm({
           <label className={styles.label}>
             Évaluation <span className={styles.required}>*</span>
           </label>
+          {/* La lecture d'une œuvre est TOUJOURS formative — « je suis juste là
+              pour les inviter à lire ». Rien n'y est noté, le choix n'a pas
+              lieu d'être : on l'affiche verrouillé plutôt que de le masquer,
+              pour que le prof sache à quoi s'en tenir. */}
           <select
             className={styles.select}
-            value={evaluation}
+            value={atelier === 'lecture-oeuvre' ? 'formatif' : evaluation}
             onChange={(e) => setEvaluation(e.target.value as EvaluationType)}
+            disabled={atelier === 'lecture-oeuvre'}
           >
-            <option value="formatif">Formative (entraînement)</option>
-            <option value="certificatif">Certificative (notée)</option>
+            <option value="formatif">
+              {atelier === 'lecture-oeuvre' ? 'Formative — rien n’est noté' : 'Formative (entraînement)'}
+            </option>
+            {atelier !== 'lecture-oeuvre' && (
+              <option value="certificatif">Certificative (notée)</option>
+            )}
           </select>
         </div>
       </div>
@@ -521,6 +586,97 @@ export default function CreationForm({
               disabled={isSubmitting}
             />
           </div>
+        )}
+
+        {atelier === 'lecture-oeuvre' && (
+          <>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>
+                Œuvre à lire <span className={styles.required}>*</span>
+              </label>
+              <select
+                className={styles.select}
+                value={oeuvreId}
+                onChange={(e) => {
+                  setOeuvreId(e.target.value);
+                  setOeuvreChapitres([]);
+                }}
+                disabled={isSubmitting || oeuvresLoading}
+              >
+                <option value="">
+                  {oeuvresLoading ? 'Chargement…' : 'Sélectionnez une œuvre...'}
+                </option>
+                {oeuvres.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {/* L'auteur n'est répété que s'il ne figure pas déjà dans
+                        le titre — « Molière — Anthologie comique — Molière »
+                        ne renseigne personne. */}
+                    {o.titre}
+                    {o.auteur && !o.titre.toLowerCase().includes(o.auteur.toLowerCase())
+                      ? ` — ${o.auteur}`
+                      : ''}
+                  </option>
+                ))}
+              </select>
+              {!oeuvresLoading && oeuvres.length === 0 && (
+                <p className={styles.modeNote}>
+                  Aucune œuvre dans la bibliothèque — elles se créent dans Mes Ressources.
+                </p>
+              )}
+            </div>
+
+            {oeuvreChoisie && oeuvreChoisie.chapitres.length > 0 && (
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Chapitres donnés à lire</label>
+                <div className={styles.chapitresListe}>
+                  {oeuvreChoisie.chapitres.map((c) => (
+                    <label key={c.id} className={styles.chapitreItem}>
+                      <input
+                        type="checkbox"
+                        checked={oeuvreChapitres.includes(c.id)}
+                        onChange={(e) =>
+                          setOeuvreChapitres((prev) =>
+                            e.target.checked ? [...prev, c.id] : prev.filter((x) => x !== c.id)
+                          )
+                        }
+                        disabled={isSubmitting}
+                      />
+                      <span>
+                        {c.titre}
+                        <span className={styles.chapitreCompte}>
+                          {c.sections.length} section{c.sections.length > 1 ? 's' : ''}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <p className={styles.modeNote}>
+                  Aucun chapitre coché : l’œuvre entière.
+                </p>
+              </div>
+            )}
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Vérifications de lecture à compléter</label>
+              <input
+                type="number"
+                min={0}
+                className={styles.select}
+                value={oeuvreMinimum}
+                onChange={(e) => setOeuvreMinimum(Number(e.target.value))}
+                disabled={isSubmitting}
+              />
+              {/* Le rythme se déduit de l'échéance : c'est lui qui déclenchera
+                  la notification si l'élève prend du retard. */}
+              <p className={styles.modeNote}>
+                {oeuvreMinimum > 0 && dateRemise
+                  ? rythmeLisible(oeuvreMinimum, dateRemise)
+                  : oeuvreMinimum > 0
+                    ? 'Sans date, aucun rythme n’est attendu : l’élève lit à son gré.'
+                    : 'Aucune vérification imposée : l’élève lit ce qu’il veut.'}
+              </p>
+            </div>
+          </>
         )}
 
         {supporteAutoEval && (
