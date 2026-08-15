@@ -284,14 +284,19 @@ export default function TravailPage() {
 
   // Dès que les réponses sont envoyées, l'onglet Évaluation s'ouvre sur le
   // récapitulatif (bonnes réponses / erreurs / à corriger par le prof) — une seule fois.
+  // Une lecture remise fait de même : son récapitulatif arrive avec le devoir
+  // (calculé serveur), et c'est la première chose que l'élève doit voir.
   const evalOuvertRef = useRef(false);
   useEffect(() => {
     if (evalOuvertRef.current) return;
-    if (devoir?.typeTravail !== 'rechercher' || !nkReponse?.resume) return;
+    const aUnResume =
+      (devoir?.typeTravail === 'rechercher' && !!nkReponse?.resume) ||
+      (devoir?.typeTravail === 'lire' && !!devoir?.lectureResume);
+    if (!aUnResume) return;
     evalOuvertRef.current = true;
     setActiveTab('grille');
     setPanelOpen(true);
-  }, [devoir?.typeTravail, nkReponse]);
+  }, [devoir?.typeTravail, devoir?.lectureResume, nkReponse]);
 
   const handleContentChange = useCallback((content: string) => {
     if (!isPreviewMode) {
@@ -320,8 +325,20 @@ export default function TravailPage() {
     setIsSubmitting(true);
     try {
       const success = await submit();
-      if (success) {
-        // Success - le statut sera mis a jour via le hook
+      // Lecture : le récapitulatif (justes / erreurs / à corriger) est calculé
+      // par le serveur À LA REMISE — il n'existe pas dans le devoir déjà
+      // chargé. Sans ce rechargement, l'élève ne le verrait qu'au prochain F5.
+      if (success && devoir?.typeTravail === 'lire') {
+        try {
+          const headers = await getAuthHeaders();
+          if (headers) {
+            const res = await fetch(`/api/devoirs/${devoirId}`, { headers });
+            const json = await res.json();
+            if (json.success) setDevoir(json.data);
+          }
+        } catch (err) {
+          console.error('Erreur rechargement devoir après remise:', err);
+        }
       }
     } finally {
       setIsSubmitting(false);
@@ -458,6 +475,7 @@ export default function TravailPage() {
   // Réponses envoyées depuis l'extension : le voile se lève, le corrigé peut s'afficher
   const hasRechercheReponse = !!nkReponse?.questions?.length;
   const isVocabulaire = devoir?.typeTravail === 'vocabulaire';
+  const isLecture = devoir?.typeTravail === 'lire';
   // Type lire avec questionnaire : la colonne de gauche devient le questionnaire
   const isLectureQuiz = devoir?.typeTravail === 'lire' && !!devoir?.lectureQuiz;
   // Auto-évaluation : l'élève se prononce sur son travail ou son attitude
@@ -472,6 +490,12 @@ export default function TravailPage() {
   const hasRemarques = !!correction?.annotatedContent;
   const hasNavigkid = nkQuestions.length > 0;
 
+  // L'onglet Remarques montre la COPIE ANNOTÉE par le prof : il n'a de sens que
+  // pour une production écrite. Partout ailleurs il resterait vide —
+  // vocabulaire (tout est automatisé), recherche et lecture (le prof commente
+  // dans la gouttière de correction, question par question).
+  const showRemarques = !isVocabulaire && !isRecherche && !isLecture;
+
   // Ordre : Consignes → Ressources → Aide IA → Remarques → Recherche → Évaluation
   const railTabs: RailTab[] = [];
   railTabs.push({ id: 'consignes', label: 'Consignes', icon: ICON_CONSIGNES });
@@ -484,11 +508,7 @@ export default function TravailPage() {
       hasBadge: hasAiSuggestions,
     });
   }
-  // L'onglet Remarques montre la copie annotée par le prof : il n'a de sens
-  // que pour une production écrite. En vocabulaire (tout est automatisé) et en
-  // recherche (le prof commente dans la gouttière de correction, question par
-  // question), il resterait vide.
-  if (!isVocabulaire && !isRecherche) {
+  if (showRemarques) {
     railTabs.push({
       id: 'remarques',
       label: 'Remarques du professeur',
@@ -522,7 +542,7 @@ export default function TravailPage() {
     <div className={`${styles.page} ${isPreviewMode ? styles.previewMode : ''}`}>
       {isPreviewMode && (
         <div className={styles.previewBanner}>
-          <span>👁️ Mode previsualisation - Vue eleve</span>
+          <span>👁️ Mode prévisualisation — Vue élève</span>
           <button className={styles.previewBackButton} onClick={() => router.push('/dashboard')}>
             Retour au tableau de bord
           </button>
@@ -551,7 +571,9 @@ export default function TravailPage() {
           !!travail?.nonRendu
         )}
         // Recherche : la remise se fait en envoyant les réponses depuis NavigKid!
-        hideSubmit={isRecherche}
+        // Questionnaire de lecture : elle se fait au bas du questionnaire
+        hideSubmit={isRecherche || isLectureQuiz}
+        submitOutsideApp={isRecherche}
       />
 
       <main className={styles.main}>
@@ -646,6 +668,10 @@ export default function TravailPage() {
               }}
               showCorrection={!isPreviewMode && isSubmitted && devoir.corrigeDisponible === true}
               autoEvaluation={devoir.autoEvaluation !== false}
+              // La remise se fait au bas du questionnaire, jamais depuis la
+              // barre du haut : « Remettre le devoir » est le geste de l'écrit
+              onSubmit={isPreviewMode ? undefined : handleSubmitClick}
+              isSubmitting={isSubmitting}
             />
           </div>
         ) : (
@@ -661,7 +687,7 @@ export default function TravailPage() {
                 onDraftChange={handleDraftChange}
                 grille={grille}
                 disabled={isDisabled}
-                placeholder={isPreviewMode ? "Zone de redaction de l'eleve..." : "Commencez à rédiger votre travail ici..."}
+                placeholder={isPreviewMode ? "Zone de rédaction de l'élève…" : "Commencez à rédiger votre travail ici..."}
                 draftAnnotations={correction?.draftAnnotations}
                 accesIA={showAiData}
                 aiSuggestions={aiSuggestions}
@@ -698,7 +724,8 @@ export default function TravailPage() {
             studentName={travail?.studentName}
             correction={correction}
             studentContent={travail?.content || ''}
-            showRemarquesTab={!isVocabulaire && !isRecherche}
+            submittedAt={travail?.submittedAt ?? null}
+            showRemarquesTab={showRemarques}
             ressourceAnnotations={travail?.ressourceAnnotations}
             onRessourceAnnotationsChange={isPreviewMode ? undefined : updateRessourceAnnotations}
             ressourceNotes={travail?.ressourceNotes}
@@ -742,8 +769,8 @@ export default function TravailPage() {
           <div className={styles.modal}>
             <h3 className={styles.modalTitle}>Confirmer la remise</h3>
             <p className={styles.modalText}>
-              Etes-vous sur de vouloir remettre votre travail ? Cette action est definitive
-              et vous ne pourrez plus modifier votre travail apres la remise.
+              Êtes-vous sûr de vouloir remettre votre travail ? Cette action est définitive
+              et vous ne pourrez plus modifier votre travail après la remise.
             </p>
             <div className={styles.modalActions}>
               <button

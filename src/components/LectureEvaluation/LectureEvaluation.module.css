@@ -1,5 +1,7 @@
+/* Le panneau de droite ne pose aucun padding (`.content` de l'AssistancePanel
+   est à 0) : c'est à l'onglet de tenir son contenu à distance de l'encadré. */
 .wrap {
-  padding: 4px 2px;
+  padding: 16px 18px 22px;
 }
 
 /* Bandeau de total — identique à celui de RechercheEvaluation : les deux

@@ -1089,27 +1089,39 @@ body::before {
    Même geste que dans l'application (ConfiancePicker) : trois pastilles, la
    choisie se détache. Discret : c'est un geste second, après la réponse. */
 
+/* Rangé contre le bord droit, bandeau ambre : retour SUR la réponse qui
+   précède, pas question de plus (même geste que ConfiancePicker côté
+   application) */
 .confiance-bloc {
-  margin-top: 10px;
-  padding-top: 9px;
-  border-top: 1px dashed var(--border, #e0d9cc);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: flex-end;
+  width: fit-content;
+  max-width: 100%;
+  margin: 12px 0 0 auto;
+  border: 1px solid rgba(212, 148, 76, 0.45);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(212, 148, 76, 0.09);
 }
 
 .confiance-label {
+  align-self: stretch;
+  padding: 5px 10px;
+  background: #d4944c;
+  color: #fff;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-secondary, #7a6f5e);
 }
 
 .confiance-choices {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
+  padding: 8px 10px;
 }
 
 .confiance-choice {

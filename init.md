@@ -111,7 +111,11 @@ Trois couches qui doivent rester cohérentes : **interface ⊆ route serveur ⊆
 > `maxEcoutes` = limite d'écoutes) et `competences: string[]` (ids de gestes de
 > lecture, config didactique) ; `ressources.videos` (URLs YouTube, lecteur intégré
 > nocookie côté élève — `src/lib/youtube.ts`) ; `submittedCount` (enrichi à la
-> lecture par `/api/devoirs`, liste prof uniquement).
+> lecture par `/api/devoirs`, liste prof uniquement) ; `lectureResume`
+> (justes / erreurs / à corriger — **enrichi à la lecture** par
+> `/api/devoirs/[id]`, jamais stocké, servi au seul élève entre sa remise et la
+> correction : c'est le calcul que son navigateur ne peut pas faire, faute
+> d'avoir les bonnes réponses — `computeLectureResume`).
 ```typescript
 interface Devoir {
   id: string;                    // DEV-YYYYMMDD-XXXX
@@ -396,7 +400,13 @@ interface Questionnaire {
   quiz sans retour arrière, réponses auto-sauvées en JSON dans `travail.content` ;
   lecteur audio limité ; `showCorrection` quand corrigé disponible : QCM ✅/❌,
   réponse idéale, comparaison `FluoCompare`), `LectureQuizReview` (correction — QCM
-  auto-comptés, soulignage comparé, écoutes consommées, réponse idéale en encadré)
+  auto-comptés, soulignage comparé, écoutes consommées, réponse idéale en encadré).
+  **Les deux vues partagent le même habillage** (pas de cadre autour des questions,
+  barème en pastille ambre au coin, astérisque ✳ entre les questions, zone de
+  réponse en retrait de 2 cm). La **remise ne passe PAS par la barre du haut** :
+  bouton « Envoyer le questionnaire » au bas de la colonne de gauche (en mode quiz,
+  à la dernière question seulement) ; l'onglet « Remarques du professeur » est absent
+  de ce dispositif — il n'y a pas de copie à annoter
 - **Auto-évaluation** (`typeTravail: 'autoevaluation'`) : `AutoEvalBuilder` (prof, verso —
   emojis compétence/humeur, échelle 1-5, QCM **sans bonne réponse**, textes, bloc info ;
   gestes limités au savoir-être et au réflexif), `AutoEvalActivity` (élève),
@@ -572,6 +582,25 @@ Le constructeur de questionnaire de recherche était peint en `--c-bg-element`, 
 même de ses bandeaux de question : ceux-ci s'y noyaient et les blocs ne se détachaient
 plus. Les constructeurs (lecture, recherche, auto-évaluation) ont un conteneur
 **transparent** ; ce sont les cartes qui portent la couleur.
+
+### La fonction passée à `setState` doit être PURE
+React rejoue la fonction `(prev) => next` **pendant le rendu**. Y prévenir le
+parent revient à le faire changer d'état en plein rendu de l'enfant.
+**Symptôme** : « Cannot update a component (`X`) while rendering a different
+component (`Y`) ».
+**Remède** : tenir l'état courant dans un `ref`, appeler le parent depuis le
+gestionnaire d'événement (voir `updateAnswer` dans `LectureQuizActivity`).
+
+### Un onglet du panneau latéral doit poser son propre padding
+`.content` de l'`AssistancePanel` est à `padding: 0` (le panneau ne préjuge pas
+du contenu). Un onglet qui n'en pose pas colle l'encadré.
+
+### Extension MV3 : `chrome.storage.session` est un souvenir, pas une vérité
+Il **survit à la mort du service worker**. Un drapeau « panneau ouvert » qui n'a
+pas pu être remis à `false` (le `onDisconnect` n'a jamais tourné) reste gravé
+pour toute la session du navigateur. Pour « est-ce ouvert **en ce moment** ? »,
+compter des **ports vivants** — et prévoir que la page se rebranche au réveil du
+service worker, en redisant son état (le worker redémarré a tout oublié).
 
 ### Un score calculé côté client a besoin du corrigé
 Les onglets Évaluation de la **lecture** et de la **recherche** calculent le score

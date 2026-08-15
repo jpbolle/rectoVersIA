@@ -5,21 +5,46 @@
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
 
 // ─── Tracking état sidebar (pour activer/désactiver le fluo) ───
-// Utilise chrome.storage.session pour survivre aux redémarrages du service worker
+//
+// Le surlignage n'appartient PAS au navigateur en général : c'est l'outil d'une
+// recherche guidée. Il n'est actif que si DEUX conditions tiennent en même
+// temps — le panneau est ouvert, ET une activité y est ouverte. Ailleurs (y
+// compris dans Recto-versIA), l'élève ne doit rien voir.
+//
+// L'état ne se déduit plus d'un drapeau mémorisé : `chrome.storage.session`
+// survit à la mort du service worker, si bien qu'un panneau fermé sans que le
+// `onDisconnect` ait pu s'exécuter laissait « ouvert » gravé pour toute la
+// session — l'outil apparaissait alors sur n'importe quelle page. On compte
+// donc les ports VIVANTS : plus de port, plus de panneau, par construction.
+
+const portsSidebar = new Set();
+let rechercheEnCours = false;
+let minuteurFermeture = null;
+
+function highlighterActif() {
+  return portsSidebar.size > 0 && rechercheEnCours;
+}
 
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== "sidebar") return;
 
-  chrome.storage.session.set({ sidebarOuverte: true });
-  diffuserEtatHighlighter(true);
+  portsSidebar.add(port);
+  clearTimeout(minuteurFermeture);
+  diffuserEtatHighlighter();
 
   port.onDisconnect.addListener(() => {
-    chrome.storage.session.set({ sidebarOuverte: false });
-    diffuserEtatHighlighter(false);
+    portsSidebar.delete(port);
+    // Chrome coupe le port quand le service worker s'endort ; le panneau se
+    // rebranche aussitôt. On attend donc avant d'annoncer la fermeture, sinon
+    // le fluo clignoterait à chaque réveil.
+    clearTimeout(minuteurFermeture);
+    minuteurFermeture = setTimeout(diffuserEtatHighlighter, 1500);
   });
 });
 
-function diffuserEtatHighlighter(actif) {
+function diffuserEtatHighlighter() {
+  const actif = highlighterActif();
+  chrome.storage.session.set({ sidebarOuverte: portsSidebar.size > 0 });
   chrome.tabs.query({}, (tabs) => {
     for (const tab of tabs) {
       if (!tab.id) continue;
@@ -84,10 +109,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.type === "GET_HIGHLIGHTER_ETAT") {
-    chrome.storage.session.get("sidebarOuverte", (result) => {
-      sendResponse({ actif: result.sidebarOuverte === true });
-    });
-    return true; // réponse asynchrone
+    sendResponse({ actif: highlighterActif() });
+    return false;
+  }
+
+  // La sidebar annonce qu'une activité de recherche est ouverte (ou refermée)
+  if (msg.type === "RECHERCHE_ETAT") {
+    rechercheEnCours = msg.enCours === true;
+    diffuserEtatHighlighter();
+    sendResponse({ ok: true });
+    return false;
   }
 
   // ─── Dictionnaire : définition via Wiktionnaire ───

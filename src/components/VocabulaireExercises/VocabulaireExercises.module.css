@@ -1021,12 +1021,13 @@
 
 /* ── Action bar : ligne de boutons encadree par 2 traits horizontaux ─────── */
 /* Pattern partage : fin de session d'apprentissage + fin de diagnostic intermediaire */
+/* Traits d'un bord à l'autre (cf. `bottomActions` de VocabulaireActivity) */
 .actionBar {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 100px;
-  padding: 0 16px 18px;
+  margin: 100px -16px 0;
+  padding: 0 0 18px;
   flex-shrink: 0;
 }
 

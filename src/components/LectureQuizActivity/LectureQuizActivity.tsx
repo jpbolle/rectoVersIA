@@ -4,7 +4,7 @@
 // mode worksheet (toutes les questions) ou quiz (une à la fois, progression).
 // Les réponses sont remontées au parent (auto-save dans travail.content).
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, Fragment } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { DrawToolbar, DrawCanvas } from '@/components/DrawTools/DrawTools';
@@ -46,6 +46,11 @@ interface LectureQuizActivityProps {
   showCorrection?: boolean;
   /** Auto-évaluation désactivée sur l'activité : pas de smileys d'assurance */
   autoEvaluation?: boolean;
+  // Remise : elle vit au BAS du questionnaire, pas dans la barre du haut. En
+  // mode quiz, l'élève ne revient pas en arrière — le bouton n'apparaît donc
+  // qu'une fois la dernière question atteinte.
+  onSubmit?: () => void;
+  isSubmitting?: boolean;
 }
 
 export default function LectureQuizActivity({
@@ -56,6 +61,8 @@ export default function LectureQuizActivity({
   onOpenRessources,
   showCorrection = false,
   autoEvaluation = true,
+  onSubmit,
+  isSubmitting = false,
 }: LectureQuizActivityProps) {
   const [answers, setAnswers] = useState<Record<string, LectureAnswer>>(
     savedState?.answers || {}
@@ -72,16 +79,21 @@ export default function LectureQuizActivity({
   const onStateChangeRef = useRef(onStateChange);
   onStateChangeRef.current = onStateChange;
 
-  const updateAnswer = useCallback((questionId: string, partial: Partial<LectureAnswer>) => {
-    setAnswers((prev) => {
-      const next = { ...prev, [questionId]: { ...prev[questionId], ...partial } };
-      onStateChangeRef.current?.({ type: 'lecture', answers: next });
-      return next;
-    });
-  }, []);
+  // La fonction passée à setAnswers doit rester PURE : React la rejoue pendant
+  // le rendu, et prévenir le parent depuis l'intérieur revenait à le faire
+  // changer d'état en plein rendu (« Cannot update a component while rendering
+  // a different component »). On tient donc l'état courant dans un ref, et on
+  // prévient le parent depuis le gestionnaire d'événement lui-même.
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
 
-  const totalPoints = quiz.questions.reduce((sum, q) => sum + (q.points || 0), 0);
-  const questionCount = quiz.questions.filter((q) => q.type !== 'info').length;
+  const updateAnswer = useCallback((questionId: string, partial: Partial<LectureAnswer>) => {
+    const prev = answersRef.current;
+    const next = { ...prev, [questionId]: { ...prev[questionId], ...partial } };
+    answersRef.current = next;
+    setAnswers(next);
+    onStateChangeRef.current?.({ type: 'lecture', answers: next });
+  }, []);
 
   // Mode quiz : question courante — mais dès que le corrigé est affiché,
   // toutes les questions redeviennent visibles (relecture libre)
@@ -95,11 +107,6 @@ export default function LectureQuizActivity({
 
   return (
     <div className={styles.activity}>
-      <p className={styles.meta}>
-        {questionCount} question{questionCount > 1 ? 's' : ''}
-        {totalPoints > 0 && <> · {totalPoints} point{totalPoints > 1 ? 's' : ''}</>}
-      </p>
-
       {isQuizMode && (
         <div className={styles.progress}>
           <span className={styles.progressCount}>
@@ -111,9 +118,14 @@ export default function LectureQuizActivity({
         </div>
       )}
 
-      {visibleQuestions.map((q) => (
+      {visibleQuestions.map((q, i) => (
+        <Fragment key={q.id}>
+          {/* Worksheet : une astérisque entre deux questions. En mode quiz il
+              n'y en a qu'une à l'écran, elle n'aurait rien à séparer. */}
+          {!isQuizMode && i > 0 && (
+            <div className={styles.separateur} aria-hidden="true">✳</div>
+          )}
         <QuestionCard
-          key={q.id}
           question={q}
           number={questionNumber(quiz, q)}
           answer={answers[q.id] || {}}
@@ -124,6 +136,7 @@ export default function LectureQuizActivity({
           showCorrection={showCorrection}
           autoEvaluation={autoEvaluation}
         />
+        </Fragment>
       ))}
 
       {/* Mode quiz : avancer seulement, pas de retour en arrière */}
@@ -136,6 +149,27 @@ export default function LectureQuizActivity({
           >
             Suivant ›
           </button>
+        </div>
+      )}
+
+      {/* Remise : ligne d'action encadrée de deux traits (forme imposée du
+          projet — cf. `bottomActions` de VocabulaireActivity). En mode quiz,
+          seulement une fois la dernière question atteinte. */}
+      {onSubmit && !disabled && !showCorrection &&
+        (!isQuizMode || quizIndex === quiz.questions.length - 1) && (
+        <div className={styles.bottomActions}>
+          <span className={styles.bottomActionsLine} />
+          <div className={styles.bottomActionsRow}>
+            <button
+              type="button"
+              className={styles.actionBtn}
+              onClick={onSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Envoi…' : 'Envoyer le questionnaire'}
+            </button>
+          </div>
+          <span className={styles.bottomActionsLine} />
         </div>
       )}
 
@@ -210,13 +244,43 @@ function QuestionCard({
     );
   }
 
+  // Points obtenus : un QCM se compte tout seul, mais SEULEMENT quand le
+  // corrigé est là (sinon `correctIndex` a été retiré côté serveur). Tout le
+  // reste attend la note du professeur.
+  const ptsObtenus =
+    showCorrection && question.type === 'qcm' && typeof question.correctIndex === 'number'
+      ? answer.choiceIndex === question.correctIndex
+        ? question.points
+        : 0
+      : null;
+  const ptsInfobulle =
+    ptsObtenus !== null
+      ? `${ptsObtenus} point${ptsObtenus > 1 ? 's' : ''} sur ${question.points}`
+      : 'Corrigé par ton professeur — la note apparaîtra ici';
+
   return (
     <div className={styles.card}>
       <div className={styles.cardHead}>
         <span className={styles.num}>{number}</span>
         <span className={styles.typeLabel}>{TYPE_LABELS[question.type]}</span>
+        {/* Barème en pastille : « … / 3 » — la place de la note est visible
+            avant même qu'elle existe.
+            Le « … » n'est pas un oubli : tant que le professeur n'a pas ouvert
+            le corrigé, le navigateur de l'élève ne reçoit PAS les bonnes
+            réponses (`lectureQuizForEleve`). Il ne peut donc rien remplir — et
+            c'est voulu : le récapitulatif de l'onglet Évaluation annonce un
+            total, jamais quelle question est juste, sinon il livrerait le
+            corrigé avant l'heure. Une fois le corrigé rendu, le QCM se remplit. */}
         {question.points > 0 && (
-          <span className={styles.pts}>{question.points} pt{question.points > 1 ? 's' : ''}</span>
+          <span className={styles.pts} title={ptsInfobulle}>
+            {ptsObtenus === null ? (
+              <span className={styles.ptsVide}>…</span>
+            ) : (
+              <span>{ptsObtenus}</span>
+            )}
+            <span>/ {question.points}</span>
+            <span className={styles.ptsUnite}>pt{question.points > 1 ? 's' : ''}</span>
+          </span>
         )}
       </div>
 
@@ -253,7 +317,7 @@ function QuestionCard({
       )}
 
       {question.type === 'qcm' && (
-        <div className={styles.choices}>
+        <div className={`${styles.choices} ${styles.reponseZone}`}>
           {(question.choices ?? []).map((choice, ci) => {
             // Vue corrigée : la bonne réponse en vert, le mauvais choix de
             // l'élève en rouge (correctIndex n'est envoyé qu'avec le corrigé)
@@ -288,7 +352,7 @@ function QuestionCard({
 
       {question.type === 'texte-court' && (
         <textarea
-          className={styles.shortAnswer}
+          className={`${styles.shortAnswer} ${styles.reponseZone}`}
           rows={2}
           value={answer.text ?? ''}
           onChange={(e) => onAnswerChange({ text: e.target.value })}
@@ -298,11 +362,13 @@ function QuestionCard({
       )}
 
       {question.type === 'texte-long' && (
-        <RichAnswerEditor
-          value={answer.text ?? ''}
-          onChange={(html) => onAnswerChange({ text: html })}
-          disabled={disabled}
-        />
+        <div className={styles.reponseZone}>
+          <RichAnswerEditor
+            value={answer.text ?? ''}
+            onChange={(html) => onAnswerChange({ text: html })}
+            disabled={disabled}
+          />
+        </div>
       )}
 
       {question.type === 'fluorage' && (question.fluoSource ?? 'extrait') === 'extrait' && (

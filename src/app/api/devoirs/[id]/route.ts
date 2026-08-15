@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { sanitizeLectureQuiz, lectureQuizForEleve } from '@/lib/lecture-server';
+import {
+  sanitizeLectureQuiz,
+  lectureQuizForEleve,
+  computeLectureResume,
+} from '@/lib/lecture-server';
+import { parseLectureAnswers, type LectureResume } from '@/types/lecture';
 import { sanitizeAutoEvalQuiz } from '@/lib/autoevaluation-server';
 import { generateTravailId } from '@/lib/travail-utils';
 import { atelierParDispositif, isTypeModal } from '@/types/didactique';
@@ -75,6 +80,25 @@ export async function GET(
       quizComplet = correctionSnap.exists && correctionSnap.data()!.visibleParEleve === true;
     }
 
+    // Récapitulatif de remise : le seul chiffre dont l'élève dispose entre son
+    // envoi et la correction du prof. Calculé ICI parce que le corrigé n'existe
+    // qu'ici — le quiz envoyé au navigateur en est expurgé. Sans intérêt une
+    // fois la correction rendue (l'onglet Évaluation dit alors mieux).
+    let lectureResume: LectureResume | null = null;
+    if (auth.role === 'eleve' && !quizComplet && data.lectureQuiz) {
+      const travailSnap = await adminDb
+        .collection('travaux')
+        .doc(generateTravailId(data.id || docSnap.id, auth.uid))
+        .get();
+      const travail = travailSnap.exists ? travailSnap.data()! : null;
+      if (travail?.status === 'submitted') {
+        lectureResume = computeLectureResume(
+          data.lectureQuiz,
+          parseLectureAnswers(travail.content)?.answers ?? null
+        );
+      }
+    }
+
     const devoir = {
       id: data.id || docSnap.id,
       classes: data.classes || [],
@@ -122,6 +146,8 @@ export async function GET(
           : data.lectureQuiz || null,
       // Auto-évaluation : servie telle quelle, il n'y a rien à cacher
       autoEvalQuiz: data.autoEvalQuiz || null,
+      // Enrichi à la lecture, jamais stocké (comme `uaa` et `submittedCount`)
+      lectureResume,
     };
 
     return NextResponse.json({ success: true, data: devoir });

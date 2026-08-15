@@ -1,5 +1,5 @@
 import type { PlanItem } from './travail';
-import type { LectureQuiz } from './lecture';
+import type { LectureQuiz, LectureResume } from './lecture';
 import type { AutoEvalQuestionnaire } from './autoevaluation';
 import type { TypeModal } from './didactique';
 
@@ -90,6 +90,11 @@ export interface Devoir {
   submittedCount?: number;
   // Questionnaire de lecture (type lire) — côté élève, correctIndex est filtré
   lectureQuiz?: LectureQuiz | null;
+  // Récapitulatif de remise (justes / erreurs / à corriger) — ENRICHI À LA
+  // LECTURE par /api/devoirs/[id], jamais stocké. Servi au seul élève, entre sa
+  // remise et la correction du prof : c'est le calcul que son navigateur ne
+  // peut pas faire, faute d'avoir les bonnes réponses.
+  lectureResume?: LectureResume | null;
   // Questionnaire d'auto-évaluation (type autoevaluation). Rien n'y est filtré
   // pour l'élève : il n'y a ni bonne réponse ni corrigé à protéger.
   autoEvalQuiz?: AutoEvalQuestionnaire | null;

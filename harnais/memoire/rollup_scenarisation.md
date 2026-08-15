@@ -4,9 +4,9 @@
 > vertébrale d'un cours**, dont les activités Recto-versIA ne sont qu'un
 > aboutissement possible.
 >
-> **Livré, testé partiellement** — la session du 15 a corrigé ce que JP a vu à
-> l'écran le 14. La refonte du 15 (genres de ligne, gestes automatiques) n'a
-> **pas encore été vue**.
+> **Livré et testé** — la refonte du 15 (genres de ligne, gestes automatiques,
+> fiche de module, suggestions, aplat de bandeau) a été vue à l'écran par JP le
+> 2026-08-15 : « top ».
 
 ## Le modèle
 
@@ -116,8 +116,7 @@ au défilement (et retournement vers le haut s'il manque de place en bas).
 
 ## TODO
 
-- [ ] **Tester la refonte du 15/08** : genres de ligne, gestes automatiques,
-      objectifs dans le bandeau, colonne Critique, menus au premier plan.
+- [x] **Tester la refonte du 15/08** — fait le 2026-08-15, validé.
 - [ ] Glisser-déposer des modules d'une période de l'année à l'autre (vue par
       module) — aujourd'hui : menu déroulant + flèches ↑↓.
 - [ ] Certification : la relier à une activité certificative (`devoirId` existe
@@ -128,7 +127,10 @@ au défilement (et retournement vers le haut s'il manque de place en bas).
 
 ## Session du 2026-08-15 — fiche de module, suggestions, refonte visuelle
 
-**Livré, non testé.**
+**Livré et testé.** Un seul retour d'usage : le chevron de dépliage du bandeau
+de chapitre était **quasi invisible** (13 px, blanc translucide sur l'aplat).
+Devenu une **pastille blanche ronde de 30 px** avec ombre portée, flèche vers le
+bas quand le chapitre est fermé.
 
 ### La ligne de module ne dit plus que l'essentiel
 Module · Période de l'année · **Périodes** · **UAA** · **Activités**.

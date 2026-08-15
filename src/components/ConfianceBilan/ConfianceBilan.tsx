@@ -17,7 +17,12 @@ interface Props {
 export default function ConfianceBilan({ bilan, isProfessorView }: Props) {
   return (
     <LuciditeBilan
-      titre="Ce que tu pensais de tes réponses"
+      // Le prof lit une copie qui n'est pas la sienne : on ne le tutoie pas
+      titre={
+        isProfessorView
+          ? "Ce que l'élève pense de ses réponses"
+          : 'Ce que tu pensais de tes réponses'
+      }
       tendance={bilan.tendance}
       comparees={bilan.comparees}
       justes={bilan.justes}

@@ -126,3 +126,76 @@ corrigé est ouvert **ou** si la correction de CET élève lui est visible.
 Cela ne bascule pas le questionnaire en mode corrigé pour autant : les ✅/❌
 inline suivent toujours `corrigeDisponible` (`showCorrection`).
 Le garde-fou « non rendu » reste intact.
+
+---
+
+## Session du 2026-08-15 soir — la remise, le premier retour, l'habillage
+
+**Livré, non testé.**
+
+### La remise sort de la barre du haut
+« Remettre le devoir » est le geste de l'**écrit**. Un questionnaire de lecture
+a désormais son propre bouton **« Envoyer le questionnaire »**, au bas de la
+colonne de gauche, dans la ligne d'action encadrée de deux traits (forme
+imposée du projet). En mode *quiz*, il n'apparaît qu'**à la dernière
+question** — là où, avant, il ne se passait plus rien du tout.
+
+`WorkTopBar` gagne `submitOutsideApp` : `hideSubmit` cachait le bouton **et**
+remplaçait l'indicateur de sauvegarde par « Réponses pas encore envoyées », ce
+qui n'a de sens que pour la recherche. La lecture, elle, enregistre vraiment.
+
+L'onglet **Remarques du professeur** disparaît des activités de lecture (il
+montre la copie annotée : il n'y a pas de copie). Un seul drapeau
+`showRemarques` alimente maintenant le rail **et** l'`AssistancePanel` — les
+deux conditions étaient dupliquées.
+
+### Premier retour à l'élève : le récapitulatif de remise
+Comme pour une recherche, l'élève voit dès l'envoi **combien de réponses sont
+justes, fausses, ou en attente du prof** (composant `RechercheResume` réutilisé
+tel quel, en tête de l'onglet Évaluation qui s'ouvre seul).
+
+**Le calcul est SERVEUR, et il ne peut pas être ailleurs** : le quiz envoyé au
+navigateur est expurgé de ses bonnes réponses (`lectureQuizForEleve`).
+→ `computeLectureResume()` dans `src/lib/lecture-server.ts`, appelé par
+`/api/devoirs/[id]`, résultat attaché au devoir sous `lectureResume` (**enrichi
+à la lecture, jamais stocké**, comme `uaa` et `submittedCount`).
+Seuls les QCM dont le prof a désigné la bonne réponse se comptent seuls ; textes
+et **soulignages** vont en « à corriger » (un soulignage se compare par degrés).
+Une question laissée vide est une **erreur**, pas une attente.
+Le bloc s'efface dès que la correction est visible — deux comptages concurrents
+du même travail seraient pires que rien.
+La page recharge le devoir juste après la remise, sinon le récapitulatif
+n'apparaîtrait qu'au prochain F5.
+
+### Pourquoi la pastille de barème affiche « … / 1 »
+Le récapitulatif annonce un **total**, jamais quelle question est juste : le
+dire question par question reviendrait à livrer le corrigé avant l'heure.
+La pastille reste donc sur `…` (infobulle « Corrigé par ton professeur ») et se
+remplit **quand le corrigé est ouvert** — décision de JP (option A), prise
+contre l'option « marquer les QCM dès la remise ».
+
+### Habillage, appliqué AUX DEUX VUES
+`LectureQuizActivity` et `LectureQuizReview` portent les mêmes règles — le prof
+doit reconnaître la copie qu'il corrige :
+- plus de **cadre gris** autour des questions (le fond blanc suffit) ; le bloc
+  informatif garde son pointillé, c'est ce qui le distingue d'une question ;
+- **barème en pastille ambre pleine** dans le coin supérieur droit ;
+- **astérisque verte ✳** entre deux questions (worksheet) ;
+- **zone de réponse en retrait de 2 cm** (20 px sous 1100 px de large) ;
+- padding du conteneur : le questionnaire collait les bords de la carte ;
+- **marges du contenu riche** du bloc informatif — paragraphes, titres, listes
+  et puces n'avaient AUCUNE règle : la mise en forme rédigée par le prof
+  n'était pas rendue ;
+- ligne « 1 question · 1 point » supprimée.
+
+`LectureEvaluation` reçoit son propre padding : `.content` de l'AssistancePanel
+est à `0`, **c'est à chaque onglet de tenir son contenu à distance du bord**.
+
+### Gotcha React — la fonction passée à setState doit être PURE
+`updateAnswer` prévenait le parent **depuis l'intérieur** de
+`setAnswers(prev => …)`. React rejoue cette fonction pendant le rendu : la page
+changeait donc d'état en plein rendu de l'enfant.
+**Symptôme** : « Cannot update a component (`TravailPage`) while rendering a
+different component (`LectureQuizActivity`) ».
+**Remède** : tenir l'état courant dans un `ref`, et prévenir le parent depuis le
+gestionnaire d'événement. À vérifier partout où un composant remonte son état.

@@ -320,7 +320,11 @@ export default function GrilleTab({
       {/* Écart entre l'auto-évaluation de l'élève et la correction du prof.
           Le même bloc des deux côtés : le prof voit ce que voit l'élève. */}
       <LuciditeBilan
-        titre="Ton regard sur ton travail, face à celui du professeur"
+        titre={
+          isProfessorView
+            ? "Le regard de l'élève sur son travail, face au vôtre"
+            : 'Ton regard sur ton travail, face à celui du professeur'
+        }
         tendance={lucidite.tendance}
         comparees={lucidite.comparees}
         justes={lucidite.justes}

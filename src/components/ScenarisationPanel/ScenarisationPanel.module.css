@@ -851,13 +851,28 @@ textarea.phTitle,
   border-radius: 11px 11px 0 0;
 }
 
+/* Déplier un chapitre est le geste principal de l'encodage : le chevron doit
+   se lire comme un bouton, pas comme un caractère perdu dans le bandeau. */
 .chChevron {
-  border: none;
-  background: none;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--c-border);
+  border-radius: 50%;
+  background: var(--c-bg-element);
   color: var(--c-text-secondary);
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 1;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 0;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.chChevron:hover {
+  transform: scale(1.08);
 }
 
 
@@ -1916,16 +1931,29 @@ textarea.phTitle,
    composants employés ailleurs sur fond clair. Le contraste du blanc sur les
    six teintes de COULEURS_CHAPITRE est vérifié ≥ 4,5:1. */
 
-.chHead .chChevron,
 .chHead .iconBtn {
   color: #fff;
   opacity: 0.85;
 }
 
-.chHead .chChevron:hover:not(:disabled),
 .chHead .iconBtn:hover:not(:disabled) {
   opacity: 1;
   background: rgba(255, 255, 255, 0.18);
+}
+
+/* Sur l'encre du bandeau, le chevron est une pastille pleine : c'est la seule
+   commande du bandeau qu'on doit trouver sans chercher. */
+.chHead .chChevron {
+  color: var(--ch-color);
+  background: #fff;
+  border-color: #fff;
+  opacity: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+}
+
+.chHead .chChevron:hover {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .chHead .iconBtn:disabled {

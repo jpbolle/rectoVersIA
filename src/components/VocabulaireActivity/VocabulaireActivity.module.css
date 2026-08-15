@@ -229,12 +229,15 @@
 }
 
 /* ── Barre d'actions sous les sections de mots ── */
+/* Les traits vont d'un bord à l'autre : les marges négatives annulent le
+   padding du conteneur, sinon la ligne s'arrête à 32 px des bords et ne
+   « barre » plus rien. */
 .bottomActions {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 136px;
-  padding: 0 16px 18px;
+  margin: 136px -16px 0;
+  padding: 0 0 18px;
   flex-shrink: 0;
 }
 

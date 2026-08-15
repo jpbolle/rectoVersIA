@@ -3,7 +3,7 @@
 // Vue prof (correction) du questionnaire de lecture : réponses de l'élève
 // en lecture seule, QCM comptés automatiquement, tracés et fluorages affichés.
 
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { DrawCanvas } from '@/components/DrawTools/DrawTools';
 import { FluoExtrait, FluoCompare } from '@/components/LectureQuizActivity/LectureQuizActivity';
 import { useDidactique } from '@/hooks/useDidactique';
@@ -100,7 +100,10 @@ export default function LectureQuizReview({
         }
         const number = quiz.questions.slice(0, index).filter((p) => p.type !== 'info').length + 1;
         return (
-          <div key={q.id} className={styles.card}>
+          <Fragment key={q.id}>
+          {/* Astérisque de séparation — comme dans la vue élève */}
+          {index > 0 && <div className={styles.separateur} aria-hidden="true">✳</div>}
+          <div className={styles.card}>
             <div className={styles.cardHead}>
               <span className={styles.num}>{number}</span>
               <span className={styles.typeLabel}>{TYPE_LABELS[q.type]}</span>
@@ -182,7 +185,7 @@ export default function LectureQuizReview({
 
             {/* QCM : réponse élève vs bonne réponse */}
             {q.type === 'qcm' && (
-              <div className={styles.choices}>
+              <div className={`${styles.choices} ${styles.reponseZone}`}>
                 {(q.choices ?? []).map((choice, ci) => {
                   const isStudent = answer?.choiceIndex === ci;
                   const isCorrect = q.correctIndex === ci;
@@ -207,7 +210,7 @@ export default function LectureQuizReview({
 
             {q.type === 'texte-court' && (
               answer?.text?.trim() ? (
-                <p className={styles.textAnswer}>{answer.text}</p>
+                <p className={`${styles.textAnswer} ${styles.reponseZone}`}>{answer.text}</p>
               ) : (
                 <p className={styles.empty}>Pas de réponse.</p>
               )
@@ -216,7 +219,7 @@ export default function LectureQuizReview({
             {q.type === 'texte-long' && (
               answer?.text?.trim() ? (
                 <div
-                  className={styles.richAnswer}
+                  className={`${styles.richAnswer} ${styles.reponseZone}`}
                   dangerouslySetInnerHTML={{ __html: answer.text }}
                 />
               ) : (
@@ -261,6 +264,7 @@ export default function LectureQuizReview({
               </div>
             )}
           </div>
+          </Fragment>
         );
       })}
 

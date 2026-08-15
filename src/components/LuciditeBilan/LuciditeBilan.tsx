@@ -18,13 +18,13 @@ import type { Lucidite } from '@/lib/autoeval-scoring';
 import styles from './LuciditeBilan.module.css';
 
 const TENDANCE_LABEL: Record<Lucidite, string> = {
-  juste: 'Tu te vois juste',
+  juste: 'Tu te perçois avec justesse',
   sousEstime: 'Tu te sous-estimes',
   surestime: 'Tu te surestimes',
 };
 
 const TENDANCE_LABEL_PROF: Record<Lucidite, string> = {
-  juste: 'Se voit juste',
+  juste: 'Se perçoit avec justesse',
   sousEstime: 'Se sous-estime',
   surestime: 'Se surestime',
 };

@@ -25,7 +25,11 @@ interface Props {
 export default function ConfiancePicker({ value, onChange, disabled, compact }: Props) {
   return (
     <div className={`${styles.wrap} ${compact ? styles.compact : ''}`}>
-      {!compact && <span className={styles.label}>Et toi, tu en penses quoi ?</span>}
+      {/* Intitulé explicite : « Et toi, tu en penses quoi ? » seul laissait
+          l'élève deviner de QUOI on parle */}
+      {!compact && (
+        <span className={styles.label}>Et toi, tu en penses quoi, de ta réponse ?</span>
+      )}
       <div className={styles.choices}>
         {ECHELLE_CONFIANCE.map((e) => {
           const actif = value === e.niveau;

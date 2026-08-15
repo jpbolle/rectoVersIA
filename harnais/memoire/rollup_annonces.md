@@ -1,5 +1,5 @@
 
-> Session du 2026-08-15. **Livré, non testé.**
+> Session du 2026-08-15. **Livré, testé avec succès le 2026-08-15.**
 # Annonces de l'administration — notifications poussées
 ## Le besoin
 

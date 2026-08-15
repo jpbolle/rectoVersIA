@@ -230,8 +230,16 @@
     document.documentElement.appendChild(bandeau);
   }
 
+  // L'outil de surlignage sert à collecter des passages pour une recherche
+  // guidée. Dans Recto-versIA lui-même, l'élève rédige et remet son travail :
+  // il n'y a rien à collecter, et l'outil se posait par-dessus les popups.
+  function estPageRectoVersia() {
+    return /(^|\.)pedagokit\.be$/i.test(location.hostname) || location.port === "3003";
+  }
+
   document.addEventListener("mouseup", (e) => {
     if (!highlighterActif) return;
+    if (estPageRectoVersia()) return;
     if (popup && popup.contains(e.target)) return;
 
     setTimeout(() => {
@@ -243,7 +251,23 @@
         return;
       }
 
-      afficherPopup(e.clientX, e.clientY, selection, texte);
+      // Dernière vérification auprès du fond : le drapeau local peut dater
+      // d'une diffusion manquée (onglet chargé pendant que le service worker
+      // dormait, panneau fermé entre-temps…). Tant qu'il n'a pas confirmé,
+      // rien ne s'affiche.
+      try {
+        chrome.runtime.sendMessage({ type: "GET_HIGHLIGHTER_ETAT" }, (reponse) => {
+          if (chrome.runtime.lastError) return;
+          highlighterActif = !!(reponse && reponse.actif);
+          if (!highlighterActif) {
+            supprimerPopup();
+            return;
+          }
+          afficherPopup(e.clientX, e.clientY, selection, texte);
+        });
+      } catch (err) {
+        supprimerPopup();
+      }
     }, 10);
   });
 

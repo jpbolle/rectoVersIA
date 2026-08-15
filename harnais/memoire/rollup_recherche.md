@@ -170,3 +170,38 @@ un seul clic.
   questions à cet élève-là.
 - Constructeur : icône de duplication agrandie (14 → 19 px — le glyphe ⧉ dessine
   petit dans son cadratin), énoncé en `AutoGrowTextarea`.
+
+---
+
+## Session du 2026-08-15 soir — le surlignage fuyait hors de la recherche
+
+**Livré, non testé — l'extension doit être RECHARGÉE dans `chrome://extensions`.**
+
+**Symptôme** : l'outil de surlignage jaune/vert de NavigKid apparaissait dans
+**Recto-versIA lui-même**, par-dessus la popup de remise, alors que le panneau
+de l'extension n'était même pas ouvert.
+
+**Cause** : l'état « sidebar ouverte » vivait dans `chrome.storage.session`, qui
+**survit à la mort du service worker**. Chrome endort ce dernier ; si le panneau
+se ferme entre-temps, le `onDisconnect` qui devait remettre le drapeau à `false`
+ne s'exécute jamais. « Ouvert » restait gravé pour toute la session du
+navigateur.
+
+**Remède** — le surlignage exige désormais **deux conditions simultanées** :
+
+| Condition | Comment elle est vérifiée |
+|---|---|
+| Le panneau est ouvert | on compte les **ports vivants** (`portsSidebar`), plus aucun drapeau mémorisé — plus de port, plus de panneau, par construction |
+| Une **activité de recherche** y est ouverte | la sidebar annonce ouverture / reprise de session / fermeture (`RECHERCHE_ETAT`) |
+
+Deux garde-fous en plus :
+- la sidebar **se rebranche** quand le service worker se réveille (sinon Chrome
+  couperait le port et le fluo clignoterait), et **redit** au fond s'il y a une
+  recherche en cours — un service worker redémarré a tout oublié ;
+- le script de contenu **redemande l'état au fond** avant d'afficher la
+  pastille, et ne s'affiche **jamais** sur un domaine `pedagokit.be` ni sur
+  `localhost:3003`.
+
+> **Règle générale à retenir** : dans une extension MV3, un état écrit dans
+> `chrome.storage.session` n'est pas une vérité — c'est un souvenir. Pour
+> « quelque chose est-il ouvert en ce moment ? », compter des ports vivants.

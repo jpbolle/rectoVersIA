@@ -76,3 +76,36 @@ et d'édition, sur la ligne « Type d'activité / Grille ».
 - [ ] Recharger l'extension dans `chrome://extensions` pour voir les smileys.
 - [ ] Vérifier que le bilan de lucidité de la grille n'apparaît pas avant que
       la correction ne soit rendue visible.
+
+---
+
+## Retouches du 2026-08-15 soir
+
+**Vocabulaire** (demande de JP) :
+
+| Où | Avant | Après |
+|---|---|---|
+| Bandeau, vue prof | Se voit juste | **Se perçoit avec justesse** |
+| Bandeau, vue élève | Tu te vois juste | **Tu te perçois avec justesse** |
+| Sous-titre, vue prof — lecture / recherche | Ce que tu pensais de tes réponses | **Ce que l'élève pense de ses réponses** |
+| Sous-titre, vue prof — écriture | Ton regard sur ton travail, face à celui du professeur | **Le regard de l'élève sur son travail, face au vôtre** |
+
+Les deux sous-titres **tutoyaient le prof comme s'il était l'élève** : le titre
+dépend maintenant de `isProfessorView`, des deux côtés (règle des familles).
+
+**`ConfiancePicker`** — le bloc des smileys :
+- intitulé « Et toi, tu en penses quoi ? » → « **Et toi, tu en penses quoi, de
+  ta réponse ?** » (trop elliptique : l'élève devait deviner de quoi on parlait) ;
+- **rangé contre le bord droit**, largeur ajustée à son contenu, **bandeau ambre
+  plein** portant l'intitulé en blanc : c'est un retour SUR la réponse qui
+  précède, pas une question de plus — et au milieu du gris de la copie, rien ne
+  le distinguait.
+- Même geste porté dans **l'extension NavigKid** (`.confiance-bloc`), au titre
+  de « ce que je fais pour l'un, je le propose à ses frères ».
+- La variante **compacte** (récapitulatifs) reste sobre et alignée à gauche —
+  sinon les bilans se rempliraient de bandeaux.
+
+**Rappel de ce qui existait déjà et que JP a redécouvert** : côté élève,
+`phraseLucidite` lui adresse une phrase calculée sur ses résultats (« tu t'es
+cru plus sûr que tu ne l'étais 3 fois… »). Elle est **réservée à l'élève** — le
+prof voit les mêmes chiffres sans le message d'encouragement.

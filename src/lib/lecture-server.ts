@@ -2,9 +2,11 @@
 // et filtrage côté élève (jamais exposer correctIndex).
 
 import type {
+  LectureAnswer,
   LectureQuiz,
   LectureQuestion,
   LectureQuestionType,
+  LectureResume,
 } from '@/types/lecture';
 
 const QUESTION_TYPES: LectureQuestionType[] = ['qcm', 'texte-court', 'texte-long', 'fluorage', 'info'];
@@ -143,4 +145,53 @@ export function lectureQuizForEleve(quiz: LectureQuiz | null | undefined): Lectu
       return rest as LectureQuestion;
     }),
   };
+}
+
+// ─── Récapitulatif de remise (élève) ───
+//
+// Après avoir envoyé son questionnaire, l'élève a droit à un premier retour :
+// combien de réponses sont justes, combien sont fausses, combien attendent son
+// professeur. Ce calcul ne peut PAS se faire dans le navigateur — le corrigé y
+// est justement absent (`lectureQuizForEleve`). Il se fait donc ici, et seuls
+// les trois compteurs voyagent : aucune bonne réponse ne transite.
+//
+// Même forme et mêmes mots que le récapitulatif d'une recherche
+// (`computeRechercheResume`) : c'est le même moment du parcours élève.
+
+/**
+ * Seuls les QCM dont le prof a désigné la bonne réponse se comptent tout seuls.
+ * Tout le reste — textes courts, textes longs, soulignages — attend le regard
+ * du professeur : un soulignage se compare par degrés, pas en juste/faux.
+ */
+function estAutoCorrigeable(q: LectureQuestion): boolean {
+  return q.type === 'qcm' && typeof q.correctIndex === 'number';
+}
+
+export function computeLectureResume(
+  quiz: LectureQuiz | null | undefined,
+  answers: Record<string, LectureAnswer> | null | undefined
+): LectureResume | null {
+  if (!quiz?.questions?.length) return null;
+
+  // Les blocs informatifs ne sont pas des questions, et une question à 0 point
+  // n'est pas notée : ni l'une ni l'autre n'entre dans les compteurs.
+  const questions = quiz.questions.filter((q) => q.type !== 'info' && (q.points || 0) > 0);
+  if (questions.length === 0) return null;
+
+  let correctes = 0;
+  let erreurs = 0;
+  let aCorrigerParProf = 0;
+
+  for (const q of questions) {
+    if (!estAutoCorrigeable(q)) {
+      aCorrigerParProf++;
+      continue;
+    }
+    // Une question laissée vide est une erreur, pas une question en attente :
+    // le prof n'a rien à y corriger.
+    if (answers?.[q.id]?.choiceIndex === q.correctIndex) correctes++;
+    else erreurs++;
+  }
+
+  return { total: questions.length, correctes, erreurs, aCorrigerParProf };
 }

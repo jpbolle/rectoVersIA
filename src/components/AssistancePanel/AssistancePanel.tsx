@@ -35,6 +35,8 @@ interface AssistancePanelProps {
   studentName?: string;
   correction?: Correction | null;
   studentContent?: string;
+  /** Date de remise — datée en tête du récapitulatif d'une lecture remise */
+  submittedAt?: string | null;
   showRemarquesTab?: boolean;
   isProfessorView?: boolean;
   // Travail non rendu (toggle vue prof, bandeau vue élève)
@@ -100,6 +102,7 @@ export default function AssistancePanel({
   studentName = '',
   correction = null,
   studentContent = '',
+  submittedAt = null,
   showRemarquesTab = true,
   isProfessorView = false,
   nonRendu = null,
@@ -276,6 +279,21 @@ export default function AssistancePanel({
             isProfessorView={isProfessorView}
           />
         )}
+        {/* Lecture : même pis-aller, même composant. Le récapitulatif est
+            calculé sur le serveur (`devoir.lectureResume`) — le navigateur de
+            l'élève n'a pas les bonnes réponses. Il s'efface dès que la
+            correction du prof est visible. */}
+        {currentTab === 'grille' &&
+          !isProfessorView &&
+          isLectureQuiz &&
+          devoir.lectureResume &&
+          correction?.visibleParEleve !== true && (
+            <RechercheResume
+              resume={devoir.lectureResume}
+              soumisLe={submittedAt ?? undefined}
+              corrigeDisponible={devoir.corrigeDisponible === true}
+            />
+          )}
         {/* Questionnaire de lecture : pas de grille — le score et le détail par
             habileté tiennent lieu d'évaluation */}
         {currentTab === 'grille' && isLectureQuiz && (

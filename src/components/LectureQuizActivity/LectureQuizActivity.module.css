@@ -1,12 +1,13 @@
+/* Le questionnaire se pose DANS la carte blanche de la colonne : sans ce
+   retrait, blocs et questions venaient coller ses bords. */
 .activity {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.meta {
-  font-size: 12px;
-  color: var(--c-text-secondary);
+  gap: 14px;
+  padding: 18px 20px 24px;
 }
 
 /* Progression (mode quiz) */
@@ -39,10 +40,12 @@
   transition: width 0.25s ease;
 }
 
-/* Carte question */
+/* Carte question — sans cadre : le fond blanc suffit à la détacher du papier
+   crème de la page, le liseré gris ne faisait qu'ajouter du bruit */
 .card {
+  position: relative;
   background: var(--c-bg-card);
-  border: 1px solid var(--c-border);
+  border: none;
   border-radius: 12px;
   padding: 16px 18px;
 }
@@ -52,6 +55,8 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
+  /* laisse la place à la pastille de barème, posée en absolu */
+  padding-right: 88px;
 }
 
 .num {
@@ -74,10 +79,47 @@
   color: var(--c-text);
 }
 
+/* Le barème, en pastille dans le coin supérieur droit : « 3 » se perdait en
+   bout de bandeau, l'élève ne voyait pas ce que valait la question. */
 .pts {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--c-text-secondary);
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 4px 11px;
+  border: none;
+  border-radius: 999px;
+  background: var(--c-accent);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+  box-shadow: 0 1px 4px rgba(212, 148, 76, 0.45);
+}
+
+.ptsVide {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 400;
+}
+
+.ptsUnite {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin-left: 2px;
+}
+
+/* ── Séparateur de questions (mode worksheet) ──
+   Les cartes n'ont plus de cadre : sans ce repère, elles se suivent sans
+   qu'on voie où l'une finit. Une astérisque, comme dans un livre. */
+.separateur {
+  text-align: center;
+  color: var(--c-primary);
+  font-size: 18px;
+  line-height: 1;
+  user-select: none;
 }
 
 .enonce {
@@ -85,6 +127,21 @@
   line-height: 1.5;
   margin-bottom: 10px;
   color: var(--c-text);
+}
+
+/* ── Zone de réponse ──
+   Retrait de 2 cm : la consigne à gauche, ce que l'élève produit en retrait.
+   L'œil sépare la question de la réponse sans qu'aucun trait ne le dise.
+   Sur un panneau étroit (Chromebook, colonne réduite), le retrait tombe à
+   20 px — 2 cm y mangeraient la moitié de la largeur utile. */
+.reponseZone {
+  margin-left: 2cm;
+}
+
+@media (max-width: 1100px) {
+  .reponseZone {
+    margin-left: 20px;
+  }
 }
 
 /* QCM */
@@ -271,19 +328,70 @@
   color: #fff;
 }
 
-/* Bloc informatif */
+/* Bloc informatif — il garde son pointillé (la question, elle, n'a plus de
+   cadre) : c'est ce qui dit qu'on lit au lieu de répondre. */
 .cardInfo {
   background: var(--c-bg-element);
-  border-style: dashed;
+  border: 1px dashed var(--c-border);
+  padding: 18px 20px;
 }
 
 .infoIcon {
   font-size: 15px;
 }
 
+/* Contenu riche du prof (HTML Tiptap) : sans ces règles, paragraphes, titres et
+   listes arrivaient collés — la mise en forme rédigée dans le constructeur
+   n'était pas rendue du tout, et les puces débordaient faute de retrait. */
 .enonceInfo {
   white-space: pre-wrap;
   margin-bottom: 0;
+}
+
+.enonceInfo > :first-child {
+  margin-top: 0;
+}
+
+.enonceInfo > :last-child {
+  margin-bottom: 0;
+}
+
+.enonceInfo p {
+  margin: 0 0 0.75em;
+}
+
+.enonceInfo h1,
+.enonceInfo h2,
+.enonceInfo h3,
+.enonceInfo h4 {
+  margin: 1.1em 0 0.4em;
+  line-height: 1.3;
+  font-family: var(--c-font-title);
+}
+
+.enonceInfo h1 { font-size: 1.35em; }
+.enonceInfo h2 { font-size: 1.2em; }
+.enonceInfo h3 { font-size: 1.08em; }
+
+.enonceInfo ul,
+.enonceInfo ol {
+  margin: 0 0 0.75em;
+  padding-left: 1.6em;
+}
+
+.enonceInfo li {
+  margin-bottom: 0.3em;
+}
+
+.enonceInfo li > p {
+  margin: 0;
+}
+
+.enonceInfo blockquote {
+  margin: 0 0 0.75em;
+  padding-left: 0.9em;
+  border-left: 3px solid var(--c-border);
+  color: var(--c-text-secondary);
 }
 
 .fluoComment {
@@ -295,6 +403,64 @@
   display: flex;
   justify-content: flex-end;
   margin-top: 4px;
+}
+
+/* ── Ligne de remise ──
+   Forme imposée du projet : les boutons d'action sont encadrés de deux traits
+   horizontaux (cf. `bottomActions` de VocabulaireActivity). Le vert dit que le
+   bouton engage quelque chose. */
+.bottomActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  /* d'un bord à l'autre : les marges négatives annulent le padding de .activity */
+  margin: 28px -20px 0;
+  padding-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.bottomActionsLine {
+  flex: 1;
+  height: 1px;
+  background: var(--c-border);
+}
+
+.bottomActionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 22px;
+  border: none;
+  border-radius: var(--c-radius);
+  background: var(--c-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.35);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .navBtn {

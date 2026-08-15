@@ -754,8 +754,12 @@ export default function ScenarisationPanel() {
                     type="button"
                     className={styles.chChevron}
                     onClick={() => toggle(ouverts, ch.id, setOuverts)}
+                    aria-expanded={ouvert}
+                    title={ouvert ? 'Replier le chapitre' : 'Déplier le chapitre'}
                   >
-                    {ouvert ? '▾' : '▸'}
+                    {/* Fermé : la flèche pointe vers le bas — elle montre où le
+                        contenu va se déployer. Ouverte, elle se retourne. */}
+                    {ouvert ? '▴' : '▾'}
                   </button>
                   {/* Titre ET objectifs généraux dans le bandeau : ils se
                       lisent chapitre fermé, sans avoir à déplier */}

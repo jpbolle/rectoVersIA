@@ -1,7 +1,20 @@
+/* Même habillage que la vue élève (LectureQuizActivity) : le prof doit
+   reconnaître la copie qu'il corrige. Seule la gouttière de notation lui est
+   propre. */
 .review {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  padding: 18px 20px 24px;
+}
+
+/* Séparateur entre deux questions — les cartes n'ont plus de cadre */
+.separateur {
+  text-align: center;
+  color: var(--c-primary);
+  font-size: 18px;
+  line-height: 1;
+  user-select: none;
 }
 
 .autoScore {
@@ -18,10 +31,11 @@
 }
 
 .card {
+  position: relative;
   background: var(--c-bg-card);
-  border: 1px solid var(--c-border);
+  border: none;
   border-radius: 12px;
-  padding: 14px 16px;
+  padding: 16px 18px;
 }
 
 .cardHead {
@@ -30,6 +44,8 @@
   gap: 8px;
   margin-bottom: 8px;
   flex-wrap: wrap;
+  /* place réservée à la pastille de barème / au champ de points, en absolu */
+  padding-right: 104px;
 }
 
 .num {
@@ -58,15 +74,30 @@
   font-weight: 600;
 }
 
+/* Barème en pastille, coin supérieur droit — comme chez l'élève */
 .pts {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--c-text-secondary);
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--c-accent);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+  box-shadow: 0 1px 4px rgba(212, 148, 76, 0.45);
 }
 
-/* Saisie des points d'une question ouverte (prof) */
+/* Saisie des points d'une question ouverte (prof) — même coin, mais elle reste
+   un champ : le prof doit voir qu'il peut écrire dedans */
 .scoreInput {
-  margin-left: auto;
+  position: absolute;
+  top: 8px;
+  right: 12px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -126,6 +157,18 @@
 .shapeCount {
   font-size: 11px;
   color: var(--c-text-secondary);
+}
+
+/* Zone de réponse en retrait (2 cm), comme chez l'élève ; 20 px sur un panneau
+   étroit, où 2 cm mangeraient la largeur utile */
+.reponseZone {
+  margin-left: 2cm;
+}
+
+@media (max-width: 1100px) {
+  .reponseZone {
+    margin-left: 20px;
+  }
 }
 
 .choices {
@@ -203,14 +246,60 @@
   font-style: italic;
 }
 
+/* Le bloc informatif garde son pointillé : c'est ce qui le distingue d'une
+   question, maintenant que les questions n'ont plus de cadre. */
 .cardInfo {
   background: var(--c-bg-element);
-  border-style: dashed;
+  border: 1px dashed var(--c-border);
+  padding: 18px 20px;
 }
 
+/* Contenu riche du prof (HTML Tiptap) : sans ces règles, paragraphes, titres et
+   listes arrivaient collés, et les puces débordaient faute de retrait. */
 .enonceInfo {
   white-space: pre-wrap;
   margin-bottom: 0;
+}
+
+.enonceInfo > :first-child { margin-top: 0; }
+.enonceInfo > :last-child { margin-bottom: 0; }
+
+.enonceInfo p {
+  margin: 0 0 0.75em;
+}
+
+.enonceInfo h1,
+.enonceInfo h2,
+.enonceInfo h3,
+.enonceInfo h4 {
+  margin: 1.1em 0 0.4em;
+  line-height: 1.3;
+  font-family: var(--c-font-title);
+}
+
+.enonceInfo h1 { font-size: 1.35em; }
+.enonceInfo h2 { font-size: 1.2em; }
+.enonceInfo h3 { font-size: 1.08em; }
+
+.enonceInfo ul,
+.enonceInfo ol {
+  margin: 0 0 0.75em;
+  padding-left: 1.6em;
+}
+
+.enonceInfo li {
+  margin-bottom: 0.3em;
+}
+
+.enonceInfo li > p {
+  margin: 0;
+}
+
+.enonceInfo blockquote {
+  margin: 0 0 0.75em;
+  padding-left: 0.9em;
+  border-left: 3px solid var(--c-border);
+  color: var(--c-text-secondary);
 }
 
 /* Réponse idéale du prof */

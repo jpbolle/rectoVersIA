@@ -1,27 +1,40 @@
 /* Degré d'assurance — discret par défaut : c'est un geste secondaire, il ne
    doit pas peser autant que la réponse elle-même. */
 
+/* Rangé contre le bord DROIT de la question : ce n'est pas une question de
+   plus, c'est un retour sur la réponse qui précède. Et sa propre couleur —
+   l'ambre — parce qu'au milieu du gris de la copie, rien ne le distinguait. */
 .wrap {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 10px;
-  padding-top: 9px;
-  border-top: 1px dashed var(--c-border);
+  align-items: flex-end;
+  width: fit-content;
+  max-width: 100%;
+  margin: 14px 0 0 auto;
+  border: 1px solid rgba(212, 148, 76, 0.45);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(212, 148, 76, 0.09);
 }
 
+/* Bandeau plein : le titre porte la couleur, pas le fond du bloc */
 .label {
+  align-self: stretch;
+  padding: 6px 12px;
+  background: var(--c-accent);
+  color: #fff;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--c-text-secondary);
 }
 
 .choices {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 7px;
+  padding: 9px 12px;
 }
 
 .choice {
@@ -62,9 +75,17 @@
 
 /* Version compacte : les smileys seuls, l'intitulé est porté par le contexte */
 .compact {
-  margin-top: 6px;
-  padding-top: 0;
-  border-top: none;
+  margin: 6px 0 0;
+  width: auto;
+  border: none;
+  border-radius: 0;
+  background: none;
+  align-items: flex-start;
+}
+
+.compact .choices {
+  justify-content: flex-start;
+  padding: 0;
 }
 
 .compact .text {

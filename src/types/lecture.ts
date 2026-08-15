@@ -114,6 +114,19 @@ export interface LectureAnswersState {
   answers: Record<string, LectureAnswer>;   // clé = LectureQuestion.id
 }
 
+/**
+ * Récapitulatif de remise, CALCULÉ SUR LE SERVEUR (`computeLectureResume`) :
+ * le navigateur de l'élève n'a pas les bonnes réponses et ne peut donc rien
+ * compter. Même forme que le récapitulatif d'une recherche — c'est le même
+ * moment du parcours, il doit se lire pareil.
+ */
+export interface LectureResume {
+  total: number;
+  correctes: number;
+  erreurs: number;
+  aCorrigerParProf: number;
+}
+
 export function generateLectureQuestionId(): string {
   return `LQ-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 }

@@ -32,15 +32,33 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 
-// Signaler au background que la sidebar est ouverte
-chrome.runtime.connect({ name: "sidebar" });
+// ─── Présence du panneau ───
+// Le port EST le signal : tant qu'il vit, le panneau est ouvert ; s'il meurt
+// sans que cette page disparaisse, c'est le service worker qui s'est endormi —
+// on se rebranche. Quand le panneau se ferme pour de bon, cette page est
+// détruite avec lui : plus personne ne se rebranche, et le fond le voit.
+function connecterAuFond() {
+  const port = chrome.runtime.connect({ name: "sidebar" });
+  port.onDisconnect.addListener(() =>
+    setTimeout(() => {
+      connecterAuFond();
+      // Le service worker a redémarré : il a tout oublié. On lui redit s'il y a
+      // une recherche en cours, sinon le surlignage resterait éteint.
+      signalerRecherche(!!(state.questionnaireId || state.activiteEnCours));
+    }, 400)
+  );
+}
+connecterAuFond();
 
-// Activer directement le surlignage sur le tab actif (robuste aux redémarrages service worker)
-chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-  if (tabs[0]?.id) {
-    chrome.tabs.sendMessage(tabs[0].id, { type: "HIGHLIGHTER_ETAT", actif: true }).catch(() => {});
-  }
-});
+// Le surlignage n'est pas un outil de navigation : il n'existe que pendant une
+// activité de recherche ouverte dans ce panneau.
+function signalerRecherche(enCours) {
+  try {
+    chrome.runtime.sendMessage({ type: "RECHERCHE_ETAT", enCours }, () => {
+      if (chrome.runtime.lastError) return;
+    });
+  } catch (e) {}
+}
 
 // ─── État de l'application ───
 const state = {
@@ -194,6 +212,8 @@ async function restaurerSession() {
           }));
         }
 
+        // Session reprise : une recherche est bien en cours
+        signalerRecherche(true);
         afficherQuestionnaireRestaure();
         return;
       }
@@ -341,6 +361,7 @@ async function ouvrirActivite(activite) {
   }
 
   state.activiteEnCours = activite;
+  signalerRecherche(true);
 
   try {
     const json = await apiFetch(`/api/navigkid/questionnaire?id=${encodeURIComponent(activite.questionnaireId)}`);
@@ -386,6 +407,7 @@ $("#btn-retour-activites").addEventListener("click", () => {
   state.questionCourante = 0;
   state.questions = [];
   state.activiteEnCours = null;
+  signalerRecherche(false);
   chrome.storage.local.remove(["questionnaireId", "questionCourante", "questionsData"]);
   afficherEcranActivites();
 });
