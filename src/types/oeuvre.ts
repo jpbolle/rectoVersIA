@@ -141,6 +141,15 @@ export interface Oeuvre {
   titre: string;          // « Molière — Anthologie comique »
   auteur?: string;
   description?: string;
+  /**
+   * COUVERTURE — une image, et rien d'autre. C'est le premier élément qu'on
+   * dépose en construisant un livre, avant les chapitres (demande de JP,
+   * 2026-08-16), et la vignette de la carte dans la bibliothèque : douze
+   * cartes « 📖 » identiques ne se distinguent qu'à la lecture du titre.
+   * Même stockage que les images de questions : base64 dans `ressourceImages`,
+   * servi par /api/ressources/image/[id]. Jamais d'URL externe.
+   */
+  couverture?: { url: string; fileId: string } | null;
   chapitres: OeuvreChapitre[];
   // Partage calqué sur les grilles : chacun voit les œuvres des autres et
   // peut les dupliquer ; seul l'admin marque une œuvre comme exemple partagé.
@@ -188,12 +197,51 @@ export function peutEditerOeuvre(
 export interface OeuvreSectionEtat {
   // Horodatage de la première ouverture — sert au « lu »
   vueLe?: string;
+  /**
+   * Première MANIFESTATION D'ACTIVITÉ sur la scène — pas seulement l'avoir
+   * ouverte. Ouvrir une page ne prouve rien : un élève qui fait défiler 67
+   * scènes en trente secondes les aurait toutes « vues ».
+   *
+   * Ce qui compte comme activité (décision de JP, 2026-08-16) :
+   *   · avoir consulté le VERSO (l'espace multimédia) ;
+   *   · avoir cliqué un mot avec l'outil DICTIONNAIRE ;
+   *   · avoir ouvert un COMMENTAIRE posé par le professeur sur un mot.
+   *
+   * N'entre PAS dans les compteurs de progression : seul `termineLe` compte.
+   * C'est un signal de lecture, pas une note.
+   */
+  agiLe?: string;
   // Réponses aux questions de la section (clé = LectureQuestion.id).
   // Le type réutilise LectureAnswer : c'est le même questionnaire.
   reponses?: Record<string, unknown>;
   // Vérification considérée comme complétée — c'est ELLE qui compte dans le
   // total, pas l'ouverture de la page
   termineLe?: string;
+}
+
+/**
+ * L'état d'une scène tel que la pastille du sommaire le montre.
+ *
+ *   vide    — jamais ouverte : rien
+ *   ouverte — ouverte, mais rien ne dit qu'on y a lu quoi que ce soit (gris)
+ *   active  — l'élève y a fait quelque chose (orange)
+ *   faite   — la vérification est remplie (vert)
+ *
+ * RÈGLE PARTICULIÈRE : une scène SANS vérification ne peut jamais être
+ * « faite » — son orange passe donc au vert. Sans cela, les scènes sans
+ * formulaire resteraient éternellement orange et le sommaire dirait à l'élève
+ * qu'il lui reste du travail là où il n'y en a pas.
+ */
+export type EtatPastille = 'vide' | 'ouverte' | 'active' | 'faite';
+
+export function etatPastille(
+  etat: OeuvreSectionEtat | undefined,
+  aVerification: boolean
+): EtatPastille {
+  if (etat?.termineLe) return 'faite';
+  if (etat?.agiLe) return aVerification ? 'active' : 'faite';
+  if (etat?.vueLe) return 'ouverte';
+  return 'vide';
 }
 
 export interface OeuvreProgression {

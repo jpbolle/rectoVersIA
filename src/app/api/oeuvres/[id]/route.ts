@@ -85,6 +85,20 @@ export async function PATCH(
     if (typeof body.titre === 'string' && body.titre.trim()) update.titre = body.titre.trim();
     if (typeof body.auteur === 'string') update.auteur = body.auteur.trim();
     if (typeof body.description === 'string') update.description = body.description.trim();
+    // Couverture : `null` explicite pour la retirer. On ne fait confiance
+    // qu'à une référence complète (url + fileId d'une ressourceImages) —
+    // une URL seule ouvrirait la porte à une image hébergée n'importe où.
+    if (body.couverture === null) {
+      update.couverture = null;
+    } else if (
+      body.couverture &&
+      typeof body.couverture === 'object' &&
+      typeof (body.couverture as { url?: unknown }).url === 'string' &&
+      typeof (body.couverture as { fileId?: unknown }).fileId === 'string'
+    ) {
+      const c = body.couverture as { url: string; fileId: string };
+      update.couverture = { url: c.url, fileId: c.fileId };
+    }
     if (typeof body.archive === 'boolean') update.archive = body.archive;
     if (auth.isAdmin && typeof body.shared === 'boolean') update.shared = body.shared;
 

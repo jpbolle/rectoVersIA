@@ -17,12 +17,17 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { docToSection } from '@/lib/oeuvre-server';
 import { parseOeuvreProgression } from '@/types/oeuvre';
+import { estAutoCorrigeable, partReussite, reponseLiseuseVersAnswer } from '@/types/lecture';
 
 export interface BilanFormulaire {
   sectionId: string;
   titre: string;
   groupe?: string;
-  /** QCM justes / QCM répondus — les seules questions auto-corrigeables */
+  /**
+   * Réussite / questions auto-corrigeables auxquelles l'élève a répondu.
+   * `justes` peut être DÉCIMAL : le barème est partiel, un appariement à
+   * 4 liens sur 6 compte pour deux tiers.
+   */
   justes: number;
   total: number;
   /** Questions ouvertes auxquelles l'élève a écrit quelque chose */
@@ -119,12 +124,17 @@ export async function GET(request: NextRequest) {
 
       for (const question of section.questions) {
         const reponse = etat?.reponses?.[question.id];
-        if (question.type === 'qcm') {
-          // Le dénominateur ne compte que les QCM AUXQUELS il a répondu : une
-          // question sautée n'est pas une erreur, c'est une question sautée.
+        // Toutes les questions que la machine sait corriger, pas seulement
+        // les QCM : appariements, matrices, remises en ordre, ensembles.
+        if (estAutoCorrigeable(question)) {
+          // Le dénominateur ne compte que celles AUXQUELLES il a répondu :
+          // une question sautée n'est pas une erreur, c'est une question sautée.
           if (reponse === undefined || reponse === null) continue;
           total += 1;
-          if (reponse === question.correctIndex) justes += 1;
+          // Barème PARTIEL : un appariement à 4 liens sur 6 vaut deux tiers.
+          // On cumule des fractions, pas des tout-ou-rien — sinon la moyenne
+          // de réussite serait plus sévère ici que la note du questionnaire.
+          justes += partReussite(question, reponseLiseuseVersAnswer(question, reponse)) ?? 0;
         } else if (reponse !== undefined && reponse !== null && reponse !== '') {
           ouvertes += 1;
         }
@@ -138,7 +148,9 @@ export async function GET(request: NextRequest) {
         sectionId,
         titre: section.titre,
         groupe: section.groupe,
-        justes,
+        // Arrondi au dixième : le barème partiel produit des tiers de point,
+        // et « 2.6666666/4 » ne s'affiche pas dans un bilan d'élève.
+        justes: Math.round(justes * 10) / 10,
         total,
         ouvertes,
         termine: !!etat?.termineLe,

@@ -13,14 +13,29 @@ import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useDidactique } from '@/hooks/useDidactique';
 import { habileteLabel, habiletesOfType } from '@/types/didactique';
 import { FluoExtrait } from '@/components/LectureQuizActivity/LectureQuizActivity';
-import { LECTURE_COMPETENCE_LABELS, generateLectureQuestionId } from '@/types/lecture';
+import {
+  LECTURE_COMPETENCE_LABELS,
+  LECTURE_TYPE_LABELS,
+  generateLectureQuestionId,
+} from '@/types/lecture';
 import type { LectureCompetence } from '@/types/lecture';
 import type {
   LectureQuiz,
   LectureQuestion,
+  LectureQuestionImage,
   LectureQuestionType,
 } from '@/types/lecture';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
+import { MATRICE_MODELES } from '@/types/autoevaluation';
+import ExtraitOeuvreModal from './ExtraitOeuvreModal';
+import {
+  EditeurAppariement,
+  EditeurEnsembles,
+  EditeurFluoCategories,
+  EditeurImageAnnotee,
+  EditeurMatrice,
+  EditeurOrdre,
+} from './TypeEditors';
 import styles from './LectureQuizBuilder.module.css';
 
 // Éditeur riche des blocs informatifs (même éditeur que l'onglet Texte des ressources)
@@ -29,13 +44,8 @@ const InfoEditor = dynamic(() => import('@/components/RessourcesInput/DocumentEd
   loading: () => <div className={styles.hint}>Chargement de l&apos;éditeur...</div>,
 });
 
-const TYPE_LABELS: Record<LectureQuestionType, string> = {
-  qcm: 'QCM',
-  'texte-court': 'Texte court',
-  'texte-long': 'Texte long',
-  fluorage: 'Souligner du texte',
-  info: 'Bloc informatif',
-};
+// Libellés : liste unique dans src/types/lecture.ts (voir LECTURE_TYPE_LABELS)
+const TYPE_LABELS = LECTURE_TYPE_LABELS;
 
 function emptyQuestion(type: LectureQuestionType): LectureQuestion {
   const q: LectureQuestion = {
@@ -52,6 +62,32 @@ function emptyQuestion(type: LectureQuestionType): LectureQuestion {
   if (type === 'fluorage') {
     q.fluoSource = 'extrait';
     q.fluoTexte = '';
+  }
+  if (type === 'matrice') {
+    // On démarre sur une échelle de fréquence plutôt que sur des colonnes
+    // vides : c'est le cas le plus fréquent, et une matrice vide ne montre
+    // pas à quoi sert le type.
+    q.choices = [...MATRICE_MODELES[0].colonnes];
+    q.matriceItems = [''];
+    q.matriceCorrect = [-1];
+  }
+  if (type === 'appariement') {
+    q.appariementGauche = [];
+    q.appariementDroite = [];
+  }
+  if (type === 'ordre') {
+    q.ordreItems = [];
+  }
+  if (type === 'image-annotee') {
+    q.annotations = [];
+    q.annotationsReserve = 'bas';
+  }
+  if (type === 'ensembles') {
+    q.ensembles = [
+      { id: `e-${Date.now()}-0`, titre: '' },
+      { id: `e-${Date.now()}-1`, titre: '' },
+    ];
+    q.ensembleItems = [];
   }
   return q;
 }
@@ -83,10 +119,21 @@ export default function LectureQuizBuilder({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const [popupImage, setPopupImage] = useState<string | null>(null);
+  // Sélecteur d'extrait : quelle question, et lequel de ses deux champs de
+  // texte reçoit le passage. `null` = popup fermée.
+  const [extraitCible, setExtraitCible] = useState<{
+    id: string;
+    champ: 'document' | 'fluoTexte';
+  } | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetRef = useRef<string | null>(null);
+  // Où poser le média une fois monté. `null` = l'image (ou l'audio) de la
+  // question, comportement historique. Un éditeur de type y met son rappel
+  // pour viser un JETON à la place — sans ce détour, il faudrait dupliquer
+  // toute la chaîne d'upload (compression, en-têtes, gestion d'erreur).
+  const poseMediaRef = useRef<((media: LectureQuestionImage) => void) | null>(null);
   // Audio de question : upload de fichier + enregistrement micro
   const audioInputRef = useRef<HTMLInputElement>(null);
   const audioTargetRef = useRef<string | null>(null);
@@ -170,6 +217,11 @@ export default function LectureQuizBuilder({
     const file = e.target.files?.[0];
     e.target.value = '';
     const questionId = uploadTargetRef.current;
+    // Destination du média : l'image de la question par défaut, ou un JETON
+    // (appariement, remise en ordre, ensembles) quand un éditeur de type a
+    // posé son propre rappel avant d'ouvrir le sélecteur de fichier.
+    const poser = poseMediaRef.current;
+    poseMediaRef.current = null;
     if (!file || !questionId || !getAuthHeaders) return;
 
     setUploadingId(questionId);
@@ -196,7 +248,9 @@ export default function LectureQuizBuilder({
       const json = await res.json();
       if (json.success && json.data?.files?.[0]) {
         const f = json.data.files[0];
-        updateQuestion(questionId, { image: { url: f.url, fileId: f.fileId } });
+        const media = { url: f.url, fileId: f.fileId };
+        if (poser) poser(media);
+        else updateQuestion(questionId, { image: media });
       } else {
         setUploadError(json.message || "Erreur lors de l'upload");
       }
@@ -235,11 +289,19 @@ export default function LectureQuizBuilder({
       const json = await res.json();
       if (json.success && json.data?.files?.[0]) {
         const f = json.data.files[0];
-        // Remplacement : on conserve la limite d'écoutes déjà réglée
-        const prev = quiz.questions.find((q) => q.id === questionId)?.audio;
-        updateQuestion(questionId, {
-          audio: { url: f.url, fileId: f.fileId, maxEcoutes: prev?.maxEcoutes ?? null },
-        });
+        // Destination : un JETON si un éditeur de type l'a demandé, sinon
+        // l'audio de la question. Même aiguillage que pour les images.
+        const poser = poseMediaRef.current;
+        poseMediaRef.current = null;
+        if (poser) {
+          poser({ url: f.url, fileId: f.fileId });
+        } else {
+          // Remplacement : on conserve la limite d'écoutes déjà réglée
+          const prev = quiz.questions.find((q) => q.id === questionId)?.audio;
+          updateQuestion(questionId, {
+            audio: { url: f.url, fileId: f.fileId, maxEcoutes: prev?.maxEcoutes ?? null },
+          });
+        }
       } else {
         setUploadError(json.message || "Erreur lors de l'upload");
       }
@@ -293,6 +355,27 @@ export default function LectureQuizBuilder({
 
   const formatDuration = (seconds: number) =>
     `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+
+  /**
+   * Fabrique le rappel d'upload passé aux éditeurs de type : ils demandent un
+   * média, le constructeur ouvre le sélecteur et pose le résultat où ils
+   * l'indiquent (sur un jeton, pas sur la question).
+   * Absent si le prof n'est pas authentifié — les boutons ne s'affichent alors
+   * pas du tout, plutôt que d'échouer au clic.
+   */
+  const choisirMediaPour = (questionId: string) => {
+    if (!getAuthHeaders) return undefined;
+    return (genre: 'image' | 'audio', poser: (media: LectureQuestionImage) => void) => {
+      poseMediaRef.current = poser;
+      if (genre === 'image') {
+        uploadTargetRef.current = questionId;
+        fileInputRef.current?.click();
+      } else {
+        audioTargetRef.current = questionId;
+        audioInputRef.current?.click();
+      }
+    };
+  };
 
   const toggleCompetence = (q: LectureQuestion, comp: string) => {
     const next = q.competences.includes(comp)
@@ -554,7 +637,21 @@ export default function LectureQuizBuilder({
                 {/* Texte joint à la question */}
                 {q.document !== undefined && (
                   <div className={styles.docBlock}>
-                    <label className={styles.docLabel}>Texte joint à la question</label>
+                    <div className={styles.docEntete}>
+                      <label className={styles.docLabel}>Texte joint à la question</label>
+                      {/* Une œuvre de la bibliothèque tient déjà 67 scènes
+                          encodées : les recopier ici, c'est dupliquer un texte
+                          qu'on a — et laisser les deux copies diverger. */}
+                      <button
+                        type="button"
+                        className={styles.btnExtrait}
+                        onClick={() => setExtraitCible({ id: q.id, champ: 'document' })}
+                        disabled={disabled}
+                        title="Coller un passage tiré d'une œuvre de votre bibliothèque"
+                      >
+                        📖 Prendre un extrait dans une œuvre
+                      </button>
+                    </div>
                     <textarea
                       className={styles.docTextarea}
                       value={q.document}
@@ -632,15 +729,51 @@ export default function LectureQuizBuilder({
                   </div>
                 )}
 
-                {/* QCM : choix + bonne réponse */}
+                {/* QCM : choix + bonne(s) réponse(s) */}
                 {q.type === 'qcm' && (
                   <div className={styles.choices}>
-                    {(q.choices ?? []).map((choice, ci) => (
-                      <div key={ci} className={`${styles.choice} ${q.correctIndex === ci ? styles.choiceCorrect : ''}`}>
+                    {/* Réponse unique ou multiple — la case change la FORME du
+                        contrôle côté élève (ronds → cases à cocher), pas
+                        seulement la correction. */}
+                    <label className={styles.multipleToggle}>
+                      <input
+                        type="checkbox"
+                        checked={q.multiple === true}
+                        onChange={(e) => {
+                          const multiple = e.target.checked;
+                          updateQuestion(
+                            q.id,
+                            multiple
+                              ? // On reprend la bonne réponse déjà cochée comme
+                                // première bonne réponse : le prof ne perd pas
+                                // ce qu'il avait saisi en basculant.
+                                { multiple: true, correctIndexes: [q.correctIndex ?? 0] }
+                              : { multiple: false, correctIndex: q.correctIndexes?.[0] ?? 0 }
+                          );
+                        }}
+                        disabled={disabled}
+                      />
+                      Plusieurs bonnes réponses
+                    </label>
+
+                    {(q.choices ?? []).map((choice, ci) => {
+                      const juste = q.multiple
+                        ? (q.correctIndexes ?? []).includes(ci)
+                        : q.correctIndex === ci;
+                      return (
+                      <div key={ci} className={`${styles.choice} ${juste ? styles.choiceCorrect : ''}`}>
                         <input
-                          type="radio"
-                          checked={q.correctIndex === ci}
-                          onChange={() => updateQuestion(q.id, { correctIndex: ci })}
+                          type={q.multiple ? 'checkbox' : 'radio'}
+                          checked={juste}
+                          onChange={() => {
+                            if (!q.multiple) return updateQuestion(q.id, { correctIndex: ci });
+                            const set = new Set(q.correctIndexes ?? []);
+                            if (set.has(ci)) set.delete(ci);
+                            else set.add(ci);
+                            updateQuestion(q.id, {
+                              correctIndexes: [...set].sort((a, b) => a - b),
+                            });
+                          }}
                           title="Bonne réponse"
                           disabled={disabled}
                         />
@@ -661,6 +794,19 @@ export default function LectureQuizBuilder({
                             className={styles.choiceDel}
                             onClick={() => {
                               const choices = (q.choices ?? []).filter((_, i) => i !== ci);
+                              // Supprimer un choix DÉCALE les indices : sans
+                              // ce recalcul, le corrigé désignerait la réponse
+                              // d'à côté sans que rien ne le signale.
+                              if (q.multiple) {
+                                const correctIndexes = (q.correctIndexes ?? [])
+                                  .filter((i) => i !== ci)
+                                  .map((i) => (i > ci ? i - 1 : i));
+                                updateQuestion(q.id, {
+                                  choices,
+                                  correctIndexes: correctIndexes.length ? correctIndexes : [0],
+                                });
+                                return;
+                              }
                               const correctIndex =
                                 q.correctIndex !== undefined && q.correctIndex >= choices.length
                                   ? 0
@@ -678,8 +824,13 @@ export default function LectureQuizBuilder({
                           </button>
                         )}
                       </div>
-                    ))}
-                    <p className={styles.hint}>Cochez la bonne réponse — elle sera corrigée automatiquement.</p>
+                      );
+                    })}
+                    <p className={styles.hint}>
+                      {q.multiple
+                        ? 'Cochez toutes les bonnes réponses. Barème partiel — une coche fausse annule une coche juste, sinon tout cocher rapporterait tout.'
+                        : 'Cochez la bonne réponse — elle sera corrigée automatiquement.'}
+                    </p>
                     <button
                       type="button"
                       className={styles.addChoice}
@@ -689,6 +840,49 @@ export default function LectureQuizBuilder({
                       + Ajouter un choix
                     </button>
                   </div>
+                )}
+
+                {/* ── Les types ajoutés le 2026-08-16 ──
+                    Leurs éditeurs vivent dans ./TypeEditors.tsx : ce fichier
+                    faisait déjà 899 lignes, sept éditeurs de plus l'auraient
+                    rendu illisible. Ici on ne fait que les aiguiller. */}
+                {q.type === 'matrice' && (
+                  <EditeurMatrice
+                    q={q}
+                    update={(partial) => updateQuestion(q.id, partial)}
+                    disabled={disabled}
+                  />
+                )}
+                {q.type === 'appariement' && (
+                  <EditeurAppariement
+                    q={q}
+                    update={(partial) => updateQuestion(q.id, partial)}
+                    disabled={disabled}
+                    choisirMedia={choisirMediaPour(q.id)}
+                  />
+                )}
+                {q.type === 'ordre' && (
+                  <EditeurOrdre
+                    q={q}
+                    update={(partial) => updateQuestion(q.id, partial)}
+                    disabled={disabled}
+                    choisirMedia={choisirMediaPour(q.id)}
+                  />
+                )}
+                {q.type === 'image-annotee' && (
+                  <EditeurImageAnnotee
+                    q={q}
+                    update={(partial) => updateQuestion(q.id, partial)}
+                    disabled={disabled}
+                  />
+                )}
+                {q.type === 'ensembles' && (
+                  <EditeurEnsembles
+                    q={q}
+                    update={(partial) => updateQuestion(q.id, partial)}
+                    disabled={disabled}
+                    choisirMedia={choisirMediaPour(q.id)}
+                  />
                 )}
 
                 {/* Texte long : note éditeur riche */}
@@ -732,6 +926,15 @@ export default function LectureQuizBuilder({
                     </div>
                     {(q.fluoSource ?? 'extrait') === 'extrait' ? (
                       <>
+                        <button
+                          type="button"
+                          className={styles.btnExtrait}
+                          onClick={() => setExtraitCible({ id: q.id, champ: 'fluoTexte' })}
+                          disabled={disabled}
+                          title="Coller un passage tiré d'une œuvre de votre bibliothèque"
+                        >
+                          📖 Prendre un extrait dans une œuvre
+                        </button>
                         <textarea
                           className={styles.fluoTextarea}
                           rows={3}
@@ -744,7 +947,16 @@ export default function LectureQuizBuilder({
                           placeholder="Collez ici l'extrait que l'élève devra souligner..."
                           disabled={disabled}
                         />
-                        {(q.fluoTexte ?? '').trim() && (
+                        {/* Marquage par catégories. Dès qu'il y en a une, il
+                            remplace le soulignage à une couleur — et la
+                            question devient corrigée automatiquement. */}
+                        <EditeurFluoCategories
+                          q={q}
+                          update={(partial) => updateQuestion(q.id, partial)}
+                          disabled={disabled}
+                        />
+
+                        {(q.fluoTexte ?? '').trim() && !q.fluoCategories?.length && (
                           <div className={styles.fluoAttenduZone}>
                             <div className={styles.fieldLabel}>
                               Réponse attendue — soulignez les mots
@@ -823,8 +1035,41 @@ export default function LectureQuizBuilder({
         <button type="button" className={styles.addQ} onClick={() => addQuestion('texte-court')} disabled={disabled}>+ Texte court</button>
         <button type="button" className={styles.addQ} onClick={() => addQuestion('texte-long')} disabled={disabled}>+ Texte long</button>
         <button type="button" className={styles.addQ} onClick={() => addQuestion('fluorage')} disabled={disabled}>+ Souligner du texte</button>
+        <button type="button" className={styles.addQ} onClick={() => addQuestion('matrice')} disabled={disabled}>+ Matrice</button>
+        <button type="button" className={styles.addQ} onClick={() => addQuestion('appariement')} disabled={disabled}>+ Appariement</button>
+        <button type="button" className={styles.addQ} onClick={() => addQuestion('ordre')} disabled={disabled}>+ Remise en ordre</button>
+        <button type="button" className={styles.addQ} onClick={() => addQuestion('image-annotee')} disabled={disabled}>+ Image à annoter</button>
+        <button type="button" className={styles.addQ} onClick={() => addQuestion('ensembles')} disabled={disabled}>+ Ensembles</button>
         <button type="button" className={styles.addQ} onClick={() => addQuestion('info')} disabled={disabled}>+ Bloc informatif</button>
       </div>
+
+      {/* Prendre un extrait dans une œuvre de la bibliothèque */}
+      {extraitCible && getAuthHeaders && (
+        <ExtraitOeuvreModal
+          getAuthHeaders={getAuthHeaders}
+          onFermer={() => setExtraitCible(null)}
+          onInserer={(texte) => {
+            const q = quiz.questions.find((x) => x.id === extraitCible.id);
+            if (!q) return;
+            if (extraitCible.champ === 'document') {
+              // On AJOUTE à la suite plutôt que de remplacer : le prof peut
+              // vouloir deux tirades de deux scènes, et écraser en silence ce
+              // qu'il vient de coller serait une perte.
+              const avant = q.document?.trim();
+              updateQuestion(q.id, { document: avant ? `${avant}\n\n${texte}` : texte });
+            } else {
+              // Le soulignage attendu repart de zéro : le texte change, donc
+              // les indices de mots ne désignent plus les mêmes mots.
+              const avant = q.fluoTexte?.trim();
+              updateQuestion(q.id, {
+                fluoTexte: avant ? `${avant}\n\n${texte}` : texte,
+                fluoAttendu: [],
+                fluoAttenduParCategorie: {},
+              });
+            }
+          }}
+        />
+      )}
 
       {/* Inputs fichiers cachés (upload image / audio de question) */}
       <input

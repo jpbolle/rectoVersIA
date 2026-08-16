@@ -740,16 +740,48 @@
   color: #fff;
 }
 
-/* Ouverte mais sans vérification : l'élève est passé, on ne sait pas plus */
+/* ── Trois états, trois couleurs ──
+   GRIS : ouverte, rien de plus. Ouvrir une page ne prouve pas qu'on l'a lue.
+   ORANGE : l'élève y a fait quelque chose (verso consulté, mot cherché au
+            dictionnaire, commentaire du prof ouvert).
+   VERT : la vérification est remplie — ou, sur une scène qui n'en a pas,
+          l'orange suffit : elle ne pourra jamais devenir « faite ». */
+
 .puceVue {
   background: var(--c-border-strong);
   border-color: var(--c-border-strong);
 }
 
-/* Vérification complétée : la seule chose qui compte dans son total */
+.puceActive {
+  background: var(--c-accent);
+  border-color: var(--c-accent-dark);
+}
+
 .puceFaite {
   background: var(--c-success);
   border-color: var(--c-success);
+}
+
+/* Légende, sous le compteur du sommaire : trois couleurs sans mode d'emploi
+   se devinent de travers — l'orange se lirait comme un avertissement. */
+.puceLegende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: var(--c-text-muted);
+}
+.puceLegendeItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.puceLegendePoint {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
 }
 
 .sommaireLabel {

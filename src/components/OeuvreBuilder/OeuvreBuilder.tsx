@@ -14,12 +14,14 @@
 // une perte de données. Le bouton dit ce qu'il reste à sauver, et quitter une
 // section modifiée demande confirmation.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { compressImage } from '@/lib/image-compress';
 import { parseYoutubeId } from '@/lib/youtube';
+import { decouperBloc, extraireLocuteur, lignesDuBloc } from '@/lib/oeuvre-decoupe';
+import SaisieBlocModal from './SaisieBlocModal';
 import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
 import OeuvreSectionApercu from './OeuvreSectionApercu';
 import OeuvreSommaireEditable from './OeuvreSommaireEditable';
@@ -35,6 +37,138 @@ import {
 } from '@/types/oeuvre';
 import type { LectureQuiz } from '@/types/lecture';
 import styles from './OeuvreBuilder.module.css';
+
+/** Destination « couverture » d'un dépôt de fichier — voir `blocCibleRef`. */
+const CIBLE_COUVERTURE = '__couverture__';
+
+/**
+ * Ce qu'un trait d'édition peut faire.
+ *
+ * `couper` ne s'offre qu'À L'INTÉRIEUR d'un bloc : entre deux blocs, il n'y a
+ * rien à séparer — ils le sont déjà.
+ * `section` renvoie tout ce qui suit dans une NOUVELLE section du chapitre.
+ */
+type ActionTrait =
+  | { quoi: 'couper' }
+  | { quoi: 'inserer'; type: OeuvreBloc['type'] }
+  | { quoi: 'section' };
+
+const ACTIONS_TRAIT: {
+  action: ActionTrait;
+  icone: string;
+  label: string;
+  intraSeulement?: boolean;
+}[] = [
+  { action: { quoi: 'couper' }, icone: '✂', label: 'Couper ici', intraSeulement: true },
+  { action: { quoi: 'inserer', type: 'texte' }, icone: 'ℹ', label: 'Bloc informatif' },
+  { action: { quoi: 'inserer', type: 'vers' }, icone: '📝', label: 'Extrait' },
+  { action: { quoi: 'inserer', type: 'video' }, icone: '🎬', label: 'Vidéo' },
+  { action: { quoi: 'inserer', type: 'image' }, icone: '🖼', label: 'Image' },
+  { action: { quoi: 'section' }, icone: '📄', label: 'Nouvelle section' },
+];
+
+/**
+ * Le trait d'édition — invisible jusqu'au survol, mais sa hauteur est
+ * RÉSERVÉE en permanence : s'il n'apparaissait qu'au survol, tout le texte
+ * sauterait sous la souris et viser une ligne deviendrait impossible.
+ */
+function Trait({
+  intra,
+  onAction,
+}: {
+  /** À l'intérieur d'un bloc (on peut y couper) ou entre deux blocs */
+  intra: boolean;
+  onAction: (a: ActionTrait) => void;
+}) {
+  return (
+    <div className={`${styles.trait} ${intra ? '' : styles.traitEntreBlocs}`}>
+      <span className={styles.traitBarre} />
+      <span className={styles.traitActions}>
+        {ACTIONS_TRAIT.filter((a) => intra || !a.intraSeulement).map((a) => (
+          <button
+            key={a.label}
+            type="button"
+            onClick={() => onAction(a.action)}
+            title={
+              a.action.quoi === 'couper'
+                ? 'Séparer le bloc en deux à cet endroit'
+                : a.action.quoi === 'section'
+                  ? 'Tout ce qui suit part dans une nouvelle section du chapitre'
+                  : `Insérer ici : ${a.label}`
+            }
+          >
+            <span aria-hidden="true">{a.icone}</span> {a.label}
+          </button>
+        ))}
+      </span>
+      <span className={styles.traitBarre} />
+    </div>
+  );
+}
+
+/**
+ * Un bloc affiché EN LECTURE pendant l'édition, ligne à ligne.
+ *
+ * Un bloc d'une seule ligne s'affiche comme les autres — il n'a simplement pas
+ * de trait intérieur. Le remplacer par un message (« ce bloc n'a qu'une
+ * ligne… ») cassait la lecture continue de la scène, qui est justement ce qui
+ * permet de décider où couper.
+ */
+function BlocEnLecture({
+  bloc,
+  vide,
+  onAction,
+  onSupprimer,
+}: {
+  bloc: OeuvreBloc;
+  /** Aucun contenu d'aucune sorte : il ne coûte rien de le jeter */
+  vide: boolean;
+  onAction: (indexLigne: number, a: ActionTrait) => void;
+  onSupprimer: () => void;
+}) {
+  const lignes = lignesDuBloc(bloc);
+
+  // Un bloc vide n'a rien à montrer, mais il occupe une place dans la scène :
+  // on l'annonce et on offre de le jeter sur-le-champ. Sans cela il faudrait
+  // quitter l'outil d'édition pour aller le supprimer dans la liste.
+  if (vide) {
+    return (
+      <p className={styles.blocVide}>
+        {LIBELLE_BLOC[bloc.type]} vide
+        <button type="button" onClick={onSupprimer} title="Supprimer ce bloc vide">
+          ✕ Supprimer
+        </button>
+      </p>
+    );
+  }
+
+  // Les médias n'ont pas de lignes : on les annonce quand même, sans quoi le
+  // prof perd le fil de sa scène là où il a posé une vidéo.
+  if (lignes.length === 0) {
+    return (
+      <p className={styles.decoupeMedia}>
+        {LIBELLE_BLOC[bloc.type]}
+        {bloc.legende ? ` — ${bloc.legende}` : ''}
+      </p>
+    );
+  }
+
+  return (
+    <div className={styles.blocEnLecture}>
+      {bloc.locuteur && <p className={styles.decoupeLocuteur}>{bloc.locuteur}</p>}
+      {lignes.map((ligne, i) => (
+        <Fragment key={i}>
+          {i > 0 && <Trait intra onAction={(a) => onAction(i, a)} />}
+          {bloc.type === 'texte' ? (
+            <div className={styles.decoupeLigne} dangerouslySetInnerHTML={{ __html: ligne }} />
+          ) : (
+            <p className={styles.decoupeLigne}>{ligne || ' '}</p>
+          )}
+        </Fragment>
+      ))}
+    </div>
+  );
+}
 
 // Les deux faces de la liseuse, côté prof. Le libellé DOIT être celui que
 // l'élève lit, sinon le prof compose à l'aveugle.
@@ -91,9 +225,22 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
   const [face, setFace] = useState<OeuvreFace>('recto');
   // Aperçu : la section telle que l'élève la verra, sans quitter l'édition
   const [apercu, setApercu] = useState(false);
+  // Mode découpe : on colle une scène entière dans un bloc, puis on la débite
+  // de l'intérieur. Les éditeurs se retirent le temps de la découpe.
+  const [modeDecoupe, setModeDecoupe] = useState(false);
+  // Popup de saisie ouverte pour une insertion en attente : on demande le
+  // contenu AVANT de poser le bloc.
+  const [saisie, setSaisie] = useState<{
+    positionFace: number;
+    indexLigne: number | null;
+    type: OeuvreBloc['type'];
+  } | null>(null);
 
   const imageRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLInputElement>(null);
+  // Destination du fichier déposé : l'id d'un bloc, ou la couverture du livre.
+  // Un id de bloc ne peut pas commencer par « __ » (voir generateBlocId), la
+  // sentinelle ne peut donc pas entrer en collision.
   const blocCibleRef = useRef<string | null>(null);
 
   const entetes = useCallback(async () => (await headersRef.current()) || undefined, []);
@@ -121,6 +268,16 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
     },
     [initiale.id, entetesJson, onModifie]
   );
+
+  const retirerCouverture = useCallback(async () => {
+    setOeuvre((o) => ({ ...o, couverture: null }));
+    await fetch(`/api/oeuvres/${initiale.id}`, {
+      method: 'PATCH',
+      headers: await entetesJson(),
+      body: JSON.stringify({ couverture: null }),
+    });
+    onModifie();
+  }, [initiale.id, entetesJson, onModifie]);
 
   const ajouterChapitre = useCallback(() => {
     const titre = prompt('Titre du chapitre (une pièce, une partie…)');
@@ -235,6 +392,9 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
       setSectionId(id);
       setSection(null);
       setModifiee(false);
+      // La découpe est un moment de travail, pas un réglage : on ouvre toujours
+      // une scène dans son éditeur, jamais dans les ciseaux.
+      setModeDecoupe(false);
       try {
         const res = await fetch(`/api/oeuvres/${initiale.id}/sections/${id}`, {
           headers: await entetes(),
@@ -360,6 +520,185 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
     [section, majSection]
   );
 
+  /** Un bloc sans contenu d'aucune sorte — donc supprimable sans rien perdre. */
+  const blocEstVide = (b: OeuvreBloc) =>
+    !b.contenu?.trim() && !b.imageUrl && !b.audioUrl && !b.videoId && !b.videoUrl && !b.locuteur?.trim();
+
+  /**
+   * ── OUTIL D'ÉDITION ──
+   *
+   * Le trait entre deux lignes (ou entre deux blocs) porte cinq gestes. Ils
+   * partagent tous la même mécanique : on calcule la liste de blocs qui
+   * remplace l'ancienne, et on la pose. Cinq fonctions séparées auraient
+   * divergé sur la face, sur le locuteur ou sur l'ordre.
+   *
+   * `indexLigne` à `null` = le trait est ENTRE deux blocs : rien à couper,
+   * on insère seulement.
+   */
+  const actionTrait = useCallback(
+    async (
+      positionFace: number,
+      indexLigne: number | null,
+      action: ActionTrait,
+      /** Contenu déjà saisi dans la popup — `undefined` = il reste à demander */
+      contenuSaisi?: string
+    ) => {
+      if (!section) return;
+      const memeFace = section.blocs.filter((b) => (b.face ?? 'recto') === face);
+      const blocs = [...section.blocs];
+
+      // Où insérer dans le tableau COMPLET (les deux faces y cohabitent) :
+      // juste avant le bloc de la face qui occupe cette position, ou à la fin.
+      const ancre = memeFace[positionFace];
+      const iInsertion = ancre ? blocs.findIndex((b) => b.id === ancre.id) : blocs.length;
+
+      const neuf = (type: OeuvreBloc['type']): OeuvreBloc => ({
+        id: generateBlocId(),
+        type,
+        contenu: '',
+        ...(face === 'verso' ? { face } : {}),
+      });
+
+      // ── 1. Couper le bloc en deux, si le trait est à l'intérieur ──
+      // Le résultat sert aux trois gestes : couper, insérer, nouvelle section.
+      let iApresCoupe = iInsertion;
+      if (indexLigne !== null && ancre) {
+        const r = decouperBloc(
+          ancre,
+          indexLigne,
+          null,
+          generateBlocId
+        );
+        if (!r) return;
+        blocs.splice(iInsertion, 1, r.haut, r.bas);
+        // Ce qui suit le trait commence désormais au bloc « bas »
+        iApresCoupe = iInsertion + 1;
+      }
+
+      if (action.quoi === 'couper') {
+        majSection({ blocs });
+        return;
+      }
+
+      if (action.quoi === 'inserer') {
+        // Le prof colle son contenu LÀ OÙ il vient de décider de le poser.
+        // Poser un bloc vide l'obligeait à quitter l'outil, retrouver le bloc
+        // dans la liste, coller, puis revenir — quatre gestes pour un collage.
+        if (contenuSaisi === undefined && action.type !== 'image' && action.type !== 'audio') {
+          setSaisie({ positionFace, indexLigne, type: action.type });
+          return;
+        }
+
+        let bloc = neuf(action.type);
+        if (contenuSaisi?.trim()) {
+          if (action.type === 'video') {
+            const brut = contenuSaisi.trim();
+            const yt = parseYoutubeId(brut);
+            // YouTube : on ne garde que l'identifiant. Drive : le lecteur
+            // intégré (/preview), seul format affichable.
+            bloc = yt
+              ? { ...bloc, videoId: yt }
+              : { ...bloc, videoUrl: brut.replace('/view', '/preview') };
+          } else {
+            bloc = { ...bloc, contenu: contenuSaisi };
+            // Un extrait collé porte souvent son personnage en première ligne
+            if (action.type === 'vers') bloc = extraireLocuteur(bloc);
+          }
+        }
+
+        blocs.splice(iApresCoupe, 0, bloc);
+        majSection({ blocs });
+
+        // L'image n'a pas de champ à remplir : son « champ », c'est le
+        // sélecteur de fichier. On l'ouvre dans la foulée.
+        if (action.type === 'image') {
+          blocCibleRef.current = bloc.id;
+          imageRef.current?.click();
+        }
+        return;
+      }
+
+      // ── 2. Nouvelle section : tout ce qui suit le trait s'en va ──
+      // « Ce qui suit » se compte dans le tableau COMPLET : un complément
+      // multimédia posé après ce point part avec le texte auquel il se
+      // rapporte. Le laisser derrière le séparerait de sa scène.
+      const partants = blocs.slice(iApresCoupe);
+      if (partants.length === 0) {
+        setMessage('Rien à déplacer : le trait est au bout de la scène.');
+        return;
+      }
+      const titre = prompt(
+        'Titre de la nouvelle section',
+        `${section.titre} (suite)`
+      );
+      if (!titre?.trim()) return;
+
+      setOccupe(true);
+      try {
+        // a. La scène courante, réduite à ce qui reste AVANT le trait. Les
+        //    questions ne bougent pas : la vérification porte sur la scène
+        //    telle que le prof l'a conçue, pas sur un découpage matériel.
+        const restants = blocs.slice(0, iApresCoupe);
+        const resA = await fetch(`/api/oeuvres/${initiale.id}/sections/${section.id}`, {
+          method: 'PUT',
+          headers: await entetesJson(),
+          body: JSON.stringify({ ...section, blocs: restants }),
+        });
+        if (!(await resA.json()).success) throw new Error('La scène courante n’a pas pu être enregistrée');
+
+        // b. La nouvelle section — créée en fin de chapitre par la route…
+        const resB = await fetch(`/api/oeuvres/${initiale.id}/sections`, {
+          method: 'POST',
+          headers: await entetesJson(),
+          body: JSON.stringify({
+            chapitreId: section.chapitreId,
+            titre: titre.trim(),
+            groupe: section.groupe || '',
+            colonnes: section.colonnes ?? 1,
+          }),
+        });
+        const jsonB = await resB.json();
+        if (!jsonB.success) throw new Error(jsonB.message || 'Création impossible');
+        const nouvelle: OeuvreSection = jsonB.data;
+
+        // c. …puis remplie de ce qui suivait le trait
+        const resC = await fetch(`/api/oeuvres/${initiale.id}/sections/${nouvelle.id}`, {
+          method: 'PUT',
+          headers: await entetesJson(),
+          body: JSON.stringify({ ...nouvelle, blocs: partants }),
+        });
+        if (!(await resC.json()).success) throw new Error('Le contenu déplacé n’a pas pu être écrit');
+
+        // d. …et remontée JUSTE APRÈS la scène courante. La route l'a posée en
+        //    fin de chapitre : la laisser là mettrait la suite du texte à
+        //    trente scènes de son début.
+        const chapitres = oeuvre.chapitres.map((c) => {
+          if (c.id !== section.chapitreId) return c;
+          const sansNouvelle = c.sections.filter((s) => s.id !== nouvelle.id);
+          const iCourante = sansNouvelle.findIndex((s) => s.id === section.id);
+          const ref = {
+            id: nouvelle.id,
+            titre: nouvelle.titre,
+            groupe: nouvelle.groupe,
+            aQuestions: false,
+          };
+          sansNouvelle.splice(iCourante + 1, 0, ref);
+          return { ...c, sections: sansNouvelle };
+        });
+        await enregistrerSommaire(chapitres);
+
+        setSection({ ...section, blocs: restants });
+        setModifiee(false);
+        setMessage(`« ${titre.trim()} » créée juste après cette scène.`);
+      } catch (e) {
+        setMessage(e instanceof Error ? e.message : 'Découpage en section impossible');
+      } finally {
+        setOccupe(false);
+      }
+    },
+    [section, majSection, face, initiale.id, entetesJson, oeuvre.chapitres, enregistrerSommaire]
+  );
+
   // Dépôt d'image ou d'audio : même chaîne que les questionnaires
   // (compression pour l'image, puis /api/ressources/upload), jamais d'URL
   // externe et jamais de Storage — le fichier vit en base64 dans
@@ -370,6 +709,10 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
       const input = quoi === 'image' ? imageRef : audioRef;
       if (!fichier || !blocId) return;
       setOccupe(true);
+      // La couverture emprunte la même chaîne que les blocs (compression →
+      // /api/ressources/upload → ressourceImages) : dupliquer l'upload pour
+      // une seule image, c'est dupliquer aussi sa gestion d'erreur.
+      const versCouverture = blocId === CIBLE_COUVERTURE;
       try {
         let aEnvoyer: Blob = fichier;
         let nom = fichier.name;
@@ -396,12 +739,27 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
         const json = await res.json();
         if (!json.success || !json.data?.files?.[0]) throw new Error(json.message || 'Dépôt refusé');
         const f = json.data.files[0];
-        majBloc(
-          blocId,
-          quoi === 'image'
-            ? { imageUrl: f.url, imageFileId: f.fileId }
-            : { audioUrl: f.url, audioFileId: f.fileId }
-        );
+        if (versCouverture) {
+          const couverture = { url: f.url, fileId: f.fileId };
+          setOeuvre((o) => ({ ...o, couverture }));
+          // Enregistrement immédiat : la couverture n'appartient à aucune
+          // section, elle n'est donc pas emportée par la sauvegarde de la
+          // section en cours. La laisser en attente, c'est la perdre au
+          // premier changement de scène.
+          await fetch(`/api/oeuvres/${initiale.id}`, {
+            method: 'PATCH',
+            headers: await entetesJson(),
+            body: JSON.stringify({ couverture }),
+          });
+          onModifie();
+        } else {
+          majBloc(
+            blocId,
+            quoi === 'image'
+              ? { imageUrl: f.url, imageFileId: f.fileId }
+              : { audioUrl: f.url, audioFileId: f.fileId }
+          );
+        }
       } catch (e) {
         setMessage(e instanceof Error ? e.message : 'Dépôt impossible');
       } finally {
@@ -410,7 +768,7 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
         if (input.current) input.current.value = '';
       }
     },
-    [majBloc]
+    [majBloc, initiale.id, entetesJson, onModifie]
   );
 
   // Quitter le constructeur sans rien perdre
@@ -484,6 +842,12 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
           chapitres={oeuvre.chapitres}
           sectionCourante={sectionId}
           occupe={occupe}
+          couverture={oeuvre.couverture ?? null}
+          onDeposerCouverture={() => {
+            blocCibleRef.current = CIBLE_COUVERTURE;
+            imageRef.current?.click();
+          }}
+          onRetirerCouverture={retirerCouverture}
           onOuvrirSection={ouvrirSection}
           onAjouterChapitre={ajouterChapitre}
           onRenommerChapitre={renommerChapitre}
@@ -494,6 +858,11 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
 
         {/* ── Section ouverte ── */}
         <main className={styles.editeur}>
+          {/* La zone qui DÉFILE. Le pied « Enregistrer » est volontairement en
+              dehors : une barre collante dans un conteneur à marge intérieure
+              et à `gap` a trop de façons de mal se caler — hors du défilement,
+              elle ne peut plus se tromper. */}
+          <div className={styles.editeurScroll}>
           {!sectionId && (
             <p className={styles.aideCentre}>
               Choisis une section à gauche, ou crée-en une.
@@ -549,25 +918,53 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                   impossible de savoir ce que l'élève verra d'abord. */}
               <h3 className={styles.titreSection}>Contenu</h3>
 
-              <div className={styles.faces} role="tablist">
-                {FACES.map((f) => {
-                  const combien = blocsDeFace(section.blocs, f.id).length;
-                  return (
-                    <button
-                      key={f.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={face === f.id}
-                      className={`${styles.face} ${face === f.id ? styles.faceActive : ''}`}
-                      onClick={() => setFace(f.id)}
-                    >
-                      {f.label}
-                      <span className={styles.faceCompteur}>{combien}</span>
-                    </button>
-                  );
-                })}
+              {/* ── Barre des faces + outil d'édition ──
+                  COLLANTE : sur une scène de trente répliques, le bouton
+                  disparaissait dès qu'on faisait défiler, et on ne pouvait
+                  plus quitter l'outil d'édition sans remonter tout en haut. */}
+              <div className={styles.barreOnglets}>
+                <div className={styles.faces} role="tablist">
+                  {FACES.map((f) => {
+                    const combien = blocsDeFace(section.blocs, f.id).length;
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={face === f.id}
+                        className={`${styles.face} ${face === f.id ? styles.faceActive : ''}`}
+                        onClick={() => setFace(f.id)}
+                      >
+                        {f.label}
+                        <span className={styles.faceCompteur}>{combien}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Un INTERRUPTEUR et non un bouton : l'outil d'édition est un
+                    état dans lequel on entre et dont on sort, pas une action
+                    qu'on déclenche. La forme doit le dire. */}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={modeDecoupe}
+                  className={`${styles.bascule} ${modeDecoupe ? styles.basculeActive : ''}`}
+                  onClick={() => setModeDecoupe((m) => !m)}
+                  title="Permet le découpage d’un bloc de texte en plusieurs, l’ajout de commentaires ou de documents"
+                >
+                  <span className={styles.basculeTexte}>✂ Outil d’édition</span>
+                  <span className={styles.basculeRail} aria-hidden="true">
+                    <span className={styles.basculeBouton} />
+                  </span>
+                </button>
               </div>
-              <p className={styles.aide}>{FACES.find((f) => f.id === face)?.aide}</p>
+
+              <p className={styles.aide}>
+                {modeDecoupe
+                  ? 'Passe entre deux lignes ou entre deux blocs, puis choisis ce qui s’insère là. Les noms de personnages en capitales deviennent le locuteur des extraits.'
+                  : FACES.find((f) => f.id === face)?.aide}
+              </p>
 
               {blocsFace.length === 0 && (
                 <p className={styles.aide}>
@@ -577,7 +974,42 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                 </p>
               )}
 
-              {blocsFace.map((bloc, index) => (
+              {/* ── MODE ÉDITION : un flux continu ──
+                  Les cartes de blocs et leurs en-têtes hachent le texte ; or
+                  c'est justement la lecture suivie de la scène qui permet de
+                  décider où couper. En édition, on affiche donc la scène d'un
+                  seul tenant, avec un trait entre chaque ligne ET entre chaque
+                  bloc — les frontières de blocs restent visibles par le trait
+                  lui-même, légèrement marqué au repos. */}
+              {modeDecoupe && (
+                <div className={styles.fluxEdition}>
+                  <Trait
+                    intra={false}
+                    onAction={(a) => actionTrait(0, null, a)}
+                  />
+                  {blocsFace.map((bloc, i) => (
+                    <Fragment key={bloc.id}>
+                      {i > 0 && (
+                        <Trait intra={false} onAction={(a) => actionTrait(i, null, a)} />
+                      )}
+                      <BlocEnLecture
+                        bloc={bloc}
+                        vide={blocEstVide(bloc)}
+                        onAction={(indexLigne, a) => actionTrait(i, indexLigne, a)}
+                        onSupprimer={() => supprimerBloc(bloc.id)}
+                      />
+                    </Fragment>
+                  ))}
+                  {blocsFace.length > 0 && (
+                    <Trait
+                      intra={false}
+                      onAction={(a) => actionTrait(blocsFace.length, null, a)}
+                    />
+                  )}
+                </div>
+              )}
+
+              {!modeDecoupe && blocsFace.map((bloc, index) => (
                 <div key={bloc.id} className={styles.bloc}>
                   <div className={styles.blocEntete}>
                     <span className={styles.blocType}>{LIBELLE_BLOC[bloc.type]}</span>
@@ -777,17 +1209,21 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                 getAuthHeaders={headersRef.current}
               />
 
-              <div className={styles.piedEditeur}>
-                <button
-                  type="button"
-                  className={styles.btnPrimary}
-                  onClick={enregistrerSection}
-                  disabled={occupe || !modifiee}
-                >
-                  {occupe ? 'Enregistrement…' : modifiee ? 'Enregistrer la section' : 'Enregistré'}
-                </button>
-              </div>
             </>
+          )}
+          </div>
+
+          {section && (
+            <div className={styles.piedEditeur}>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={enregistrerSection}
+                disabled={occupe || !modifiee}
+              >
+                {occupe ? 'Enregistrement…' : modifiee ? 'Enregistrer la section' : 'Enregistré'}
+              </button>
+            </div>
           )}
         </main>
       </div>
@@ -806,6 +1242,19 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
         className={styles.inputCache}
         onChange={(e) => deposerFichier(e.target.files?.[0], 'audio')}
       />
+
+      {/* Saisie du contenu au moment de l'insertion (voir SaisieBlocModal) */}
+      {saisie && (
+        <SaisieBlocModal
+          type={saisie.type}
+          onAnnuler={() => setSaisie(null)}
+          onValider={(contenu) => {
+            const s = saisie;
+            setSaisie(null);
+            actionTrait(s.positionFace, s.indexLigne, { quoi: 'inserer', type: s.type }, contenu);
+          }}
+        />
+      )}
 
       {/* ── Aperçu de la section en cours ──
           Le prof compose dans des champs de formulaire ; l'élève lit une page.

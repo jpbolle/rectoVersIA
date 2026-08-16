@@ -63,7 +63,19 @@ export default function OeuvreCard({
         )}
       </div>
 
-      <div className={styles.cardIcon}>📖</div>
+      {/* La couverture remplace l'icône générique quand elle existe : douze
+          cartes « 📖 » identiques ne se départagent qu'en lisant les titres,
+          alors qu'une gravure se reconnaît d'un coup d'œil. */}
+      {oeuvre.couverture ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={oeuvre.couverture.url}
+          alt=""
+          className={styles.couverture}
+        />
+      ) : (
+        <div className={styles.cardIcon}>📖</div>
+      )}
       <h3 className={styles.title}>{oeuvre.titre}</h3>
 
       {/* L'auteur ne se répète pas s'il est déjà dans le titre

@@ -578,3 +578,30 @@
   opacity: 0.5;
   cursor: default;
 }
+
+/* ── Matrice & QCM à réponses multiples (2026-08-16) ── */
+.multipleToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+.multipleToggle input { accent-color: var(--c-primary); }
+
+.modeleRow { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+
+.fieldLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-text-secondary);
+  margin: 12px 0 5px;
+}

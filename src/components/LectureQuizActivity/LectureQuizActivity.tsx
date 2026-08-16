@@ -16,17 +16,15 @@ import type {
   LectureAnswer,
   LectureAnswersState,
 } from '@/types/lecture';
+import { LECTURE_TYPE_LABELS, partReussite } from '@/types/lecture';
+import ChampManipule, { estTypeManipule } from '@/components/QuestionInteractions';
 import ConfiancePicker from '@/components/ConfiancePicker';
 import styles from './LectureQuizActivity.module.css';
 
-const TYPE_LABELS: Record<LectureQuestion['type'], string> = {
-  qcm: 'QCM',
-  'texte-court': 'Réponse courte',
-  
-  'texte-long': 'Réponse longue',
-  fluorage: 'Souligner du texte',
-  info: 'Information',
-};
+// Libellés : liste unique dans src/types/lecture.ts. Ce fichier, le
+// constructeur et la relecture en tenaient chacun une copie — et elles avaient
+// déjà divergé (« QCM » ici, « Choix multiple » ailleurs).
+const TYPE_LABELS = LECTURE_TYPE_LABELS;
 
 // Numérotation : les blocs informatifs ne comptent pas comme questions
 export function questionNumber(quiz: LectureQuiz, q: LectureQuestion): number {
@@ -244,15 +242,13 @@ function QuestionCard({
     );
   }
 
-  // Points obtenus : un QCM se compte tout seul, mais SEULEMENT quand le
-  // corrigé est là (sinon `correctIndex` a été retiré côté serveur). Tout le
-  // reste attend la note du professeur.
-  const ptsObtenus =
-    showCorrection && question.type === 'qcm' && typeof question.correctIndex === 'number'
-      ? answer.choiceIndex === question.correctIndex
-        ? question.points
-        : 0
-      : null;
+  // Points obtenus : les questions auto-corrigeables se comptent seules, mais
+  // SEULEMENT quand le corrigé est là (sinon il a été retiré côté serveur).
+  // Tout le reste attend la note du professeur.
+  // BARÈME PARTIEL : `partReussite` renvoie une part entre 0 et 1 — 6 items
+  // justes sur 8 valent 75 % des points, pas zéro.
+  const part = showCorrection ? partReussite(question, answer) : null;
+  const ptsObtenus = part === null ? null : Math.round(part * question.points * 10) / 10;
   const ptsInfobulle =
     ptsObtenus !== null
       ? `${ptsObtenus} point${ptsObtenus > 1 ? 's' : ''} sur ${question.points}`
@@ -318,23 +314,44 @@ function QuestionCard({
 
       {question.type === 'qcm' && (
         <div className={`${styles.choices} ${styles.reponseZone}`}>
+          {/* Un QCM à réponses multiples le DIT, et le montre : cases à cocher
+              au lieu de boutons ronds. La forme du contrôle porte la consigne
+              — un élève qui voit des ronds n'essaiera pas d'en cocher deux. */}
+          {question.multiple && (
+            <p className={styles.hintMultiple}>Plusieurs réponses possibles.</p>
+          )}
           {(question.choices ?? []).map((choice, ci) => {
             // Vue corrigée : la bonne réponse en vert, le mauvais choix de
-            // l'élève en rouge (correctIndex n'est envoyé qu'avec le corrigé)
-            const revealed = showCorrection && question.correctIndex !== undefined;
-            const isStudent = answer.choiceIndex === ci;
-            const isCorrect = question.correctIndex === ci;
+            // l'élève en rouge (le corrigé n'est envoyé qu'avec la correction)
+            const revealed =
+              showCorrection &&
+              (question.multiple ? !!question.correctIndexes : question.correctIndex !== undefined);
+            const isStudent = question.multiple
+              ? (answer.choiceIndexes ?? []).includes(ci)
+              : answer.choiceIndex === ci;
+            const isCorrect = question.multiple
+              ? (question.correctIndexes ?? []).includes(ci)
+              : question.correctIndex === ci;
             const cls = [
               styles.choice,
               revealed && isCorrect ? styles.choiceRight : '',
               revealed && isStudent && !isCorrect ? styles.choiceWrong : '',
             ].join(' ');
+
+            const basculer = () => {
+              if (!question.multiple) return onAnswerChange({ choiceIndex: ci });
+              const set = new Set(answer.choiceIndexes ?? []);
+              if (set.has(ci)) set.delete(ci);
+              else set.add(ci);
+              onAnswerChange({ choiceIndexes: [...set].sort((a, b) => a - b) });
+            };
+
             return (
               <label key={ci} className={cls}>
                 <input
-                  type="radio"
+                  type={question.multiple ? 'checkbox' : 'radio'}
                   checked={isStudent}
-                  onChange={() => onAnswerChange({ choiceIndex: ci })}
+                  onChange={basculer}
                   disabled={disabled}
                 />
                 {choice}
@@ -347,6 +364,21 @@ function QuestionCard({
               </label>
             );
           })}
+        </div>
+      )}
+
+      {/* Les types manipulés (matrice, appariement, remise en ordre, image
+          annotée, ensembles) passent tous par le socle partagé : deux moteurs,
+          une seule règle d'affichage pour l'élève, la liseuse et le prof. */}
+      {estTypeManipule(question.type) && (
+        <div className={styles.reponseZone}>
+          <ChampManipule
+            question={question}
+            answer={answer}
+            onAnswerChange={onAnswerChange}
+            disabled={disabled}
+            showCorrection={showCorrection}
+          />
         </div>
       )}
 
@@ -371,7 +403,27 @@ function QuestionCard({
         </div>
       )}
 
-      {question.type === 'fluorage' && (question.fluoSource ?? 'extrait') === 'extrait' && (
+      {/* Fluorage PAR CATÉGORIES — « le sujet en rouge, les verbes en vert ».
+          Il prend la place du soulignage à une couleur dès que le prof a
+          défini des catégories ; sans catégorie, le bloc suivant garde le
+          comportement historique, et les questionnaires déjà écrits avec lui. */}
+      {question.type === 'fluorage' &&
+        (question.fluoSource ?? 'extrait') === 'extrait' &&
+        !!question.fluoCategories?.length && (
+          <div className={styles.reponseZone}>
+            <ChampManipule
+              question={question}
+              answer={answer}
+              onAnswerChange={onAnswerChange}
+              disabled={disabled}
+              showCorrection={showCorrection}
+            />
+          </div>
+        )}
+
+      {question.type === 'fluorage' &&
+        (question.fluoSource ?? 'extrait') === 'extrait' &&
+        !question.fluoCategories?.length && (
         showCorrection && (question.fluoAttendu?.length ?? 0) > 0 ? (
           // Vue corrigée : comparaison entre le soulignage de l'élève et celui
           // attendu par le prof

@@ -140,6 +140,34 @@ export function useOeuvreLecture({ devoir, content, onProgression }: Options) {
     [ecrire]
   );
 
+  /**
+   * L'élève a FAIT quelque chose sur cette scène — pas seulement l'ouvrir.
+   * Appelé au passage sur le verso, au clic dictionnaire, à l'ouverture d'un
+   * commentaire du professeur.
+   *
+   * Écrit UNE SEULE FOIS par scène : c'est un premier signal, pas un compteur
+   * de clics. Sans ce garde-fou, chaque mot cliqué déclencherait une écriture
+   * dans `travail.content` — et l'élève en clique beaucoup.
+   */
+  const marquerActivite = useCallback(
+    (id: string) => {
+      const p = progressionRef.current;
+      if (p.sections[id]?.agiLe) return;
+      ecrire((prev) => ({
+        ...prev,
+        sections: {
+          ...prev.sections,
+          [id]: {
+            ...prev.sections[id],
+            vueLe: prev.sections[id]?.vueLe || new Date().toISOString(),
+            agiLe: new Date().toISOString(),
+          },
+        },
+      }));
+    },
+    [ecrire]
+  );
+
   const marquerTerminee = useCallback(
     (id: string, reponses: Record<string, unknown>) => {
       ecrire((prev) => ({
@@ -172,6 +200,7 @@ export function useOeuvreLecture({ devoir, content, onProgression }: Options) {
     avancer: () =>
       index >= 0 && index < parcours.length - 1 && setSectionId(parcours[index + 1].section.id),
     marquerVue,
+    marquerActivite,
     marquerTerminee,
     nbSections: parcours.length,
   };

@@ -109,15 +109,39 @@
   display: flex;
 }
 
-/* ── Éditeur de section ── */
+/* ── Éditeur de section ──
+   Trois étages : ce qui défile au milieu, le pied fixe en bas. Le pied N'EST
+   PLUS collant : il est simplement hors de la zone de défilement, ce qui
+   supprime toute question de calage et de superposition. */
 .editeur {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--c-bg);
+}
+
+.editeurScroll {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 22px 26px 60px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* ⚠️ AUCUNE marge intérieure EN HAUT. C'est elle qui décalait le point de
+     calage de la barre d'onglets vers le bas et ouvrait, au-dessus d'elle, la
+     bande par laquelle le texte réapparaissait. L'espace du haut est rendu
+     par un faux premier élément, qui défile comme le reste. */
+  padding: 0 26px 40px;
+  background: var(--c-bg);
+}
+
+.editeurScroll::before {
+  content: '';
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .aide {
@@ -407,11 +431,12 @@
   color: var(--c-text-muted);
 }
 
+/* La ligne « Enregistrer la section ».
+   PLUS DE `position: sticky` : elle est hors de la zone qui défile (voir
+   `.editeur`). Rien ne peut donc plus passer par-dessus ni par-dessous. */
 .piedEditeur {
-  position: sticky;
-  bottom: 0;
-  padding: 14px 0 0;
-  margin-top: 10px;
+  flex-shrink: 0;
+  padding: 12px 26px;
   border-top: 1px solid var(--c-border);
   background: var(--c-bg);
   display: flex;
@@ -480,4 +505,306 @@
   background: rgba(255, 255, 255, 0.24);
   color: #fff;
   border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODE DÉCOUPE (2026-08-16)
+   On colle une scène entière dans un bloc, puis on la débite de
+   l'intérieur : la souris passe entre deux lignes, un trait apparaît.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── La ligne des onglets : COLLANTE ──
+   Sur une scène de trente répliques, le bouton d'édition disparaissait au
+   premier défilement et il fallait remonter tout en haut pour le quitter.
+
+   ⚠️ TROIS PRÉCAUTIONS, et il faut les trois — c'est ce qui manquait :
+   1. un FOND OPAQUE de la couleur de la page. `.editeur` n'en a pas : il
+      laisse voir `.plein` par transparence, et le texte défilait donc à
+      travers la barre ;
+   2. la barre doit PEINDRE JUSQU'AU BORD du conteneur, marge intérieure de
+      26 px comprise, et remonter par-dessus l'espacement de 14 px que le
+      `gap` de `.editeur` laisse au-dessus d'elle — c'est dans cette bande
+      transparente que le contenu réapparaissait ;
+   3. un z-index au-dessus des éléments positionnés qui la suivent
+      (`.trait` est en `position: relative`). */
+.barreOnglets {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  /* Alignés en bas : le bouton se pose sur le même trait que les onglets */
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  /* ⚠️ AUCUNE marge négative EN HAUT. Le calage `sticky` retient la boîte des
+     MARGES, pas le bord visible : une marge de -14px laissait donc le fond
+     peint 14px plus bas que le haut de la zone, et c'est dans cette bande
+     transparente que le texte réapparaissait. Les marges latérales, elles,
+     sont sans effet sur le calage — elles servent à peindre jusqu'aux bords
+     de la marge intérieure de `.editeur`. */
+  margin: 0 -26px 4px;
+  padding: 10px 26px 0;
+  background: var(--c-bg);
+  /* C'est CE trait qui souligne les onglets : celui de `.faces` s'arrêtait
+     au dernier onglet et laissait le bouton dans le vide. */
+  border-bottom: 1px solid var(--c-border);
+}
+
+.barreOnglets .faces {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.barreOnglets .bascule {
+  margin-bottom: 7px;
+}
+
+/* ── L'outil d'édition : un INTERRUPTEUR ──
+   Collé aux onglets (et non renvoyé à l'autre bout de la ligne) : c'est le
+   même geste de travail que choisir une face, il appartient au même groupe.
+   Un interrupteur plutôt qu'un bouton : on entre dans un mode et on en sort,
+   ce n'est pas une action qu'on déclenche — et on doit voir d'un coup d'œil,
+   sans cliquer, si on y est. */
+.bascule {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  border-radius: 999px;
+  /* L'interrupteur est à DROITE du libellé : on lit ce que c'est, puis on
+     voit s'il est allumé */
+  padding: 5px 6px 5px 14px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.bascule:hover { border-color: var(--c-accent-dark); color: var(--c-accent-dark); }
+
+.basculeRail {
+  position: relative;
+  width: 34px;
+  height: 19px;
+  border-radius: 999px;
+  background: var(--c-border-strong);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.basculeBouton {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+.basculeTexte { white-space: nowrap; }
+
+/* Allumé : le rail passe à l'orange et la pastille glisse à droite. */
+.basculeActive {
+  border-color: var(--c-accent-dark);
+  background: #fff7ec;
+  color: var(--c-accent-dark);
+}
+.basculeActive .basculeRail { background: var(--c-accent); }
+.basculeActive .basculeBouton { transform: translateX(15px); }
+
+/* ── Le flux d'édition ──
+   La scène d'un seul tenant : c'est la lecture suivie qui permet de décider
+   où couper, et les cartes de blocs la hachaient. */
+.fluxEdition {
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  /* Fond BLANC alors que la page est beige : c'est ce contraste qui fait
+     ressortir les traits de découpe. Sur beige, ils se noyaient. */
+  background: var(--c-bg-card);
+  padding: 6px 14px 10px;
+}
+
+/* Les blocs ne se distinguent plus par une carte : c'est le trait qui marque
+   leur frontière (voir .traitEntreBlocs). */
+.blocEnLecture {
+  display: block;
+}
+
+/* Un média n'a pas de lignes : on l'annonce quand même, sinon le prof perd le
+   fil de sa scène là où il a posé une vidéo. */
+.decoupeMedia {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--c-text-dim);
+  padding: 2px 0;
+}
+
+.decoupeLocuteur {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-primary-dark);
+  margin: 0 0 6px;
+}
+
+.decoupeLigne {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--c-text);
+}
+/* Une ligne vide reste cliquable : c'est souvent LÀ qu'on veut couper */
+.decoupeLigne:empty::before { content: ' '; }
+.decoupeLigne p { margin: 0; }
+
+/* ── Le trait ──
+   Sa hauteur est RÉSERVÉE en permanence, même invisible : si elle
+   n'apparaissait qu'au survol, tout le texte sauterait sous la souris et
+   viser une ligne deviendrait impossible. */
+.trait {
+  position: relative;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.traitBarre {
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  transition: background-color 0.12s, opacity 0.12s;
+  /* AU REPOS, RIEN. Le pointillé n'apportait pas d'information — on ne
+     choisit pas où couper d'après un trait, on le choisit d'après le texte.
+     Il ne faisait que bruiter la lecture, qui est justement ce que ce mode
+     doit rendre possible. Le trait ne se montre qu'au survol, là où il
+     répond à une intention. */
+  background-color: var(--c-accent);
+  opacity: 0;
+}
+.trait:hover .traitBarre { opacity: 1; }
+
+/* Entre DEUX BLOCS : une frontière à peine soufflée. Elle dit où finit un
+   bloc sans se disputer l'attention avec le texte. */
+.traitEntreBlocs .traitBarre {
+  background-color: var(--c-border);
+  opacity: 0.55;
+  height: 1px;
+}
+.traitEntreBlocs:hover .traitBarre {
+  background-color: var(--c-accent);
+  opacity: 1;
+  height: 2px;
+}
+
+.traitActions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+}
+.trait:hover .traitActions { opacity: 1; pointer-events: auto; }
+
+.traitActions button {
+  border: 1px solid var(--c-accent-dark);
+  background: var(--c-bg-card);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--c-accent-dark);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: var(--c-shadow-card);
+}
+.traitActions button:hover {
+  background: var(--c-accent);
+  color: #fff;
+}
+
+/* Sur un écran étroit (Chromebook, colonne réduite), cinq pastilles ne
+   tiennent pas sur une ligne : on les empile plutôt que de les tronquer. */
+@media (max-width: 900px) {
+  .trait { height: auto; min-height: 26px; flex-wrap: wrap; }
+  .traitActions { flex-wrap: wrap; }
+}
+
+/* ── Popup de saisie à l'insertion (SaisieBlocModal) ── */
+.saisieFenetre {
+  width: min(680px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.saisieCorps {
+  padding: 16px 22px;
+  overflow-y: auto;
+}
+.saisieChamp {
+  width: 100%;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--c-text);
+  background: var(--c-bg-card);
+}
+/* Un vers ne se justifie pas : la saisie doit ressembler au rendu */
+.saisieZone {
+  font-family: var(--c-font-title);
+  font-size: 15px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.saisiePied {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-bg);
+}
+
+/* ── Bloc vide dans le flux d'édition ──
+   Il n'a rien à montrer mais occupe une place : on l'annonce et on offre de
+   le jeter sur place, plutôt que d'obliger à quitter l'outil pour le faire. */
+.blocVide {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 5px 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--c-text-dim);
+}
+.blocVide button {
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  font-style: normal;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+.blocVide button:hover {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
 }

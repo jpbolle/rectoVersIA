@@ -27,6 +27,7 @@ export type AutoEvalQuestionType =
   | 'competence'  // emoji : sentiment de compétence
   | 'humeur'      // emoji : émotion ressentie
   | 'likert'      // curseur de 1 à 5
+  | 'matrice'     // plusieurs items qui partagent les mêmes réponses
   | 'info';       // bloc informatif : le prof introduit, l'élève ne répond pas
 
 // ─── Échelles à emoji ───
@@ -74,6 +75,18 @@ export const LIKERT_MIN_DEFAUT = 'Pas du tout';
 export const LIKERT_MAX_DEFAUT = 'Tout à fait';
 export const LIKERT_NIVEAUX = 5;
 
+/**
+ * Échelles prêtes pour les colonnes d'une matrice.
+ * Le prof part de l'une d'elles ou écrit les siennes — sans ces modèles, il
+ * ressaisirait « Jamais / Parfois / Souvent » à chaque questionnaire.
+ */
+export const MATRICE_MODELES: { id: string; label: string; colonnes: string[] }[] = [
+  { id: 'frequence', label: 'Fréquence', colonnes: ['Jamais', 'Parfois', 'Souvent', 'Toujours'] },
+  { id: 'accord', label: 'Accord', colonnes: ['Pas du tout', 'Un peu', 'Assez', 'Tout à fait'] },
+  { id: 'facilite', label: 'Facilité', colonnes: ['Très difficile', 'Difficile', 'Facile', 'Très facile'] },
+  { id: 'maitrise', label: 'Maîtrise', colonnes: ['Pas encore', 'En cours', 'Acquis'] },
+];
+
 export interface AutoEvalQuestion {
   id: string; // AE-{timestamp}-{rand}
   type: AutoEvalQuestionType;
@@ -85,6 +98,12 @@ export interface AutoEvalQuestion {
   obligatoire?: boolean;
   // QCM — pas de bonne réponse : ce sont des positions, pas des solutions
   choices?: string[];
+  // L'élève peut-il en cocher plusieurs ? Absent = une seule.
+  multiple?: boolean;
+  // Matrice : les lignes. Les colonnes réutilisent `choices` — c'est le même
+  // éditeur que le QCM, et surtout la même chose : des réponses partagées.
+  // Ici aucune colonne n'est « juste » : ce sont des positions.
+  matriceItems?: string[];
   // Likert : les deux bornes de l'échelle
   likertMin?: string;
   likertMax?: string;
@@ -102,10 +121,13 @@ export interface AutoEvalQuestionnaire {
 // ── Réponses de l'élève — stockées en JSON dans travail.content ──
 
 export interface AutoEvalAnswer {
-  choiceIndex?: number | null; // qcm
-  text?: string;               // texte court (brut) / texte long (HTML)
-  echelon?: string | null;     // competence / humeur : id de l'échelon
-  likert?: number | null;      // 1 à 5
+  choiceIndex?: number | null;   // qcm à réponse unique
+  choiceIndexes?: number[];      // qcm à réponses multiples
+  text?: string;                 // texte court (brut) / texte long (HTML)
+  echelon?: string | null;       // competence / humeur : id de l'échelon
+  likert?: number | null;        // 1 à 5
+  // Matrice : index de colonne choisi par ligne (clé = index de ligne)
+  matrice?: Record<number, number>;
 }
 
 export interface AutoEvalAnswersState {
@@ -143,7 +165,13 @@ export function aRepondu(q: AutoEvalQuestion, a: AutoEvalAnswer | undefined): bo
   if (!a) return false;
   switch (q.type) {
     case 'qcm':
-      return a.choiceIndex !== null && a.choiceIndex !== undefined;
+      return q.multiple
+        ? (a.choiceIndexes?.length ?? 0) > 0
+        : a.choiceIndex !== null && a.choiceIndex !== undefined;
+    case 'matrice':
+      // Une matrice n'est complète que si TOUTES ses lignes sont renseignées :
+      // une ligne oubliée n'est pas une position, c'est un oubli.
+      return (q.matriceItems ?? []).every((_, i) => typeof a.matrice?.[i] === 'number');
     case 'competence':
     case 'humeur':
       return !!a.echelon;
@@ -167,5 +195,6 @@ export const AUTOEVAL_TYPE_LABELS: Record<AutoEvalQuestionType, string> = {
   competence: 'Sentiment de compétence',
   humeur: 'Émotion ressentie',
   likert: 'Échelle de 1 à 5',
+  matrice: 'Matrice',
   info: 'Bloc informatif',
 };

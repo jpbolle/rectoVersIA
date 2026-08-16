@@ -223,6 +223,16 @@
   font-weight: 600;
 }
 
+/* QCM à réponses multiples : la consigne, au-dessus des cases.
+   Les cases à cocher le disent déjà par leur forme, mais un élève pressé lit
+   la première ligne et pas la forme du contrôle. */
+.hintMultiple {
+  font-size: 11.5px;
+  color: var(--c-text-muted);
+  font-style: italic;
+  margin: 0 0 2px;
+}
+
 /* Éditeur riche (réponse longue) */
 .tiptap {
   border: 1px solid var(--c-border);

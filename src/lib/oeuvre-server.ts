@@ -22,6 +22,7 @@ import type {
   OeuvreSectionRef,
 } from '@/types/oeuvre';
 import type { LectureQuestion } from '@/types/lecture';
+import { preparerPresentation } from '@/lib/lecture-server';
 
 type Doc = FirebaseFirestore.DocumentSnapshot;
 
@@ -82,6 +83,12 @@ export function docToOeuvre(doc: Doc): Oeuvre {
     titre: d.titre || '',
     auteur: d.auteur || '',
     description: d.description || '',
+    // `null` et non `undefined` : ce document est relu puis réécrit par les
+    // routes de partage et d'archivage, et Firestore refuse `undefined`.
+    couverture:
+      d.couverture?.url && d.couverture?.fileId
+        ? { url: d.couverture.url, fileId: d.couverture.fileId }
+        : null,
     chapitres: Array.isArray(d.chapitres)
       ? d.chapitres.map(normaliserChapitre).filter((c): c is OeuvreChapitre => !!c)
       : [],
@@ -162,7 +169,14 @@ export function docToSection(doc: Doc): OeuvreSection {
       : [],
     // Les questions partent TELLES QUELLES vers l'élève — corrigé compris.
     // Voir l'avertissement en tête de fichier.
-    questions: Array.isArray(d.questions) ? (d.questions as LectureQuestion[]) : [],
+    //
+    // Seule retouche : `preparerPresentation`, qui MÉLANGE les jetons d'une
+    // remise en ordre et la réserve d'une image annotée. Ce n'est pas un
+    // filtrage — rien n'est caché, le corrigé reste ouvert. C'est qu'un
+    // exercice servi déjà résolu n'est plus un exercice.
+    questions: Array.isArray(d.questions)
+      ? (d.questions as LectureQuestion[]).map(preparerPresentation)
+      : [],
   };
 }
 

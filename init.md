@@ -1,4 +1,3 @@
-# Recto-versIA — Briefing agent
 
 > Briefing dense lu au début de chaque session pour se localiser vite.
 > Ce n'est PAS une documentation exhaustive. Ce qui change session par session vit dans
@@ -402,6 +401,15 @@ interface Questionnaire {
   (annotation ressources), `AnnotationEditor` (prof : 3 types textuels + audio + IA),
   `FlipEditor` (recto/verso)
 - Brouillons : `CrcDraft` (compte rendu critique), `PlanDraft` (plan drag & drop), `FreeDraft`
+- **`QuestionInteractions/`** — socle des types de questions manipulés (2026-08-16).
+  **DEUX moteurs, six champs** : `pointerDrag.ts` (glisser au pointeur, `dragProps` —
+  jamais le glisser HTML5, qui ne marche pas au doigt sur Chromebook ; un appui sans
+  mouvement « arme » l'élément, le tap suivant le pose) ; `AppariementField` (RELIER),
+  `OrdreField` · `AnnotationField` · `EnsemblesField` (DÉPLACER), `MatriceField`
+  (partagé lecture / auto-évaluation), `FluoCategoriesField`. Point d'entrée unique
+  `ChampManipule` : l'écran élève, la liseuse d'œuvre et la correction prof passent
+  tous par lui. **Un cinquième type manipulé s'habille sur l'un des deux moteurs —
+  on n'en écrit jamais un troisième.**
 - Vocabulaire : `VocabulaireActivity` (diagnostic → apprentissage → évaluation, mots
   difficiles/flashcards), `VocabulaireList`, `VocabulaireExercises`,
   `VocabulaireEvaluation` (mots croisés + syn/ant + composition), `VocabulaireStats`,
@@ -515,6 +523,15 @@ interface Questionnaire {
   (tooltip au survol) et détail dépliable ; carte Vocabulaire du Général en barre
   empilée ; `EmptyState` : `icon="hourglass"` = spinner, sinon emoji (jamais de mot-clé)
 
+- Œuvre (constructeur) : `OeuvreBuilder` (écran plein), `OeuvreSommaireEditable`
+  (+ **couverture** du livre, premier élément déposé), `TypeEditors` (éditeurs des
+  types de questions, sortis de `LectureQuizBuilder` qui faisait déjà 899 lignes),
+  `ExtraitOeuvreModal` (« prendre un extrait dans une œuvre » depuis un questionnaire :
+  livre → scène → passages ; rend du **texte brut**, pas une référence vivante),
+  `SaisieBlocModal` (contenu saisi AU MOMENT de l'insertion), `src/lib/oeuvre-decoupe.ts`
+  (**outil d'édition** : couper un bloc collé entre deux lignes, insérer, ou renvoyer la
+  suite dans une **nouvelle section** ; détection du locuteur en capitales)
+
 ### Hooks
 `useAuth` (expose `getAuthHeaders`), `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,
 `useTravail` (auto-save 2,5 s), `useCorrection`, `usePreferences`, `useAudioRecorder`,
@@ -537,6 +554,20 @@ vides (pratique à l'affichage, fatal à l'écriture). D'où `chapitresPourFires
 `src/lib/oeuvre-server.ts`, par où passe **toute** route qui réécrit un sommaire.
 **Symptôme** : 500 sur une route qui lit puis réécrit un document.
 *(rencontré deux fois le 2026-08-15 : import Molière, puis ajout de section)*
+
+### `position: sticky` : la marge intérieure du conteneur décale le calage
+Une barre collante dans un conteneur qui défile se cale **sous la marge intérieure
+haute** de ce conteneur, pas au bord visible. Elle laisse alors au-dessus d'elle une
+bande transparente — d'exactement la hauteur du `padding-top` — dans laquelle le contenu
+défile et **réapparaît par-dessus la barre**. Une marge négative sur la barre n'arrange
+rien : le calage retient la **boîte des marges**, pas le bord peint, et déplace donc le
+fond vers le bas d'autant.
+**Règle** : un conteneur qui porte une barre collante n'a **pas de marge intérieure
+haute** (la rendre par un `::before` qui défile), et la barre n'a **aucune marge négative
+verticale**. Pour un pied de page, plus simple encore : le sortir de la zone qui défile
+(`.editeur` / `.editeurScroll` dans `OeuvreBuilder`).
+**Symptôme** : le texte défile sous la barre puis réapparaît au-dessus d'elle.
+*(trois diagnostics erronés avant d'y arriver, 2026-08-16)*
 
 ### Les devoirs référencent les classes par NOM
 `devoirs.classes` contient des **noms** de classes, pas des ids. Le renommage d'une

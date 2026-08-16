@@ -21,8 +21,19 @@
 // son propre retrait, sinon le texte colle au bord (gotcha du projet).
 
 import { useState } from 'react';
+import { etatPastille, type EtatPastille } from '@/types/oeuvre';
 import type { OeuvreChapitre, OeuvreProgression } from '@/types/oeuvre';
 import styles from './OeuvreReader.module.css';
+
+// Ce que dit chaque couleur — en infobulle sur la pastille, et en légende
+// sous le compteur. Trois couleurs sans mode d'emploi se devinent de travers :
+// l'orange se lirait comme un avertissement alors qu'il dit « tu y travailles ».
+const LEGENDE_PASTILLE: Record<EtatPastille, string> = {
+  vide: 'Pas encore ouverte',
+  ouverte: 'Ouverte',
+  active: 'Tu y as travaillé',
+  faite: 'Terminée',
+};
 
 interface OeuvreSommaireProps {
   chapitres: OeuvreChapitre[];
@@ -85,6 +96,18 @@ export default function OeuvreSommaire({
             <i style={{ width: `${Math.round((faites / aVerifier) * 100)}%` }} />
           </div>
         )}
+
+        <p className={styles.puceLegende}>
+          <span className={styles.puceLegendeItem}>
+            <i className={`${styles.puceLegendePoint} ${styles.puceVue}`} /> ouverte
+          </span>
+          <span className={styles.puceLegendeItem}>
+            <i className={`${styles.puceLegendePoint} ${styles.puceActive}`} /> tu y as travaillé
+          </span>
+          <span className={styles.puceLegendeItem}>
+            <i className={`${styles.puceLegendePoint} ${styles.puceFaite}`} /> terminée
+          </span>
+        </p>
       </div>
 
       <nav className={styles.sommaireNav} aria-label="Navigation dans le texte">
@@ -124,8 +147,10 @@ export default function OeuvreSommaire({
                       index > 0 ? chapitre.sections[index - 1].groupe : undefined;
                     const nouvelActe = section.groupe && section.groupe !== groupePrecedent;
                     const etat = progression?.sections[section.id];
-                    const faite = !!etat?.termineLe;
-                    const vue = !!etat?.vueLe;
+                    // Trois états, une seule règle — elle vit dans
+                    // src/types/oeuvre.ts et sert aussi au suivi du prof.
+                    const pastille = etatPastille(etat, section.aQuestions);
+                    const faite = pastille === 'faite';
 
                     return (
                       <div key={section.id}>
@@ -139,10 +164,15 @@ export default function OeuvreSommaire({
                           aria-current={section.id === sectionCourante ? 'true' : undefined}
                         >
                           <span
-                            className={`${styles.puce} ${
-                              faite ? styles.puceFaite : vue ? styles.puceVue : ''
-                            }`}
-                            aria-hidden="true"
+                            className={[
+                              styles.puce,
+                              pastille === 'faite' ? styles.puceFaite : '',
+                              pastille === 'active' ? styles.puceActive : '',
+                              pastille === 'ouverte' ? styles.puceVue : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
+                            title={LEGENDE_PASTILLE[pastille]}
                           >
                             {faite ? '✓' : ''}
                           </span>

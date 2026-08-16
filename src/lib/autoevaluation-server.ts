@@ -13,6 +13,7 @@ const TYPES: AutoEvalQuestionType[] = [
   'competence',
   'humeur',
   'likert',
+  'matrice',
   'info',
 ];
 
@@ -64,7 +65,9 @@ export function sanitizeAutoEvalQuiz(input: unknown): AutoEvalQuestionnaire | nu
     const document = texte(question.document);
     if (document) cleaned.document = document;
 
-    if (type === 'qcm') {
+    // Le QCM et la matrice partagent leurs réponses : ce sont les mêmes
+    // colonnes, saisies avec le même éditeur. La matrice y ajoute ses lignes.
+    if (type === 'qcm' || type === 'matrice') {
       const choices = Array.isArray(question.choices)
         ? question.choices
             .filter((c): c is string => typeof c === 'string')
@@ -74,6 +77,23 @@ export function sanitizeAutoEvalQuiz(input: unknown): AutoEvalQuestionnaire | nu
       // Un choix multiple qui n'offre pas au moins deux positions n'en est pas un
       if (choices.length < 2) continue;
       cleaned.choices = choices;
+    }
+
+    if (type === 'qcm' && question.multiple === true) {
+      cleaned.multiple = true;
+    }
+
+    if (type === 'matrice') {
+      const items = Array.isArray(question.matriceItems)
+        ? question.matriceItems
+            .filter((s): s is string => typeof s === 'string')
+            .map((s) => s.trim().slice(0, MAX_COURT * 2))
+            .filter(Boolean)
+        : [];
+      // Une matrice à une seule ligne, c'est un QCM : autant le dire au prof
+      // en refusant la question plutôt qu'en affichant un tableau d'une ligne.
+      if (items.length < 2) continue;
+      cleaned.matriceItems = items;
     }
 
     if (type === 'likert') {

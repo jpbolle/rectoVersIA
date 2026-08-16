@@ -1,0 +1,1528 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette — nouveaux types de questions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   Design system Classica — repris de src/app/globals.css
+   ══════════════════════════════════════════════════════════════════ */
+:root {
+  --c-primary: #2d6a5a;
+  --c-primary-light: #357a68;
+  --c-primary-dark: #245649;
+  --c-accent: #d4944c;
+  --c-accent-dark: #c4862e;
+  --c-bg: #faf6f0;
+  --c-bg-card: #ffffff;
+  --c-bg-element: #f0ebe3;
+  --c-text: #3d3832;
+  --c-text-secondary: #5a534b;
+  --c-text-muted: #8a7f72;
+  --c-text-dim: #a89e92;
+  --c-border: #d5cec4;
+  --c-border-strong: #b5ad9f;
+  --c-danger: #b44040;
+  --c-success: #2d8a4e;
+  --c-warning: #c4862e;
+  --c-shadow-card: 0 2px 8px rgba(0,0,0,.08);
+  --c-shadow-popup: 0 4px 16px rgba(0,0,0,.15), 0 1px 4px rgba(0,0,0,.1);
+  --c-gradient-header: linear-gradient(135deg,#2d6a5a 0%,#357a68 100%);
+  --c-radius: 4px;
+  --c-radius-lg: 8px;
+  --c-font-title: 'Playfair Display', Georgia, serif;
+  --c-font-body: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* Couleurs de fluorage — proposées pour le marquage par catégories */
+  --fluo-rouge:  #ffb3b3;
+  --fluo-vert:   #b3e6b3;
+  --fluo-jaune:  #ffe680;
+  --fluo-bleu:   #b3d9ff;
+  --fluo-violet: #dcc6ff;
+  --fluo-orange: #ffd1a3;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--c-font-body);
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Bandeau ── */
+.topbar {
+  background: var(--c-gradient-header);
+  color: #fff;
+  padding: 22px 28px;
+}
+.topbar h1 {
+  font-family: var(--c-font-title);
+  font-size: 26px;
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+.topbar p { margin: 0; opacity: .85; font-size: 13.5px; }
+
+.wrap { max-width: 940px; margin: 0 auto; padding: 24px 20px 80px; }
+
+.note {
+  background: #fffdf7;
+  border-left: 3px solid var(--c-accent);
+  padding: 12px 16px;
+  border-radius: 0 var(--c-radius-lg) var(--c-radius-lg) 0;
+  margin: 0 0 26px;
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+}
+.note strong { color: var(--c-text); }
+.note code {
+  background: var(--c-bg-element);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12.5px;
+}
+
+h2.sectionTitle {
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  margin: 34px 0 4px;
+  color: var(--c-primary-dark);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+h2.sectionTitle .engine {
+  font-family: var(--c-font-body);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: #fff;
+  background: var(--c-text-dim);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+h2.sectionTitle .engine.relier { background: var(--c-primary-light); }
+h2.sectionTitle .engine.deplacer { background: var(--c-accent-dark); }
+.sectionIntro {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--c-text-muted);
+  max-width: 70ch;
+}
+
+/* ── La carte-question, calquée sur LectureQuizActivity.module.css ── */
+.card {
+  position: relative;
+  background: var(--c-bg-card);
+  border: none;
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: var(--c-shadow-card);
+  margin-bottom: 10px;
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-right: 96px;
+}
+.num {
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.typeLabel { font-size: 13px; font-weight: 700; color: var(--c-text); }
+.pts {
+  position: absolute;
+  top: 10px; right: 12px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--c-accent);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+}
+.pts .ptsVide { opacity: .65; }
+.pts .ptsUnite { font-size: 10.5px; font-weight: 600; opacity: .9; }
+.enonce { font-size: 14px; line-height: 1.5; margin: 0 0 10px; color: var(--c-text); }
+.reponseZone { margin-left: 2cm; }
+@media (max-width: 1100px) { .reponseZone { margin-left: 20px; } }
+
+.bottomActions { display: flex; align-items: center; gap: 14px; margin: 16px 0 0; }
+.bottomActionsLine { flex: 1; height: 1px; background: var(--c-border); }
+.actionBtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  color: var(--c-text-secondary);
+  font-family: inherit; font-size: 12.5px; font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.actionBtn:hover { border-color: var(--c-primary); color: var(--c-primary); }
+.actionBtn.primary {
+  background: var(--c-primary); border-color: var(--c-primary); color: #fff;
+}
+.actionBtn.primary:hover { background: var(--c-primary-dark); color: #fff; }
+
+.hint {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  margin: 0 0 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.hint::before { content: '👆'; font-size: 13px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   MOTEUR 1 — RELIER  (appariement · image annotée)
+   ══════════════════════════════════════════════════════════════════ */
+.relierZone { position: relative; }
+.relierSvg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+}
+.relierSvg line {
+  stroke: var(--c-primary);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.relierSvg line.temp { stroke-dasharray: 6 5; opacity: .8; }
+.relierSvg line.ok   { stroke: var(--c-success); }
+.relierSvg line.ko   { stroke: var(--c-danger); }
+.relierSvg line.att  { stroke: var(--c-success); stroke-dasharray: 4 5; opacity: .55; }
+
+/* La pastille de liaison */
+.dot {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--c-border-strong);
+  background: #fff;
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+  position: relative;
+  z-index: 3;
+  transition: transform .12s, border-color .12s, background .12s;
+}
+.dot:hover { border-color: var(--c-primary); transform: scale(1.15); }
+.dot.linked { background: var(--c-primary); border-color: var(--c-primary); }
+.dot.armed  { border-color: var(--c-accent); background: var(--c-accent); transform: scale(1.25); box-shadow: 0 0 0 4px rgba(212,148,76,.25); }
+.dot.candidate { border-color: var(--c-accent-dark); box-shadow: 0 0 0 4px rgba(212,148,76,.18); }
+.dot.dropping  { transform: scale(1.35); border-color: var(--c-accent-dark); background: var(--c-accent); }
+
+/* — Appariement : deux colonnes — */
+.pairGrid {
+  display: grid;
+  grid-template-columns: 1fr 90px 1fr;
+  gap: 10px 0;
+  align-items: stretch;
+}
+@media (max-width: 720px) { .pairGrid { grid-template-columns: 1fr 56px 1fr; } }
+.pairItem {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 9px 12px;
+  font-size: 13.5px;
+  min-height: 46px;
+}
+.pairItem.right { flex-direction: row-reverse; text-align: right; }
+.pairItem .body { flex: 1; min-width: 0; }
+.pairItem .kindTag {
+  display: inline-block;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--c-text-dim);
+  margin-bottom: 2px;
+}
+/* La gouttière centrale : c'est là que passent les traits */
+.pairSpacer { pointer-events: none; }
+
+/* Le mini-lecteur audio d'un item */
+.miniAudio {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  padding: 4px 12px 4px 6px;
+  font-size: 12px; color: var(--c-text-secondary);
+  cursor: pointer;
+}
+.miniAudio .play {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--c-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px;
+}
+.miniImg {
+  width: 100%; max-width: 150px;
+  border-radius: var(--c-radius);
+  display: block;
+  border: 1px solid var(--c-border);
+}
+
+/* — Image annotée : cases de dépôt de part et d'autre, réserve dessous — */
+.annotWrap { position: relative; }
+.annotGrid {
+  display: grid;
+  grid-template-columns: 168px 1fr 168px;
+  gap: 16px;
+  align-items: center;
+}
+@media (max-width: 860px) { .annotGrid { grid-template-columns: 128px 1fr 128px; gap: 8px; } }
+@media (max-width: 660px) { .annotGrid { grid-template-columns: 106px 1fr 106px; gap: 6px; } }
+
+.slotCol { display: flex; flex-direction: column; gap: 14px; }
+.slot {
+  position: relative;
+  z-index: 3;
+  min-height: 40px;
+  border: 2px dashed var(--c-border-strong);
+  border-radius: 999px;
+  background: #fff;
+  display: flex; align-items: center;
+  padding: 4px 8px;
+}
+.slotCol.right .slot { justify-content: flex-start; }
+.slotCol.left  .slot { justify-content: flex-end; }
+.slot.dropping { border-style: solid; border-color: var(--c-accent); background: #fffaf2; }
+.slot.armedTarget { border-color: var(--c-accent); }
+.slot .token {
+  box-shadow: none;
+  padding: 4px 10px;
+  font-size: 12.5px;
+  background: var(--c-bg-element);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+.slot.ok  { border-style: solid; border-color: var(--c-success); }
+.slot.ko  { border-style: solid; border-color: var(--c-danger); }
+.slot .attendu {
+  font-size: 11px; font-style: italic; color: var(--c-danger);
+  padding: 0 6px;
+}
+
+.annotStage { position: relative; }
+.annotStage svg.plan {
+  width: 100%; height: auto; display: block;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: #fff;
+}
+/* Le point posé par le prof — repère, pas cible : l'élève n'y touche pas */
+.anchor {
+  position: absolute;
+  width: 21px; height: 21px;
+  margin: -10.5px 0 0 -10.5px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 10.5px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+/* Les traits prof (case ↔ point) : posés une fois, jamais déplacés par l'élève */
+.leaderSvg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+}
+.leaderSvg line { stroke: var(--c-border-strong); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.leaderSvg line.ok { stroke: var(--c-success); stroke-dasharray: none; }
+.leaderSvg line.ko { stroke: var(--c-danger); stroke-dasharray: none; }
+
+/* Le trou laissé par le jeton qu'on déplace — c'est lui qui bouge, pas le jeton */
+.placeholder {
+  border: 2px dashed var(--c-accent);
+  border-radius: var(--c-radius-lg);
+  background: #fffaf2;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MOTEUR 2 — DÉPLACER  (remise en ordre · ensembles)
+   ══════════════════════════════════════════════════════════════════ */
+.token {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 8px 13px;
+  font-size: 13.5px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  transition: border-color .12s, box-shadow .12s;
+}
+.token:hover { border-color: var(--c-primary); }
+.token.grabbed { opacity: .32; }
+.token.armed { border-color: var(--c-accent); box-shadow: 0 0 0 3px rgba(212,148,76,.22); }
+.token .grip { color: var(--c-text-dim); font-size: 13px; letter-spacing: -2px; }
+.token img { height: 46px; width: auto; border-radius: 3px; display: block; }
+.token.ok { border-color: var(--c-success); background: #f2faf5; }
+.token.ko { border-color: var(--c-danger); background: #fdf4f4; }
+.token .verdict { font-size: 12px; }
+
+/* Le fantôme qui suit le doigt */
+.ghost {
+  position: fixed;
+  z-index: 999;
+  pointer-events: none;
+  opacity: .95;
+  box-shadow: var(--c-shadow-popup);
+  transform: rotate(-1.5deg);
+  cursor: grabbing;
+}
+
+/* — Remise en ordre — */
+.orderStrip {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  background: var(--c-bg);
+  border: 1px dashed var(--c-border-strong);
+  border-radius: var(--c-radius-lg);
+  padding: 12px;
+  min-height: 62px;
+  align-items: center;
+}
+.orderStrip .rank {
+  font-size: 10.5px; font-weight: 700;
+  color: #fff; background: var(--c-text-dim);
+  border-radius: 50%;
+  width: 17px; height: 17px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.token.ok .rank { background: var(--c-success); }
+.token.ko .rank { background: var(--c-danger); }
+.orderStrip.vertical { flex-direction: column; align-items: stretch; }
+.orderStrip.vertical .token { justify-content: flex-start; }
+
+/* — Ensembles — */
+.setsLayout { display: flex; flex-direction: column; gap: 12px; }
+.bank {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  background: var(--c-bg);
+  border: 1px dashed var(--c-border-strong);
+  border-radius: var(--c-radius-lg);
+  padding: 11px;
+  min-height: 56px;
+  align-items: center;
+}
+.bank .bankLabel {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--c-text-dim);
+  width: 100%;
+  margin-bottom: -2px;
+}
+.setsRow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 760px) { .setsRow { grid-template-columns: 1fr; } }
+.setBox {
+  background: var(--c-bg-card);
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 0 0 10px;
+  min-height: 108px;
+  display: flex; flex-direction: column;
+}
+.setBox .setHead {
+  background: var(--c-bg-element);
+  border-radius: 6px 6px 0 0;
+  padding: 7px 11px;
+  font-size: 12.5px; font-weight: 700;
+  color: var(--c-primary-dark);
+  border-bottom: 1px solid var(--c-border);
+}
+.setBox .setBody {
+  flex: 1;
+  display: flex; flex-wrap: wrap; gap: 7px;
+  padding: 10px;
+  align-content: flex-start;
+}
+.setBox.dropping { border-color: var(--c-accent); background: #fffaf2; }
+.bank.dropping { border-color: var(--c-accent); background: #fffaf2; }
+.setBox .empty { font-size: 12px; color: var(--c-text-dim); font-style: italic; }
+
+/* ── Bandeau de résultat ── */
+.result {
+  margin-top: 12px;
+  padding: 9px 14px;
+  border-radius: var(--c-radius-lg);
+  font-size: 13px;
+  font-weight: 600;
+  display: none;
+}
+.result.show { display: block; }
+.result.good { background: #eef8f1; color: var(--c-success); border: 1px solid #b9e0c7; }
+.result.mid  { background: #fdf6ec; color: var(--c-accent-dark); border: 1px solid #f0dcbe; }
+.result.bad  { background: #fbf1f1; color: var(--c-danger); border: 1px solid #e8c4c4; }
+
+/* ══════════════════════════════════════════════════════════════════
+   Annexe — matrice & fluorage par catégories
+   ══════════════════════════════════════════════════════════════════ */
+.matrix { width: 100%; border-collapse: collapse; font-size: 13px; }
+.matrix th, .matrix td { padding: 8px 6px; border-bottom: 1px solid var(--c-border); }
+.matrix thead th {
+  font-size: 11.5px; font-weight: 700; color: var(--c-text-secondary);
+  text-align: center; vertical-align: bottom;
+  border-bottom: 2px solid var(--c-border-strong);
+}
+.matrix thead th:first-child { text-align: left; }
+.matrix tbody th { font-weight: 500; text-align: left; color: var(--c-text); }
+.matrix td { text-align: center; }
+.matrix tbody tr:hover { background: #fdfbf7; }
+.matrix input { accent-color: var(--c-primary); width: 17px; height: 17px; cursor: pointer; }
+.matrix td.right { background: #f2faf5; }
+
+.fluoLegend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.fluoCat {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  padding: 4px 12px 4px 5px;
+  font-size: 12.5px; font-weight: 600;
+  background: #fff;
+  cursor: pointer;
+}
+.fluoCat .swatch { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,.12); }
+.fluoCat.active { border-color: var(--c-text); box-shadow: 0 0 0 2px rgba(61,56,50,.12); }
+.fluoText { font-size: 14.5px; line-height: 2; }
+.fluoText .w { padding: 2px 1px; border-radius: 3px; cursor: pointer; }
+.fluoText .w:hover { outline: 1px dashed var(--c-border-strong); }
+
+footer.end {
+  margin-top: 46px; padding-top: 18px;
+  border-top: 1px solid var(--c-border);
+  font-size: 12.5px; color: var(--c-text-muted);
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Nouveaux types de questions — vue élève</h1>
+  <p>Maquette · Recto-versIA · questionnaire de lecture &amp; auto-évaluation</p>
+</div>
+
+<div class="wrap">
+
+  <p class="note">
+    <strong>Tout est manipulable.</strong> Le glisser fonctionne au doigt, au pavé tactile et à la souris
+    (<em>Pointer Events</em> — la même API qu'aura l'app). Un simple <strong>tap sans glisser</strong> arme
+    l'élément : le tap suivant sur une cible le pose. C'est le même code, et ça rattrape le geste raté
+    sur un pavé d'entrée de gamme.<br>
+    Les quatre types reposent sur <strong>deux moteurs seulement</strong> — <code>Relier</code> et
+    <code>Déplacer</code> — signalés par la pastille de chaque titre. C'est le cœur de la proposition :
+    quatre habillages, deux mécaniques.
+  </p>
+
+  <!-- ════════════════ 1. APPARIEMENT ════════════════ -->
+  <h2 class="sectionTitle">1 · Appariement <span class="engine relier">moteur relier</span></h2>
+  <p class="sectionIntro">
+    À gauche, du contenu de n'importe quelle nature (texte, image, audio) ; à droite, un mot ou un syntagme.
+    L'élève tire un trait d'une pastille à l'autre. Une pastille déjà reliée qu'on retire remplace le lien.
+  </p>
+
+  <div class="card" data-q="appariement">
+    <div class="cardHead">
+      <span class="num">4</span>
+      <span class="typeLabel">Appariement</span>
+      <span class="pts"><span class="ptsVide">…</span><span>/ 5</span><span class="ptsUnite">pts</span></span>
+    </div>
+    <p class="enonce">Relie chaque réplique au personnage qui la prononce.</p>
+    <p class="hint">Tire un trait d'une pastille à l'autre — ou tape l'une, puis l'autre.</p>
+
+    <div class="reponseZone">
+      <div class="relierZone pairGrid" id="app-zone">
+        <svg class="relierSvg" id="app-svg"></svg>
+
+        <!-- rangée 1 -->
+        <div class="pairItem">
+          <div class="body">« Couvrez ce sein que je ne saurais voir. »</div>
+          <span class="dot" data-side="g" data-id="g1"></span>
+        </div>
+        <div class="pairSpacer"></div>
+        <div class="pairItem right">
+          <div class="body">Tartuffe</div>
+          <span class="dot" data-side="d" data-id="d1"></span>
+        </div>
+
+        <!-- rangée 2 -->
+        <div class="pairItem">
+          <div class="body">
+            <span class="kindTag">Audio</span>
+            <span class="miniAudio"><span class="play">▶</span> Tirade — 0:14</span>
+          </div>
+          <span class="dot" data-side="g" data-id="g2"></span>
+        </div>
+        <div class="pairSpacer"></div>
+        <div class="pairItem right">
+          <div class="body">Harpagon</div>
+          <span class="dot" data-side="d" data-id="d2"></span>
+        </div>
+
+        <!-- rangée 3 -->
+        <div class="pairItem">
+          <div class="body">
+            <span class="kindTag">Image</span>
+            <img class="miniImg" alt="gravure" src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='110'%3E%3Crect width='300' height='110' fill='%23f0ebe3'/%3E%3Ccircle cx='150' cy='44' r='24' fill='%23d5cec4'/%3E%3Cpath d='M110 110 q40 -46 80 -46 q40 0 40 46z' fill='%23c9c0b4'/%3E%3Ctext x='150' y='104' font-family='Georgia' font-size='11' fill='%235a534b' text-anchor='middle'%3Egravure, 1669%3C/text%3E%3C/svg%3E">
+          </div>
+          <span class="dot" data-side="g" data-id="g3"></span>
+        </div>
+        <div class="pairSpacer"></div>
+        <div class="pairItem right">
+          <div class="body">Dorine</div>
+          <span class="dot" data-side="d" data-id="d3"></span>
+        </div>
+
+        <!-- rangée 4 -->
+        <div class="pairItem">
+          <div class="body">« Sans dot ! »</div>
+          <span class="dot" data-side="g" data-id="g4"></span>
+        </div>
+        <div class="pairSpacer"></div>
+        <div class="pairItem right">
+          <div class="body">Orgon</div>
+          <span class="dot" data-side="d" data-id="d4"></span>
+        </div>
+
+        <!-- rangée 5 : distracteur à droite -->
+        <div class="pairItem">
+          <div class="body">« Et Tartuffe ? — Le pauvre homme ! »</div>
+          <span class="dot" data-side="g" data-id="g5"></span>
+        </div>
+        <div class="pairSpacer"></div>
+        <div class="pairItem right">
+          <div class="body">Alceste <em style="color:var(--c-text-dim);font-size:11.5px">(intrus)</em></div>
+          <span class="dot" data-side="d" data-id="d5"></span>
+        </div>
+      </div>
+
+      <div class="result" id="app-result"></div>
+    </div>
+
+    <div class="bottomActions">
+      <div class="bottomActionsLine"></div>
+      <button class="actionBtn" onclick="Appariement.reset()">↺ Effacer</button>
+      <button class="actionBtn primary" onclick="Appariement.check()">Voir la correction</button>
+      <div class="bottomActionsLine"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════ 2. REMISE EN ORDRE ════════════════ -->
+  <h2 class="sectionTitle">2 · Remise en ordre <span class="engine deplacer">moteur déplacer</span></h2>
+  <p class="sectionIntro">
+    Les éléments arrivent mélangés ; l'élève les fait glisser pour les remettre en place. Le prof les saisit
+    <em>dans le bon ordre</em>, le mélange se fait à l'affichage. Deux gabarits : des mots en file, ou des
+    images en bande.
+  </p>
+
+  <div class="card" data-q="ordre">
+    <div class="cardHead">
+      <span class="num">5</span>
+      <span class="typeLabel">Remise en ordre</span>
+      <span class="pts"><span class="ptsVide">…</span><span>/ 4</span><span class="ptsUnite">pts</span></span>
+    </div>
+    <p class="enonce">Remets les étapes de l'intrigue du <em>Tartuffe</em> dans l'ordre de la pièce.</p>
+    <p class="hint">Glisse un bloc à sa place — ou tape-le, puis tape l'endroit où le poser.</p>
+
+    <div class="reponseZone">
+      <div class="orderStrip vertical" id="ord-zone">
+        <div class="token" data-id="o3"><span class="grip">⣿</span><span class="rank">1</span> Orgon surprend Tartuffe avec Elmire</div>
+        <div class="token" data-id="o1"><span class="grip">⣿</span><span class="rank">2</span> Tartuffe s'installe chez Orgon</div>
+        <div class="token" data-id="o5"><span class="grip">⣿</span><span class="rank">3</span> Le Roi fait arrêter Tartuffe</div>
+        <div class="token" data-id="o2"><span class="grip">⣿</span><span class="rank">4</span> Orgon promet sa fille à Tartuffe</div>
+        <div class="token" data-id="o4"><span class="grip">⣿</span><span class="rank">5</span> Tartuffe fait expulser la famille</div>
+      </div>
+      <div class="result" id="ord-result"></div>
+    </div>
+
+    <div class="bottomActions">
+      <div class="bottomActionsLine"></div>
+      <button class="actionBtn" onclick="Ordre.shuffle()">🔀 Remélanger</button>
+      <button class="actionBtn primary" onclick="Ordre.check()">Voir la correction</button>
+      <div class="bottomActionsLine"></div>
+    </div>
+  </div>
+
+  <div class="card" data-q="ordre-img">
+    <div class="cardHead">
+      <span class="num">6</span>
+      <span class="typeLabel">Remise en ordre — images</span>
+      <span class="pts"><span class="ptsVide">…</span><span>/ 3</span><span class="ptsUnite">pts</span></span>
+    </div>
+    <p class="enonce">Range ces quatre vignettes dans l'ordre chronologique du récit.</p>
+
+    <div class="reponseZone">
+      <div class="orderStrip" id="ordimg-zone"></div>
+      <div class="result" id="ordimg-result"></div>
+    </div>
+
+    <div class="bottomActions">
+      <div class="bottomActionsLine"></div>
+      <button class="actionBtn" onclick="OrdreImg.shuffle()">🔀 Remélanger</button>
+      <button class="actionBtn primary" onclick="OrdreImg.check()">Voir la correction</button>
+      <div class="bottomActionsLine"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════ 3. IMAGE ANNOTÉE ════════════════ -->
+  <h2 class="sectionTitle">3 · Image à annoter <span class="engine deplacer">moteur déplacer</span></h2>
+  <p class="sectionIntro">
+    Le prof pose des points sur l'image (coordonnées en % — <em>la convention déjà utilisée par l'atelier de
+    tracé</em>), et chaque point reçoit une <strong>case de dépôt</strong> à gauche ou à droite, reliée à lui
+    par un trait. L'élève tire les étiquettes de la réserve vers les cases. Correction automatique.
+  </p>
+
+  <div class="card" data-q="annot">
+    <div class="cardHead">
+      <span class="num">7</span>
+      <span class="typeLabel">Image à annoter</span>
+      <span class="pts"><span class="ptsVide">…</span><span>/ 6</span><span class="ptsUnite">pts</span></span>
+    </div>
+    <p class="enonce">Place le vocabulaire du théâtre sur le plan de la salle.</p>
+    <p class="hint">Fais glisser une étiquette dans une case — ou tape-la, puis tape la case.</p>
+
+    <div class="reponseZone">
+      <div class="annotWrap" id="ann-zone">
+        <svg class="leaderSvg" id="ann-leaders"></svg>
+
+        <div class="annotGrid">
+        <div class="slotCol left">
+          <div class="slot" data-slot="A-scene"></div>
+          <div class="slot" data-slot="A-coulisses"></div>
+          <div class="slot" data-slot="A-fosse"></div>
+        </div>
+
+        <div class="annotStage" id="ann-stage">
+          <svg class="plan" viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0" y="0" width="400" height="260" fill="#fdfbf7"/>
+            <!-- scène -->
+            <path d="M120 14 H280 V74 H120 Z" fill="#e7e0d5" stroke="#b5ad9f"/>
+            <!-- coulisses -->
+            <rect x="52" y="14" width="60" height="60" fill="#f0ebe3" stroke="#d5cec4" stroke-dasharray="4 3"/>
+            <rect x="288" y="14" width="60" height="60" fill="#f0ebe3" stroke="#d5cec4" stroke-dasharray="4 3"/>
+            <!-- rideau -->
+            <path d="M112 78 q42 12 88 0 q46 -12 88 0" fill="none" stroke="#b44040" stroke-width="4"/>
+            <!-- fosse -->
+            <ellipse cx="200" cy="98" rx="76" ry="13" fill="#e7e0d5" stroke="#b5ad9f"/>
+            <!-- parterre : rangées de sièges -->
+            <g fill="#cfc6b8">
+              <g><rect x="120" y="122" width="160" height="9" rx="4"/></g>
+              <g><rect x="112" y="139" width="176" height="9" rx="4"/></g>
+              <g><rect x="104" y="156" width="192" height="9" rx="4"/></g>
+              <g><rect x="96"  y="173" width="208" height="9" rx="4"/></g>
+            </g>
+            <!-- balcon -->
+            <path d="M64 214 q136 -34 272 0 v22 q-136 -32 -272 0 Z" fill="#e7e0d5" stroke="#b5ad9f"/>
+            <!-- loges latérales -->
+            <path d="M40 108 q-10 50 0 100 h26 q-10 -50 0 -100 Z" fill="#f0ebe3" stroke="#d5cec4"/>
+            <path d="M360 108 q10 50 0 100 h-26 q10 -50 0 -100 Z" fill="#f0ebe3" stroke="#d5cec4"/>
+          </svg>
+
+          <!-- points posés par le prof, en % -->
+          <span class="anchor" data-anchor="A-scene"     style="left:50%;top:17%">1</span>
+          <span class="anchor" data-anchor="A-coulisses" style="left:20%;top:17%">2</span>
+          <span class="anchor" data-anchor="A-fosse"     style="left:50%;top:38%">3</span>
+          <span class="anchor" data-anchor="A-parterre"  style="left:50%;top:59%">4</span>
+          <span class="anchor" data-anchor="A-loges"     style="left:88%;top:60%">5</span>
+          <span class="anchor" data-anchor="A-balcon"    style="left:50%;top:86%">6</span>
+        </div>
+
+        <div class="slotCol right">
+          <div class="slot" data-slot="A-parterre"></div>
+          <div class="slot" data-slot="A-loges"></div>
+          <div class="slot" data-slot="A-balcon"></div>
+        </div>
+        </div>
+
+        <div class="bank" id="ann-bank" style="margin-top:16px">
+          <span class="bankLabel">Étiquettes à placer</span>
+          <div class="token" data-id="L-scene"     data-good="A-scene">La scène</div>
+          <div class="token" data-id="L-coulisses" data-good="A-coulisses">Les coulisses</div>
+          <div class="token" data-id="L-fosse"     data-good="A-fosse">La fosse</div>
+          <div class="token" data-id="L-parterre"  data-good="A-parterre">Le parterre</div>
+          <div class="token" data-id="L-loges"     data-good="A-loges">Les loges</div>
+          <div class="token" data-id="L-balcon"    data-good="A-balcon">Le balcon</div>
+        </div>
+      </div>
+      <div class="result" id="ann-result"></div>
+    </div>
+
+    <div class="bottomActions">
+      <div class="bottomActionsLine"></div>
+      <button class="actionBtn" onclick="Annot.basculerReserve()">⇅ Réserve en haut / en bas</button>
+      <button class="actionBtn" onclick="Annot.reset()">↺ Effacer</button>
+      <button class="actionBtn primary" onclick="Annot.check()">Voir la correction</button>
+      <div class="bottomActionsLine"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════ 4. ENSEMBLES ════════════════ -->
+  <h2 class="sectionTitle">4 · Ensembles <span class="engine deplacer">moteur déplacer</span></h2>
+  <p class="sectionIntro">
+    Des étiquettes (texte ou image) à ranger dans des ensembles nommés par le prof. On peut toujours
+    ressortir une étiquette et la remettre dans la réserve.
+  </p>
+
+  <div class="card" data-q="ens">
+    <div class="cardHead">
+      <span class="num">8</span>
+      <span class="typeLabel">Ensembles</span>
+      <span class="pts"><span class="ptsVide">…</span><span>/ 6</span><span class="ptsUnite">pts</span></span>
+    </div>
+    <p class="enonce">Range chaque procédé dans la bonne famille de comique.</p>
+    <p class="hint">Glisse une étiquette dans un ensemble — ou tape-la, puis tape l'ensemble.</p>
+
+    <div class="reponseZone">
+      <div class="setsLayout">
+        <div class="bank" id="ens-bank" data-set="bank">
+          <span class="bankLabel">Réserve</span>
+          <div class="token" data-id="e1" data-good="mots">Le jargon savant</div>
+          <div class="token" data-id="e2" data-good="gestes">La bastonnade</div>
+          <div class="token" data-id="e3" data-good="situation">Le quiproquo</div>
+          <div class="token" data-id="e4" data-good="mots">Le coq-à-l'âne</div>
+          <div class="token" data-id="e5" data-good="gestes">La poursuite autour de la table</div>
+          <div class="token" data-id="e6" data-good="situation">Le mari caché sous la table</div>
+        </div>
+
+        <div class="setsRow">
+          <div class="setBox" data-set="mots">
+            <div class="setHead">Comique de mots</div>
+            <div class="setBody"><span class="empty">Dépose ici…</span></div>
+          </div>
+          <div class="setBox" data-set="gestes">
+            <div class="setHead">Comique de gestes</div>
+            <div class="setBody"><span class="empty">Dépose ici…</span></div>
+          </div>
+          <div class="setBox" data-set="situation">
+            <div class="setHead">Comique de situation</div>
+            <div class="setBody"><span class="empty">Dépose ici…</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="result" id="ens-result"></div>
+    </div>
+
+    <div class="bottomActions">
+      <div class="bottomActionsLine"></div>
+      <button class="actionBtn" onclick="Ensembles.reset()">↺ Tout remettre</button>
+      <button class="actionBtn primary" onclick="Ensembles.check()">Voir la correction</button>
+      <div class="bottomActionsLine"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════ ANNEXE ════════════════ -->
+  <h2 class="sectionTitle" style="margin-top:48px">Annexe — les trois enrichissements de la phase 1</h2>
+  <p class="sectionIntro">
+    Ceux-là ne sont pas des briques nouvelles : ils se codent directement. Ils sont ici pour que tu puisses
+    les critiquer dans le même tour.
+  </p>
+
+  <div class="card">
+    <div class="cardHead">
+      <span class="num">9</span>
+      <span class="typeLabel">Matrice</span>
+      <span class="pts"><span class="ptsVide">…</span><span>/ 4</span><span class="ptsUnite">pts</span></span>
+    </div>
+    <p class="enonce">Pour chaque affirmation, dis à quelle fréquence cela t'arrive.</p>
+    <div class="reponseZone">
+      <table class="matrix">
+        <thead>
+          <tr><th>Quand je lis une œuvre longue…</th><th>Jamais</th><th>Parfois</th><th>Souvent</th><th>Toujours</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>je relis un passage que je n'ai pas compris</th>
+            <td><input type="radio" name="m1"></td><td><input type="radio" name="m1"></td><td><input type="radio" name="m1" checked></td><td><input type="radio" name="m1"></td></tr>
+          <tr><th>je cherche un mot dans le dictionnaire</th>
+            <td><input type="radio" name="m2"></td><td><input type="radio" name="m2" checked></td><td><input type="radio" name="m2"></td><td><input type="radio" name="m2"></td></tr>
+          <tr><th>je note ce que je veux retenir</th>
+            <td><input type="radio" name="m3" checked></td><td><input type="radio" name="m3"></td><td><input type="radio" name="m3"></td><td><input type="radio" name="m3"></td></tr>
+          <tr><th>j'abandonne avant la fin</th>
+            <td><input type="radio" name="m4"></td><td><input type="radio" name="m4"></td><td><input type="radio" name="m4" checked></td><td><input type="radio" name="m4"></td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12px;color:var(--c-text-muted);margin:10px 0 0">
+        Mêmes colonnes pour tous les items — c'est tout l'objet du type. En lecture, le prof coche la
+        colonne attendue par ligne et le barème est <strong>partiel</strong> (3 lignes justes sur 4 → 3&nbsp;pts
+        sur 4). En auto-évaluation, aucune colonne n'est « juste ».
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cardHead">
+      <span class="num">10</span>
+      <span class="typeLabel">QCM à réponses multiples</span>
+      <span class="pts"><span class="ptsVide">…</span><span>/ 3</span><span class="ptsUnite">pts</span></span>
+    </div>
+    <p class="enonce">Quels registres se croisent dans <em>Le Misanthrope</em> ? <em style="color:var(--c-text-muted);font-size:12.5px">(plusieurs réponses)</em></p>
+    <div class="reponseZone">
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <label style="display:flex;gap:8px;align-items:center;background:var(--c-bg);border:1px solid var(--c-border);border-radius:8px;padding:8px 12px;cursor:pointer"><input type="checkbox" checked style="accent-color:var(--c-primary)"> Le comique</label>
+        <label style="display:flex;gap:8px;align-items:center;background:var(--c-bg);border:1px solid var(--c-border);border-radius:8px;padding:8px 12px;cursor:pointer"><input type="checkbox" checked style="accent-color:var(--c-primary)"> Le satirique</label>
+        <label style="display:flex;gap:8px;align-items:center;background:var(--c-bg);border:1px solid var(--c-border);border-radius:8px;padding:8px 12px;cursor:pointer"><input type="checkbox" style="accent-color:var(--c-primary)"> Le fantastique</label>
+        <label style="display:flex;gap:8px;align-items:center;background:var(--c-bg);border:1px solid var(--c-border);border-radius:8px;padding:8px 12px;cursor:pointer"><input type="checkbox" checked style="accent-color:var(--c-primary)"> Le tragique</label>
+      </div>
+      <p style="font-size:12px;color:var(--c-text-muted);margin:10px 0 0">
+        Cases à cocher au lieu de boutons ronds : la forme dit à elle seule qu'on peut en prendre
+        plusieurs. Barème partiel, une coche fausse annule une coche juste — sinon tout cocher rapporte tout.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cardHead">
+      <span class="num">11</span>
+      <span class="typeLabel">Souligner du texte — par catégories</span>
+      <span class="pts"><span class="ptsVide">…</span><span>/ 5</span><span class="ptsUnite">pts</span></span>
+    </div>
+    <p class="enonce">Marque le sujet en rouge, le verbe conjugué en vert, le complément direct en bleu.</p>
+    <div class="reponseZone">
+      <div class="fluoLegend" id="fluo-legend">
+        <span class="fluoCat active" data-cat="rouge"><span class="swatch" style="background:var(--fluo-rouge)"></span>Sujet</span>
+        <span class="fluoCat" data-cat="vert"><span class="swatch" style="background:var(--fluo-vert)"></span>Verbe conjugué</span>
+        <span class="fluoCat" data-cat="bleu"><span class="swatch" style="background:var(--fluo-bleu)"></span>Complément direct</span>
+        <span class="fluoCat" data-cat="gomme"><span class="swatch" style="background:#fff"></span>Gomme</span>
+      </div>
+      <p class="fluoText" id="fluo-text"></p>
+      <p style="font-size:12px;color:var(--c-text-muted);margin:10px 0 0">
+        Une catégorie = un libellé + une couleur, définis par le prof. <strong>Sans catégorie, le
+        comportement actuel est intact</strong> : les questionnaires déjà écrits ne bougent pas.
+      </p>
+    </div>
+  </div>
+
+  <footer class="end">
+    Maquette — <code>harnais/plans/maquette-types-questions.html</code> · deux moteurs, quatre types ·
+    barème partiel · glisser au pointeur avec rattrapage au tap.
+  </footer>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   SOCLE COMMUN — un seul gestionnaire de glisser au pointeur.
+   Marche au doigt, au pavé et à la souris. Un appui sans mouvement
+   (< 5 px) est traité comme un « tap » : il arme l'élément.
+   ══════════════════════════════════════════════════════════════════ */
+const SEUIL = 5;
+
+function draggable(el, handlers) {
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button > 0) return;
+    e.preventDefault();
+    const start = { x: e.clientX, y: e.clientY };
+    let moved = false;
+    try { el.setPointerCapture(e.pointerId); } catch (_) {}
+
+    const move = (ev) => {
+      if (!moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > SEUIL) {
+        moved = true;
+        handlers.onStart && handlers.onStart(ev);
+      }
+      if (moved) handlers.onMove && handlers.onMove(ev);
+    };
+    const up = (ev) => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      if (moved) handlers.onDrop && handlers.onDrop(ev);
+      else handlers.onTap && handlers.onTap(ev);
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  });
+}
+
+// Que vise le doigt ? (le fantôme est en pointer-events:none, il ne gêne pas)
+function cibleSous(ev, selecteur, racine) {
+  const el = document.elementFromPoint(ev.clientX, ev.clientY);
+  if (!el) return null;
+  const t = el.closest(selecteur);
+  if (!t) return null;
+  if (racine && !racine.contains(t)) return null;
+  return t;
+}
+
+const bandeau = (id, txt, ton) => {
+  const b = document.getElementById(id);
+  b.textContent = txt;
+  b.className = 'result show ' + ton;
+};
+const ton = (r) => (r >= .8 ? 'good' : r >= .4 ? 'mid' : 'bad');
+const note = (justes, total, bareme) => {
+  const p = Math.round((justes / total) * bareme * 10) / 10;
+  return `${justes} sur ${total} — ${String(p).replace('.', ',')} / ${bareme} pts`;
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   MOTEUR 1 — RELIER
+   Sources (data-side="g") ↔ cibles (data-side="d"), un trait entre les deux.
+   Sert à l'APPARIEMENT et à l'IMAGE ANNOTÉE, sans une ligne de différence.
+   ══════════════════════════════════════════════════════════════════ */
+function creerRelier({ zone, svg, corrige, bareme, resultId, selecteur }) {
+  const liens = new Map();          // idGauche -> idDroite
+  let arme = null;                  // tap : première pastille touchée
+  let tempLine = null;
+  let corrigeAffiche = false;
+
+  const pastilles = () => [...zone.querySelectorAll(selecteur)];
+  const par = (id) => zone.querySelector(`${selecteur}[data-id="${id}"]`);
+
+  const centre = (el) => {
+    const r = el.getBoundingClientRect();
+    const z = zone.getBoundingClientRect();
+    return { x: r.left + r.width / 2 - z.left, y: r.top + r.height / 2 - z.top };
+  };
+
+  function dessiner() {
+    svg.innerHTML = '';
+    // les traits attendus, en pointillé, quand la correction est affichée
+    if (corrigeAffiche) {
+      Object.entries(corrige).forEach(([g, d]) => {
+        if (liens.get(g) === d) return;      // déjà tracé en vert
+        trace(g, d, 'att');
+      });
+    }
+    liens.forEach((d, g) => {
+      let cls = '';
+      if (corrigeAffiche) cls = corrige[g] === d ? 'ok' : 'ko';
+      trace(g, d, cls);
+    });
+    pastilles().forEach((p) => {
+      const relie = [...liens.keys()].includes(p.dataset.id) || [...liens.values()].includes(p.dataset.id);
+      p.classList.toggle('linked', relie);
+    });
+  }
+
+  function trace(gId, dId, cls) {
+    const a = par(gId), b = par(dId);
+    if (!a || !b) return;
+    const ca = centre(a), cb = centre(b);
+    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', ca.x); l.setAttribute('y1', ca.y);
+    l.setAttribute('x2', cb.x); l.setAttribute('y2', cb.y);
+    if (cls) l.setAttribute('class', cls);
+    svg.appendChild(l);
+  }
+
+  function poser(a, b) {
+    const g = a.dataset.side === 'g' ? a : b;
+    const d = a.dataset.side === 'g' ? b : a;
+    if (g.dataset.side === d.dataset.side) return;    // même colonne : refusé
+    // 1 pour 1 : on libère les deux extrémités avant de lier
+    liens.delete(g.dataset.id);
+    [...liens.entries()].forEach(([k, v]) => { if (v === d.dataset.id) liens.delete(k); });
+    liens.set(g.dataset.id, d.dataset.id);
+    corrigeAffiche = false;
+    document.getElementById(resultId).className = 'result';
+    dessiner();
+  }
+
+  function desarmer() {
+    if (arme) arme.classList.remove('armed');
+    arme = null;
+    pastilles().forEach((p) => p.classList.remove('candidate'));
+  }
+
+  pastilles().forEach((p) => {
+    draggable(p, {
+      onStart() {
+        desarmer();
+        const c = centre(p);
+        tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        tempLine.setAttribute('class', 'temp');
+        tempLine.setAttribute('x1', c.x); tempLine.setAttribute('y1', c.y);
+        tempLine.setAttribute('x2', c.x); tempLine.setAttribute('y2', c.y);
+        svg.appendChild(tempLine);
+        pastilles().forEach((q) => {
+          if (q.dataset.side !== p.dataset.side) q.classList.add('candidate');
+        });
+      },
+      onMove(ev) {
+        const z = zone.getBoundingClientRect();
+        tempLine.setAttribute('x2', ev.clientX - z.left);
+        tempLine.setAttribute('y2', ev.clientY - z.top);
+        pastilles().forEach((q) => q.classList.remove('dropping'));
+        const t = cibleSous(ev, selecteur, zone);
+        if (t && t !== p && t.dataset.side !== p.dataset.side) t.classList.add('dropping');
+      },
+      onDrop(ev) {
+        const t = cibleSous(ev, selecteur, zone);
+        pastilles().forEach((q) => q.classList.remove('candidate', 'dropping'));
+        if (tempLine) { tempLine.remove(); tempLine = null; }
+        if (t && t !== p && t.dataset.side !== p.dataset.side) poser(p, t);
+        else dessiner();
+      },
+      onTap() {
+        if (!arme) {
+          arme = p;
+          p.classList.add('armed');
+          pastilles().forEach((q) => {
+            if (q.dataset.side !== p.dataset.side) q.classList.add('candidate');
+          });
+        } else if (arme === p) {
+          desarmer();
+        } else if (arme.dataset.side !== p.dataset.side) {
+          const a = arme; desarmer(); poser(a, p);
+        } else {
+          desarmer(); arme = p; p.classList.add('armed');
+        }
+      },
+    });
+  });
+
+  new ResizeObserver(dessiner).observe(zone);
+  window.addEventListener('resize', dessiner);
+
+  return {
+    reset() { liens.clear(); corrigeAffiche = false; desarmer();
+      document.getElementById(resultId).className = 'result'; dessiner(); },
+    check() {
+      corrigeAffiche = true;
+      const total = Object.keys(corrige).length;
+      let justes = 0;
+      Object.entries(corrige).forEach(([g, d]) => { if (liens.get(g) === d) justes++; });
+      dessiner();
+      bandeau(resultId, note(justes, total, bareme), ton(justes / total));
+    },
+  };
+}
+
+/* ── 1. Appariement ── */
+const Appariement = creerRelier({
+  zone: document.getElementById('app-zone'),
+  svg: document.getElementById('app-svg'),
+  selecteur: '.dot',
+  corrige: { g1: 'd1', g2: 'd2', g3: 'd3', g4: 'd4', g5: 'd4' },
+  bareme: 5,
+  resultId: 'app-result',
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   MOTEUR 2 — DÉPLACER
+   Un jeton qu'on prend et qu'on repose ailleurs. Deux modes de dépôt :
+     · 'ordre'  → entre deux jetons (remise en ordre)
+     · 'zone'   → dans un conteneur (ensembles, cases de l'image annotée)
+
+   ⚠️ Le point qui faisait accrocher la 1re maquette : en mode 'ordre', le
+   jeton saisi est SORTI DU FLUX (display:none) et remplacé par un TROU de
+   même taille. C'est le trou qu'on déplace, jamais le jeton. Sans cela, le
+   jeton se réinsère sous le doigt à chaque mouvement, décale ses voisins,
+   se retrouve ailleurs qu'où on le tient — et le geste devient impossible.
+   Bonus : le calcul du point d'insertion ne rencontre plus le jeton déplacé,
+   donc il ne peut plus se comparer à lui-même.
+   ══════════════════════════════════════════════════════════════════ */
+function creerDeplacer({ racine, mode, zonesSel, unique = false, onChange }) {
+  let ghost = null, trou = null, arme = null, origine = null, dx = 0, dy = 0;
+
+  const zones = () => [...racine.querySelectorAll(zonesSel)];
+  const corps = (z) => z.querySelector('.setBody') || z;
+
+  function majVides() {
+    zones().forEach((z) => {
+      const b = corps(z);
+      const v = b.querySelector('.empty');
+      if (v) v.style.display = b.querySelector('.token') ? 'none' : '';
+    });
+  }
+
+  // Devant quel voisin insérer ? Géométrie pure, sur le bon axe.
+  function voisin(body, ev) {
+    const vertical = body.classList.contains('vertical');
+    return [...body.children].find((c) => {
+      if (!c.classList.contains('token') || c.style.display === 'none') return false;
+      const r = c.getBoundingClientRect();
+      return vertical ? ev.clientY < r.top + r.height / 2
+                      : ev.clientX < r.left + r.width / 2;
+    }) || null;
+  }
+
+  function poser(zone, jeton, ev) {
+    const body = corps(zone);
+    if (mode === 'ordre') {
+      body.insertBefore(jeton, voisin(body, ev));
+    } else {
+      // Une case ne tient qu'une étiquette : l'occupant repart d'où vient
+      // la nouvelle — un échange, pas une éjection dans le vide.
+      if (unique) {
+        const occupant = [...body.children].find((c) => c.classList.contains('token') && c !== jeton);
+        if (occupant && origine) origine.appendChild(occupant);
+      }
+      body.appendChild(jeton);
+    }
+    majVides();
+    onChange && onChange();
+  }
+
+  function brancher(jeton) {
+    draggable(jeton, {
+      onStart(ev) {
+        if (arme) { arme.classList.remove('armed'); arme = null; }
+        const r = jeton.getBoundingClientRect();
+        dx = ev.clientX - r.left;
+        dy = ev.clientY - r.top;
+        origine = jeton.parentElement;
+
+        ghost = jeton.cloneNode(true);
+        ghost.classList.add('ghost');
+        ghost.style.width = r.width + 'px';
+        ghost.style.height = r.height + 'px';
+        ghost.style.left = r.left + 'px';
+        ghost.style.top = r.top + 'px';
+        document.body.appendChild(ghost);
+
+        if (mode === 'ordre') {
+          trou = document.createElement('div');
+          trou.className = 'placeholder';
+          trou.style.width = r.width + 'px';
+          trou.style.height = r.height + 'px';
+          jeton.parentElement.insertBefore(trou, jeton);
+          jeton.style.display = 'none';       // hors du flux : plus rien ne bouge sous le doigt
+        } else {
+          jeton.classList.add('grabbed');
+        }
+      },
+
+      onMove(ev) {
+        ghost.style.left = ev.clientX - dx + 'px';
+        ghost.style.top = ev.clientY - dy + 'px';
+        const z = cibleSous(ev, zonesSel, racine);
+        zones().forEach((q) => q.classList.toggle('dropping', q === z));
+        if (mode === 'ordre' && z && trou) {
+          const body = corps(z);
+          const cible = voisin(body, ev);
+          if (cible !== trou.nextElementSibling || trou.parentElement !== body) {
+            body.insertBefore(trou, cible);
+          }
+        }
+      },
+
+      onDrop(ev) {
+        const z = cibleSous(ev, zonesSel, racine);
+        if (mode === 'ordre') {
+          jeton.style.display = '';
+          if (trou) {
+            trou.parentElement.insertBefore(jeton, trou);   // le jeton prend la place du trou
+            trou.remove();
+            trou = null;
+          }
+        } else {
+          jeton.classList.remove('grabbed');
+          if (z) poser(z, jeton, ev);
+        }
+        zones().forEach((q) => q.classList.remove('dropping'));
+        ghost && ghost.remove();
+        ghost = null;
+        majVides();
+        onChange && onChange();
+      },
+
+      onTap() {
+        if (arme === jeton) { jeton.classList.remove('armed'); arme = null; return; }
+        if (arme) arme.classList.remove('armed');
+        arme = jeton;
+        origine = jeton.parentElement;
+        jeton.classList.add('armed');
+      },
+    });
+  }
+
+  // Tap sur une zone : on y pose le jeton armé
+  zones().forEach((z) => {
+    z.addEventListener('click', (ev) => {
+      if (!arme) return;
+      if (ev.target.closest('.token') === arme) return;
+      const j = arme;
+      arme = null;
+      j.classList.remove('armed');
+      poser(z, j, ev);
+    });
+  });
+
+  racine.querySelectorAll('.token').forEach(brancher);
+  majVides();
+  return { brancher, majVides };
+}
+
+/* ── 2. Remise en ordre (mots) ── */
+const ordZone = document.getElementById('ord-zone');
+const ORDRE_BON = ['o1', 'o2', 'o3', 'o4', 'o5'];
+
+function rangs(zone) {
+  [...zone.querySelectorAll('.token')].forEach((t, i) => {
+    const r = t.querySelector('.rank');
+    if (r) r.textContent = i + 1;
+  });
+}
+function melanger(zone) {
+  const t = [...zone.querySelectorAll('.token')];
+  t.sort(() => Math.random() - 0.5).forEach((x) => {
+    x.className = 'token';
+    zone.appendChild(x);
+  });
+  rangs(zone);
+}
+
+creerDeplacer({
+  racine: ordZone.parentElement,
+  mode: 'ordre',
+  zonesSel: '.orderStrip',
+  onChange: () => rangs(ordZone),
+});
+
+const Ordre = {
+  shuffle() { melanger(ordZone); document.getElementById('ord-result').className = 'result'; },
+  check() {
+    const ids = [...ordZone.querySelectorAll('.token')].map((t) => t.dataset.id);
+    let justes = 0;
+    ids.forEach((id, i) => {
+      const t = ordZone.querySelector(`.token[data-id="${id}"]`);
+      const ok = ORDRE_BON[i] === id;
+      t.classList.toggle('ok', ok);
+      t.classList.toggle('ko', !ok);
+      if (ok) justes++;
+    });
+    bandeau('ord-result', note(justes, ORDRE_BON.length, 4), ton(justes / ORDRE_BON.length));
+  },
+};
+rangs(ordZone);
+
+/* ── 2 bis. Remise en ordre (images) ── */
+const vign = (n, txt, teinte) =>
+  `data:image/svg+xml;utf8,` + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80">
+       <rect width="120" height="80" fill="${teinte}"/>
+       <circle cx="60" cy="32" r="15" fill="rgba(255,255,255,.55)"/>
+       <text x="60" y="38" font-family="Georgia" font-size="15" fill="#3d3832" text-anchor="middle">${n}</text>
+       <text x="60" y="66" font-family="Inter,sans-serif" font-size="10" fill="#3d3832" text-anchor="middle">${txt}</text>
+     </svg>`);
+
+const VIGNETTES = [
+  { id: 'v1', src: vign('I', 'exposition', '#e7e0d5') },
+  { id: 'v2', src: vign('II', 'nœud', '#dfe8e2') },
+  { id: 'v3', src: vign('III', 'péripétie', '#efe2d2') },
+  { id: 'v4', src: vign('IV', 'dénouement', '#e3ddec') },
+];
+const ORDIMG_BON = ['v1', 'v2', 'v3', 'v4'];
+const ordImgZone = document.getElementById('ordimg-zone');
+VIGNETTES.forEach((v) => {
+  const d = document.createElement('div');
+  d.className = 'token';
+  d.dataset.id = v.id;
+  d.innerHTML = `<span class="rank"></span><img alt="" src="${v.src}">`;
+  ordImgZone.appendChild(d);
+});
+creerDeplacer({
+  racine: ordImgZone.parentElement,
+  mode: 'ordre',
+  zonesSel: '.orderStrip',
+  onChange: () => rangs(ordImgZone),
+});
+const OrdreImg = {
+  shuffle() { melanger(ordImgZone); document.getElementById('ordimg-result').className = 'result'; },
+  check() {
+    const ids = [...ordImgZone.querySelectorAll('.token')].map((t) => t.dataset.id);
+    let justes = 0;
+    ids.forEach((id, i) => {
+      const t = ordImgZone.querySelector(`.token[data-id="${id}"]`);
+      const ok = ORDIMG_BON[i] === id;
+      t.classList.toggle('ok', ok);
+      t.classList.toggle('ko', !ok);
+      if (ok) justes++;
+    });
+    bandeau('ordimg-result', note(justes, ORDIMG_BON.length, 3), ton(justes / ORDIMG_BON.length));
+  },
+};
+melanger(ordImgZone);
+
+/* ── 4. Ensembles ── */
+const ensRacine = document.querySelector('[data-q="ens"] .setsLayout');
+creerDeplacer({
+  racine: ensRacine,
+  mode: 'zone',
+  zonesSel: '.setBox, .bank',
+});
+const Ensembles = {
+  reset() {
+    const bank = document.getElementById('ens-bank');
+    ensRacine.querySelectorAll('.token').forEach((t) => {
+      t.className = 'token';
+      bank.appendChild(t);
+    });
+    ensRacine.querySelectorAll('.setBody .empty').forEach((e) => (e.style.display = ''));
+    document.getElementById('ens-result').className = 'result';
+  },
+  check() {
+    const jetons = [...ensRacine.querySelectorAll('.token')];
+    let justes = 0;
+    jetons.forEach((t) => {
+      const box = t.closest('[data-set]');
+      const ok = box && box.dataset.set === t.dataset.good;
+      t.classList.toggle('ok', !!ok);
+      t.classList.toggle('ko', !ok);
+      if (ok) justes++;
+    });
+    bandeau('ens-result', note(justes, jetons.length, 6), ton(justes / jetons.length));
+  },
+};
+
+/* ── 3. Image annotée — moteur DÉPLACER, cases uniques ──
+   Les traits case ↔ point sont posés par le PROF : ils sont là dès l'ouverture
+   et l'élève n'y touche jamais. Lui ne fait que remplir les cases. ── */
+const annZone = document.getElementById('ann-zone');
+const annBank = document.getElementById('ann-bank');
+const annLeaders = document.getElementById('ann-leaders');
+
+function tracerLeaders(etats) {
+  const z = annZone.getBoundingClientRect();
+  annLeaders.innerHTML = '';
+  annZone.querySelectorAll('.slot').forEach((slot) => {
+    const point = annZone.querySelector(`.anchor[data-anchor="${slot.dataset.slot}"]`);
+    if (!point) return;
+    const rs = slot.getBoundingClientRect();
+    const rp = point.getBoundingClientRect();
+    const gauche = slot.closest('.slotCol').classList.contains('left');
+    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', (gauche ? rs.right : rs.left) - z.left);
+    l.setAttribute('y1', rs.top + rs.height / 2 - z.top);
+    l.setAttribute('x2', rp.left + rp.width / 2 - z.left);
+    l.setAttribute('y2', rp.top + rp.height / 2 - z.top);
+    const e = etats && etats[slot.dataset.slot];
+    if (e) l.setAttribute('class', e);
+    annLeaders.appendChild(l);
+  });
+}
+
+creerDeplacer({
+  racine: annZone,
+  mode: 'zone',
+  unique: true,
+  zonesSel: '.slot, #ann-bank',
+  onChange: () => tracerLeaders(),
+});
+
+const Annot = {
+  // Réserve au-dessus ou en dessous — un réglage du prof, pas un choix de l'app
+  basculerReserve() {
+    const grille = annZone.querySelector('.annotGrid');
+    const bankEnHaut = !!(annBank.compareDocumentPosition(grille) & Node.DOCUMENT_POSITION_FOLLOWING);
+    if (bankEnHaut) {
+      annZone.appendChild(annBank);
+      annBank.style.margin = '16px 0 0';
+    } else {
+      annZone.insertBefore(annBank, grille);
+      annBank.style.margin = '0 0 16px';
+    }
+    tracerLeaders();
+  },
+  reset() {
+    annZone.querySelectorAll('.token').forEach((t) => {
+      t.className = 'token';
+      annBank.appendChild(t);
+    });
+    annZone.querySelectorAll('.slot').forEach((s) => {
+      s.classList.remove('ok', 'ko');
+      const a = s.querySelector('.attendu');
+      if (a) a.remove();
+    });
+    document.getElementById('ann-result').className = 'result';
+    tracerLeaders();
+  },
+  check() {
+    const slots = [...annZone.querySelectorAll('.slot')];
+    const etats = {};
+    let justes = 0;
+    slots.forEach((s) => {
+      const a = s.querySelector('.attendu');
+      if (a) a.remove();
+      const jeton = [...s.children].find((c) => c.classList.contains('token'));
+      const ok = jeton && jeton.dataset.good === s.dataset.slot;
+      s.classList.toggle('ok', !!ok);
+      s.classList.toggle('ko', !ok);
+      etats[s.dataset.slot] = ok ? 'ok' : 'ko';
+      if (jeton) { jeton.classList.toggle('ok', !!ok); jeton.classList.toggle('ko', !ok); }
+      if (!ok) {
+        // Ce qu'on attendait, dit sur place — pas dans un bandeau au loin
+        const attendu = annZone.querySelector(`.token[data-good="${s.dataset.slot}"]`);
+        const sp = document.createElement('span');
+        sp.className = 'attendu';
+        sp.textContent = attendu ? attendu.textContent : '';
+        s.appendChild(sp);
+      }
+      if (ok) justes++;
+    });
+    tracerLeaders(etats);
+    bandeau('ann-result', note(justes, slots.length, 6), ton(justes / slots.length));
+  },
+};
+// Les étiquettes arrivent mélangées — sinon l'ordre de la réserve donne la réponse
+[...annBank.querySelectorAll('.token')]
+  .sort(() => Math.random() - 0.5)
+  .forEach((t) => annBank.appendChild(t));
+
+tracerLeaders();
+new ResizeObserver(() => tracerLeaders()).observe(annZone);
+window.addEventListener('resize', () => tracerLeaders());
+
+/* ── Annexe : fluorage par catégories ── */
+const PHRASE = "Le vieil Harpagon cachait sa cassette dans le jardin depuis des années .";
+const COULEURS = { rouge: 'var(--fluo-rouge)', vert: 'var(--fluo-vert)', bleu: 'var(--fluo-bleu)' };
+let catActive = 'rouge';
+const fluoTexte = document.getElementById('fluo-text');
+PHRASE.split(' ').forEach((mot, i) => {
+  const s = document.createElement('span');
+  s.className = 'w';
+  s.textContent = mot;
+  s.dataset.i = i;
+  s.addEventListener('click', () => {
+    if (catActive === 'gomme') { s.style.background = ''; s.dataset.cat = ''; return; }
+    if (s.dataset.cat === catActive) { s.style.background = ''; s.dataset.cat = ''; return; }
+    s.style.background = COULEURS[catActive];
+    s.dataset.cat = catActive;
+  });
+  fluoTexte.appendChild(s);
+  fluoTexte.appendChild(document.createTextNode(' '));
+});
+document.querySelectorAll('#fluo-legend .fluoCat').forEach((c) => {
+  c.addEventListener('click', () => {
+    document.querySelectorAll('#fluo-legend .fluoCat').forEach((x) => x.classList.remove('active'));
+    c.classList.add('active');
+    catActive = c.dataset.cat;
+  });
+});
+</script>
+</body>
+</html>

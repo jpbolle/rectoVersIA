@@ -400,3 +400,101 @@ comportement : l'exception est écrite en tête des deux fichiers.
 - [ ] Sélecteur « prendre un extrait dans une œuvre » dans `LectureQuizBuilder`
       (l'œuvre comme réservoir d'extraits).
 - [ ] Le bouton « Prendre une note » de la maquette : toujours pas implémenté.
+
+---
+
+# Session du 2026-08-16 (suite) — l'outil d'édition
+
+> Tout est livré, `tsc` / `eslint` / `build` passent. **Testé et approuvé par
+> JP** : le divider au sein d'un extrait (« c'est génial »), la découpe en
+> nouvelle section, et le figement des barres après trois diagnostics erronés.
+
+## Le problème que ça règle
+
+Encoder une scène réplique par réplique — un bloc, une tirade, un locuteur, on
+recommence — décourage avant la dixième. **On colle la scène entière dans un
+bloc, puis on la découpe de l'intérieur.**
+
+## L'outil d'édition (interrupteur, ligne des onglets)
+
+La souris passe entre deux lignes → un trait apparaît, avec **six gestes** :
+
+| Geste | Effet |
+|---|---|
+| ✂ Couper ici | Sépare le bloc en deux. **Intra-bloc seulement** — entre deux blocs il n'y a rien à séparer |
+| ℹ Bloc informatif · 📝 Extrait · 🎬 Vidéo | **Popup de saisie** : on colle, le bloc arrive rempli |
+| 🖼 Image | Ouvre directement le sélecteur de fichier — son « champ », c'est celui-là |
+| 📄 Nouvelle section | Tout ce qui suit part dans une nouvelle section, **placée juste après** la scène courante |
+
+- **Flux continu** : en édition, les cartes de blocs disparaissent et la scène
+  s'affiche d'un seul tenant. C'est la lecture suivie qui permet de décider où
+  couper ; les en-têtes de cartes la hachaient.
+- **Traits entre les blocs aussi**, pas seulement à l'intérieur.
+- **Rien au repos** à l'intérieur d'un bloc (JP : « je ne vois pas ce qu'elles
+  apportent ») ; une frontière à peine soufflée entre deux blocs.
+- Un **bloc vide** s'annonce dans le flux avec un ✕ Supprimer.
+- Le prof colle son texte **là où il vient de décider de le poser** : poser un
+  bloc vide l'obligeait à quitter l'outil, retrouver le bloc, coller, revenir.
+
+## Détection du locuteur
+
+`src/lib/oeuvre-decoupe.ts` — à la découpe, une ligne courte et en capitales
+(« ORGON », « MADAME PERNELLE », « DORINE, à Orgon. ») sort du texte et remplit
+le champ Locuteur, **sur les deux moitiés** : à la première coupure, le nom du
+personnage de la première réplique est encore dans le haut.
+
+Volontairement **strict** (≤ 60 caractères, ≥ 80 % de capitales avant la
+virgule, pas de `!` `?` `…` final) : une fausse détection ampute le texte d'une
+ligne, bien plus coûteux qu'un locuteur à retaper. Vérifié par 20 cas sur une
+scène de Molière réelle.
+
+Un bloc HTML se coupe **entre éléments de premier niveau**, jamais au milieu
+d'une balise — une liste `<ul>` reste entière.
+
+## ⚠️ `position: sticky` — le piège qui a coûté trois tours
+
+Consigné dans `INIT.md` § Gotchas. En résumé :
+
+- Une barre collante se cale **sous la marge intérieure haute** du conteneur
+  qui défile, pas au bord visible → une bande transparente s'ouvre au-dessus
+  d'elle et le texte y réapparaît.
+- Une marge négative sur la barre **aggrave** : le calage retient la boîte des
+  **marges**, pas le bord peint.
+- Solution retenue : `.editeur` en **deux étages** — `.editeurScroll` (sans
+  marge intérieure haute, l'espace rendu par un `::before` qui défile) et un
+  pied **hors du défilement**, donc plus collant du tout.
+
+Ce qui a permis de trancher : **une capture d'écran de JP**, où la ligne
+d'aide — postérieure à la barre dans le code — s'affichait au-dessus d'elle.
+Trois hypothèses (fond transparent, z-index, marge négative) avaient été
+tentées à l'aveugle avant.
+
+## Autres ajouts de la session
+
+- **Couverture du livre** : premier élément déposé dans le constructeur
+  (`Oeuvre.couverture`), vignette sur la carte de la bibliothèque à la place du
+  `📖` générique. Enregistrée immédiatement — elle n'appartient à aucune
+  section et serait perdue au premier changement de scène. Suit la duplication
+  (même ressource, pas de copie du base64).
+- **Pastille du sommaire élève à trois états** : gris (ouverte) · orange
+  (activité : verso consulté, mot cherché au dictionnaire) · vert (vérification
+  faite — ou activité suffisante si la scène n'a pas de formulaire). Nouveau
+  champ `OeuvreSectionEtat.agiLe`, règle unique dans `etatPastille()`.
+  `agiLe` ne s'écrit **qu'une fois par scène** : sinon chaque mot cliqué
+  déclencherait une sauvegarde. N'entre dans **aucun** compteur de progression.
+- **« Prendre un extrait dans une œuvre »** dans `LectureQuizBuilder` (demande
+  du 15/08, cf. plus haut) : livre → scène → passages cochés, collés **en texte
+  brut** dans le texte joint ou le texte à souligner. Pas une référence vivante :
+  une citation d'interrogation notée ne doit pas changer sous les pieds de
+  l'élève parce que le prof a corrigé une coquille.
+
+## Reste à faire
+- [ ] **Commentaires du prof sur des mots** — demandé, non commencé. Ancrage
+      arbitré : par **indices de mots** (un seul mécanisme pour les blocs
+      `texte` en HTML et `vers` en texte brut) ; `FluoExtrait` fait déjà le
+      geste de sélection décrit par JP. Le 3ᵉ déclencheur de la pastille orange
+      (« ouvrir un commentaire ») attend cette brique — le point d'entrée
+      `onActivite` est déjà en place.
+- [ ] Profil : les deux indicateurs dans l'onglet Lire, la notification de
+      rythme (5ᵉ type) — inchangé depuis le 15.
+- [ ] Les seuils de la notification (7 jours ? marge de 2 ?) — toujours non validés.

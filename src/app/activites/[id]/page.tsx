@@ -613,6 +613,14 @@ export default function TravailPage() {
         <DictionaryClickLayer
           enabled={dictionaryEnabled && !isVocabulaire && (isOeuvre || isLectureQuiz || isAutoEval || isRecherche)}
           className={styles.colonneTravail}
+          // Chercher un mot dans une œuvre, c'est lire : la scène passe à
+          // l'orange dans le sommaire. Ailleurs, le signal n'intéresse
+          // personne — d'où le garde-fou sur l'atelier et sur la scène ouverte.
+          onMotCherche={
+            isOeuvre && oeuvreLecture.sectionId
+              ? () => oeuvreLecture.marquerActivite(oeuvreLecture.sectionId!)
+              : undefined
+          }
         >
         {/* Colonne 1 : zone de travail (prend l'espace restant) */}
         {isVocabulaire ? (
@@ -705,6 +713,7 @@ export default function TravailPage() {
               onReculer={oeuvreLecture.reculer}
               onAvancer={oeuvreLecture.avancer}
               onSectionVue={oeuvreLecture.marquerVue}
+              onActivite={oeuvreLecture.marquerActivite}
               onVerificationTerminee={oeuvreLecture.marquerTerminee}
               lectureSeule={isPreviewMode}
             />

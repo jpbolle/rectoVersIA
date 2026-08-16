@@ -72,6 +72,10 @@ interface Props {
   chapitres: OeuvreChapitre[];
   sectionCourante: string | null;
   occupe: boolean;
+  /** Couverture du livre — le premier élément qu'on dépose, avant les chapitres */
+  couverture?: { url: string; fileId: string } | null;
+  onDeposerCouverture?: () => void;
+  onRetirerCouverture?: () => void;
   onOuvrirSection: (id: string) => void;
   onAjouterChapitre: () => void;
   onRenommerChapitre: (id: string) => void;
@@ -84,6 +88,9 @@ export default function OeuvreSommaireEditable({
   chapitres,
   sectionCourante,
   occupe,
+  couverture = null,
+  onDeposerCouverture,
+  onRetirerCouverture,
   onOuvrirSection,
   onAjouterChapitre,
   onRenommerChapitre,
@@ -147,6 +154,43 @@ export default function OeuvreSommaireEditable({
 
   return (
     <aside className={styles.sommaire}>
+      {/* ── LA COUVERTURE, EN PREMIER ──
+          Demande de JP (2026-08-16) : on construit un livre en commençant par
+          sa couverture, puis on ajoute les chapitres. Juste une image — ni
+          titre ni sous-titre à composer dessus : c'est la vignette qui
+          distingue les cartes de la bibliothèque, où douze « 📖 » identiques
+          ne se départagent qu'en lisant les titres. */}
+      {onDeposerCouverture && (
+        <div className={styles.couverture}>
+          {couverture ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={couverture.url} alt="Couverture du livre" />
+              <div className={styles.couvertureActions}>
+                <button type="button" onClick={onDeposerCouverture} disabled={occupe}>
+                  Remplacer
+                </button>
+                {onRetirerCouverture && (
+                  <button type="button" onClick={onRetirerCouverture} disabled={occupe}>
+                    Retirer
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              className={styles.couvertureVide}
+              onClick={onDeposerCouverture}
+              disabled={occupe}
+            >
+              <span className={styles.couvertureIcone}>🖼</span>
+              <span>Déposer une couverture</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── En-tête : il ne bouge pas, c'est de là qu'on cherche et qu'on ajoute ── */}
       <header className={styles.entete}>
         <div className={styles.enteteHaut}>

@@ -181,3 +181,28 @@ donnée par JP : « unifier le mécanisme, jamais les singularités ».
 | `minRows` 3 | Recherche | les consignes de recherche sont longues |
 | `minRows` 2 | Lecture, auto-évaluation | questions plus brèves |
 | Placeholders distincts, dont un pour les blocs informatifs | Auto-évaluation | un bloc informatif et une question ne s'amorcent pas pareil |
+
+---
+
+## Session du 2026-08-16 — la gestion des habiletés dans /admin
+
+Deux gênes signalées par JP à l'usage, corrigées :
+
+**Glisser-déposer des habiletés.** Poignée `⣿` sur chaque ligne. Déposer sur
+une ligne, c'est **se placer devant elle ET adopter son geste** — un seul geste
+couvre les deux besoins (déplacer dans un geste, passer d'un geste à l'autre).
+Déposer sur l'en-tête d'un geste range à la fin de ce geste.
+
+- Le glisser n'est **armé qu'au clic sur la poignée** : une ligne entièrement
+  glissable rendrait ses champs de saisie inutilisables.
+- Un glisser **ne peut pas changer de famille** (lecture → écriture) : les
+  tableaux s'ouvrent un à la fois. Voulu — la famille est une nature, pas un
+  rangement. On change de famille dans la popup de création.
+- L'ordre affiché est celui du tableau `config.habiletes` : le réordonner
+  réordonne l'affichage, dans un groupe comme entre groupes.
+
+**Choix du geste en deux temps.** « Je suis perdu car longue liste » : la
+popup de création proposait TOUS les gestes du projet, familles confondues.
+Désormais : **famille d'abord** (menu), puis **seulement les gestes de cette
+famille**, plus une entrée « ＋ Nouveau geste… » qui bascule en saisie libre.
+Une famille sans aucun geste ouvre directement sur la saisie libre.

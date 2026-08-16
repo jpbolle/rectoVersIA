@@ -17,7 +17,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { blocsDeFace } from '@/types/oeuvre';
 import type { OeuvreSection, OeuvreProgression } from '@/types/oeuvre';
-import type { LectureQuestion } from '@/types/lecture';
+import type { LectureAnswer, LectureQuestion } from '@/types/lecture';
+import ChampManipule, { estTypeManipule } from '@/components/QuestionInteractions';
 import OeuvreBlocRendu from './OeuvreBlocRendu';
 import styles from './OeuvreReader.module.css';
 
@@ -35,6 +36,13 @@ interface OeuvreReaderProps {
   onAvancer: () => void;
   /** L'élève a répondu : la section compte dans son total de vérifications */
   onVerificationTerminee: (sectionId: string, reponses: Record<string, unknown>) => void;
+  /**
+   * L'élève a FAIT quelque chose sur cette scène — consulté le verso, ouvert
+   * un commentaire du professeur. Le clic dictionnaire, lui, est signalé
+   * depuis la page (la couche du dictionnaire enveloppe toute la colonne).
+   * Fait passer la pastille du sommaire au orange.
+   */
+  onActivite?: (sectionId: string) => void;
   /** Première ouverture d'une section — sert au « lu » et à la fréquence */
   onSectionVue: (sectionId: string) => void;
   lectureSeule?: boolean;
@@ -52,6 +60,7 @@ export default function OeuvreReader({
   onAvancer,
   onVerificationTerminee,
   onSectionVue,
+  onActivite,
   lectureSeule = false,
 }: OeuvreReaderProps) {
   const [section, setSection] = useState<OeuvreSection | null>(null);
@@ -172,7 +181,12 @@ export default function OeuvreReader({
               role="tab"
               aria-selected={face === 'verso'}
               className={`${styles.face} ${face === 'verso' ? styles.faceActive : ''}`}
-              onClick={() => setFace('verso')}
+              onClick={() => {
+                setFace('verso');
+                // Aller voir les compléments, c'est travailler la scène —
+                // la pastille du sommaire passe à l'orange.
+                if (sectionId) onActivite?.(sectionId);
+              }}
             >
               Espace multimédia
               <span className={styles.faceCompteur}>{blocsVerso.length}</span>
@@ -336,10 +350,22 @@ function QuestionnairePopup({
 
               {question.type === 'qcm' && (
                 <div className={styles.choix}>
+                  {question.multiple && (
+                    <p className={styles.popupSurtitre}>Plusieurs réponses possibles.</p>
+                  )}
                   {(question.choices || []).map((choix, i) => {
-                    const choisi = reponses[question.id] === i;
+                    // Réponses multiples : la valeur stockée est un tableau
+                    // d'index au lieu d'un index. Le reste ne change pas.
+                    const dejaCoches = Array.isArray(reponses[question.id])
+                      ? (reponses[question.id] as number[])
+                      : [];
+                    const choisi = question.multiple
+                      ? dejaCoches.includes(i)
+                      : reponses[question.id] === i;
                     const devoile = devoilees.has(question.id);
-                    const juste = i === question.correctIndex;
+                    const juste = question.multiple
+                      ? (question.correctIndexes ?? []).includes(i)
+                      : i === question.correctIndex;
                     let classe = styles.choixItem;
                     if (devoile && juste) classe += ` ${styles.choixJuste}`;
                     else if (devoile && choisi) classe += ` ${styles.choixFaux}`;
@@ -349,7 +375,13 @@ function QuestionnairePopup({
                         type="button"
                         className={classe}
                         disabled={lectureSeule}
-                        onClick={() => onRepondre(question.id, i)}
+                        onClick={() => {
+                          if (!question.multiple) return onRepondre(question.id, i);
+                          const set = new Set(dejaCoches);
+                          if (set.has(i)) set.delete(i);
+                          else set.add(i);
+                          onRepondre(question.id, [...set].sort((a, b) => a - b));
+                        }}
                       >
                         <span className={styles.choixLettre}>{String.fromCharCode(65 + i)}.</span>
                         <span>{choix}</span>
@@ -360,6 +392,30 @@ function QuestionnairePopup({
                     );
                   })}
                 </div>
+              )}
+
+              {/* Les types manipulés — même socle que le questionnaire de
+                  lecture. Leur réponse n'est pas une valeur simple (un index,
+                  un texte) mais un objet `LectureAnswer` : `reponses` est
+                  volontairement typé `unknown`, il l'accueille tel quel.
+
+                  `showCorrection` est TOUJOURS vrai ici : dans l'atelier
+                  Œuvre le corrigé est ouvert (règle en tête de
+                  `oeuvre-server.ts`). Ne pas « corriger » ce comportement. */}
+              {(estTypeManipule(question.type) ||
+                (question.type === 'fluorage' && !!question.fluoCategories?.length)) && (
+                <ChampManipule
+                  question={question}
+                  answer={(reponses[question.id] as LectureAnswer) ?? {}}
+                  onAnswerChange={(partial) =>
+                    onRepondre(question.id, {
+                      ...((reponses[question.id] as LectureAnswer) ?? {}),
+                      ...partial,
+                    })
+                  }
+                  disabled={lectureSeule}
+                  showCorrection
+                />
               )}
 
               {(question.type === 'texte-court' || question.type === 'texte-long') && (

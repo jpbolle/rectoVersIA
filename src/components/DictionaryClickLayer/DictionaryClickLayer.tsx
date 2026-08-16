@@ -28,6 +28,12 @@ interface DictionaryClickLayerProps {
    * s'étendre (la couche, elle, n'a aucune opinion sur la largeur).
    */
   className?: string;
+  /**
+   * Un mot vient d'être cherché. Sert de signal d'activité dans la lecture
+   * d'une œuvre : chercher un mot, c'est lire — bien plus qu'ouvrir la page.
+   * Le rappel n'est PAS appelé quand le clic ne vise aucun mot.
+   */
+  onMotCherche?: (mot: string) => void;
 }
 
 interface PopupState {
@@ -63,6 +69,7 @@ export default function DictionaryClickLayer({
   enabled,
   children,
   className,
+  onMotCherche,
 }: DictionaryClickLayerProps) {
   const { lookup } = useDictionaryLookup();
   const [popup, setPopup] = useState<PopupState | null>(null);
@@ -126,6 +133,9 @@ export default function DictionaryClickLayer({
       }
 
       const word = found.word;
+      // Signalé AVANT la requête : le mot est cherché dès le clic, que le
+      // dictionnaire réponde ou non.
+      onMotCherche?.(word);
       setPopup({ word, x: e.clientX, y: e.clientY, loading: true, items: [], error: null });
       try {
         const items = await lookup(word, 'definition');
@@ -140,7 +150,9 @@ export default function DictionaryClickLayer({
         );
       }
     },
-    [enabled, ensureHighlight, lookup]
+    // `onMotCherche` en dépendance plutôt qu'en miroir de ref : ce
+    // gestionnaire n'alimente aucun effet, le reconstruire ne coûte rien.
+    [enabled, ensureHighlight, lookup, onMotCherche]
   );
 
   return (

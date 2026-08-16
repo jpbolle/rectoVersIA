@@ -39,6 +39,9 @@ function generateHabileteId(): string {
   return `H-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 }
 
+/** Valeur sentinelle du menu « geste » : bascule vers la saisie libre. */
+const NOUVEAU = '__nouveau__';
+
 const EMPTY_DRAFT = {
   geste: '',
   label: '',
@@ -73,6 +76,16 @@ export default function DidactiquePanel() {
   // Popup de création d'habileté
   const [creating, setCreating] = useState<TypeModal | null>(null);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  // Le geste se choisit dans une liste ; ce drapeau bascule vers la saisie
+  // libre quand aucun geste existant ne convient.
+  const [nouveauGeste, setNouveauGeste] = useState(false);
+
+  // Glisser-déposer des habiletés : `dragArme` n'autorise le glisser qu'après
+  // un appui sur la poignée (sinon les champs de saisie deviennent inutilisables).
+  const [dragArme, setDragArme] = useState<string | null>(null);
+  const [dragHab, setDragHab] = useState<string | null>(null);
+  const [overHab, setOverHab] = useState<string | null>(null);
+  const [overGeste, setOverGeste] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -241,9 +254,28 @@ export default function DidactiquePanel() {
     () => [...new Set((config?.habiletes ?? []).flatMap((h) => h.objets))].sort(),
     [config]
   );
+  // Suggestions du champ « geste » d'une LIGNE du tableau : cette ligne
+  // appartient déjà à une famille, donc pas de filtre à appliquer ici — la
+  // datalist ne sert qu'à éviter les fautes de frappe sur un nom existant.
   const gesteSuggestions = useMemo(
     () => [...new Set((config?.habiletes ?? []).map((h) => h.geste).filter(Boolean))].sort(),
     [config]
+  );
+
+  // Les gestes de la famille en cours de création — c'est cette liste-là qui
+  // remplace l'ancienne liste de TOUS les gestes du projet.
+  const gestesDeLaFamille = useMemo(
+    () =>
+      creating
+        ? [
+            ...new Set(
+              (config?.habiletes ?? [])
+                .filter((h) => h.type === creating && h.geste.trim())
+                .map((h) => h.geste)
+            ),
+          ].sort((a, b) => a.localeCompare(b, 'fr'))
+        : [],
+    [config, creating]
   );
 
   if (!config) {
@@ -254,10 +286,91 @@ export default function DidactiquePanel() {
     );
   }
 
+  /**
+   * ── DÉPLACEMENT D'UNE HABILETÉ ──
+   *
+   * Un seul geste couvre les deux besoins de JP (2026-08-16) : déplacer une
+   * habileté DANS son geste, ou la faire passer d'un geste à l'autre. Déposer
+   * sur une ligne, c'est se placer devant elle ET adopter son geste.
+   *
+   * Les tableaux sont repliés par famille et un seul s'ouvre à la fois
+   * (`openType`) : un glisser ne peut donc pas emmener une habileté de lecture
+   * chez les gestes d'écriture. C'est voulu — la famille n'est pas un rangement
+   * mais une nature.
+   *
+   * L'ordre affiché est celui du tableau `config.habiletes` : réordonner le
+   * tableau réordonne l'affichage, dans un groupe comme entre groupes.
+   */
+  const deplacerHabilete = (idGlisse: string, cible: { avantId?: string; geste: string }) => {
+    if (!config) return;
+    const liste = [...config.habiletes];
+    const iSrc = liste.findIndex((x) => x.id === idGlisse);
+    if (iSrc === -1) return;
+    const [item] = liste.splice(iSrc, 1);
+    const deplace = item.geste === cible.geste ? item : { ...item, geste: cible.geste };
+
+    let iDest: number;
+    if (cible.avantId) {
+      const i = liste.findIndex((x) => x.id === cible.avantId);
+      iDest = i === -1 ? liste.length : i;
+    } else {
+      // Dépôt sur l'en-tête d'un geste : à la fin de ce geste, pas au début —
+      // on ajoute une habileté à un geste, on ne la met pas en avant.
+      const derniers = liste
+        .map((x, i) => (x.type === deplace.type && x.geste === cible.geste ? i : -1))
+        .filter((i) => i >= 0);
+      iDest = derniers.length ? derniers[derniers.length - 1] + 1 : liste.length;
+    }
+    liste.splice(iDest, 0, deplace);
+    persist({ ...config, habiletes: liste });
+  };
+
+  const finDeGlisser = () => {
+    setDragHab(null);
+    setOverHab(null);
+    setOverGeste(null);
+    setDragArme(null);
+  };
+
   // Une ligne du tableau
   const renderRow = (h: Habilete) => (
-    <tr key={h.id} className={h.visible ? '' : styles.rowHidden}>
+    <tr
+      key={h.id}
+      // `draggable` n'est armé qu'au clic sur la poignée : une ligne
+      // entièrement glissable empêcherait de sélectionner le texte de ses
+      // champs de saisie.
+      draggable={dragArme === h.id}
+      onDragStart={() => setDragHab(h.id)}
+      onDragEnd={finDeGlisser}
+      onDragOver={(e) => {
+        if (!dragHab || dragHab === h.id) return;
+        e.preventDefault();
+        setOverHab(h.id);
+        setOverGeste(null);
+      }}
+      onDrop={(e) => {
+        if (!dragHab || dragHab === h.id) return;
+        e.preventDefault();
+        deplacerHabilete(dragHab, { avantId: h.id, geste: h.geste });
+        finDeGlisser();
+      }}
+      className={[
+        h.visible ? '' : styles.rowHidden,
+        dragHab === h.id ? styles.rowDragging : '',
+        overHab === h.id ? styles.rowOver : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <td>
+        <span
+          className={styles.grip}
+          title="Glisser pour déplacer — dans ce geste ou vers un autre"
+          onMouseDown={() => setDragArme(h.id)}
+          onMouseUp={() => setDragArme(null)}
+        >
+          ⣿
+        </span>
         <button
           type="button"
           className={styles.iconBtn}
@@ -720,6 +833,17 @@ export default function DidactiquePanel() {
                               nom={nom}
                               count={list.length}
                               onRename={(to) => renameGeste(t.id, nom, to)}
+                              survole={overGeste === nom}
+                              onSurvol={() => {
+                                if (!dragHab) return;
+                                setOverGeste(nom);
+                                setOverHab(null);
+                              }}
+                              onDepot={() => {
+                                if (!dragHab) return;
+                                deplacerHabilete(dragHab, { geste: nom });
+                                finDeGlisser();
+                              }}
                             >
                               {list.map(renderRow)}
                             </GesteGroup>
@@ -736,6 +860,11 @@ export default function DidactiquePanel() {
                       // L'atelier qui va de soi pour ce type modal est déjà coché
                       const auto = ATELIER_PAR_MODE[t.id];
                       setDraft({ ...EMPTY_DRAFT, ateliers: auto ? [auto] : [] });
+                      // Une famille sans aucun geste : la saisie libre d'emblée,
+                      // sinon on ouvre sur un menu vide sans le dire.
+                      setNouveauGeste(
+                        !config.habiletes.some((h) => h.type === t.id && h.geste.trim())
+                      );
                       setCreating(t.id);
                     }}
                   >
@@ -762,18 +891,83 @@ export default function DidactiquePanel() {
               <p>{TYPES_MODAUX.find((t) => t.id === creating)?.title}</p>
             </div>
             <div className={styles.modalBody}>
+              {/* ── CHOIX DU GESTE EN DEUX TEMPS ──
+                  Une liste unique de tous les gestes du projet (lecture,
+                  écriture, parole, lexique, réflexif, savoir-être confondus)
+                  était impraticable : « je suis perdu car longue liste » (JP,
+                  2026-08-16). On demande donc la FAMILLE d'abord, et on ne
+                  propose ensuite que les gestes de cette famille. */}
+              <div className={styles.field}>
+                <label htmlFor="dp-famille">Famille de gestes</label>
+                <select
+                  id="dp-famille"
+                  value={creating}
+                  onChange={(e) => {
+                    // Les gestes appartiennent à une famille : changer de
+                    // famille rend le geste choisi caduc, on le vide.
+                    setCreating(e.target.value as TypeModal);
+                    setDraft((d) => ({ ...d, geste: '' }));
+                    setNouveauGeste(false);
+                  }}
+                >
+                  {TYPES_MODAUX.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className={styles.field}>
                 <label htmlFor="dp-geste">Geste général</label>
-                <input
-                  id="dp-geste"
-                  list="didactique-gestes"
-                  value={draft.geste}
-                  onChange={(e) => setDraft((d) => ({ ...d, geste: e.target.value }))}
-                  placeholder="Identifier les idées essentielles"
-                />
+                {nouveauGeste ? (
+                  <>
+                    <input
+                      id="dp-geste"
+                      value={draft.geste}
+                      onChange={(e) => setDraft((d) => ({ ...d, geste: e.target.value }))}
+                      placeholder="Comprendre les consignes"
+                      autoFocus
+                    />
+                    {gestesDeLaFamille.length > 0 && (
+                      <button
+                        type="button"
+                        className={styles.lienDiscret}
+                        onClick={() => {
+                          setNouveauGeste(false);
+                          setDraft((d) => ({ ...d, geste: '' }));
+                        }}
+                      >
+                        ← Reprendre un geste existant
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <select
+                    id="dp-geste"
+                    value={draft.geste}
+                    onChange={(e) => {
+                      if (e.target.value === NOUVEAU) {
+                        setNouveauGeste(true);
+                        setDraft((d) => ({ ...d, geste: '' }));
+                        return;
+                      }
+                      setDraft((d) => ({ ...d, geste: e.target.value }));
+                    }}
+                  >
+                    <option value="">— choisir un geste —</option>
+                    {gestesDeLaFamille.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                    <option value={NOUVEAU}>＋ Nouveau geste…</option>
+                  </select>
+                )}
                 <p className={styles.fieldHelp}>
-                  Reprendre un geste existant l&apos;enrichit ; un nouveau nom crée un nouveau
-                  groupe.
+                  {nouveauGeste
+                    ? 'Ce nom créera un nouveau groupe dans cette famille.'
+                    : 'Reprendre un geste existant l’enrichit d’une habileté de plus.'}
                 </p>
               </div>
               <div className={styles.field}>
@@ -865,11 +1059,18 @@ function GesteGroup({
   nom,
   count,
   onRename,
+  survole,
+  onSurvol,
+  onDepot,
   children,
 }: {
   nom: string;
   count: number;
   onRename: (to: string) => void;
+  /** Une habileté est en train d'être glissée au-dessus de ce geste */
+  survole?: boolean;
+  onSurvol?: () => void;
+  onDepot?: () => void;
   children: ReactNode;
 }) {
   // La clé du composant est le nom du geste : un renommage remonte le
@@ -878,7 +1079,22 @@ function GesteGroup({
 
   return (
     <>
-      <tr className={styles.groupRow}>
+      {/* Déposer sur l'en-tête range l'habileté À LA FIN de ce geste. C'est ce
+          qui permet de la faire passer dans un geste VIDE de la vue filtrée,
+          ou de la mettre en dernier sans viser une ligne précise. */}
+      <tr
+        className={`${styles.groupRow} ${survole ? styles.groupRowOver : ''}`}
+        onDragOver={(e) => {
+          if (!onDepot) return;
+          e.preventDefault();
+          onSurvol?.();
+        }}
+        onDrop={(e) => {
+          if (!onDepot) return;
+          e.preventDefault();
+          onDepot();
+        }}
+      >
         <td colSpan={6}>
           <div className={styles.groupTitle}>
             <input

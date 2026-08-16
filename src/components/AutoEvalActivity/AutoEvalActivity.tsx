@@ -24,6 +24,7 @@ import type {
   AutoEvalQuestion,
   AutoEvalQuestionnaire,
 } from '@/types/autoevaluation';
+import { MatriceField } from '@/components/QuestionInteractions';
 import styles from './AutoEvalActivity.module.css';
 
 interface Props {
@@ -157,23 +158,57 @@ export default function AutoEvalActivity({
       case 'qcm':
         return (
           <div className={styles.choices}>
+            {q.multiple && (
+              <p className={styles.aRepondre}>Tu peux en choisir plusieurs.</p>
+            )}
             {(q.choices ?? []).map((opt, j) => {
-              const choisi = a.choiceIndex === j;
+              const choisi = q.multiple
+                ? (a.choiceIndexes ?? []).includes(j)
+                : a.choiceIndex === j;
+              const basculer = () => {
+                if (!q.multiple) {
+                  majReponse(q.id, { choiceIndex: choisi ? null : j });
+                  return;
+                }
+                const set = new Set(a.choiceIndexes ?? []);
+                if (set.has(j)) set.delete(j);
+                else set.add(j);
+                majReponse(q.id, { choiceIndexes: [...set].sort((x, y) => x - y) });
+              };
               return (
                 <button
                   key={j}
                   type="button"
                   className={`${styles.choice} ${choisi ? styles.choiceOn : ''}`}
-                  onClick={() => majReponse(q.id, { choiceIndex: choisi ? null : j })}
+                  onClick={basculer}
                   disabled={readOnly}
                   aria-pressed={choisi}
                 >
-                  <span className={styles.choicePuce}>{choisi ? '●' : '○'}</span>
+                  {/* Carré pour le choix multiple, rond pour le choix unique :
+                      la puce dit combien de réponses on peut prendre. */}
+                  <span className={styles.choicePuce}>
+                    {q.multiple ? (choisi ? '◼' : '◻') : choisi ? '●' : '○'}
+                  </span>
                   {opt}
                 </button>
               );
             })}
           </div>
+        );
+
+      // Matrice : plusieurs items qui partagent les mêmes réponses.
+      // Même composant que le questionnaire de lecture — mais SANS `attendu` :
+      // en auto-évaluation, aucune colonne n'est « juste ».
+      case 'matrice':
+        return (
+          <MatriceField
+            nomGroupe={q.id}
+            items={q.matriceItems ?? []}
+            colonnes={q.choices ?? []}
+            valeurs={a.matrice ?? {}}
+            onChange={(matrice) => majReponse(q.id, { matrice })}
+            disabled={readOnly}
+          />
         );
 
       case 'texte-court':

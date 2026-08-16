@@ -17,6 +17,7 @@ import { verifyAuth } from '@/lib/api-auth';
 import { decrypt } from '@/lib/crypto';
 import { docToSection } from '@/lib/oeuvre-server';
 import { calculerRythme, parseOeuvreProgression } from '@/types/oeuvre';
+import { estAutoCorrigeable, partReussite, reponseLiseuseVersAnswer } from '@/types/lecture';
 import type { EtatLecture } from '@/types/oeuvre';
 
 export interface SuiviEleve {
@@ -172,9 +173,14 @@ export async function GET(request: NextRequest) {
           const reponse = etat.reponses?.[question.id];
           if (reponse === undefined || reponse === null || reponse === '') continue;
 
-          if (question.type === 'qcm') {
+          // Tout ce que la machine sait corriger entre dans le compteur, pas
+          // seulement les QCM : un appariement n'est pas une question ouverte.
+          // Le barème étant PARTIEL, « juste » veut dire entièrement juste —
+          // une matrice à moitié bonne n'est pas une réussite.
+          if (estAutoCorrigeable(question)) {
             qcmRepondus += 1;
-            const juste = reponse === question.correctIndex;
+            const part = partReussite(question, reponseLiseuseVersAnswer(question, reponse));
+            const juste = part === 1;
             if (juste) qcmJustes += 1;
 
             const cle = `${sectionId}::${question.id}`;

@@ -21,6 +21,7 @@ import {
   ECHELLE_HUMEUR,
   LIKERT_MAX_DEFAUT,
   LIKERT_MIN_DEFAUT,
+  MATRICE_MODELES,
   LIKERT_NIVEAUX,
   estQuestion,
   generateAutoEvalQuestionId,
@@ -48,6 +49,7 @@ const AJOUTS: { type: AutoEvalQuestionType; label: string; icone: string }[] = [
   { type: 'humeur', label: 'Émotion', icone: '😌' },
   { type: 'likert', label: 'Échelle 1-5', icone: '📊' },
   { type: 'qcm', label: 'Choix multiple', icone: '☑' },
+  { type: 'matrice', label: 'Matrice', icone: '▦' },
   { type: 'texte-court', label: 'Réponse courte', icone: '✏️' },
   { type: 'texte-long', label: 'Réponse longue', icone: '📝' },
   { type: 'info', label: 'Bloc informatif', icone: 'ℹ️' },
@@ -86,6 +88,11 @@ export default function AutoEvalBuilder({
       competences: [],
       obligatoire: type !== 'info',
       ...(type === 'qcm' ? { choices: ['', ''] } : {}),
+      // La matrice démarre sur une échelle de fréquence : une matrice aux
+      // colonnes vides ne montre pas à quoi le type sert.
+      ...(type === 'matrice'
+        ? { choices: [...MATRICE_MODELES[0].colonnes], matriceItems: ['', ''] }
+        : {}),
       ...(type === 'likert' ? { likertMin: LIKERT_MIN_DEFAUT, likertMax: LIKERT_MAX_DEFAUT } : {}),
     };
     maj({ questions: [...questions, q] });
@@ -361,12 +368,45 @@ export default function AutoEvalBuilder({
                     </div>
                   )}
 
-                  {q.type === 'qcm' && (
+                  {/* Le QCM et la matrice partagent leur éditeur de réponses :
+                      ce sont les mêmes colonnes. La matrice y ajoute ses
+                      lignes, plus bas. */}
+                  {(q.type === 'qcm' || q.type === 'matrice') && (
                     <div className={styles.choices}>
                       <p className={styles.hint}>
                         Aucune option n’est « la bonne » : ce sont des positions parmi lesquelles
                         l’élève se reconnaît.
                       </p>
+
+                      {q.type === 'qcm' && (
+                        <label className={styles.multipleToggle}>
+                          <input
+                            type="checkbox"
+                            checked={q.multiple === true}
+                            onChange={(e) => majQuestion(q.id, { multiple: e.target.checked })}
+                            disabled={disabled}
+                          />
+                          L’élève peut en choisir plusieurs
+                        </label>
+                      )}
+
+                      {q.type === 'matrice' && (
+                        <div className={styles.modeleRow}>
+                          {MATRICE_MODELES.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              className={styles.addChoice}
+                              onClick={() => majQuestion(q.id, { choices: [...m.colonnes] })}
+                              disabled={disabled}
+                              title={m.colonnes.join(' · ')}
+                            >
+                              {m.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
                       {(q.choices ?? []).map((opt, j) => (
                         <div key={j} className={styles.choice}>
                           <span className={styles.choiceLabel}>{String.fromCharCode(65 + j)}</span>
@@ -403,8 +443,58 @@ export default function AutoEvalBuilder({
                         onClick={() => majQuestion(q.id, { choices: [...(q.choices ?? []), ''] })}
                         disabled={disabled}
                       >
-                        + Ajouter un choix
+                        {q.type === 'matrice' ? '+ Ajouter une colonne' : '+ Ajouter un choix'}
                       </button>
+
+                      {/* Les lignes de la matrice : c'est ce qui la distingue
+                          du QCM — plusieurs affirmations, mêmes réponses. */}
+                      {q.type === 'matrice' && (
+                        <>
+                          <div className={styles.fieldLabel} style={{ marginTop: 12 }}>
+                            Les affirmations (les lignes)
+                          </div>
+                          {(q.matriceItems ?? []).map((item, j) => (
+                            <div key={j} className={styles.choice}>
+                              <span className={styles.choiceLabel}>{j + 1}</span>
+                              <input
+                                type="text"
+                                value={item}
+                                onChange={(e) => {
+                                  const matriceItems = [...(q.matriceItems ?? [])];
+                                  matriceItems[j] = e.target.value;
+                                  majQuestion(q.id, { matriceItems });
+                                }}
+                                placeholder={`Affirmation ${j + 1}`}
+                                disabled={disabled}
+                              />
+                              {(q.matriceItems ?? []).length > 2 && (
+                                <button
+                                  type="button"
+                                  className={styles.choiceDel}
+                                  onClick={() =>
+                                    majQuestion(q.id, {
+                                      matriceItems: (q.matriceItems ?? []).filter((_, k) => k !== j),
+                                    })
+                                  }
+                                  disabled={disabled}
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            className={styles.addChoice}
+                            onClick={() =>
+                              majQuestion(q.id, { matriceItems: [...(q.matriceItems ?? []), ''] })
+                            }
+                            disabled={disabled}
+                          >
+                            + Ajouter une affirmation
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
 

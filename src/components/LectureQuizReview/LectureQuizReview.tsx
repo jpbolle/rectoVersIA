@@ -8,18 +8,19 @@ import { DrawCanvas } from '@/components/DrawTools/DrawTools';
 import { FluoExtrait, FluoCompare } from '@/components/LectureQuizActivity/LectureQuizActivity';
 import { useDidactique } from '@/hooks/useDidactique';
 import { habileteLabel } from '@/types/didactique';
-import { parseLectureAnswers, LECTURE_COMPETENCE_LABELS } from '@/types/lecture';
+import {
+  parseLectureAnswers,
+  lectureARepondu,
+  LECTURE_COMPETENCE_LABELS,
+  LECTURE_TYPE_LABELS,
+} from '@/types/lecture';
 import type { LectureQuiz, LectureQuestion, LectureCompetence } from '@/types/lecture';
-import { scoreLectureQuiz } from '@/lib/lecture-scoring';
+import ChampManipule, { estTypeManipule } from '@/components/QuestionInteractions';
+import { scoreLectureQuiz, seCorrigeSeule } from '@/lib/lecture-scoring';
 import styles from './LectureQuizReview.module.css';
 
-const TYPE_LABELS: Record<LectureQuestion['type'], string> = {
-  qcm: 'QCM',
-  'texte-court': 'Réponse courte',
-  'texte-long': 'Réponse longue',
-  fluorage: 'Souligner du texte',
-  info: 'Bloc informatif',
-};
+// Libellés : liste unique dans src/types/lecture.ts (voir LECTURE_TYPE_LABELS)
+const TYPE_LABELS = LECTURE_TYPE_LABELS;
 
 interface LectureQuizReviewProps {
   quiz: LectureQuiz;
@@ -112,12 +113,15 @@ export default function LectureQuizReview({
                   {q.competences.map((c) => gesteLabel(c)).join(' · ')}
                 </span>
               )}
-              {q.points > 0 && q.type === 'qcm' && (
+              {/* Note automatique — toutes les questions que la machine sait
+                  corriger, pas seulement les QCM. Le barème est partiel :
+                  d'où un score qui peut tomber sur un demi-point. */}
+              {q.points > 0 && seCorrigeSeule(q) && (
                 <span className={styles.pts}>
                   {scoreByQuestion.get(q.id)?.points ?? 0}/{q.points} pt{q.points > 1 ? 's' : ''}
                 </span>
               )}
-              {q.points > 0 && q.type !== 'qcm' && onQuestionScoreChange && (
+              {q.points > 0 && !seCorrigeSeule(q) && onQuestionScoreChange && (
                 <span className={styles.scoreInput}>
                   <input
                     type="number"
@@ -135,7 +139,7 @@ export default function LectureQuizReview({
                   <span>/ {q.points}</span>
                 </span>
               )}
-              {q.points > 0 && q.type !== 'qcm' && !onQuestionScoreChange && (
+              {q.points > 0 && !seCorrigeSeule(q) && !onQuestionScoreChange && (
                 <span className={styles.pts}>
                   {scoreByQuestion.get(q.id)?.points ?? '—'}/{q.points}
                 </span>
@@ -187,8 +191,12 @@ export default function LectureQuizReview({
             {q.type === 'qcm' && (
               <div className={`${styles.choices} ${styles.reponseZone}`}>
                 {(q.choices ?? []).map((choice, ci) => {
-                  const isStudent = answer?.choiceIndex === ci;
-                  const isCorrect = q.correctIndex === ci;
+                  const isStudent = q.multiple
+                    ? (answer?.choiceIndexes ?? []).includes(ci)
+                    : answer?.choiceIndex === ci;
+                  const isCorrect = q.multiple
+                    ? (q.correctIndexes ?? []).includes(ci)
+                    : q.correctIndex === ci;
                   return (
                     <div
                       key={ci}
@@ -202,9 +210,26 @@ export default function LectureQuizReview({
                     </div>
                   );
                 })}
-                {answer?.choiceIndex === undefined || answer?.choiceIndex === null ? (
+                {!lectureARepondu(q, answer) ? (
                   <p className={styles.empty}>Pas de réponse.</p>
                 ) : null}
+              </div>
+            )}
+
+            {/* Les types manipulés : le MÊME rendu que côté élève, en lecture
+                seule et corrigé affiché. Un second rendu « vue prof » aurait
+                divergé au premier ajustement — et le prof doit voir
+                exactement ce que son élève a vu. */}
+            {estTypeManipule(q.type) && (
+              <div className={styles.reponseZone}>
+                <ChampManipule
+                  question={q}
+                  answer={answer ?? {}}
+                  onAnswerChange={() => {}}
+                  disabled
+                  showCorrection
+                />
+                {!lectureARepondu(q, answer) && <p className={styles.empty}>Pas de réponse.</p>}
               </div>
             )}
 
@@ -227,7 +252,24 @@ export default function LectureQuizReview({
               )
             )}
 
-            {q.type === 'fluorage' && (q.fluoSource ?? 'extrait') === 'extrait' && (
+            {/* Fluorage à catégories : rendu partagé, corrigé affiché */}
+            {q.type === 'fluorage' &&
+              (q.fluoSource ?? 'extrait') === 'extrait' &&
+              !!q.fluoCategories?.length && (
+                <div className={styles.reponseZone}>
+                  <ChampManipule
+                    question={q}
+                    answer={answer ?? {}}
+                    onAnswerChange={() => {}}
+                    disabled
+                    showCorrection
+                  />
+                </div>
+              )}
+
+            {q.type === 'fluorage' &&
+              (q.fluoSource ?? 'extrait') === 'extrait' &&
+              !q.fluoCategories?.length && (
               (q.fluoAttendu?.length ?? 0) > 0 ? (
                 // Comparaison automatique avec le soulignage attendu du prof
                 <FluoCompare

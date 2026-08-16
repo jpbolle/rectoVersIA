@@ -90,6 +90,11 @@ export async function POST(
       titre: `${source.titre} (copie)`,
       auteur: source.auteur || '',
       description: source.description || '',
+      // La couverture suit la copie : elle pointe vers la même ressourceImages
+      // (base64 partagé, pas dupliqué). Deux copies du même livre auront donc
+      // la même image tant que le collègue ne la remplace pas — c'est voulu :
+      // recopier 200 Ko de base64 pour rien serait un gâchis.
+      couverture: source.couverture || null,
       chapitres,
       profId: auth.uid,
       profName,

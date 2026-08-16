@@ -26,6 +26,7 @@ import {
   parseAutoEvalAnswers,
 } from '@/types/autoevaluation';
 import type { AutoEvalAnswer, AutoEvalQuestion, AutoEvalQuestionnaire } from '@/types/autoevaluation';
+import { MatriceField } from '@/components/QuestionInteractions';
 import { LUCIDITE_LABELS, estComparable, position } from '@/lib/autoeval-scoring';
 import type { Lucidite } from '@/lib/autoeval-scoring';
 import styles from './AutoEvalReview.module.css';
@@ -135,11 +136,38 @@ export default function AutoEvalReview({
       );
     }
     if (q.type === 'qcm') {
-      const i = a?.choiceIndex;
-      return typeof i === 'number' && q.choices?.[i] ? (
-        <p className={styles.temoignage}>
-          <span className={styles.puce}>{String.fromCharCode(65 + i)}</span> {q.choices[i]}
-        </p>
+      // Réponses multiples : on les liste toutes, dans l'ordre des options —
+      // pas dans l'ordre où l'élève a cliqué, qui ne veut rien dire.
+      const indices = q.multiple
+        ? (a?.choiceIndexes ?? [])
+        : typeof a?.choiceIndex === 'number'
+          ? [a.choiceIndex]
+          : [];
+      const retenues = indices.filter((i) => q.choices?.[i]);
+      return retenues.length > 0 ? (
+        <>
+          {retenues.map((i) => (
+            <p key={i} className={styles.temoignage}>
+              <span className={styles.puce}>{String.fromCharCode(65 + i)}</span> {q.choices![i]}
+            </p>
+          ))}
+        </>
+      ) : (
+        <p className={styles.sansReponse}>Pas de réponse.</p>
+      );
+    }
+    if (q.type === 'matrice') {
+      const lignes = q.matriceItems ?? [];
+      const repondues = lignes.filter((_, i) => typeof a?.matrice?.[i] === 'number');
+      return repondues.length > 0 ? (
+        <MatriceField
+          nomGroupe={`review-${q.id}`}
+          items={lignes}
+          colonnes={q.choices ?? []}
+          valeurs={a?.matrice ?? {}}
+          onChange={() => {}}
+          disabled
+        />
       ) : (
         <p className={styles.sansReponse}>Pas de réponse.</p>
       );
