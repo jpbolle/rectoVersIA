@@ -11,9 +11,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { chapitresPourFirestore, docToOeuvre, docToSection } from '@/lib/oeuvre-server';
+import {
+  blocsPourFirestore,
+  chapitresPourFirestore,
+  docToOeuvre,
+  docToSection,
+} from '@/lib/oeuvre-server';
 import { sanitizeLectureQuiz } from '@/lib/lecture-server';
-import type { OeuvreBloc } from '@/types/oeuvre';
+import { peutEditerOeuvre } from '@/types/oeuvre';
 
 export async function GET(
   request: NextRequest,
@@ -58,7 +63,9 @@ export async function PUT(
       return NextResponse.json({ success: false, message: 'Œuvre introuvable' }, { status: 404 });
     }
     const oeuvre = docToOeuvre(oeuvreSnap);
-    if (oeuvre.profId !== auth.uid && !auth.isAdmin) {
+    // Co-édition comprise : un collègue à qui l'œuvre a été partagée en
+    // « édition » écrit dans les mêmes sections (cf. peutEditerOeuvre).
+    if (!peutEditerOeuvre(oeuvre, auth)) {
       return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
     }
 
@@ -70,7 +77,9 @@ export async function PUT(
 
     const body = await request.json();
 
-    const blocs: OeuvreBloc[] = Array.isArray(body.blocs) ? body.blocs : [];
+    // Nettoyage obligatoire : un bloc relu puis réécrit porte des `undefined`
+    // sur ses champs vides, et Firestore refuse alors la requête entière.
+    const blocs = blocsPourFirestore(body.blocs);
     // Les questions passent par le nettoyage du questionnaire de lecture :
     // c'est le même modèle de question, autant réutiliser le même garde-fou.
     const quiz = sanitizeLectureQuiz({ mode: 'worksheet', questions: body.questions || [] });
@@ -123,7 +132,9 @@ export async function DELETE(
       return NextResponse.json({ success: false, message: 'Œuvre introuvable' }, { status: 404 });
     }
     const oeuvre = docToOeuvre(oeuvreSnap);
-    if (oeuvre.profId !== auth.uid && !auth.isAdmin) {
+    // Co-édition comprise : un collègue à qui l'œuvre a été partagée en
+    // « édition » écrit dans les mêmes sections (cf. peutEditerOeuvre).
+    if (!peutEditerOeuvre(oeuvre, auth)) {
       return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
     }
 

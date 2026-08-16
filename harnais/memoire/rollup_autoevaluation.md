@@ -107,3 +107,34 @@ libellés peuvent changer sans rendre illisibles les réponses déjà données.
 - **`devoir.autoEvaluation`** — le réglage d'auto-évaluation intégrée est
   MASQUÉ sur ce dispositif : une activité d'auto-évaluation EST déjà cela.
   Voir `rollup_lucidite`.
+
+---
+
+## Session du 2026-08-16 — premier test à l'écran
+
+Le dispositif **plantait à la première réponse**. Trois défauts, tous nés du
+fait qu'`AutoEvalActivity` n'avait pas hérité de ce qui avait déjà été corrigé
+dans `LectureQuizActivity` :
+
+| Symptôme | Cause | Correctif |
+|---|---|---|
+| « Cannot update a component while rendering a different component » dès qu'un élève coche | `onChange` appelé **dans** la fonction passée à `setAnswers` — React la rejoue pendant le rendu | Pattern `ref` (`answersRef` / `onChangeRef`), identique à `LectureQuizActivity` |
+| Au-delà de 5 questions, les suivantes inatteignables | `.activity` sans `flex: 1 / min-height: 0 / overflow-y: auto` | Ajoutés |
+| Remise absente du dispositif | « Remettre le devoir » vivait dans la barre du haut | **Bouton « Envoyer mes réponses » au bas du questionnaire**, `hideSubmit` dans la barre — même forme que la lecture |
+
+Autres ajustements du 16 :
+
+- Onglet **« Remarques du professeur » retiré** : il n'y a pas de copie annotée.
+  Le regard du prof se lit dans l'onglet Évaluation, en face de celui de l'élève.
+- Verso de la création : **« Ressources pour l'élève » masqué** — l'élève se
+  prononce sur les cours qu'il vient de vivre, pas sur un dossier qu'on lui
+  remettrait ici. Et les **intertitres du verso ne s'affichent plus que si les
+  deux groupes sont présents** : seuls, ils répétaient le titre du verso
+  (« Ajouter des contenus » suivi de « Contenus de l'activité »).
+- Popup de confirmation reformulée : on n'y « remet » pas un travail, on envoie
+  ce qu'on pense de soi.
+- Le rappel « N questions sans réponse » passe **sous** le bouton, discret :
+  à côté, il se lisait comme un avertissement qui retenait l'envoi.
+
+**Toujours à tester** : le parcours complet élève → prof (réponse à l'aveugle) →
+onglet Évaluation (lucidité).

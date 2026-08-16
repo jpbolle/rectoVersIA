@@ -34,11 +34,28 @@ import type { LectureQuestion } from './lecture';
 // ou une vidéo OÙ IL VEUT dans la scène. D'où une liste ordonnée de blocs
 // plutôt qu'un champ `contenu` + des médias en annexe.
 
-export type OeuvreBlocType = 'texte' | 'vers' | 'video' | 'image';
+export type OeuvreBlocType = 'texte' | 'vers' | 'video' | 'image' | 'audio';
+
+// ─── Recto / verso ───
+//
+// La liseuse a deux faces, comme l'espace de rédaction (FlipEditor) :
+//
+//   recto — « Espace textuel »    : le texte, ce qu'on lit
+//   verso — « Espace multimédia » : ce qu'on regarde et ce qu'on écoute
+//
+// L'ABSENCE de `face` vaut RECTO. C'est ce qui permet aux 1363 blocs de
+// l'anthologie Molière de rester exactement où ils sont — vidéos comprises,
+// intercalées dans la scène à l'endroit voulu. Le verso ne remplace pas cette
+// possibilité : il l'ajoute, pour les compléments qui n'ont pas de place
+// précise dans le texte.
+export type OeuvreFace = 'recto' | 'verso';
 
 export interface OeuvreBloc {
   id: string;
   type: OeuvreBlocType;
+  // Absent = recto (voir ci-dessus) — ne jamais l'écrire par défaut, sans quoi
+  // toute œuvre existante devrait être migrée pour rien.
+  face?: OeuvreFace;
   // texte : HTML (Tiptap) — chapeau, analyse, prose
   // vers  : texte brut, une ligne = un vers (jamais justifié, jamais coupé)
   contenu?: string;
@@ -47,11 +64,20 @@ export interface OeuvreBloc {
   // video : identifiant YouTube, ou lien Drive (le site de JP mêle les deux)
   videoId?: string;
   videoUrl?: string;
-  // image : même stockage que les questionnaires (base64 dans ressourceImages,
-  // servi par /api/ressources/image/[id]) — jamais d'URL externe
+  // image et audio : même stockage que les questionnaires (base64 dans
+  // ressourceImages, servi par /api/ressources/image/[id]) — jamais d'URL
+  // externe, jamais de Storage
   imageUrl?: string;
   imageFileId?: string;
+  audioUrl?: string;
+  audioFileId?: string;
   legende?: string;
+}
+
+// Les blocs d'une face. `face` absente = recto : c'est la règle qui préserve
+// les œuvres encodées avant l'existence du verso.
+export function blocsDeFace(blocs: OeuvreBloc[], face: OeuvreFace): OeuvreBloc[] {
+  return blocs.filter((b) => (b.face ?? 'recto') === face);
 }
 
 // ─── Une section = un écran de la liseuse ───
@@ -87,21 +113,70 @@ export interface OeuvreChapitre {
   sections: OeuvreSectionRef[];
 }
 
+// ─── Deux partages qu'il ne faut jamais confondre ───
+//
+// 1. « Œuvres des professeurs » (existant) : tout le monde voit tout, et
+//    DUPLIQUE pour modifier. Chacun repart avec sa copie ; l'original ne bouge
+//    pas. C'est le modèle des grilles.
+//
+// 2. `partages` (ci-dessous) : je désigne UN collègue, qui accède au MÊME
+//    livre — le mien. Rien n'est copié. C'est ce qu'il faut quand deux profs
+//    donnent la même anthologie à leurs classes : une correction profite aux
+//    deux.
+//
+// Le partage se fait par EMAIL et non par UID : la collection `professeurs` a
+// l'email pour identifiant, et un collègue qui ne s'est jamais connecté n'a
+// pas encore d'UID Firebase. On pourrait donc lui partager une œuvre qu'il
+// trouvera à sa première visite.
+export type OeuvrePartageMode = 'lecture' | 'edition';
+
+export interface OeuvrePartage {
+  email: string;          // = id du document `professeurs`, en minuscules
+  nom?: string;           // « Prénom Nom » — évite une jointure à l'affichage
+  mode: OeuvrePartageMode;
+}
+
 export interface Oeuvre {
   id: string;             // OEU-YYYYMMDD-XXXX
   titre: string;          // « Molière — Anthologie comique »
   auteur?: string;
   description?: string;
   chapitres: OeuvreChapitre[];
-  // Partage, calqué sur les grilles : chacun voit les œuvres des autres et
+  // Partage calqué sur les grilles : chacun voit les œuvres des autres et
   // peut les dupliquer ; seul l'admin marque une œuvre comme exemple partagé.
   profId: string;
   profName?: string;
   shared: boolean;
+  // Partage nominatif — voir le commentaire ci-dessus.
+  partages?: OeuvrePartage[];
   archive: boolean;
   anneeScolaire: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Le partage dont bénéficie cet email, s'il y en a un. */
+export function partageDe(oeuvre: Oeuvre, email: string | null | undefined): OeuvrePartage | null {
+  if (!email) return null;
+  const cible = email.toLowerCase().trim();
+  return oeuvre.partages?.find((p) => p.email === cible) || null;
+}
+
+/**
+ * Qui peut MODIFIER cette œuvre : son auteur, l'admin, et un collègue à qui
+ * elle a été partagée **en co-édition**. Un partage en lecture donne le droit
+ * de s'en servir, jamais de la remanier.
+ *
+ * ⚠️ À vérifier CÔTÉ SERVEUR sur toute route qui écrit — l'interface qui cache
+ * un bouton n'est pas une permission.
+ */
+export function peutEditerOeuvre(
+  oeuvre: Oeuvre,
+  auth: { uid: string; email?: string | null; isAdmin?: boolean }
+): boolean {
+  if (oeuvre.profId === auth.uid) return true;
+  if (auth.isAdmin) return true;
+  return partageDe(oeuvre, auth.email)?.mode === 'edition';
 }
 
 // ─── Ce que l'élève dépose en travaillant ───

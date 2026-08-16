@@ -6,13 +6,28 @@ import { useDictionaryLookup } from '@/hooks/useDictionaryLookup';
 import DictionaryPopup from '@/components/DictionaryPopup';
 import styles from './DictionaryClickLayer.module.css';
 
-// Rend cliquables les mots du contenu enfant (panneau latéral : consignes,
-// remarques du prof, commentaires…) quand le dictionnaire est actif.
+// Rend cliquables les mots du contenu enfant quand le dictionnaire est actif.
 // Le surlignage fluo passe par l'API CSS Custom Highlight (aucune modification du DOM).
+//
+// Deux emplacements :
+//   - le panneau latéral (consignes, remarques du prof, ressources) ;
+//   - la COLONNE DE TRAVAIL, quand elle n'est pas un éditeur — liseuse d'œuvre,
+//     questionnaire de lecture, auto-évaluation. C'est là qu'un élève rencontre
+//     le plus de mots inconnus, et c'était justement le seul endroit où il ne
+//     pouvait pas cliquer.
+//
+// ⚠️ JAMAIS autour de `WorkEditor` : l'éditeur porte son propre clic-mot
+// (tiptap-dictionary.ts). Deux mécanismes superposés ouvriraient deux popups.
 
 interface DictionaryClickLayerProps {
   enabled: boolean;
   children: React.ReactNode;
+  /**
+   * Classe de mise en page à ajouter à la couche. Nécessaire quand elle
+   * s'intercale dans un conteneur flex : sans elle, l'enfant cesse de
+   * s'étendre (la couche, elle, n'a aucune opinion sur la largeur).
+   */
+  className?: string;
 }
 
 interface PopupState {
@@ -44,7 +59,11 @@ function caretFromPoint(x: number, y: number): { node: Node; offset: number } | 
   return null;
 }
 
-export default function DictionaryClickLayer({ enabled, children }: DictionaryClickLayerProps) {
+export default function DictionaryClickLayer({
+  enabled,
+  children,
+  className,
+}: DictionaryClickLayerProps) {
   const { lookup } = useDictionaryLookup();
   const [popup, setPopup] = useState<PopupState | null>(null);
   const highlightRef = useRef<Highlight | null>(null);
@@ -126,7 +145,7 @@ export default function DictionaryClickLayer({ enabled, children }: DictionaryCl
 
   return (
     <div
-      className={`${styles.layer}${enabled ? ` ${styles.enabled}` : ''}`}
+      className={`${styles.layer}${enabled ? ` ${styles.enabled}` : ''}${className ? ` ${className}` : ''}`}
       onClick={handleClick}
     >
       {children}

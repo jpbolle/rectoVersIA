@@ -20,6 +20,7 @@ import type { AiSuggestion, AiSuggestionType } from '@/types/ai-suggestions';
 import type { AiGridResult } from '@/types/ai-grid';
 import type { NavigKidQuestion, NavigKidReponse } from '@/types/navigkid';
 import LectureEvaluation from '@/components/LectureEvaluation/LectureEvaluation';
+import OeuvreEvaluation from '@/components/OeuvreEvaluation/OeuvreEvaluation';
 import styles from './AssistancePanel.module.css';
 
 export type TabType = 'consignes' | 'ressources' | 'grille' | 'remarques' | 'ia';
@@ -94,9 +95,15 @@ interface AssistancePanelProps {
    * Il vit ici plutôt qu'en colonne de gauche parce que la liseuse occupe
    * toute cette colonne — et parce qu'un sommaire à demeure y prendrait la
    * place du texte (décision de JP du 2026-08-15). Quand il est fourni,
-   * l'onglet se renomme « Consignes et navigation dans le texte ».
+   * l'onglet se renomme « Consignes et navigation ».
    */
   oeuvreNav?: ReactNode;
+  /**
+   * Lecture d'une œuvre : change à chaque vérification terminée. Le bilan de
+   * l'onglet Évaluation est calculé sur le serveur — sans ce compteur, l'élève
+   * répondrait à une vérification et verrait le même total qu'avant.
+   */
+  oeuvreBilanVersion?: number;
 }
 
 export default function AssistancePanel({
@@ -153,6 +160,7 @@ export default function AssistancePanel({
   selectedVocabEvalIndex,
   hideTabs = false,
   oeuvreNav,
+  oeuvreBilanVersion,
 }: AssistancePanelProps) {
   // Mode contrôlé vs interne
   const [internalTab, setInternalTab] = useState<TabType>('consignes');
@@ -166,6 +174,8 @@ export default function AssistancePanel({
   const isRecherche = !!navigkidQuestions && navigkidQuestions.length > 0;
   // Auto-évaluation : l'onglet Évaluation montre la lucidité, pas une note
   const isAutoEval = devoir.typeTravail === 'autoevaluation' && !!devoir.autoEvalQuiz;
+  // Lecture d'une œuvre : ni grille ni score — des compteurs de lecture
+  const isOeuvre = devoir.typeTravail === 'lire' && !!devoir.oeuvreId;
   const handleTabChange = (tab: TabType) => {
     if (onTabChange) {
       onTabChange(tab);
@@ -193,7 +203,7 @@ export default function AssistancePanel({
             className={`${styles.tab} ${currentTab === 'consignes' ? styles.tabActive : ''}`}
             onClick={() => handleTabChange('consignes')}
           >
-            {oeuvreNav ? 'Consignes et navigation dans le texte' : 'Consignes'}
+            {oeuvreNav ? 'Consignes et navigation' : 'Consignes'}
           </button>
           {!rechercheMode && (
             <button
@@ -328,11 +338,19 @@ export default function AssistancePanel({
             showComparaison={isProfessorView || correction?.visibleParEleve === true}
           />
         )}
+        {/* Lecture d'une œuvre : aucune note nulle part. L'onglet compte des
+            gestes — vérifications complétées, extraits ouverts — et un degré
+            de réussite aux QCM. Calculé sur le serveur : les bonnes réponses
+            vivent dans les sections, que la liseuse charge une à une. */}
+        {currentTab === 'grille' && isOeuvre && (
+          <OeuvreEvaluation devoirId={devoir.id} version={oeuvreBilanVersion} />
+        )}
         {currentTab === 'grille' &&
           devoir.typeTravail !== 'vocabulaire' &&
           !isLectureQuiz &&
           !isRecherche &&
-          !isAutoEval && (
+          !isAutoEval &&
+          !isOeuvre && (
           <GrilleTab
             grille={grille}
             hiddenCriteria={devoir.hiddenCriteria}

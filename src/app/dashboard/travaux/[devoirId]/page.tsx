@@ -12,6 +12,7 @@ import { LEVEL_PERCENTAGES } from '@/types/grille';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import Link from 'next/link';
 import Footer from '@/components/Footer/Footer';
+import OeuvreSuivi from '@/components/OeuvreSuivi/OeuvreSuivi';
 import styles from './travaux.module.css';
 
 export default function TravauxPage() {
@@ -272,6 +273,12 @@ export default function TravauxPage() {
 
   const totalCorriges = stats.successCount + stats.failureCount;
 
+  // ── Lecture d'une œuvre : un autre écran, pas une variante de celui-ci ──
+  // Rien ne s'y remet, rien ne s'y corrige : taux de remise, moyenne, critères
+  // faibles et les trois colonnes ne décriraient AUCUNE réalité. Le prof y
+  // cherche qui lit, où il en est, et ce qu'il a compris.
+  const isOeuvre = !!devoir?.oeuvreId;
+
   const renderCard = (travail: Travail) => {
     const correction = corrections.get(travail.id);
     const hasScore = correction && correction.score > 0;
@@ -340,7 +347,9 @@ export default function TravauxPage() {
           <button className={styles.backBtn} onClick={handleBack}>←</button>
           <div className={styles.headerContent}>
             <h1 className={styles.title}>{devoir?.intitule || 'Travaux'}</h1>
-            <p className={styles.subtitle}>Travaux des élèves</p>
+            <p className={styles.subtitle}>
+              {isOeuvre ? 'Suivi de lecture' : 'Travaux des élèves'}
+            </p>
           </div>
         </div>
         <div className={styles.headerRight}><UserAvatar /></div>
@@ -376,6 +385,13 @@ export default function TravauxPage() {
       )}
 
       <main className={styles.main}>
+        {isOeuvre ? (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Où en est chacun</h2>
+            <OeuvreSuivi devoirId={devoirId} titreActivite={devoir?.intitule} />
+          </section>
+        ) : (
+        <>
         {/* ── Section Statistiques ── */}
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Statistiques</h2>
@@ -574,6 +590,8 @@ export default function TravauxPage() {
             </div>
           )}
         </section>
+        </>
+        )}
       </main>
       <Footer />
     </div>

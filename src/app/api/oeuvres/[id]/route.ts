@@ -6,8 +6,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { chapitresPourFirestore, docToOeuvre, rafraichirSommaire } from '@/lib/oeuvre-server';
-import type { OeuvreChapitre } from '@/types/oeuvre';
+import {
+  chapitresPourFirestore,
+  docToOeuvre,
+  normaliserPartages,
+  rafraichirSommaire,
+} from '@/lib/oeuvre-server';
+import { poserAnnonce } from '@/lib/annonce-server';
+import { peutEditerOeuvre } from '@/types/oeuvre';
+import type { Oeuvre, OeuvreChapitre } from '@/types/oeuvre';
+
+// Comment nommer celui qui partage, dans la notification. `profName` est
+// rempli à la création de l'œuvre ; en dernier recours, l'email — mieux vaut
+// une adresse qu'un « quelqu'un » qui n'apprend rien au destinataire.
+function auteurLisible(
+  oeuvre: Oeuvre,
+  auth: { email?: string | null }
+): string {
+  return oeuvre.profName || auth.email || 'Un collègue';
+}
 
 export async function GET(
   request: NextRequest,
@@ -51,15 +68,16 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: 'Œuvre introuvable' }, { status: 404 });
     }
 
-    // On ne modifie que ses propres œuvres : pour reprendre celle d'un
-    // collègue, on la duplique.
+    // On ne modifie que ses propres œuvres — ou celle d'un collègue qui nous
+    // l'a partagée EN CO-ÉDITION. Sans partage, il faut dupliquer.
     const oeuvre = docToOeuvre(snap);
-    if (oeuvre.profId !== auth.uid && !auth.isAdmin) {
+    if (!peutEditerOeuvre(oeuvre, auth)) {
       return NextResponse.json(
         { success: false, message: 'Cette œuvre appartient à un autre professeur — duplique-la pour la modifier' },
         { status: 403 }
       );
     }
+    const estProprietaire = oeuvre.profId === auth.uid || auth.isAdmin;
 
     const body = await request.json();
     const update: Record<string, unknown> = { updatedAt: new Date() };
@@ -69,6 +87,33 @@ export async function PATCH(
     if (typeof body.description === 'string') update.description = body.description.trim();
     if (typeof body.archive === 'boolean') update.archive = body.archive;
     if (auth.isAdmin && typeof body.shared === 'boolean') update.shared = body.shared;
+
+    // Qui partage l'œuvre reste SON AUTEUR. Un co-éditeur peut remanier le
+    // texte, jamais décider qui d'autre y accède — sans quoi le partage
+    // s'étendrait sans que le propriétaire le sache.
+    if (Array.isArray(body.partages)) {
+      if (!estProprietaire) {
+        return NextResponse.json(
+          { success: false, message: 'Seul l’auteur de l’œuvre décide de ses partages.' },
+          { status: 403 }
+        );
+      }
+      update.partages = normaliserPartages(body.partages).filter(
+        // On ne se partage pas une œuvre à soi-même
+        (p) => p.email !== (auth.email || '').toLowerCase()
+      );
+    }
+
+    // Qui apprend qu'on lui a partagé une œuvre ? Personne, si on ne le lui
+    // dit pas : le livre apparaîtrait dans sa bibliothèque sans qu'il le sache.
+    // On ne prévient QUE les nouveaux, et QUE si le mode a changé — un
+    // enregistrement sans modification ne doit pas renotifier tout le monde.
+    const nouveaux = Array.isArray(update.partages)
+      ? (update.partages as typeof oeuvre.partages)!.filter((p) => {
+          const avant = oeuvre.partages?.find((q) => q.email === p.email);
+          return !avant || avant.mode !== p.mode;
+        })
+      : [];
 
     // Le sommaire est envoyé en entier quand le prof réordonne chapitres et
     // sections. Les sections elles-mêmes ne bougent pas : seul l'ordre change.
@@ -83,6 +128,26 @@ export async function PATCH(
     }
 
     await ref.update(update);
+
+    // Après l'écriture seulement : une notification pour un partage qui aurait
+    // échoué serait un mensonge. `poserAnnonce` n'échoue jamais bruyamment —
+    // le partage a bien eu lieu, il ne doit pas être annulé par une cloche.
+    const titre = (update.titre as string) || oeuvre.titre;
+    await Promise.all(
+      nouveaux.map((p) =>
+        poserAnnonce({
+          message:
+            p.mode === 'edition'
+              ? `${auteurLisible(oeuvre, auth)} t’a partagé « ${titre} » en co-édition : tu peux la donner à tes classes ET la modifier.`
+              : `${auteurLisible(oeuvre, auth)} t’a partagé « ${titre} » : tu peux la donner à tes classes.`,
+          cible: 'collegue',
+          destinataireEmail: p.email,
+          auteurUid: auth.uid,
+          lien: '/grilles',
+        })
+      )
+    );
+
     const apres = await ref.get();
     return NextResponse.json({ success: true, data: docToOeuvre(apres) });
   } catch (error) {

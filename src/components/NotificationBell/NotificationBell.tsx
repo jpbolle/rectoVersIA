@@ -13,6 +13,15 @@ import styles from './NotificationBell.module.css';
 
 const POLL_MS = 5 * 60 * 1000; // rafraîchissement en arrière-plan
 
+// ── Le rappel « tu as beaucoup de notifications » ──
+// Passé ce seuil, la cloche ne suffit plus : un badge « 9+ » dit qu'il y en a
+// beaucoup, il ne dit pas QUOI. Une popup s'ouvre alors à la PREMIÈRE
+// ouverture de l'application, une seule fois par session du navigateur
+// (`sessionStorage`) — la rejouer à chaque navigation la rendrait haïssable,
+// et l'oublier définitivement la rendrait inutile.
+const SEUIL_RAPPEL = 10;
+const CLE_RAPPEL = 'notifs-rappel-vu';
+
 interface NotifItem {
   id: string;
   type: 'remise' | 'activite' | 'corrige' | 'annonce';
@@ -61,6 +70,8 @@ export default function NotificationBell({ variant }: { variant: 'prof' | 'stude
   const { isAuthenticated, getAuthHeaders } = useAuth();
   const [data, setData] = useState<NotifData | null>(null);
   const [open, setOpen] = useState(false);
+  // Rappel plein écran quand les non-lues s'accumulent
+  const [rappel, setRappel] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -69,7 +80,22 @@ export default function NotificationBell({ variant }: { variant: 'prof' | 'stude
       if (!headers) return;
       const res = await fetch('/api/notifications', { headers });
       const json = await res.json();
-      if (json.success && json.data) setData(json.data);
+      if (!json.success || !json.data) return;
+      setData(json.data);
+
+      // Le rappel se décide ICI, à l'arrivée des données — pas dans un effet :
+      // un `setState` dans un effet déclenche un rendu en cascade, et le
+      // déclencheur est bien un événement (la réponse du serveur).
+      if (typeof window === 'undefined' || sessionStorage.getItem(CLE_RAPPEL)) return;
+      const d = json.data as NotifData;
+      if (d.enabled === false) return;
+      const combien = (d.notifications || []).filter(
+        (n) => (!d.lastSeen || n.date > d.lastSeen) && !(d.read || []).includes(n.id)
+      ).length;
+      if (combien >= SEUIL_RAPPEL) {
+        sessionStorage.setItem(CLE_RAPPEL, '1');
+        setRappel(true);
+      }
     } catch {
       // silencieux : la cloche n'affiche simplement rien
     }
@@ -121,7 +147,8 @@ export default function NotificationBell({ variant }: { variant: 'prof' | 'stude
   // Non lue : postérieure au dernier « tout marquer » ET jamais cliquée
   const isUnreadNotif = (n: NotifItem) =>
     (!lastSeen || n.date > lastSeen) && !read.includes(n.id);
-  const unread = enabled ? notifications.filter(isUnreadNotif).length : 0;
+  const nonLues = enabled ? notifications.filter(isUnreadNotif) : [];
+  const unread = nonLues.length;
 
   const markAllSeen = () => {
     const now = new Date().toISOString();
@@ -275,6 +302,115 @@ export default function NotificationBell({ variant }: { variant: 'prof' | 'stude
               </label>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Rappel : les non-lues se sont accumulées ──
+          Le badge plafonne à « 9+ » : passé ce point il signale un volume,
+          plus un contenu. La popup rappelle donc où vit la cloche, puis
+          déroule ce qui n'a pas été lu. */}
+      {rappel && (
+        <div
+          className={styles.rappelOverlay}
+          onClick={(e) => e.target === e.currentTarget && setRappel(false)}
+        >
+          <div className={styles.rappelPopup} role="dialog" aria-modal="true">
+            <header className={styles.rappelEntete}>
+              <div className={styles.rappelCloche} aria-hidden="true">
+                <svg
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+                </svg>
+                <span className={styles.rappelBadge}>{unread}</span>
+              </div>
+              <div>
+                <h3>
+                  {unread} notification{unread > 1 ? 's' : ''} non lue{unread > 1 ? 's' : ''}
+                </h3>
+                <p className={styles.rappelSous}>
+                  Elles t’attendent dans la <strong>cloche</strong>, en haut de l’écran. Les voici.
+                </p>
+              </div>
+              <button
+                type="button"
+                className={styles.rappelFermer}
+                onClick={() => setRappel(false)}
+                aria-label="Fermer"
+              >
+                ✕
+              </button>
+            </header>
+
+            <div className={styles.rappelSeparateur} />
+
+            <div className={styles.rappelListe}>
+              {nonLues.map((n) => {
+                const contenu = (
+                  <>
+                    <span className={styles.rappelIcone}>{TYPE_ICONS[n.type]}</span>
+                    <div className={styles.rappelTexte}>
+                      <span className={styles.rappelTitre}>{n.title}</span>
+                      <span className={styles.rappelMeta}>
+                        {n.sub} · {formatNotifDate(n.date)}
+                      </span>
+                    </div>
+                  </>
+                );
+                // Comme dans la cloche : chaque notification mène à ce qu'elle
+                // annonce, et son clic l'éteint.
+                return n.href ? (
+                  <Link
+                    key={n.id}
+                    href={n.href}
+                    className={`${styles.rappelItem} ${styles.rappelItemLien}`}
+                    onClick={() => {
+                      markRead(n.id);
+                      setRappel(false);
+                    }}
+                  >
+                    {contenu}
+                  </Link>
+                ) : (
+                  <div
+                    key={n.id}
+                    className={styles.rappelItem}
+                    onClick={() => markRead(n.id)}
+                  >
+                    {contenu}
+                  </div>
+                );
+              })}
+            </div>
+
+            <footer className={styles.rappelPied}>
+              <button
+                type="button"
+                className={styles.rappelGhost}
+                onClick={() => {
+                  markAllSeen();
+                  setRappel(false);
+                }}
+              >
+                Tout marquer comme lu
+              </button>
+              <button
+                type="button"
+                className={styles.rappelPrimary}
+                onClick={() => setRappel(false)}
+              >
+                Plus tard
+              </button>
+            </footer>
+          </div>
         </div>
       )}
     </div>

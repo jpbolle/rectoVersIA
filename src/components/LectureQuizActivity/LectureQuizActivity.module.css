@@ -409,12 +409,14 @@
    Forme imposée du projet : les boutons d'action sont encadrés de deux traits
    horizontaux (cf. `bottomActions` de VocabulaireActivity). Le vert dit que le
    bouton engage quelque chose. */
+/* ⚠️ RÈGLE À NE PAS PERDRE — la ligne ne touche JAMAIS les bords de la
+   colonne (référence : les exercices de vocabulaire). Pas de marge négative
+   qui annulerait le padding de `.activity`. */
 .bottomActions {
   display: flex;
   align-items: center;
   gap: 14px;
-  /* d'un bord à l'autre : les marges négatives annulent le padding de .activity */
-  margin: 28px -20px 0;
+  margin: 28px 0 0;
   padding-bottom: 8px;
   flex-shrink: 0;
 }

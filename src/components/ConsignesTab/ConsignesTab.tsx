@@ -50,7 +50,7 @@ export default function ConsignesTab({ devoir }: ConsignesTabProps) {
         <h3 className={styles.sectionTitle}>Informations</h3>
         <div className={styles.infoGrid}>
           <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>Date de remise</span>
+            <span className={styles.infoLabel}>Échéance</span>
             <span className={styles.infoValue}>
               {devoir.dateRemise
                 ? new Date(devoir.dateRemise).toLocaleDateString('fr-BE', {

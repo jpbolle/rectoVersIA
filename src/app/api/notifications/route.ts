@@ -37,17 +37,21 @@ interface NotifItem {
   href?: string;                       // chemin interne à ouvrir au clic
 }
 
-// Annonces de l'administration adressées à ce rôle
+// Annonces adressées à ce rôle — plus, pour un élève, les mots que SON prof
+// lui a écrits nominativement (`cible: 'eleve'`, cf. /api/annonces).
 async function annonceNotifications(
   role: 'prof' | 'eleve',
+  uid: string,
+  email: string,
   cutoffIso: string
 ): Promise<NotifItem[]> {
+  const monEmail = (email || '').toLowerCase();
   const cibles = role === 'prof' ? ['profs', 'tous'] : ['eleves', 'tous'];
   const snap = await adminDb
     .collection('annonces')
     .where('createdAt', '>', cutoffIso)
     .orderBy('createdAt', 'desc')
-    .limit(MAX_NOTIFS)
+    .limit(MAX_NOTIFS * 3)
     .get();
 
   return snap.docs
@@ -57,13 +61,34 @@ async function annonceNotifications(
       cible?: string;
       lien?: string | null;
       createdAt?: string;
+      destinataireUid?: string;
+      destinataireEmail?: string;
+      ton?: string | null;
     })
-    .filter((a) => cibles.includes(a.cible || '') && a.message)
+    .filter((a) => {
+      if (!a.message) return false;
+      // Une notification nominative ne part QU'À son destinataire — la
+      // vérification se fait ici, jamais côté navigateur.
+      if (a.cible === 'eleve') return role === 'eleve' && a.destinataireUid === uid;
+      if (a.cible === 'collegue') {
+        return role === 'prof' && !!monEmail && a.destinataireEmail === monEmail;
+      }
+      return cibles.includes(a.cible || '');
+    })
     .map((a) => ({
       id: `ann-${a.id}`,
       type: 'annonce' as const,
       title: a.message!,
-      sub: "Message de l'administration",
+      sub:
+        a.cible === 'eleve'
+          ? a.ton === 'felicitation'
+            ? '❤️ Message de ton professeur'
+            : a.ton === 'rappel'
+              ? '💔 Message de ton professeur'
+              : '💬 Message de ton professeur'
+          : a.cible === 'collegue'
+            ? '📚 Ressource partagée'
+            : "Message de l'administration",
       date: a.createdAt || '',
       ...(a.lien ? { href: a.lien } : {}),
     }));
@@ -233,7 +258,7 @@ export async function GET(request: NextRequest) {
       role === 'prof'
         ? profNotifications(auth.uid, cutoffIso)
         : eleveNotifications(auth.uid, auth.email, cutoffIso),
-      annonceNotifications(role, cutoffIso),
+      annonceNotifications(role, auth.uid, auth.email, cutoffIso),
     ]);
     const notifications = [...evenements, ...annonces];
 

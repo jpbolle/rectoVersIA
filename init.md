@@ -61,6 +61,12 @@ npm run build      # build complet
 - IDs Firestore : `DEV-YYYYMMDD-XXXX`, `TRV-{devoirId}-{studentId}`, `CORR-{travailId}`,
   `AIGRID-{travailId}`, `GRL-YYYYMMDD-XXXX`
 
+### Vocabulaire d'interface
+- La date d'une activité se libelle **« Échéance »** partout (création, édition, vue
+  élève) — jamais « Date de remise » : elle est **facultative** et ne signifie pas
+  toujours une remise (activité préparée d'avance, lecture d'une œuvre où rien ne se
+  remet). Décision confirmée le 2026-08-16 : le champ **reste facultatif**.
+
 ### Palette / design
 - CSS Modules uniquement (zéro framework CSS)
 - Design system **Classica**, tokens `--c-*` dans `globals.css`
@@ -72,11 +78,12 @@ npm run build      # build complet
 
 | Situation qui revient | Forme imposée | Exemple à recopier |
 |---|---|---|
-| Ligne de boutons d'action encadrée par 2 traits horizontaux | Convention couleurs : **vert** (`--c-primary`) = bouton qui **génère** du contenu (IA, exercices, évaluation) ; **amber** (`--c-accent`) = bouton qui **affiche** ou **navigue**. Verts groupés d'abord, ambers ensuite. Boutons `min-height:42px / padding:0 22px / font:14px 600` | `bottomActions` dans `VocabulaireActivity.module.css`, `actionBar` dans `VocabulaireExercises.module.css` |
+| Ligne de boutons d'action encadrée par 2 traits horizontaux | Convention couleurs : **vert** (`--c-primary`) = bouton qui **génère** du contenu (IA, exercices, évaluation) ; **amber** (`--c-accent`) = bouton qui **affiche** ou **navigue**. Verts groupés d'abord, ambers ensuite. Boutons `min-height:42px / padding:0 22px / font:14px 600`. ⚠️ **La ligne ne touche JAMAIS les bords de la colonne** : pas de marge négative annulant le padding du conteneur (règle rappelée plusieurs fois par l'utilisateur) | `bottomActions` dans `VocabulaireActivity.module.css`, `actionBar` dans `VocabulaireExercises.module.css` |
 | Accès à un objet instable (`user`, `travail`) dans un callback mémoïsé | Pattern `ref` (jamais l'objet dans les deps — règle AGENTS.md) | `userRef` dans `AuthContext.tsx`, `travailRef` dans `useTravail` |
 | Page avec `router.replace()` | State `redirecting` : `if (redirecting) return;` avant le replace, `return null;` dans le render | pages protégées existantes |
 | Nouvelle façon d'évaluer une activité | **Grille pour l'écriture, habiletés partout ailleurs** — jamais les deux. La grille n'est exigée que pour `typeTravail === 'ecrire'`, client ET serveur | `usesGrille` dans `CreationForm` / `EditDevoirModal` |
 | Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
+| Activité où **rien ne se remet** (recherche, questionnaire de lecture, auto-évaluation, lecture d'une œuvre) | `hideSubmit` sur `WorkTopBar` ; la remise, quand elle existe, vit **au bas de la colonne de gauche**, dans la ligne d'actions | `hideSubmit` dans `/activites/[id]` |
 | Panneau latéral élève | `WorkspaceRail` (rail icônes droite + panneau redimensionnable) — côté prof on garde `ResizableSplit` + onglets. **Ne pas uniformiser** | `/activites/[id]` vs `/dashboard/travaux/[devoirId]/[travailId]` |
 
 ---
@@ -257,11 +264,19 @@ interface Questionnaire {
   d'une œuvre »). Le document parent ne porte que le **sommaire** (chapitres → titres de
   sections) ; le contenu vit dans la **sous-collection**, chargée à la demande — une
   anthologie fait 150 à 300 Ko, retéléchargés sinon par chaque élève à chaque ouverture.
-  Une section = un écran : `blocs[]` (texte / vers / vidéo / image) + `questions[]`
-  (des `LectureQuestion`, les mêmes que le questionnaire de lecture). Partage calqué sur
-  les grilles (`profId` / `profName` / `shared` + duplication). Accès **serveur
+  Une section = un écran : `blocs[]` (texte / vers / vidéo / image / **audio**) +
+  `questions[]` (des `LectureQuestion`, les mêmes que le questionnaire de lecture).
+  Chaque bloc porte une **face** (`face: 'recto' | 'verso'`) — **absente = recto**, ce
+  qui laisse intactes les œuvres encodées avant l'existence du verso. Accès **serveur
   uniquement**, donc aucune règle Firestore. L'**acte** n'est pas un niveau
   d'imbrication : c'est l'étiquette `groupe` d'une section.
+  **DEUX PARTAGES à ne jamais confondre** : (a) `shared` / « Œuvres des professeurs » →
+  on **duplique**, chacun repart avec sa copie (modèle des grilles) ; (b) `partages[]`
+  (`{ email, nom, mode: 'lecture' | 'edition' }`) → un collègue désigné **nommément**
+  accède au **MÊME** livre, rien n'est copié. Le partage se fait **par email** : la
+  collection `professeurs` a l'email pour identifiant, et un collègue jamais connecté
+  n'a pas d'UID. `peutEditerOeuvre()` se vérifie **côté serveur** sur l'œuvre ET ses
+  sections ; **seul l'auteur** décide des partages.
 - `scenarisations` : une par cours. `chapitres[].modules[].activites[]` imbriqués —
   accès **serveur uniquement**, donc **aucune règle Firestore**. Une activité de
   module peut être hors application (pas de `devoirId`).
@@ -272,9 +287,13 @@ interface Questionnaire {
   Le **geste** n'est pas une entité : c'est le libellé partagé par plusieurs
   habiletés. Importée une fois depuis `scripts/data/ceintures-et-habiletes.csv`
   (63 lignes) — le tableau Google n'est plus la source de vérité.
-- `annonces` : messages poussés par l'admin dans la cloche (`message`, `cible`, `lien`,
+- `annonces` : messages poussés dans la cloche (`message`, `cible`, `lien`,
   `auteurUid`) — accès **serveur uniquement**, donc aucune règle Firestore. Sortent
-  d'elles-mêmes de la cloche après 14 jours
+  d'elles-mêmes de la cloche après 14 jours. Deux cibles **nominatives**, les seules
+  qu'un **prof** puisse viser : `eleve` (+`destinataireUid`, +`ton`) — un mot à un de
+  SES élèves — et `collegue` (+`destinataireEmail`) — écrite par le serveur au partage
+  d'une œuvre. Le contrôle d'accès est **entièrement serveur** (`estMonEleve` dans
+  `/api/annonces`, filtrage du destinataire dans `/api/notifications`)
 - `users` : gagne `notifsRead: string[]` (60 ids max) — une notification est non lue si
   sa date dépasse `notifsLastSeen` **ET** que son id n'est pas dans `notifsRead`
 - `professeurs` : doc ID = email, géré par admin via `/admin` (supporte `expiresAt`)
@@ -363,7 +382,11 @@ interface Questionnaire {
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |
 | `/api/professeurs`, `/api/admin/stats`, `/api/admin/prof-stats/[profId]` | — | Admin (profId = email encodé) |
 | `/api/roadmap` | GET, POST | Roadmap Firestore (POST admin) |
-| `/api/annonces`, `/api/annonces/[id]` | GET, POST, DELETE | Annonces de l'administration — **admin uniquement**. Collection `annonces`, accès serveur seul (aucune règle Firestore). Lues par `/api/notifications`, filtrées par cible (profs / élèves / tous) |
+| `/api/annonces`, `/api/annonces/[id]` | GET, POST, DELETE | GET **admin uniquement**. POST : admin (cibles profs/élèves/tous) **ou prof** (cible `eleve`, vérification `estMonEleve`). Lues par `/api/notifications`. Écriture serveur possible sans passer par la route : `src/lib/annonce-server.ts` |
+| `/api/oeuvres`, `/api/oeuvres/[id]`, `/api/oeuvres/[id]/sections[/[sectionId]]`, `/api/oeuvres/[id]/dupliquer` | CRUD | Bibliothèque d'œuvres. GET liste en **4 paniers** : les miennes / **partagées avec moi** / exemples / celles des autres profs |
+| `/api/oeuvres/suivi` | GET | **Prof** : progression de toute la classe sur une lecture d'œuvre (vérifications, scènes vues, jours, rythme, QCM, questions les plus ratées). Calculé serveur — les bonnes réponses vivent dans les sections |
+| `/api/oeuvres/bilan` | GET | **Élève** : son propre bilan de lecture (onglet Évaluation). Aucune note — des compteurs et un degré de réussite aux seuls QCM |
+| `/api/professeurs/collegues` | GET | Liste minimale des collègues (nom + email) pour choisir avec qui partager. Lisible par tout **prof** — `/api/professeurs` reste admin |
 | `/api/notifications` | GET, PUT | Notifications calculées à la lecture (aucune collection) ; PUT : `lastSeen` / `enabled` |
 | `/api/travaux/status` | GET | Élève : statut `{ status, nonRendu }` de ses travaux par devoir (classement page /activites) |
 | `/api/classes/[id]/archive` | GET | Archive ZIP de la classe avant suppression : HTML par élève (nommé + évaluation) + notes.csv par activité + récapitulatif — ZIP maison `src/lib/zip.ts`, zéro dépendance |
@@ -439,6 +462,15 @@ interface Questionnaire {
   tout le reste déduit des activités, activités en résumé). Les **suggestions** ne sont
   plus des lignes de module : ce sont des textes portés par le chapitre
   (`ChapitreDidactique.suggestions`), repliés derrière une ampoule 💡 du bandeau
+- **Lecture d'une œuvre** : `OeuvreReader` (liseuse — **flip « Espace textuel » /
+  « Espace multimédia »**, les onglets n'apparaissent que si le prof a déposé un
+  verso), `OeuvreBlocRendu` (le rendu d'un bloc, **partagé** avec l'aperçu prof —
+  deux rendus parallèles divergeraient), `OeuvreSommaire` (navigation élève,
+  chapitres repliables), `OeuvreEvaluation` (onglet Évaluation élève — **aucune
+  note**), `OeuvrePanel` + `OeuvreCard` + `CreateOeuvreCard` + `OeuvrePartageModal`
+  (bibliothèque, gabarit de `GrilleCard`), `OeuvreBuilder` + `OeuvreSommaireEditable`
+  (constructeur : sommaire en accordéon + recherche) + `OeuvreSectionApercu`
+  (« vue de l'élève »), `OeuvreSuivi` (**vue prof — remplace les 3 colonnes**)
 - Fiche élève : `ProfilPanel` (profil 5 onglets partagé élève/prof),
   `EleveProfilModal` (grande popup), `MesElevesSection` (bloc Mes Élèves)
 - `DrawTools` (`DrawToolbar` + `DrawCanvas`) : atelier de tracé sur image (6 outils,
@@ -634,6 +666,16 @@ les ✅/❌ inline suivent toujours `corrigeDisponible`.
 Rappel qui coûte cher : tout champ non reconnu par `src/lib/scenarisation-server.ts` est
 **perdu au premier enregistrement**. Un champ ajouté au modèle sans être ajouté au
 sanitizer disparaît silencieusement.
+
+### Le dictionnaire élève : DEUX mécanismes, jamais superposés
+`WorkEditor` porte son propre clic-mot (`tiptap-dictionary.ts`) ; partout ailleurs
+c'est `DictionaryClickLayer` qui enveloppe le contenu. Depuis le 2026-08-16, la couche
+enveloppe **aussi la colonne de travail** (liseuse d'œuvre, questionnaire de lecture,
+auto-évaluation, recherche) — l'élève pouvait cliquer les mots de la colonne de droite
+mais pas ceux du texte qu'il lit. **Ne jamais l'envelopper autour de `WorkEditor`** :
+deux mécanismes ouvriraient deux popups. Ni autour du vocabulaire, où les mots SONT
+l'exercice. La couche s'intercalant dans un flex, elle prend une `className` de mise en
+page (`colonneTravail`), sans quoi la colonne cesse de s'étendre.
 
 ### Cache Turbopack corrompu
 **Symptôme** : comportement bizarre en dev, fichiers `.sst` manquants, erreurs 500

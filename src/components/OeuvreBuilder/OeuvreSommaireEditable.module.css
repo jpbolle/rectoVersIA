@@ -1,0 +1,511 @@
+/* ═══ Sommaire éditable du constructeur d'œuvre ═══
+   Rythme : SERRÉ à l'intérieur d'un chapitre (les scènes se lisent en
+   colonne), GÉNÉREUX entre deux chapitres (ce sont des objets distincts).
+   Un seul intervalle répété partout donnait 67 lignes de poids égal. */
+
+.sommaire {
+  width: 300px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ── En-tête fixe : chercher et ajouter ne défilent pas ── */
+
+.entete {
+  flex-shrink: 0;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg-element);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.enteteHaut {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.enteteTitre {
+  font-family: var(--c-font-title);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0;
+}
+
+.enteteChiffres {
+  flex: 1;
+  font-size: 11px;
+  color: var(--c-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Champ de recherche ── */
+
+.champRecherche {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.champIcone {
+  position: absolute;
+  left: 9px;
+  width: 14px;
+  height: 14px;
+  color: var(--c-text-muted);
+  pointer-events: none;
+  display: flex;
+}
+
+.champIcone svg {
+  width: 100%;
+  height: 100%;
+}
+
+.champRecherche input {
+  width: 100%;
+  padding: 7px 10px 7px 29px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--c-text);
+}
+
+.champRecherche input::placeholder {
+  color: var(--c-text-muted);
+}
+
+.champRecherche input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.14);
+}
+
+.resultats {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--c-text-secondary);
+}
+
+/* ── Liste défilante ──
+   Barre de défilement habillée : celle du navigateur n'appartient à aucun
+   design system, et cette colonne est étroite. */
+
+.liste {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 8px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-border-strong) transparent;
+}
+
+.liste::-webkit-scrollbar {
+  width: 9px;
+}
+
+.liste::-webkit-scrollbar-thumb {
+  background: var(--c-border-strong);
+  border-radius: 999px;
+  border: 3px solid var(--c-bg-card);
+}
+
+.liste::-webkit-scrollbar-thumb:hover {
+  background: var(--c-text-dim);
+}
+
+/* ── Chapitre ── */
+
+.chapitre {
+  border-radius: var(--c-radius);
+  padding-bottom: 2px;
+}
+
+/* Le chapitre où l'on travaille est le seul à porter une assise : c'est ce
+   qui le fait ressortir au squint test parmi onze. */
+.chapitreCourant {
+  background: rgba(45, 106, 90, 0.05);
+}
+
+.chapitreEntete {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 4px;
+}
+
+.chapitreBtn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: 0;
+  border-radius: var(--c-radius);
+  padding: 8px 6px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.14s ease;
+}
+
+.chapitreBtn:hover:not(:disabled) {
+  background: var(--c-bg-element);
+}
+
+.chapitreBtn:disabled {
+  cursor: default;
+}
+
+.chapitreBtn:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: -2px;
+}
+
+.chevron {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  display: flex;
+  color: var(--c-text-muted);
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.chevron svg {
+  width: 100%;
+  height: 100%;
+}
+
+.chapitreBtnOuvert .chevron {
+  transform: rotate(90deg);
+  color: var(--c-primary);
+}
+
+/* Le vert de Classica, comme les titres de cartes et de sections ailleurs
+   dans l'app : c'est ce qui sépare d'un coup d'œil le niveau CHAPITRE du
+   niveau scène, qui reste en gris de texte. */
+.chapitreTitre {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--c-font-title);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapitreCompteur {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  background: var(--c-bg-element);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chapitreBtn:hover .chapitreCompteur {
+  background: var(--c-bg-card);
+}
+
+.chapitreOutils {
+  display: flex;
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+
+.chapitreEntete:hover .chapitreOutils,
+.chapitreOutils:focus-within {
+  opacity: 1;
+}
+
+/* ── Les scènes d'un chapitre ──
+   Un filet vertical à gauche : il dit « ceci appartient au chapitre » sans
+   ajouter un conteneur. */
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  padding: 1px 0 6px;
+  margin-left: 13px;
+  border-left: 1px solid var(--c-border);
+}
+
+.acte {
+  padding: 9px 0 3px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+}
+
+.ligne {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 0 var(--c-radius) var(--c-radius) 0;
+  border-left: 2px solid transparent;
+  margin-left: -1px;
+  transition: background 0.14s ease;
+}
+
+.ligne:hover {
+  background: var(--c-bg-element);
+}
+
+.ligneActive {
+  background: var(--c-bg-element);
+  border-left-color: var(--c-primary);
+}
+
+.lienSection {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 0;
+  padding: 6px 4px 6px 9px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}
+
+.lienSection:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: -2px;
+  border-radius: var(--c-radius);
+}
+
+.ligneActive .lienSection {
+  color: var(--c-text);
+  font-weight: 600;
+}
+
+.numero {
+  flex-shrink: 0;
+  width: 17px;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--c-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.ligneActive .numero {
+  color: var(--c-primary);
+}
+
+.titreSection {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.acteInline {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--c-text-dim);
+}
+
+/* Un point, pas un ✓ : la scène PORTE une vérification, elle n'est pas
+   « faite ». Une coche aurait dit un état d'avancement qui n'existe pas. */
+.marqueVerif {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--c-accent);
+  margin-right: 2px;
+}
+
+/* ── Outils de ligne : au survol et au clavier, jamais à demeure ──
+   Trois boutons × 67 scènes, c'est 201 cibles dans 300 px de large. */
+
+.outils {
+  display: flex;
+  gap: 0;
+  padding-right: 3px;
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+
+.ligne:hover .outils,
+.ligneActive .outils,
+.outils:focus-within {
+  opacity: 1;
+}
+
+.btnOutil,
+.btnIcone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Cible tactile large, marque visible petite : la Chromebook a un écran
+     tactile, l'icône ne doit pas grossir pour autant. */
+  width: 26px;
+  height: 26px;
+  padding: 6px;
+  background: none;
+  border: 0;
+  border-radius: var(--c-radius-sm);
+  color: var(--c-text-muted);
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.btnOutil svg,
+.btnIcone svg {
+  width: 100%;
+  height: 100%;
+}
+
+.btnOutil:hover:not(:disabled),
+.btnIcone:hover:not(:disabled) {
+  background: var(--c-border);
+  color: var(--c-text);
+}
+
+.btnOutil:focus-visible,
+.btnIcone:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: -1px;
+}
+
+.btnOutil:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.btnOutilDanger:hover:not(:disabled) {
+  background: #fbefef;
+  color: var(--c-danger);
+}
+
+/* ── Ajouter une section : au bout de la liste qu'elle allonge ── */
+
+.ajouterSection {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 3px 0 0 9px;
+  padding: 6px 8px;
+  background: none;
+  border: 0;
+  border-radius: var(--c-radius);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.ajouterSection:hover:not(:disabled) {
+  background: var(--c-bg-element);
+  color: var(--c-primary);
+}
+
+.ajouterSection:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ajouterIcone {
+  width: 13px;
+  height: 13px;
+  display: flex;
+}
+
+.ajouterIcone svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Œuvre vide ── */
+
+.vide {
+  margin: 24px 10px;
+  padding: 22px 18px;
+  border: 1px dashed var(--c-border-strong);
+  border-radius: var(--c-radius-lg);
+  text-align: center;
+  color: var(--c-text-secondary);
+}
+
+.vide p {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+}
+
+.videAide {
+  font-size: 12px !important;
+  color: var(--c-text-muted);
+  line-height: 1.5;
+}
+
+.videBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 8px 15px;
+  border: none;
+  border-radius: var(--c-radius);
+  background: var(--c-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.videBtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.videBtn:hover {
+  background: var(--c-primary-light);
+}
+
+/* ── Écran étroit ──
+   Sur un Chromebook, 300 px pris à la colonne d'édition se paient cher : le
+   sommaire s'affine et le texte reste lisible. */
+@media (max-width: 1100px) {
+  .sommaire {
+    width: 250px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+}

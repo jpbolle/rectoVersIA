@@ -14,22 +14,54 @@
 // une perte de données. Le bouton dit ce qu'il reste à sauver, et quitter une
 // section modifiée demande confirmation.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { compressImage } from '@/lib/image-compress';
 import { parseYoutubeId } from '@/lib/youtube';
 import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
+import OeuvreSectionApercu from './OeuvreSectionApercu';
+import OeuvreSommaireEditable from './OeuvreSommaireEditable';
 import {
+  blocsDeFace,
   generateBlocId,
   generateChapitreId,
   type Oeuvre,
   type OeuvreBloc,
   type OeuvreChapitre,
+  type OeuvreFace,
   type OeuvreSection,
 } from '@/types/oeuvre';
 import type { LectureQuiz } from '@/types/lecture';
 import styles from './OeuvreBuilder.module.css';
+
+// Les deux faces de la liseuse, côté prof. Le libellé DOIT être celui que
+// l'élève lit, sinon le prof compose à l'aveugle.
+const FACES: { id: OeuvreFace; label: string; aide: string }[] = [
+  {
+    id: 'recto',
+    label: 'Espace textuel',
+    aide: 'Le texte de la scène. Une image ou une vidéo peut s’y intercaler à l’endroit voulu.',
+  },
+  {
+    id: 'verso',
+    label: 'Espace multimédia',
+    aide: 'Les compléments : vidéos, images, enregistrements. L’élève y bascule d’un onglet — ils n’apparaissent que si tu en déposes.',
+  },
+];
+
+// Libellés des blocs — ce que le prof lit dans le constructeur.
+// « Bloc informatif » et « Extrait » plutôt que « Prose » et « Vers » : on
+// nomme la FONCTION pédagogique du bloc, pas sa forme littéraire (une consigne
+// n'est pas de la prose, un extrait n'est pas toujours en vers).
+const LIBELLE_BLOC: Record<OeuvreBloc['type'], string> = {
+  texte: 'Bloc informatif',
+  vers: 'Extrait',
+  video: 'Vidéo',
+  image: 'Image',
+  audio: 'Audio',
+};
 
 const TexteEditor = dynamic(() => import('@/components/RessourcesInput/DocumentEditor'), {
   ssr: false,
@@ -54,8 +86,14 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
   const [modifiee, setModifiee] = useState(false);
   const [occupe, setOccupe] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // Face en cours d'édition — le prof compose une face à la fois, comme
+  // l'élève en lit une à la fois.
+  const [face, setFace] = useState<OeuvreFace>('recto');
+  // Aperçu : la section telle que l'élève la verra, sans quitter l'édition
+  const [apercu, setApercu] = useState(false);
 
-  const fichierRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLInputElement>(null);
   const blocCibleRef = useRef<string | null>(null);
 
   const entetes = useCallback(async () => (await headersRef.current()) || undefined, []);
@@ -268,19 +306,48 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
   const ajouterBloc = useCallback(
     (type: OeuvreBloc['type']) => {
       if (!section) return;
-      majSection({ blocs: [...section.blocs, { id: generateBlocId(), type, contenu: '' }] });
+      majSection({
+        blocs: [
+          ...section.blocs,
+          // `face` n'est écrite que pour le verso : absente = recto, ce qui
+          // laisse intactes les œuvres encodées avant l'existence des faces.
+          { id: generateBlocId(), type, contenu: '', ...(face === 'verso' ? { face } : {}) },
+        ],
+      });
     },
-    [section, majSection]
+    [section, majSection, face]
   );
 
+  // Le déplacement se fait DANS la face affichée : l'index vu par le prof
+  // n'est pas celui du tableau complet, qui mêle les deux faces.
   const deplacerBloc = useCallback(
-    (index: number, sens: -1 | 1) => {
+    (blocId: string, sens: -1 | 1) => {
       if (!section) return;
-      const cible = index + sens;
-      if (cible < 0 || cible >= section.blocs.length) return;
+      const memeFace = section.blocs.filter((b) => (b.face ?? 'recto') === face);
+      const rang = memeFace.findIndex((b) => b.id === blocId);
+      const cible = rang + sens;
+      if (rang < 0 || cible < 0 || cible >= memeFace.length) return;
+
+      // On permute les deux blocs à leurs positions réelles dans le tableau
+      const iA = section.blocs.findIndex((b) => b.id === memeFace[rang].id);
+      const iB = section.blocs.findIndex((b) => b.id === memeFace[cible].id);
       const blocs = [...section.blocs];
-      [blocs[index], blocs[cible]] = [blocs[cible], blocs[index]];
+      [blocs[iA], blocs[iB]] = [blocs[iB], blocs[iA]];
       majSection({ blocs });
+    },
+    [section, majSection, face]
+  );
+
+  // Faire passer un bloc d'une face à l'autre — le geste manquerait sinon à
+  // qui a encodé sa vidéo dans le texte et la veut en complément.
+  const changerFaceBloc = useCallback(
+    (blocId: string, cible: OeuvreFace) => {
+      if (!section) return;
+      majSection({
+        blocs: section.blocs.map((b) =>
+          b.id === blocId ? { ...b, face: cible === 'verso' ? 'verso' : undefined } : b
+        ),
+      });
     },
     [section, majSection]
   );
@@ -293,18 +360,32 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
     [section, majSection]
   );
 
-  // Dépôt d'image : même chaîne que les questionnaires (compression puis
-  // /api/ressources/upload), jamais d'URL externe.
-  const deposerImage = useCallback(
-    async (fichier: File | undefined) => {
+  // Dépôt d'image ou d'audio : même chaîne que les questionnaires
+  // (compression pour l'image, puis /api/ressources/upload), jamais d'URL
+  // externe et jamais de Storage — le fichier vit en base64 dans
+  // `ressourceImages`, d'où la limite de 700 Ko.
+  const deposerFichier = useCallback(
+    async (fichier: File | undefined, quoi: 'image' | 'audio') => {
       const blocId = blocCibleRef.current;
+      const input = quoi === 'image' ? imageRef : audioRef;
       if (!fichier || !blocId) return;
       setOccupe(true);
       try {
-        const compresse = await compressImage(fichier);
-        if (!compresse) throw new Error('Image incompressible');
+        let aEnvoyer: Blob = fichier;
+        let nom = fichier.name;
+        if (quoi === 'image') {
+          const compresse = await compressImage(fichier);
+          if (!compresse) throw new Error('Image incompressible');
+          aEnvoyer = compresse.blob;
+          nom = compresse.name;
+        } else if (fichier.size > 700_000) {
+          // Pas de compression audio côté navigateur : on refuse tôt plutôt
+          // que de laisser Firestore rejeter le document (limite de 1 Mo).
+          throw new Error('Audio trop lourd (700 Ko maximum, soit 2 à 3 minutes)');
+        }
+
         const form = new FormData();
-        form.append('files', compresse.blob, compresse.name);
+        form.append('files', aEnvoyer, nom);
         const h = await headersRef.current();
         // Content-Type laissé au navigateur : il pose lui-même sa boundary
         const res = await fetch('/api/ressources/upload', {
@@ -314,13 +395,19 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
         });
         const json = await res.json();
         if (!json.success || !json.data?.files?.[0]) throw new Error(json.message || 'Dépôt refusé');
-        majBloc(blocId, { imageUrl: json.data.files[0].url, imageFileId: json.data.files[0].fileId });
+        const f = json.data.files[0];
+        majBloc(
+          blocId,
+          quoi === 'image'
+            ? { imageUrl: f.url, imageFileId: f.fileId }
+            : { audioUrl: f.url, audioFileId: f.fileId }
+        );
       } catch (e) {
         setMessage(e instanceof Error ? e.message : 'Dépôt impossible');
       } finally {
         setOccupe(false);
         blocCibleRef.current = null;
-        if (fichierRef.current) fichierRef.current.value = '';
+        if (input.current) input.current.value = '';
       }
     },
     [majBloc]
@@ -338,18 +425,52 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
     return () => clearTimeout(t);
   }, [message]);
 
+  // Blocs de la face en cours — le prof n'édite jamais les deux à la fois
+  const blocsFace = useMemo(
+    () => (section ? blocsDeFace(section.blocs, face) : []),
+    [section, face]
+  );
+
   return (
     <div className={styles.plein}>
       <header className={styles.entete}>
-        <div>
+        {/* Le constructeur est un écran plein : sans ces deux repères, on n'a
+            plus aucun moyen de revenir — ni au tableau de bord, ni à la
+            bibliothèque. */}
+        <Link href="/dashboard" className={styles.logoLien} title="Retour à l’accueil">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logoRecto.png" alt="Recto-VersIA" className={styles.logo} />
+        </Link>
+
+        <button
+          type="button"
+          className={styles.btnRetour}
+          onClick={fermer}
+          title="Revenir à la bibliothèque d’œuvres"
+        >
+          ← Retour
+        </button>
+
+        <div className={styles.enteteTitre}>
           <h2>{oeuvre.titre}</h2>
           <p className={styles.sous}>
             {oeuvre.chapitres.length} chapitres ·{' '}
             {oeuvre.chapitres.reduce((n, c) => n + c.sections.length, 0)} sections
           </p>
         </div>
+
         <div className={styles.enteteActions}>
           {modifiee && <span className={styles.pastilleModifiee}>modifications non enregistrées</span>}
+          {section && (
+            <button
+              type="button"
+              className={styles.btnGhost}
+              onClick={() => setApercu(true)}
+              title="Voir cette section telle que l’élève la lira"
+            >
+              👁 Prévisualiser
+            </button>
+          )}
           <button type="button" className={styles.btnGhost} onClick={fermer}>
             Fermer
           </button>
@@ -359,89 +480,17 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
       {message && <div className={styles.message}>{message}</div>}
 
       <div className={styles.corps}>
-        {/* ── Sommaire éditable ── */}
-        <aside className={styles.sommaire}>
-          <div className={styles.sommaireBarre}>
-            <span>Sommaire</span>
-            <button type="button" className={styles.btnMini} onClick={ajouterChapitre}>
-              + chapitre
-            </button>
-          </div>
-
-          <div className={styles.sommaireListe}>
-            {oeuvre.chapitres.map((c) => (
-              <section key={c.id} className={styles.chapitre}>
-                <div className={styles.chapitreEntete}>
-                  <button
-                    type="button"
-                    className={styles.chapitreTitre}
-                    onClick={() => renommerChapitre(c.id)}
-                    title="Renommer"
-                  >
-                    {c.titre}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.btnMini}
-                    onClick={() => ajouterSection(c.id)}
-                    disabled={occupe}
-                  >
-                    + section
-                  </button>
-                </div>
-
-                {c.sections.map((s, i) => {
-                  const precedent = i > 0 ? c.sections[i - 1].groupe : undefined;
-                  return (
-                    <div key={s.id}>
-                      {s.groupe && s.groupe !== precedent && (
-                        <div className={styles.acte}>{s.groupe}</div>
-                      )}
-                      <div
-                        className={`${styles.ligneSection} ${
-                          s.id === sectionId ? styles.ligneActive : ''
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          className={styles.lienSection}
-                          onClick={() => ouvrirSection(s.id)}
-                        >
-                          {s.titre}
-                          {s.aQuestions && <span className={styles.pastille}>✓</span>}
-                        </button>
-                        <span className={styles.ligneOutils}>
-                          <button type="button" onClick={() => deplacerSection(c.id, i, -1)} title="Monter">
-                            ↑
-                          </button>
-                          <button type="button" onClick={() => deplacerSection(c.id, i, 1)} title="Descendre">
-                            ↓
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => supprimerSection(s.id)}
-                            title="Supprimer"
-                            className={styles.outilDanger}
-                          >
-                            ✕
-                          </button>
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {c.sections.length === 0 && <p className={styles.aide}>Aucune section.</p>}
-              </section>
-            ))}
-
-            {oeuvre.chapitres.length === 0 && (
-              <p className={styles.aide}>
-                Commence par un chapitre — une pièce, une partie, un acte selon ton découpage.
-              </p>
-            )}
-          </div>
-        </aside>
+        <OeuvreSommaireEditable
+          chapitres={oeuvre.chapitres}
+          sectionCourante={sectionId}
+          occupe={occupe}
+          onOuvrirSection={ouvrirSection}
+          onAjouterChapitre={ajouterChapitre}
+          onRenommerChapitre={renommerChapitre}
+          onAjouterSection={ajouterSection}
+          onDeplacerSection={deplacerSection}
+          onSupprimerSection={supprimerSection}
+        />
 
         {/* ── Section ouverte ── */}
         <main className={styles.editeur}>
@@ -494,23 +543,70 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                 />
               </label>
 
-              {/* ── Blocs ── */}
+              {/* ── Blocs, face par face ──
+                  Le prof compose une face à la fois, comme l'élève en lit une
+                  à la fois : mêler les deux dans une seule liste rendrait
+                  impossible de savoir ce que l'élève verra d'abord. */}
               <h3 className={styles.titreSection}>Contenu</h3>
 
-              {section.blocs.map((bloc, index) => (
+              <div className={styles.faces} role="tablist">
+                {FACES.map((f) => {
+                  const combien = blocsDeFace(section.blocs, f.id).length;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={face === f.id}
+                      className={`${styles.face} ${face === f.id ? styles.faceActive : ''}`}
+                      onClick={() => setFace(f.id)}
+                    >
+                      {f.label}
+                      <span className={styles.faceCompteur}>{combien}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className={styles.aide}>{FACES.find((f) => f.id === face)?.aide}</p>
+
+              {blocsFace.length === 0 && (
+                <p className={styles.aide}>
+                  {face === 'recto'
+                    ? 'Aucun contenu — commence par un bloc informatif ou un extrait.'
+                    : 'Aucun complément. Tant que cet espace reste vide, l’élève ne voit aucun onglet : il lit simplement le texte.'}
+                </p>
+              )}
+
+              {blocsFace.map((bloc, index) => (
                 <div key={bloc.id} className={styles.bloc}>
                   <div className={styles.blocEntete}>
-                    <span className={styles.blocType}>
-                      {bloc.type === 'texte' && 'Prose'}
-                      {bloc.type === 'vers' && 'Vers'}
-                      {bloc.type === 'video' && 'Vidéo'}
-                      {bloc.type === 'image' && 'Image'}
-                    </span>
+                    <span className={styles.blocType}>{LIBELLE_BLOC[bloc.type]}</span>
                     <span className={styles.blocOutils}>
-                      <button type="button" onClick={() => deplacerBloc(index, -1)} title="Monter">
+                      <button
+                        type="button"
+                        onClick={() => changerFaceBloc(bloc.id, face === 'recto' ? 'verso' : 'recto')}
+                        title={
+                          face === 'recto'
+                            ? 'Déplacer vers l’espace multimédia'
+                            : 'Ramener dans l’espace textuel'
+                        }
+                      >
+                        {face === 'recto' ? '⇥' : '⇤'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deplacerBloc(bloc.id, -1)}
+                        title="Monter"
+                        disabled={index === 0}
+                      >
                         ↑
                       </button>
-                      <button type="button" onClick={() => deplacerBloc(index, 1)} title="Descendre">
+                      <button
+                        type="button"
+                        onClick={() => deplacerBloc(bloc.id, 1)}
+                        title="Descendre"
+                        disabled={index === blocsFace.length - 1}
+                      >
                         ↓
                       </button>
                       <button
@@ -595,7 +691,7 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                         disabled={occupe}
                         onClick={() => {
                           blocCibleRef.current = bloc.id;
-                          fichierRef.current?.click();
+                          imageRef.current?.click();
                         }}
                       >
                         {bloc.imageUrl ? 'Remplacer l’image' : 'Déposer une image'}
@@ -608,22 +704,62 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                       />
                     </>
                   )}
+
+                  {bloc.type === 'audio' && (
+                    <>
+                      {bloc.audioUrl && (
+                        <audio controls src={bloc.audioUrl} className={styles.apercuAudio} />
+                      )}
+                      <button
+                        type="button"
+                        className={styles.btnGhost}
+                        disabled={occupe}
+                        onClick={() => {
+                          blocCibleRef.current = bloc.id;
+                          audioRef.current?.click();
+                        }}
+                      >
+                        {bloc.audioUrl ? 'Remplacer l’audio' : 'Déposer un audio'}
+                      </button>
+                      <input
+                        type="text"
+                        placeholder="Légende (facultatif)"
+                        value={bloc.legende || ''}
+                        onChange={(e) => majBloc(bloc.id, { legende: e.target.value })}
+                      />
+                    </>
+                  )}
                 </div>
               ))}
 
+              {/* Les types proposés suivent la face : composer un extrait dans
+                  l'espace multimédia n'aurait aucun sens, et l'inverse
+                  encombrerait le texte. */}
               <div className={styles.ajoutBlocs}>
-                <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('texte')}>
-                  + Prose
-                </button>
-                <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('vers')}>
-                  + Vers
-                </button>
+                {face === 'recto' && (
+                  <>
+                    <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('texte')}>
+                      + Bloc informatif
+                    </button>
+                    <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('vers')}>
+                      + Extrait
+                    </button>
+                  </>
+                )}
                 <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('video')}>
                   + Vidéo
                 </button>
                 <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('image')}>
                   + Image
                 </button>
+                <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('audio')}>
+                  + Audio
+                </button>
+                {face === 'verso' && (
+                  <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('texte')}>
+                    + Bloc informatif
+                  </button>
+                )}
               </div>
 
               {/* ── Vérification de lecture ──
@@ -657,12 +793,27 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
       </div>
 
       <input
-        ref={fichierRef}
+        ref={imageRef}
         type="file"
         accept="image/*"
         className={styles.inputCache}
-        onChange={(e) => deposerImage(e.target.files?.[0])}
+        onChange={(e) => deposerFichier(e.target.files?.[0], 'image')}
       />
+      <input
+        ref={audioRef}
+        type="file"
+        accept="audio/*"
+        className={styles.inputCache}
+        onChange={(e) => deposerFichier(e.target.files?.[0], 'audio')}
+      />
+
+      {/* ── Aperçu de la section en cours ──
+          Le prof compose dans des champs de formulaire ; l'élève lit une page.
+          Sans cet aperçu, la mise en page (deux colonnes, tirades, médias
+          centrés) ne se découvre qu'en ouvrant l'activité côté élève. */}
+      {apercu && section && (
+        <OeuvreSectionApercu section={section} onFermer={() => setApercu(false)} />
+      )}
     </div>
   );
 }

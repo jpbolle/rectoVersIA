@@ -30,10 +30,12 @@ export function useOeuvres(actif = true) {
       const res = await fetch('/api/oeuvres', { headers: headers || undefined });
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Chargement impossible');
-      // Les trois paniers dans un seul tableau : à la création d'activité, un
-      // prof veut voir tout ce qu'il peut donner, pas trois listes.
+      // Tous les paniers dans un seul tableau — celui des œuvres partagées
+      // nommément compris : à la création d'activité, un prof veut voir tout
+      // ce qu'il peut donner, pas quatre listes.
       const toutes: Oeuvre[] = [
         ...(json.data || []),
+        ...(json.partagees || []),
         ...(json.shared || []),
         ...(json.otherProfs || []),
       ];

@@ -4,41 +4,59 @@
 //
 // Une œuvre est une ressource RÉUTILISABLE, pas le contenu d'une activité : on
 // l'encode une fois, on la donne à autant de classes qu'on veut, année après
-// année. Le partage suit le modèle des grilles : chacun voit celles des autres
-// et peut en dupliquer une pour la remanier — on ne modifie jamais l'œuvre
-// d'un collègue.
+// année.
+//
+// ─── DEUX PARTAGES, à ne jamais confondre ───
+//
+//   « Œuvres des professeurs »  → je vois celle d'un collègue et je la
+//                                 DUPLIQUE. Je repars avec ma copie ; la
+//                                 sienne ne bouge pas. (Modèle des grilles.)
+//
+//   « Partagées avec moi »      → un collègue m'a désigné NOMMÉMENT. J'accède
+//                                 au MÊME livre, en lecture ou en co-édition.
+//                                 Rien n'est copié.
+//
+// Les cartes reprennent le gabarit de GrilleCard et VocabCard : trois familles
+// voisines dans une même page ne peuvent pas se ressembler « à peu près ».
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import OeuvreBuilder from '@/components/OeuvreBuilder/OeuvreBuilder';
+import OeuvreCard from '@/components/OeuvreCard/OeuvreCard';
+import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
+import OeuvrePartageModal from '@/components/OeuvreCard/OeuvrePartageModal';
+import { partageDe } from '@/types/oeuvre';
 import type { Oeuvre } from '@/types/oeuvre';
 import styles from './OeuvrePanel.module.css';
 
 interface Paniers {
   miennes: Oeuvre[];
   partagees: Oeuvre[];
+  exemples: Oeuvre[];
   autres: Oeuvre[];
 }
 
-const VIDE: Paniers = { miennes: [], partagees: [], autres: [] };
+const VIDE: Paniers = { miennes: [], partagees: [], exemples: [], autres: [] };
 
 function compterSections(o: Oeuvre): number {
   return o.chapitres.reduce((n, c) => n + c.sections.length, 0);
 }
 
 export default function OeuvrePanel() {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, user } = useAuth();
   const headersRef = useRef(getAuthHeaders);
   headersRef.current = getAuthHeaders;
+  // `user` est un objet instable (règle AGENTS.md) : on n'en garde que l'email,
+  // et seulement pour savoir quel partage me concerne.
+  const monEmail = (user?.email || '').toLowerCase();
 
   const [paniers, setPaniers] = useState<Paniers>(VIDE);
   const [chargement, setChargement] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
-  // Consultation (œuvre d'un collègue) vs construction (la mienne) : on ne
-  // modifie jamais l'œuvre d'un autre, on la duplique.
   const [ouverte, setOuverte] = useState<Oeuvre | null>(null);
   const [enConstruction, setEnConstruction] = useState<Oeuvre | null>(null);
+  const [aPartager, setAPartager] = useState<Oeuvre | null>(null);
   const [creation, setCreation] = useState(false);
   const [nouveauTitre, setNouveauTitre] = useState('');
   const [nouvelAuteur, setNouvelAuteur] = useState('');
@@ -52,7 +70,8 @@ export default function OeuvrePanel() {
       if (!json.success) throw new Error(json.message || 'Chargement impossible');
       setPaniers({
         miennes: json.data || [],
-        partagees: json.shared || [],
+        partagees: json.partagees || [],
+        exemples: json.shared || [],
         autres: json.otherProfs || [],
       });
     } catch (e) {
@@ -146,55 +165,11 @@ export default function OeuvrePanel() {
     [charger, ouverte]
   );
 
-  const carte = (o: Oeuvre, mienne: boolean) => (
-    <article key={o.id} className={`${styles.carte} ${o.archive ? styles.carteArchivee : ''}`}>
-      <header className={styles.carteEntete}>
-        <h3 className={styles.carteTitre}>{o.titre}</h3>
-        {o.auteur && !o.titre.toLowerCase().includes(o.auteur.toLowerCase()) && (
-          <span className={styles.carteAuteur}>{o.auteur}</span>
-        )}
-      </header>
-
-      <p className={styles.carteChiffres}>
-        {o.chapitres.length} chapitre{o.chapitres.length > 1 ? 's' : ''} ·{' '}
-        {compterSections(o)} section{compterSections(o) > 1 ? 's' : ''}
-      </p>
-
-      {o.description && <p className={styles.carteDescription}>{o.description}</p>}
-
-      {!mienne && o.profName && <p className={styles.carteProf}>de {o.profName}</p>}
-      {o.archive && <p className={styles.carteProf}>Archivée</p>}
-
-      <div className={styles.carteActions}>
-        {mienne && !o.archive ? (
-          <button type="button" className={styles.btnPrimary} onClick={() => ouvrir(o.id, true)}>
-            Construire
-          </button>
-        ) : null}
-        <button type="button" className={styles.btnGhost} onClick={() => ouvrir(o.id, false)}>
-          Voir le sommaire
-        </button>
-        <button type="button" className={styles.btnGhost} onClick={() => dupliquer(o)}>
-          Dupliquer
-        </button>
-        {mienne && !o.archive && (
-          <button type="button" className={styles.btnDanger} onClick={() => archiver(o)}>
-            Archiver
-          </button>
-        )}
-      </div>
-    </article>
-  );
-
-  const groupe = (titre: string, aide: string, liste: Oeuvre[], miennes: boolean) =>
-    liste.length > 0 && (
-      <section className={styles.groupe}>
-        <h2 className={styles.groupeTitre}>
-          {titre} <span className={styles.groupeAide}>{aide}</span>
-        </h2>
-        <div className={styles.grille}>{liste.map((o) => carte(o, miennes))}</div>
-      </section>
-    );
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(null), 4500);
+    return () => clearTimeout(t);
+  }, [message]);
 
   if (enConstruction) {
     return (
@@ -206,17 +181,50 @@ export default function OeuvrePanel() {
     );
   }
 
+  const grille = (
+    liste: Oeuvre[],
+    options: { mienne: boolean; avecCarteAjout?: boolean }
+  ) => (
+    <div className={styles.grille}>
+      {options.avecCarteAjout && <CreateOeuvreCard onClick={() => setCreation(true)} />}
+      {liste.map((o) => {
+        const recu = options.mienne ? null : partageDe(o, monEmail);
+        return (
+          <OeuvreCard
+            key={o.id}
+            oeuvre={o}
+            mienne={options.mienne}
+            coEditable={recu?.mode === 'edition'}
+            partageRecu={recu?.mode ?? null}
+            onVoir={(x) => ouvrir(x.id, false)}
+            onEditer={(x) => ouvrir(x.id, true)}
+            onPartager={options.mienne ? (x) => setAPartager(x) : undefined}
+            onDupliquer={dupliquer}
+            onArchiver={options.mienne ? archiver : undefined}
+          />
+        );
+      })}
+    </div>
+  );
+
+  const section = (titre: string, aide: string, liste: Oeuvre[], mienne: boolean) =>
+    liste.length > 0 && (
+      <section className={styles.groupe}>
+        <div className={styles.groupeEntete}>
+          <h2 className={styles.groupeTitre}>{titre}</h2>
+          <p className={styles.groupeAide}>{aide}</p>
+        </div>
+        {grille(liste, { mienne })}
+      </section>
+    );
+
   return (
     <div className={styles.panneau}>
-      <div className={styles.barre}>
-        <p className={styles.intro}>
-          Une œuvre s’encode <strong>une fois</strong> et se donne à autant de classes qu’on veut.
-          Celle d’un collègue ne se modifie pas : on la duplique.
-        </p>
-        <button type="button" className={styles.btnPrimary} onClick={() => setCreation(true)}>
-          + Nouvelle œuvre
-        </button>
-      </div>
+      <p className={styles.intro}>
+        Une œuvre s’encode <strong>une fois</strong> et se donne à autant de classes qu’on veut.
+        Pour qu’un collègue accède au <strong>même</strong> livre, partage-la ; pour qu’il reparte
+        avec sa propre version, il la duplique.
+      </p>
 
       {message && (
         <div className={styles.message} onClick={() => setMessage(null)} role="status">
@@ -226,16 +234,32 @@ export default function OeuvrePanel() {
 
       {chargement ? (
         <EmptyState icon="hourglass" message="En cours de chargement" />
-      ) : paniers.miennes.length + paniers.partagees.length + paniers.autres.length === 0 ? (
-        <EmptyState
-          icon="📚"
-          message="Aucune œuvre pour le moment. Une œuvre, c’est un texte long découpé en chapitres et en sections, que les élèves lisent à leur rythme."
-        />
       ) : (
         <>
-          {groupe('Mes œuvres', '', paniers.miennes, true)}
-          {groupe('Œuvres partagées', 'exemples', paniers.partagees, false)}
-          {groupe('Œuvres des professeurs', 'à dupliquer pour les modifier', paniers.autres, false)}
+          {/* Mes œuvres : la carte « + » ouvre le groupe, même vide */}
+          <section className={styles.groupe}>
+            <div className={styles.groupeEntete}>
+              <h2 className={styles.groupeTitre}>Mes œuvres</h2>
+              <p className={styles.groupeAide}>
+                Une œuvre s’encode une fois et se donne à autant de classes qu’on veut
+              </p>
+            </div>
+            {grille(paniers.miennes, { mienne: true, avecCarteAjout: true })}
+          </section>
+
+          {section(
+            'Partagées avec moi',
+            'le même livre que celui du collègue — rien n’est copié',
+            paniers.partagees,
+            false
+          )}
+          {section('Œuvres partagées', 'exemples proposés à tous', paniers.exemples, false)}
+          {section(
+            'Œuvres des professeurs',
+            'à dupliquer pour les modifier',
+            paniers.autres,
+            false
+          )}
         </>
       )}
 
@@ -287,6 +311,18 @@ export default function OeuvrePanel() {
         </div>
       )}
 
+      {/* ── Partage ── */}
+      {aPartager && (
+        <OeuvrePartageModal
+          oeuvre={aPartager}
+          onFermer={() => setAPartager(null)}
+          onEnregistre={() => {
+            setMessage('Partages enregistrés');
+            charger();
+          }}
+        />
+      )}
+
       {/* ── Sommaire d'une œuvre ── */}
       {ouverte && (
         <div className={styles.overlay} onClick={(e) => e.target === e.currentTarget && setOuverte(null)}>
@@ -329,8 +365,8 @@ export default function OeuvrePanel() {
 
             <footer className={styles.popupPied}>
               <span className={styles.popupNote}>
-                Pour modifier le contenu, ouvre l’œuvre avec « Construire ». Celle d’un
-                collègue se duplique d’abord.
+                Pour modifier le contenu, ouvre l’œuvre avec ✏️. Celle d’un collègue se duplique
+                d’abord — sauf s’il te l’a partagée en co-édition.
               </span>
               <button type="button" className={styles.btnGhost} onClick={() => setOuverte(null)}>
                 Fermer

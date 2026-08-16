@@ -212,6 +212,15 @@ export default function CreationForm({
   const supporteAutoEval =
     atelier !== 'lecture-oeuvre' &&
     (typeTravail === 'ecrire' || typeTravail === 'lire' || typeTravail === 'rechercher');
+  // ── Ce que porte le verso ──
+  // Deux groupes : les ressources DONNÉES à l'élève, et le contenu de
+  // l'activité elle-même. Les intertitres ne servent qu'à les séparer : quand
+  // un seul groupe s'affiche, ils répètent le titre du verso et n'apportent
+  // rien (« Ajouter des contenus » suivi de « Contenus de l'activité »).
+  const aRessources = typeTravail !== 'vocabulaire' && typeTravail !== 'autoevaluation';
+  const aContenus = atelier !== 'lecture-oeuvre';
+  const aDeuxGroupes = aRessources && aContenus;
+
   const grilleValid = !usesGrille || grille;
   const isValid = baseValid && grilleValid
     && (typeTravail !== 'rechercher' || nkQuestions.some(q => q.texte.trim()))
@@ -442,14 +451,11 @@ export default function CreationForm({
 
         <div className={styles.formGroup}>
           <DatePicker
-            /* Dans la lecture d'une œuvre, RIEN NE SE REMET : le parcours
-               reste ouvert et le prof suit la progression. La date y est une
-               échéance de lecture, et le libellé doit le dire. */
-            label={
-              atelier === 'lecture-oeuvre'
-                ? 'À lire pour le — facultatif'
-                : 'Date de remise — facultatif'
-            }
+            /* « Échéance » et non « date de remise » : la date est facultative
+               et ne signifie pas toujours une remise — dans la lecture d'une
+               œuvre, RIEN NE SE REMET (le parcours reste ouvert, le prof suit
+               la progression). Un seul mot pour tous les dispositifs. */
+            label="Échéance"
             value={dateRemise}
             onChange={setDateRemise}
             min={getTodayString()}
@@ -827,15 +833,19 @@ export default function CreationForm({
         </span>
       </div>
 
-      {/* ── Groupe 1 : ressources pour l'élève (tous les types sauf vocabulaire) ── */}
-      {typeTravail !== 'vocabulaire' && (
+      {aRessources && (
         <>
-          <div className={styles.versoGroup}>
-            <h4 className={styles.versoGroupTitle}>Ressources pour l’élève</h4>
-            <p className={styles.versoGroupHint}>
-              Visibles par l’élève dans l’onglet «&nbsp;Ressources&nbsp;» de sa colonne de droite.
-            </p>
-          </div>
+          {/* Les intertitres n'existent que pour SÉPARER les deux groupes.
+              Quand un seul est affiché, ils répètent le titre du verso — d'où
+              le `aDeuxGroupes`. */}
+          {aDeuxGroupes && (
+            <div className={styles.versoGroup}>
+              <h4 className={styles.versoGroupTitle}>Ressources pour l’élève</h4>
+              <p className={styles.versoGroupHint}>
+                Visibles par l’élève dans l’onglet «&nbsp;Ressources&nbsp;» de sa colonne de droite.
+              </p>
+            </div>
+          )}
           <div className={styles.versoSection}>
             <div className={styles.versoSectionHeader}>
               <h3 className={styles.versoSectionTitle}>{ressourceLabel}</h3>
@@ -850,7 +860,7 @@ export default function CreationForm({
         </>
       )}
 
-      {/* ── Groupe 2 : contenus de l'activité (selon le type) ── */}
+      {aContenus && aDeuxGroupes && (
       <div className={styles.versoGroup}>
         <h4 className={styles.versoGroupTitle}>
           Contenus de l’activité
@@ -872,6 +882,7 @@ export default function CreationForm({
           </span>
         </h4>
       </div>
+      )}
 
       {/* Questionnaire d'auto-évaluation (type autoevaluation) */}
       {typeTravail === 'autoevaluation' && (
@@ -883,8 +894,9 @@ export default function CreationForm({
         />
       )}
 
-      {/* Questionnaire de lecture (type lire) */}
-      {typeTravail === 'lire' && (
+      {/* Questionnaire de lecture (type lire) — sauf lecture d'une œuvre, dont
+          les vérifications se construisent section par section dans l'œuvre */}
+      {typeTravail === 'lire' && atelier !== 'lecture-oeuvre' && (
         <LectureQuizBuilder
           value={lectureQuiz}
           onChange={setLectureQuiz}

@@ -7,7 +7,7 @@
 // (`/api/oeuvres/[id]/sections/[sectionId]`), jamais l'œuvre entière.
 //
 // La navigation, elle, vit à droite (OeuvreSommaire, dans l'onglet
-// « Consignes et navigation dans le texte »).
+// « Consignes et navigation »).
 //
 // RÈGLE PROPRE À CET ATELIER : le corrigé est ouvert. L'élève voit la bonne
 // réponse dès qu'il répond — c'est un outil pour lui, rien n'est noté. Ne pas
@@ -15,9 +15,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { blocsDeFace } from '@/types/oeuvre';
 import type { OeuvreSection, OeuvreProgression } from '@/types/oeuvre';
 import type { LectureQuestion } from '@/types/lecture';
-import { youtubeEmbedUrl } from '@/lib/youtube';
+import OeuvreBlocRendu from './OeuvreBlocRendu';
 import styles from './OeuvreReader.module.css';
 
 interface OeuvreReaderProps {
@@ -103,12 +104,23 @@ export default function OeuvreReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [oeuvreId, sectionId]);
 
-  // Repartir d'un questionnaire propre à chaque changement de scène
+  // ── Les deux faces de la liseuse ──
+  // Recto « Espace textuel », verso « Espace multimédia ». Le verso n'apparaît
+  // que si le prof y a déposé quelque chose : sur les 67 scènes de Molière,
+  // un onglet vide en permanence ne serait que du bruit.
+  const [face, setFace] = useState<'recto' | 'verso'>('recto');
+  const blocsRecto = useMemo(() => blocsDeFace(section?.blocs ?? [], 'recto'), [section]);
+  const blocsVerso = useMemo(() => blocsDeFace(section?.blocs ?? [], 'verso'), [section]);
+  const aUnVerso = blocsVerso.length > 0;
+
+  // Repartir d'un questionnaire propre — et du recto — à chaque changement de
+  // scène : on ouvre toujours une scène par son texte.
   useEffect(() => {
     const dejaFait = sectionId ? progression?.sections[sectionId]?.reponses : null;
     setReponses((dejaFait as Record<string, unknown>) || {});
     setDevoilees(new Set(dejaFait ? Object.keys(dejaFait) : []));
     setQuestionnaireOuvert(false);
+    setFace('recto');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionId]);
 
@@ -128,7 +140,7 @@ export default function OeuvreReader({
   if (!sectionId) {
     return (
       <div className={styles.vide}>
-        <p>Choisis une scène dans « Consignes et navigation dans le texte », à droite.</p>
+        <p>Choisis une scène dans « Consignes et navigation », à droite.</p>
       </div>
     );
   }
@@ -140,73 +152,62 @@ export default function OeuvreReader({
           <div className={styles.surtitre}>{section?.groupe || groupeSection}</div>
         )}
         <h2 className={styles.titre}>{section?.titre || titreSection || '…'}</h2>
+
+        {/* Les deux faces — même geste que le recto/verso de l'espace de
+            rédaction (FlipEditor). Absentes tant que le prof n'a rien déposé
+            au verso : l'immense majorité des scènes n'a que du texte. */}
+        {aUnVerso && (
+          <div className={styles.faces} role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={face === 'recto'}
+              className={`${styles.face} ${face === 'recto' ? styles.faceActive : ''}`}
+              onClick={() => setFace('recto')}
+            >
+              Espace textuel
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={face === 'verso'}
+              className={`${styles.face} ${face === 'verso' ? styles.faceActive : ''}`}
+              onClick={() => setFace('verso')}
+            >
+              Espace multimédia
+              <span className={styles.faceCompteur}>{blocsVerso.length}</span>
+            </button>
+          </div>
+        )}
       </header>
 
       <div className={styles.corps}>
         {chargement && <p className={styles.info}>Chargement…</p>}
         {erreur && <p className={styles.erreur}>{erreur}</p>}
 
-        {section && (
+        {section && face === 'recto' && (
           <>
             {section.chapeau && <p className={styles.chapeau}>{section.chapeau}</p>}
 
             <div className={section.colonnes === 2 ? styles.texteDeuxColonnes : undefined}>
-              {section.blocs.map((bloc) => {
-                if (bloc.type === 'texte') {
-                  return (
-                    <div
-                      key={bloc.id}
-                      className={styles.prose}
-                      dangerouslySetInnerHTML={{ __html: bloc.contenu || '' }}
-                    />
-                  );
-                }
-
-                if (bloc.type === 'vers') {
-                  return (
-                    <div key={bloc.id} className={styles.tirade}>
-                      {bloc.locuteur && <p className={styles.locuteur}>{bloc.locuteur}</p>}
-                      {(bloc.contenu || '').split('\n').map((vers, i) => (
-                        <p key={i} className={styles.vers}>
-                          {vers}
-                        </p>
-                      ))}
-                    </div>
-                  );
-                }
-
-                if (bloc.type === 'image') {
-                  return (
-                    // Les médias ne suivent pas les colonnes du texte : ils se
-                    // centrent sur toute la largeur, sinon une vidéo tombe dans
-                    // une demi-colonne et devient illisible.
-                    <figure key={bloc.id} className={styles.media}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={bloc.imageUrl} alt={bloc.legende || ''} className={styles.image} />
-                      {bloc.legende && <figcaption className={styles.legende}>{bloc.legende}</figcaption>}
-                    </figure>
-                  );
-                }
-
-                // vidéo — YouTube ou lecteur Drive
-                const src = bloc.videoId ? youtubeEmbedUrl(bloc.videoId) : bloc.videoUrl;
-                if (!src) return null;
-                return (
-                  <figure key={bloc.id} className={styles.media}>
-                    <div className={styles.cadreVideo}>
-                      <iframe
-                        src={src}
-                        title={bloc.legende || 'Vidéo'}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
-                        allowFullScreen
-                      />
-                    </div>
-                    {bloc.legende && <figcaption className={styles.legende}>{bloc.legende}</figcaption>}
-                  </figure>
-                );
-              })}
+              {blocsRecto.map((bloc) => (
+                <OeuvreBlocRendu key={bloc.id} bloc={bloc} />
+              ))}
             </div>
           </>
+        )}
+
+        {section && face === 'verso' && (
+          // Le verso ne suit jamais les colonnes du texte : une vidéo dans une
+          // demi-colonne de Chromebook est inregardable.
+          <div className={styles.verso}>
+            <p className={styles.versoIntro}>
+              Les compléments déposés par ton professeur pour cette scène.
+            </p>
+            {blocsVerso.map((bloc) => (
+              <OeuvreBlocRendu key={bloc.id} bloc={bloc} />
+            ))}
+          </div>
         )}
 
         {/* ── Ligne d'actions : forme imposée du projet, deux traits qui

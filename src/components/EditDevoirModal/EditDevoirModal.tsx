@@ -191,10 +191,22 @@ export default function EditDevoirModal({
   const atelierId = devoir?.atelier ?? atelierParDispositif(typeTravail).id;
   // Seules les activités d'écriture s'appuient sur une grille
   const usesGrille = typeTravail === 'ecrire';
+  // Le contenu de la lecture d'une œuvre vit dans la bibliothèque, pas ici :
+  // ni questionnaire à composer, ni ressources à joindre au verso.
+  const isOeuvre = atelierId === 'lecture-oeuvre';
   // Sans objet en vocabulaire (tout y est automatisé) et sur une activité
-  // d'auto-évaluation, qui EST déjà cela.
+  // d'auto-évaluation, qui EST déjà cela. La lecture d'une œuvre en est exclue
+  // aussi : le smiley d'assurance se compare à un résultat, il n'y en a aucun.
   const supporteAutoEval =
-    typeTravail === 'ecrire' || typeTravail === 'lire' || typeTravail === 'rechercher';
+    !isOeuvre &&
+    (typeTravail === 'ecrire' || typeTravail === 'lire' || typeTravail === 'rechercher');
+
+  // ── Ce que porte le verso ──
+  // Deux groupes : les ressources DONNÉES à l'élève, et le contenu de
+  // l'activité elle-même. Les intertitres ne servent qu'à les séparer.
+  const aRessources = typeTravail !== 'vocabulaire' && typeTravail !== 'autoevaluation';
+  const aContenus = typeTravail !== 'vocabulaire' && !isOeuvre;
+  const aDeuxGroupes = aRessources && aContenus;
   const grillesDeLAtelier = grilles.length
     ? grilles.filter((g) => !g.ateliers.length || g.ateliers.includes(atelierId)).map((g) => g.name)
     : grilleTypes;
@@ -358,7 +370,10 @@ export default function EditDevoirModal({
       <div className={supporteAutoEval ? styles.formRowAutoEval : styles.formRow}>
         <div className={styles.formGroup}>
           <DatePicker
-            label="Date de remise — facultatif"
+            /* « Échéance » et non « date de remise » : la date est facultative
+               et ne signifie pas toujours une remise (lecture d'une œuvre,
+               activité préparée d'avance). */
+            label="Échéance"
             value={dateRemise}
             onChange={setDateRemise}
             min={getTodayString()}
@@ -539,15 +554,19 @@ export default function EditDevoirModal({
         </span>
       </div>
 
-      {/* ── Groupe 1 : ressources pour l'élève (tous les types sauf vocabulaire) ── */}
-      {typeTravail !== 'vocabulaire' && (
+      {aRessources && (
         <>
-          <div className={styles.versoGroup}>
-            <h4 className={styles.versoGroupTitle}>Ressources pour l’élève</h4>
-            <p className={styles.versoGroupHint}>
-              Visibles par l’élève dans l’onglet «&nbsp;Ressources&nbsp;» de sa colonne de droite.
-            </p>
-          </div>
+          {/* Les intertitres n'existent que pour SÉPARER les deux groupes.
+              Quand un seul est affiché, « Contenus de l'activité » se répétait
+              mot pour mot sous le titre du verso, dans deux styles différents. */}
+          {aDeuxGroupes && (
+            <div className={styles.versoGroup}>
+              <h4 className={styles.versoGroupTitle}>Ressources pour l’élève</h4>
+              <p className={styles.versoGroupHint}>
+                Visibles par l’élève dans l’onglet «&nbsp;Ressources&nbsp;» de sa colonne de droite.
+              </p>
+            </div>
+          )}
           <div className={styles.versoSection}>
             <div className={styles.versoSectionHeader}>
               <h3 className={styles.versoSectionTitle}>{ressourceLabel}</h3>
@@ -562,8 +581,7 @@ export default function EditDevoirModal({
         </>
       )}
 
-      {/* ── Groupe 2 : contenus de l'activité (selon le type) ── */}
-      {typeTravail !== 'vocabulaire' && (
+      {aContenus && aDeuxGroupes && (
         <div className={styles.versoGroup}>
           <h4 className={styles.versoGroupTitle}>
             Contenus de l’activité
@@ -593,8 +611,9 @@ export default function EditDevoirModal({
         />
       )}
 
-      {/* Questionnaire de lecture (type lire) */}
-      {typeTravail === 'lire' && (
+      {/* Questionnaire de lecture (type lire) — sauf lecture d'une œuvre, dont
+          les vérifications se construisent section par section dans l'œuvre */}
+      {typeTravail === 'lire' && !isOeuvre && (
         <LectureQuizBuilder
           value={lectureQuiz}
           onChange={setLectureQuiz}

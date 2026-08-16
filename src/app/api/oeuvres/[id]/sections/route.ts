@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { chapitresPourFirestore, docToOeuvre, docToSection } from '@/lib/oeuvre-server';
-import { generateSectionId } from '@/types/oeuvre';
+import { generateSectionId, peutEditerOeuvre } from '@/types/oeuvre';
 
 export async function POST(
   request: NextRequest,
@@ -25,7 +25,9 @@ export async function POST(
     }
 
     const oeuvre = docToOeuvre(snap);
-    if (oeuvre.profId !== auth.uid && !auth.isAdmin) {
+    // Co-édition comprise : un collègue à qui l'œuvre a été partagée en
+    // « édition » écrit dans les mêmes sections (cf. peutEditerOeuvre).
+    if (!peutEditerOeuvre(oeuvre, auth)) {
       return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
     }
 

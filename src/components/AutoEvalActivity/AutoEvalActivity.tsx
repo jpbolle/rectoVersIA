@@ -32,9 +32,21 @@ interface Props {
   onChange: (content: string) => void;
   // Lecture seule : travail remis, ou prof en aperçu
   readOnly?: boolean;
+  // La remise se fait au BAS du questionnaire, jamais depuis la barre du haut :
+  // « Remettre le devoir » est le geste de l'écrit. Absent = pas de remise
+  // possible (aperçu prof, travail déjà envoyé).
+  onSubmit?: () => void;
+  isSubmitting?: boolean;
 }
 
-export default function AutoEvalActivity({ quiz, content, onChange, readOnly = false }: Props) {
+export default function AutoEvalActivity({
+  quiz,
+  content,
+  onChange,
+  readOnly = false,
+  onSubmit,
+  isSubmitting = false,
+}: Props) {
   const [answers, setAnswers] = useState<Record<string, AutoEvalAnswer>>({});
 
   // Le contenu ne se relit qu'au premier rendu et quand l'activité change :
@@ -48,17 +60,26 @@ export default function AutoEvalActivity({ quiz, content, onChange, readOnly = f
     if (parsed) setAnswers(parsed.answers);
   }, [content]);
 
-  const majReponse = useCallback(
-    (id: string, patch: Partial<AutoEvalAnswer>) => {
-      if (readOnly) return;
-      setAnswers((prev) => {
-        const next = { ...prev, [id]: { ...prev[id], ...patch } };
-        onChange(JSON.stringify({ type: 'autoevaluation', answers: next }));
-        return next;
-      });
-    },
-    [onChange, readOnly]
-  );
+  // La fonction passée à setAnswers doit rester PURE : React la rejoue pendant
+  // le rendu, et prévenir le parent depuis l'intérieur revenait à le faire
+  // changer d'état en plein rendu (« Cannot update a component while rendering
+  // a different component »). On tient donc l'état courant dans un ref, et on
+  // prévient le parent depuis le gestionnaire d'événement lui-même.
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
+
+  const majReponse = useCallback((id: string, patch: Partial<AutoEvalAnswer>) => {
+    if (readOnlyRef.current) return;
+    const prev = answersRef.current;
+    const next = { ...prev, [id]: { ...prev[id], ...patch } };
+    answersRef.current = next;
+    setAnswers(next);
+    onChangeRef.current(JSON.stringify({ type: 'autoevaluation', answers: next }));
+  }, []);
 
   const questions = quiz.questions ?? [];
   const aRepondreCount = questions.filter(estQuestion).length;
@@ -244,6 +265,35 @@ export default function AutoEvalActivity({ quiz, content, onChange, readOnly = f
           );
         })}
       </div>
+
+      {onSubmit && !readOnly && (
+        <>
+          <div className={styles.bottomActions}>
+            <span className={styles.bottomActionsLine} />
+            <div className={styles.bottomActionsRow}>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={onSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Envoi…' : 'Envoyer mes réponses'}
+              </button>
+            </div>
+            <span className={styles.bottomActionsLine} />
+          </div>
+
+          {/* Le rappel se pose SOUS le bouton, discret : à côté, il se lisait
+              comme un avertissement qui retenait l'envoi. Rien n'est
+              obligatoire ici — une question sautée reste un signal. */}
+          {repondues < aRepondreCount && (
+            <p className={styles.bottomActionsNote}>
+              {aRepondreCount - repondues} question
+              {aRepondreCount - repondues > 1 ? 's' : ''} sans réponse
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }

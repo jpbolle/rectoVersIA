@@ -47,10 +47,15 @@ const ICON_RESSOURCES = (
     <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
   </svg>
 );
+// Évaluation : des barres, pas une case à cocher. Une case cochée dit « c'est
+// fait » ; cet onglet dit « voilà où tu en es » — et sur trois dispositifs sur
+// cinq, il ne montre aucune note mais une comparaison (lucidité, habiletés).
 const ICON_GRILLE = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 11l3 3L22 4" />
-    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    <line x1="4" y1="20" x2="20" y2="20" />
+    <rect x="6" y="12" width="3.5" height="6" rx="1" />
+    <rect x="12" y="8" width="3.5" height="10" rx="1" />
+    <rect x="17" y="4" width="3.5" height="14" rx="1" />
   </svg>
 );
 const ICON_IA = (
@@ -507,12 +512,17 @@ export default function TravailPage() {
   // L'onglet Remarques montre la COPIE ANNOTÉE par le prof : il n'a de sens que
   // pour une production écrite. Partout ailleurs il resterait vide —
   // vocabulaire (tout est automatisé), recherche et lecture (le prof commente
-  // dans la gouttière de correction, question par question).
-  const showRemarques = !isVocabulaire && !isRecherche && !isLecture;
+  // dans la gouttière de correction, question par question), auto-évaluation
+  // (il n'y a pas de copie ; le regard du prof se lit dans l'onglet Évaluation,
+  // en face de celui de l'élève).
+  const showRemarques = !isVocabulaire && !isRecherche && !isLecture && !isAutoEval;
 
   // Ordre : Consignes → Ressources → Aide IA → Remarques → Recherche → Évaluation
   const railTabs: RailTab[] = [];
-  railTabs.push({ id: 'consignes', label: 'Consignes', icon: ICON_CONSIGNES });
+  // Lecture d'une œuvre : le sommaire du livre s'installe sous la consigne —
+  // l'onglet doit dire qu'on y navigue, sans quoi l'élève ne l'ouvre jamais.
+  const labelConsignes = isOeuvre ? 'Consignes et navigation' : 'Consignes';
+  railTabs.push({ id: 'consignes', label: labelConsignes, icon: ICON_CONSIGNES });
   railTabs.push({ id: 'ressources', label: 'Ressources', icon: ICON_RESSOURCES });
   if (!isRecherche && !isLectureQuiz && (accesIA || showAiData)) {
     railTabs.push({
@@ -535,7 +545,7 @@ export default function TravailPage() {
   railTabs.push({ id: 'grille', label: 'Évaluation', icon: ICON_GRILLE });
 
   const PANEL_TITLES: Partial<Record<TabType, string>> = {
-    consignes: 'Consignes',
+    consignes: labelConsignes,
     ressources: 'Ressources',
     grille: 'Évaluation',
     ia: 'Aide IA à la réécriture',
@@ -585,12 +595,25 @@ export default function TravailPage() {
           !!travail?.nonRendu
         )}
         // Recherche : la remise se fait en envoyant les réponses depuis NavigKid!
-        // Questionnaire de lecture : elle se fait au bas du questionnaire
-        hideSubmit={isRecherche || isLectureQuiz}
+        // Questionnaire de lecture et auto-évaluation : au bas du questionnaire.
+        // Lecture d'une œuvre : RIEN NE SE REMET — le parcours reste ouvert et
+        // le prof suit la progression (décision fondatrice de l'atelier).
+        hideSubmit={isRecherche || isLectureQuiz || isAutoEval || isOeuvre}
         submitOutsideApp={isRecherche}
       />
 
       <main className={styles.main}>
+        {/* ── Dictionnaire dans la COLONNE DE TRAVAIL ──
+            L'élève pouvait cliquer les mots de la colonne de droite mais pas
+            ceux du texte qu'il lit — soit exactement là où il en rencontre
+            d'inconnus. On enveloppe donc aussi la colonne 1, SAUF quand elle
+            porte l'éditeur de rédaction (qui a son propre clic-mot, via
+            tiptap-dictionary.ts : deux mécanismes ouvriraient deux popups) et
+            sauf en vocabulaire, où les mots SONT l'exercice. */}
+        <DictionaryClickLayer
+          enabled={dictionaryEnabled && !isVocabulaire && (isOeuvre || isLectureQuiz || isAutoEval || isRecherche)}
+          className={styles.colonneTravail}
+        >
         {/* Colonne 1 : zone de travail (prend l'espace restant) */}
         {isVocabulaire ? (
           <div className={styles.editorSection}>
@@ -660,6 +683,10 @@ export default function TravailPage() {
               content={isPreviewMode ? null : travail?.content}
               onChange={(json) => updateContent(json)}
               readOnly={isDisabled}
+              // La remise se fait au bas du questionnaire, jamais depuis la
+              // barre du haut : ce n'est pas un travail d'écriture qu'on rend
+              onSubmit={isPreviewMode ? undefined : handleSubmitClick}
+              isSubmitting={isSubmitting}
             />
           </div>
         ) : isOeuvre ? (
@@ -733,6 +760,7 @@ export default function TravailPage() {
             </div>
           </div>
         )}
+        </DictionaryClickLayer>
 
         {/* Colonne 2 (panneau redimensionnable) + rail icones a droite */}
         <WorkspaceRail
@@ -749,6 +777,15 @@ export default function TravailPage() {
           <AssistancePanel
             nonRendu={travail?.nonRendu ?? null}
             devoir={devoir}
+            // Le bilan est recalculé sur le serveur : sans ce compteur,
+            // l'élève terminerait une vérification et lirait le total d'avant.
+            oeuvreBilanVersion={
+              isOeuvre
+                ? Object.values(oeuvreLecture.progression?.sections ?? {}).filter(
+                    (s) => !!s.termineLe
+                  ).length
+                : undefined
+            }
             oeuvreNav={
               isOeuvre && oeuvreLecture.oeuvre ? (
                 <OeuvreSommaire
@@ -811,10 +848,15 @@ export default function TravailPage() {
       {showConfirmModal && !isPreviewMode && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
-            <h3 className={styles.modalTitle}>Confirmer la remise</h3>
+            {/* Auto-évaluation : on n'y « remet » pas un travail, on envoie ce
+                qu'on pense de soi — le vocabulaire de la copie n'a pas cours */}
+            <h3 className={styles.modalTitle}>
+              {isAutoEval ? 'Envoyer tes réponses ?' : 'Confirmer la remise'}
+            </h3>
             <p className={styles.modalText}>
-              Êtes-vous sûr de vouloir remettre votre travail ? Cette action est définitive
-              et vous ne pourrez plus modifier votre travail après la remise.
+              {isAutoEval
+                ? 'Une fois envoyées, tes réponses ne pourront plus être modifiées. Rien n’est noté : ton professeur les lira pour savoir où tu en es.'
+                : 'Êtes-vous sûr de vouloir remettre votre travail ? Cette action est définitive et vous ne pourrez plus modifier votre travail après la remise.'}
             </p>
             <div className={styles.modalActions}>
               <button
@@ -829,7 +871,7 @@ export default function TravailPage() {
                 className={styles.modalConfirm}
                 onClick={handleConfirmSubmit}
               >
-                Confirmer la remise
+                {isAutoEval ? 'Envoyer' : 'Confirmer la remise'}
               </button>
             </div>
           </div>

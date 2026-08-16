@@ -3,11 +3,88 @@
    cartes larges, des cibles cliquables généreuses (Chromebook, écrans
    d'entrée de gamme) et aucun signe d'évaluation. */
 
+/* Le questionnaire défile DANS la colonne : sans `flex: 1 / min-height: 0 /
+   overflow-y: auto`, les questions au-delà de la hauteur de l'écran étaient
+   simplement inatteignables (même forme que LectureQuizActivity). */
 .activity {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 4px 2px 24px;
+  padding: 4px 20px 24px;
+}
+
+/* ── Remise : ligne d'action encadrée de deux traits (forme imposée du
+   projet — cf. `bottomActions` de VocabulaireActivity et de
+   LectureQuizActivity). La remise ne passe PAS par la barre du haut : ce
+   n'est pas un travail d'écriture qu'on rend. ── */
+
+/* ⚠️ RÈGLE À NE PAS PERDRE — la ligne ne touche JAMAIS les bords de la
+   colonne (référence : les exercices de vocabulaire). Pas de marge négative
+   qui annulerait le padding de `.activity`. */
+.bottomActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 28px 0 0;
+  padding-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.bottomActionsLine {
+  flex: 1;
+  height: 1px;
+  background: var(--c-border);
+}
+
+.bottomActionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 22px;
+  border: none;
+  border-radius: var(--c-radius);
+  background: var(--c-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.35);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Rappel discret SOUS le bouton quand tout n'est pas répondu — on n'empêche
+   pas l'envoi : rien n'est noté, et une question sautée reste un signal. */
+.bottomActionsNote {
+  margin: 9px 0 0;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--c-text-muted);
+  flex-shrink: 0;
 }
 
 /* ── En-tête ── */

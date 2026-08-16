@@ -1,0 +1,193 @@
+/* Onglet Évaluation d'une lecture d'œuvre — aucune note, que des repères.
+   ⚠️ `.content` de l'AssistancePanel est à `padding: 0` : c'est à l'onglet de
+   poser son retrait (gotcha du projet). */
+
+.bilan {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 18px 24px;
+}
+
+.avertissement {
+  margin: 0;
+  padding: 10px 13px;
+  border-radius: var(--c-radius);
+  background: var(--c-bg-element);
+  border-left: 3px solid var(--c-primary);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--c-text-secondary);
+}
+
+/* ── Les trois compteurs ── */
+
+.compteurs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.compteur {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 13px 15px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+}
+
+.chiffre {
+  font-family: var(--c-font-title);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.05;
+  color: var(--c-text);
+}
+
+.chiffreSur {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--c-text-muted);
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+
+.sous {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--c-text-muted);
+}
+
+.barre {
+  margin-top: 4px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--c-bg-element);
+  overflow: hidden;
+}
+
+.barre i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ── Détail par vérification ── */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detailTitre {
+  font-family: var(--c-font-title);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.detailAide {
+  font-family: var(--c-font-body);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--c-text-muted);
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.ligne {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 54px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+}
+
+.ligneTexte {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ligneTitre {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ligneSous {
+  font-size: 10.5px;
+  color: var(--c-text-muted);
+}
+
+.ligneBarre {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--c-bg-element);
+  overflow: hidden;
+}
+
+.ligneBarre i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.lignePct {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ligneFraction {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--c-text-muted);
+}
+
+.sansMesure {
+  grid-column: 2 / span 2;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--c-text-dim);
+}
+
+/* Sous 300 px de panneau, la barre disparaît avant le pourcentage : c'est le
+   chiffre qui porte l'information. */
+@media (max-width: 340px) {
+  .ligne {
+    grid-template-columns: minmax(0, 1fr) 54px;
+  }
+  .ligneBarre {
+    display: none;
+  }
+}

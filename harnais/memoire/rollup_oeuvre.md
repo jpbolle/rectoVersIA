@@ -258,3 +258,145 @@ Consigné dans `INIT.md` § Gotchas opérationnels.
 - [ ] Les seuils de la notification (7 jours ? marge de 2 ?) — proposés, non validés.
 - [ ] Le bouton « Prendre une note » de la maquette n'est **pas** implémenté :
       c'était une suggestion, pas une décision.
+
+---
+
+# Session du 2026-08-16 — l'atelier devient utilisable
+
+> Premier test à l'écran de la liseuse. Tout ce qui suit est **livré et vérifié
+> par `tsc` + `npm run build`**, mais **rien n'est testé** hors de ce que JP a
+> vu en cours de session (partage, création d'activité).
+
+## Le modèle a gagné deux champs
+
+| Champ | Où | Pourquoi |
+|---|---|---|
+| `OeuvreBloc.face: 'recto' \| 'verso'` | `src/types/oeuvre.ts` | Deux faces dans la liseuse : **« Espace textuel »** et **« Espace multimédia »**. **L'absence de `face` vaut RECTO** — c'est ce qui laisse les 1363 blocs de Molière exactement où ils sont, vidéos intercalées comprises. Le verso ne remplace pas l'intercalage : il l'ajoute, pour ce qui n'a pas de place précise |
+| `OeuvreBloc.type` gagne `'audio'` | idem | Dépôt d'enregistrement au verso, même chaîne que les questionnaires (base64 dans `ressourceImages`, refus au-delà de 700 Ko — pas de compression audio côté navigateur) |
+| `Oeuvre.partages[]` | idem | Partage **nominatif** — voir plus bas |
+
+Helpers : `blocsDeFace()`, `partageDe()`, `peutEditerOeuvre()`.
+Garde-fou : **`blocsPourFirestore()`** dans `oeuvre-server.ts`, pendant de
+`chapitresPourFirestore` — le piège `undefined` a déjà coûté deux 500.
+
+## Deux partages qu'il ne faut JAMAIS confondre
+
+| | Ce qui se passe | Panier |
+|---|---|---|
+| **Duplication** (existant, modèle des grilles) | le collègue repart avec **sa copie** ; l'original ne bouge pas | « Œuvres des professeurs » |
+| **Partage nominatif** (2026-08-16) | le collègue accède au **même livre** — rien n'est copié | « **Partagées avec moi** » |
+
+Le partage se fait **par EMAIL**, jamais par UID : la collection `professeurs` a
+l'email pour identifiant, et un collègue qui ne s'est jamais connecté n'a pas
+encore d'UID Firebase.
+
+Deux niveaux, choisis collègue par collègue : **lecture seule** (il donne
+l'œuvre à ses classes) ou **co-édition** (il écrit dedans). Décision de JP : le
+choix est **proposé au moment du partage**, pas fixé une fois pour toutes.
+
+- `peutEditerOeuvre()` est vérifié **côté serveur** sur l'œuvre ET sur ses
+  sections — une interface qui cache un bouton n'est pas une permission.
+- **Seul l'auteur décide des partages.** Un co-éditeur remanie le texte, il ne
+  peut pas étendre le partage : sinon il s'étendrait sans que le propriétaire
+  le sache.
+- **La co-édition n'a aucun verrou**, et c'est dit à l'écran : l'enregistrement
+  se fait section par section, donc deux profs sur deux scènes ne se gênent
+  pas, mais sur la même scène le dernier gagne.
+- Le collègue reçoit une **notification** (cible `collegue`, cf.
+  `rollup_notifications.md`), écrite **par le serveur, après** l'écriture du
+  partage, et **seulement** pour les nouveaux ou ceux dont le mode a changé.
+
+## Vue prof — les 3 colonnes remplacées par un suivi de lecture
+
+C'était le point n°1 du « Reste à faire », jamais entamé.
+
+Dans cet atelier **rien ne se remet et rien ne se corrige** : « non ouvert / à
+corriger / corrigé » ne décrivait aucune réalité, et taux de remise, moyenne et
+critères faibles non plus. `/dashboard/travaux/[devoirId]` bascule donc
+entièrement sur `OeuvreSuivi` dès que `devoir.oeuvreId` existe.
+
+- **`/api/oeuvres/suivi`** (nouveau, prof) : toute la classe d'un coup —
+  vérifications faites, scènes ouvertes, jours de lecture, rythme
+  (`calculerRythme`), QCM justes/répondus, et les questions que la classe rate.
+  Calculé **côté serveur** : les bonnes réponses vivent dans les sections, le
+  navigateur du prof n'a pas à télécharger 67 sections pour compter des QCM.
+- **Tableau** : Élève · Progression (barre + **repère de l'attendu du jour**,
+  ce qui distingue l'avance du retard d'un coup d'œil) · État · Scènes
+  ouvertes · Régularité · QCM · actions.
+- **Clic sur un élève → sa FICHE en popup** (`EleveProfilModal`, la même que
+  Mes Classes), jamais l'écran deux colonnes : il n'y a pas de copie.
+  Un élève jamais connecté a son nom grisé.
+- **❤️ / 💔 / 💬** : les deux premiers arrivent avec un **message pré-rédigé**,
+  modifiable — un encouragement qu'il faut rédiger est un encouragement qu'on
+  n'envoie pas.
+
+## Vue élève
+
+- **« Remettre le devoir » masqué** : rien ne se remet.
+- **Onglet « Consignes et navigation »** — le renommage ne s'appliquait nulle
+  part : le titre du panneau vient du **rail** (`PANEL_TITLES` dans la page),
+  pas de l'`AssistancePanel`.
+- **Sommaire refait** : son propre padding (il collait au bord — `.content` du
+  panneau est à `padding: 0`), en-tête avec compteur et barre de progression,
+  **chapitres repliables** (11 pièces × 67 scènes déroulées d'un bloc étaient
+  inutilisables), le chapitre courant s'ouvre seul.
+- **Onglet Évaluation** (`/api/oeuvres/bilan` + `OeuvreEvaluation`, nouveaux) :
+  vérifications complétées · extraits ouverts (+ jours de lecture) · réussite
+  moyenne · puis le détail **vérification par vérification, dans l'ordre du
+  livre**. **Aucune note**, et c'est écrit en tête de l'onglet.
+  Le degré de réussite ne porte que sur les **QCM** (seules questions
+  auto-corrigeables) et le dénominateur ne compte que ceux **auxquels l'élève a
+  répondu** — une question sautée n'est pas une erreur. Une vérification sans
+  QCM affiche « pas de question à choix » plutôt qu'un 0 % mensonger.
+- **Dictionnaire dans la colonne 1** (voir `INIT.md`) : l'élève pouvait cliquer
+  les mots de la colonne de droite mais pas ceux du texte qu'il lit.
+
+## Constructeur
+
+- **Logo (→ accueil) + bouton ← Retour** : écran plein sans aucune sortie.
+- **Bouton 👁 Prévisualiser** → `OeuvreSectionApercu`, qui réutilise
+  `OeuvreBlocRendu` (extrait de la liseuse). Deux rendus parallèles auraient
+  divergé au premier ajustement, et l'aperçu serait devenu un mensonge.
+- **« Prose » → « Bloc informatif »**, **« Vers » → « Extrait »** : on nomme la
+  fonction pédagogique, pas la forme littéraire (une consigne n'est pas de la
+  prose, un extrait n'est pas toujours en vers).
+- Barre **recto/verso** avec compteurs, flèche pour faire passer un bloc d'une
+  face à l'autre, dépôt **audio**.
+- **Sommaire éditable refondu** (`OeuvreSommaireEditable`, passé par
+  `/impeccable`) — le problème n'était pas l'espacement mais la **topologie** :
+  67 lignes de poids égal sur ~2 800 px, alors qu'on n'édite qu'une scène à la
+  fois. Deux chemins seulement : **replier** (chapitres en accordéon, celui où
+  l'on est s'ouvre seul et porte une assise verte) et **chercher** (champ de
+  filtre au-delà de 12 sections, qui déplie les résultats, masque les chapitres
+  sans résultat et rappelle l'acte sur la ligne). Outils au survol et au clavier
+  seulement (3 × 67 = 201 cibles dans 300 px), icônes dessinées, « Ajouter une
+  section » au bout de la liste qu'elle allonge.
+
+## Bibliothèque (onglet de Mes Ressources)
+
+- Cartes au **gabarit de `GrilleCard`**, carte « **+** » comprise, dans le même
+  **bloc blanc** que les grilles et le vocabulaire (`grillesSection`) — sans
+  quoi la largeur des cartes différait d'un onglet à l'autre.
+- Boutons **icônes** avec infobulle. « Construire » → « **✏️ Éditer** ».
+- **Œil retiré** des œuvres qu'on peut éditer (double emploi avec ✏️), **gardé**
+  sur celles qu'on ne peut pas : sinon on dupliquerait le livre d'un collègue
+  sans avoir pu y jeter un œil.
+
+## Rappel confirmé le 2026-08-16 — le corrigé reste OUVERT
+
+Vérifié sur les deux couches à la demande de JP : `oeuvre-server.ts` n'a
+**jamais** filtré `correctIndex` / `reponseIdeale` / `fluoAttendu`, et la
+liseuse dévoile la bonne réponse **au clic sur l'option**. « Ces lectures sont
+purement formatives, tant pis s'il triche. » Ne pas « corriger » ce
+comportement : l'exception est écrite en tête des deux fichiers.
+
+## Reste à faire
+- [ ] **Tout tester à l'écran** — c'est le gros du reste.
+- [ ] **Profil** : les deux indicateurs dans l'onglet Lire, le rappel dans
+      Général, la notification de rythme (5ᵉ type). Le calcul existe déjà
+      (`calculerRythme`) et `/api/oeuvres/suivi` le fait tourner ; il ne reste
+      qu'à le brancher au profil et à la cloche.
+- [ ] Les seuils de la notification (7 jours ? marge de 2 ?) — toujours non validés.
+- [ ] Sélecteur « prendre un extrait dans une œuvre » dans `LectureQuizBuilder`
+      (l'œuvre comme réservoir d'extraits).
+- [ ] Le bouton « Prendre une note » de la maquette : toujours pas implémenté.

@@ -6,27 +6,47 @@
 // Collection `annonces` : accès SERVEUR uniquement (adminDb), donc aucune
 // règle Firestore — même choix que `scenarisations`.
 
-export type AnnonceCible = 'profs' | 'eleves' | 'tous';
+// Deux cibles NOMINATIVES, que seul un prof peut viser :
+//   `eleve`    — un mot à UN de ses élèves (adressé par UID Firebase) ;
+//   `collegue` — un avis à UN autre professeur, par EMAIL : la collection
+//                `professeurs` a l'email pour identifiant, et un collègue qui
+//                ne s'est jamais connecté n'a pas encore d'UID.
+// Les trois autres restent réservées à l'admin — et les nominatives ne sont
+// jamais proposées dans le modal d'annonce, qui liste ses cibles lui-même.
+export type AnnonceCible = 'profs' | 'eleves' | 'tous' | 'eleve' | 'collegue';
 
 export interface Annonce {
   id: string;                 // ANN-YYYYMMDD-XXXX
   message: string;
   cible: AnnonceCible;
   lien: string | null;        // chemin interne de l'app ("/roadmap"), jamais une URL externe
-  auteurUid: string;          // uid de l'admin — jamais l'email (donnée personnelle)
+  auteurUid: string;          // uid de l'admin ou du prof — jamais l'email (donnée personnelle)
   createdAt: string;          // ISO
+  // cible === 'eleve' : le destinataire unique, par son UID Firebase — jamais
+  // son nom ni son email (la collection `annonces` ne porte aucune identité
+  // d'élève).
+  destinataireUid?: string;
+  // cible === 'collegue' : le destinataire, par son email professionnel — le
+  // même identifiant que dans la collection `professeurs`.
+  destinataireEmail?: string;
+  // Ton du message : un cœur ne s'affiche pas comme un rappel. Absent = neutre.
+  ton?: 'felicitation' | 'rappel' | null;
 }
 
 export interface CreateAnnonceData {
   message: string;
   cible: AnnonceCible;
   lien?: string | null;
+  destinataireUid?: string;
+  ton?: 'felicitation' | 'rappel' | null;
 }
 
 export const CIBLE_LABELS: Record<AnnonceCible, string> = {
   profs: 'Professeurs',
   eleves: 'Élèves',
   tous: 'Tout le monde',
+  eleve: 'Un élève',
+  collegue: 'Un collègue',
 };
 
 // Pages proposées au menu déroulant, avec le public qui peut les atteindre.

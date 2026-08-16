@@ -17,6 +17,7 @@ import type {
   Oeuvre,
   OeuvreBloc,
   OeuvreChapitre,
+  OeuvrePartage,
   OeuvreSection,
   OeuvreSectionRef,
 } from '@/types/oeuvre';
@@ -55,6 +56,25 @@ function normaliserChapitre(raw: unknown): OeuvreChapitre | null {
   };
 }
 
+export function normaliserPartages(raw: unknown): OeuvrePartage[] {
+  if (!Array.isArray(raw)) return [];
+  const vus = new Set<string>();
+  const out: OeuvrePartage[] = [];
+  for (const item of raw) {
+    const p = item as Partial<OeuvrePartage>;
+    const email = typeof p?.email === 'string' ? p.email.toLowerCase().trim() : '';
+    if (!email || vus.has(email)) continue;
+    vus.add(email);
+    out.push({
+      email,
+      // Jamais `undefined` : Firestore le refuse, et ces objets sont réécrits
+      nom: typeof p.nom === 'string' ? p.nom : '',
+      mode: p.mode === 'edition' ? 'edition' : 'lecture',
+    });
+  }
+  return out;
+}
+
 export function docToOeuvre(doc: Doc): Oeuvre {
   const d = doc.data() || {};
   return {
@@ -68,6 +88,7 @@ export function docToOeuvre(doc: Doc): Oeuvre {
     profId: d.profId || '',
     profName: d.profName || '',
     shared: d.shared ?? false,
+    partages: normaliserPartages(d.partages),
     archive: d.archive ?? false,
     anneeScolaire: d.anneeScolaire || '',
     createdAt: toIso(d.createdAt),
@@ -75,22 +96,55 @@ export function docToOeuvre(doc: Doc): Oeuvre {
   };
 }
 
+const TYPES_BLOC: OeuvreBloc['type'][] = ['texte', 'vers', 'video', 'image', 'audio'];
+
 function normaliserBloc(raw: unknown): OeuvreBloc | null {
   const b = raw as Partial<OeuvreBloc>;
   if (!b || typeof b.id !== 'string' || !b.id) return null;
   const type = b.type;
-  if (type !== 'texte' && type !== 'vers' && type !== 'video' && type !== 'image') return null;
+  if (!type || !TYPES_BLOC.includes(type)) return null;
   return {
     id: b.id,
     type,
+    // `face` n'est posée QUE si elle vaut verso : absente = recto, et c'est ce
+    // qui laisse intactes les œuvres encodées avant l'existence du verso.
+    face: b.face === 'verso' ? 'verso' : undefined,
     contenu: typeof b.contenu === 'string' ? b.contenu : undefined,
     locuteur: typeof b.locuteur === 'string' && b.locuteur ? b.locuteur : undefined,
     videoId: typeof b.videoId === 'string' ? b.videoId : undefined,
     videoUrl: typeof b.videoUrl === 'string' ? b.videoUrl : undefined,
     imageUrl: typeof b.imageUrl === 'string' ? b.imageUrl : undefined,
     imageFileId: typeof b.imageFileId === 'string' ? b.imageFileId : undefined,
+    audioUrl: typeof b.audioUrl === 'string' ? b.audioUrl : undefined,
+    audioFileId: typeof b.audioFileId === 'string' ? b.audioFileId : undefined,
     legende: typeof b.legende === 'string' && b.legende ? b.legende : undefined,
   };
+}
+
+/**
+ * Pendant de `chapitresPourFirestore` pour les blocs — même piège, déjà payé
+ * deux fois : Firestore REFUSE `undefined`, et un bloc relu puis réécrit en
+ * porte sur chaque champ vide. Toute route qui écrit des blocs passe par ici.
+ */
+export function blocsPourFirestore(blocs: unknown): OeuvreBloc[] {
+  if (!Array.isArray(blocs)) return [];
+  return blocs
+    .map(normaliserBloc)
+    .filter((b): b is OeuvreBloc => !!b)
+    .map((b) => {
+      const net: Record<string, unknown> = { id: b.id, type: b.type };
+      if (b.face === 'verso') net.face = 'verso';
+      if (b.contenu !== undefined) net.contenu = b.contenu;
+      if (b.locuteur) net.locuteur = b.locuteur;
+      if (b.videoId) net.videoId = b.videoId;
+      if (b.videoUrl) net.videoUrl = b.videoUrl;
+      if (b.imageUrl) net.imageUrl = b.imageUrl;
+      if (b.imageFileId) net.imageFileId = b.imageFileId;
+      if (b.audioUrl) net.audioUrl = b.audioUrl;
+      if (b.audioFileId) net.audioFileId = b.audioFileId;
+      if (b.legende) net.legende = b.legende;
+      return net as unknown as OeuvreBloc;
+    });
 }
 
 export function docToSection(doc: Doc): OeuvreSection {

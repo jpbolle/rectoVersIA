@@ -9,7 +9,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { calculateSchoolYear } from '@/lib/auth-utils';
 import { docToOeuvre } from '@/lib/oeuvre-server';
-import { generateOeuvreId } from '@/types/oeuvre';
+import { generateOeuvreId, partageDe } from '@/types/oeuvre';
 
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -22,7 +22,13 @@ export async function GET(request: NextRequest) {
     } catch (queryError: unknown) {
       // Code 5 = collection absente : la bibliothèque est simplement vide
       if ((queryError as { code?: number }).code === 5) {
-        return NextResponse.json({ success: true, data: [], shared: [], otherProfs: [] });
+        return NextResponse.json({
+          success: true,
+          data: [],
+          partagees: [],
+          shared: [],
+          otherProfs: [],
+        });
       }
       throw queryError;
     }
@@ -34,11 +40,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: [] });
     }
 
+    // Œuvres qu'un collègue m'a partagées NOMMÉMENT : ce sont les siennes, pas
+    // des copies. Elles sortent donc du panier « des professeurs », où elles
+    // n'auraient proposé que la duplication.
+    const partagees = toutes.filter(
+      (o) => !o.archive && o.profId !== auth.uid && !!partageDe(o, auth.email)
+    );
+    const idsPartagees = new Set(partagees.map((o) => o.id));
+
     return NextResponse.json({
       success: true,
       data: toutes.filter((o) => o.profId === auth.uid),
-      shared: toutes.filter((o) => o.shared && o.profId !== auth.uid && !o.archive),
-      otherProfs: toutes.filter((o) => o.profId !== auth.uid && !o.shared && !o.archive),
+      partagees,
+      shared: toutes.filter(
+        (o) => o.shared && o.profId !== auth.uid && !o.archive && !idsPartagees.has(o.id)
+      ),
+      otherProfs: toutes.filter(
+        (o) => o.profId !== auth.uid && !o.shared && !o.archive && !idsPartagees.has(o.id)
+      ),
     });
   } catch (error) {
     console.error('Erreur GET /api/oeuvres:', error);

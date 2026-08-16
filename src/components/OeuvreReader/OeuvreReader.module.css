@@ -42,6 +42,79 @@
   margin: 0;
 }
 
+/* ── Recto / verso de la liseuse ──
+   Espace textuel · Espace multimédia. Onglets soulignés plutôt que boutons :
+   ils changent la VUE d'une même scène, ils ne lancent rien. */
+.faces {
+  display: flex;
+  gap: 4px;
+  margin: 12px -30px -12px;
+  padding: 0 30px;
+}
+
+.face {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  background: none;
+  padding: 8px 2px 9px;
+  margin-right: 18px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.face:hover {
+  color: var(--c-text-secondary);
+}
+
+.faceActive {
+  color: var(--c-primary);
+  border-bottom-color: var(--c-primary);
+}
+
+.faceCompteur {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--c-bg-element);
+  color: var(--c-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.faceActive .faceCompteur {
+  background: var(--c-accent);
+  color: #fff;
+}
+
+/* ── Verso : l'espace multimédia ──
+   Jamais en colonnes : une vidéo dans une demi-colonne de Chromebook est
+   inregardable. */
+.verso {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.versoIntro {
+  margin: 0;
+  font-size: 13px;
+  color: var(--c-text-muted);
+  font-style: italic;
+}
+
 /* ── Corps défilant ── */
 .corps {
   flex: 1;
@@ -141,6 +214,11 @@
   margin: 0 auto;
 }
 
+.audio {
+  width: 100%;
+  display: block;
+}
+
 .cadreVideo {
   position: relative;
   width: 100%;
@@ -169,11 +247,16 @@
    Forme imposée du projet : deux traits horizontaux encadrent les boutons
    (cf. VocabulaireActivity et LectureQuizActivity). Navigation et vérification
    y tiennent ensemble, à la demande de JP. */
+/* ⚠️ RÈGLE À NE PAS PERDRE — la ligne ne touche JAMAIS les bords de la
+   colonne. Une marge négative qui annule le padding du conteneur la fait
+   filer d'un bord à l'autre ; dans les exercices de vocabulaire (la
+   référence), elle paraît en retrait parce qu'elle vit dans un cadre
+   lui-même inséré. Ici, on laisse simplement le padding de `.corps` agir. */
 .bottomActions {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin: 44px -30px 0;
+  margin: 44px 0 0;
   padding-bottom: 8px;
   flex-shrink: 0;
 }
@@ -460,18 +543,71 @@
   margin-bottom: 4px;
 }
 
-/* ═══ Le sommaire — rendu dans la colonne de droite ═══ */
+/* ═══ Le sommaire — rendu dans la colonne de droite ═══
+   ⚠️ `.content` de l'AssistancePanel est à `padding: 0` : le panneau ne
+   préjuge pas de son contenu, c'est donc à l'onglet de poser son retrait.
+   Sans quoi le texte colle au bord (gotcha du projet). */
 
 .sommaire {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  padding: 0 0 20px;
+}
+
+/* ── En-tête : ce que l'élève doit savoir d'un coup d'œil ── */
+
+.sommaireEntete {
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg-element);
+}
+
+.sommaireEnteteTitre {
+  font-family: var(--c-font-title);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0 0 3px;
+}
+
+.sommaireEnteteChiffres {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.sommaireBarre {
+  margin-top: 9px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--c-bg-card);
+  overflow: hidden;
+}
+
+.sommaireBarre i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--c-success);
+  transition: width 0.3s ease;
+}
+
+.sommaireNav {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px 0;
 }
 
 .sommaireVide {
   color: var(--c-text-muted);
-  font-size: 13.5px;
+  font-size: 13px;
+  padding: 12px 18px;
+  margin: 0;
 }
+
+/* ── Chapitre repliable ──
+   11 pièces et 67 scènes déroulées d'un bloc rendaient la liste inutilisable :
+   seul le chapitre où l'élève se trouve reste ouvert. */
 
 .sommaireChapitre {
   display: flex;
@@ -479,13 +615,69 @@
 }
 
 .sommaireTitre {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--c-radius);
+  padding: 9px 8px;
+  cursor: pointer;
   font-family: var(--c-font-title);
-  font-size: 15px;
-  margin: 0 0 6px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--c-text);
+  transition: background 0.15s ease;
+}
+
+.sommaireTitre:hover {
+  background: var(--c-bg-element);
+}
+
+.sommaireChevron {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--c-text-muted);
+  transition: transform 0.18s ease;
+}
+
+.sommaireTitreOuvert .sommaireChevron {
+  transform: rotate(90deg);
+  color: var(--c-primary);
+}
+
+.sommaireTitreTexte {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 7px;
   flex-wrap: wrap;
+}
+
+.sommaireChapitreCompteur {
+  flex-shrink: 0;
+  font-family: var(--c-font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  background: var(--c-bg-element);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.sommaireTitre:hover .sommaireChapitreCompteur {
+  background: var(--c-bg-card);
+}
+
+.sommaireSections {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0 10px 6px;
+  margin-left: 12px;
+  border-left: 1px solid var(--c-border);
 }
 
 .sommaireDate {
@@ -496,8 +688,8 @@
 }
 
 .sommaireActe {
-  padding: 10px 0 4px;
-  font-size: 11px;
+  padding: 11px 0 5px 10px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -513,12 +705,14 @@
   background: none;
   border: 0;
   border-left: 3px solid transparent;
-  padding: 7px 10px 7px 8px;
+  padding: 8px 10px 8px 8px;
   cursor: pointer;
   font-family: inherit;
   font-size: 13.5px;
+  line-height: 1.35;
   color: var(--c-text-secondary);
   border-radius: 0 var(--c-radius) var(--c-radius) 0;
+  transition: background 0.15s ease;
 }
 
 .sommaireItem:hover {
