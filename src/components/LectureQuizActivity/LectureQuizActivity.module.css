@@ -698,3 +698,16 @@
   white-space: pre-wrap;
   color: var(--c-text);
 }
+
+/* ── Verdict d'une réponse courte auto-corrigée ──
+   L'élève doit voir POURQUOI, pas seulement combien. Quand c'est faux, on
+   affiche les formulations que le prof acceptait : c'est ce qui apprend
+   quelque chose — un ✗ seul n'apprend rien. */
+.reponseJuste,
+.reponseFausse {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.reponseJuste { color: var(--c-success); }
+.reponseFausse { color: var(--c-danger); font-weight: 500; }

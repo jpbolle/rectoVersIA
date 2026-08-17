@@ -45,7 +45,9 @@ export async function POST(
       groupe: typeof body.groupe === 'string' ? body.groupe.trim() : '',
       chapeau: typeof body.chapeau === 'string' ? body.chapeau : '',
       colonnes: body.colonnes === 2 ? 2 : 1,
+      facesInversees: body.facesInversees === true,
       blocs: [],
+      commentaires: [],
       questions: [],
     };
 

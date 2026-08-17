@@ -26,6 +26,7 @@ import { useOeuvres } from '@/hooks/useOeuvres';
 import { ATELIERS, findAtelier, TYPES_MODAUX } from '@/types/didactique';
 import type { TypeModal } from '@/types/didactique';
 import styles from './CreationForm.module.css';
+import FlipChoice from '@/components/FlipChoice/FlipChoice';
 
 type FormFace = 'recto' | 'verso';
 
@@ -717,35 +718,13 @@ export default function CreationForm({
 
       {/* Recto / Verso de l'espace élève (uniquement pour type ecrire) */}
       {typeTravail === 'ecrire' && (
-        <div className={styles.flipChoice}>
-          <span className={styles.flipChoiceLabel}>Espace d’écriture</span>
-          <div className={styles.flipChoiceRow}>
-            <div className={styles.flipChoiceFace}>
-              <span className={styles.flipChoiceTag}>Recto</span>
-              <span className={styles.flipChoiceContent}>
-                {flipInverted ? '📝 Espace de planification' : '✏️ Espace de rédaction'}
-              </span>
-            </div>
-            <button
-              type="button"
-              className={styles.flipChoiceSwap}
-              onClick={() => setFlipInverted((v) => !v)}
-              title="Inverser recto et verso"
-              aria-label="Inverser recto et verso"
-            >
-              ⇄
-            </button>
-            <div className={styles.flipChoiceFace}>
-              <span className={styles.flipChoiceTag}>Verso</span>
-              <span className={styles.flipChoiceContent}>
-                {flipInverted ? '✏️ Espace de rédaction' : '📝 Espace de planification'}
-              </span>
-            </div>
-          </div>
-          <p className={styles.flipChoiceHint}>
-            Le recto est la face affichée à l’ouverture de l’activité par l’élève.
-          </p>
-        </div>
+        <FlipChoice
+          label="Espace d’écriture"
+          faces={['✏️ Espace de rédaction', '📝 Espace de planification']}
+          inverse={flipInverted}
+          onChange={setFlipInverted}
+          disabled={isSubmitting}
+        />
       )}
       {/* Consignes particulières (optionnel avec checkbox) */}
       <div className={styles.optionalSection}>

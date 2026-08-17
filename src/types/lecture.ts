@@ -159,6 +159,21 @@ export interface LectureQuestion {
   // Réponse idéale du prof — jamais exposée à l'élève (filtrée côté serveur),
   // affichée dans la correction pour comparaison
   reponseIdeale?: string;
+  /**
+   * RÉPONSE COURTE AUTO-CORRIGÉE (2026-08-17).
+   *
+   * Les formulations que le prof accepte : « le cheval », « cheval »,
+   * « chevalin » valent toutes juste. Vide ou absent = la question reste
+   * corrigée à la main, comme toutes celles écrites jusqu'ici.
+   *
+   * La comparaison ignore les majuscules, les espaces en trop et les accents
+   * (décision de JP) — mais rien d'autre. Voir `normaliserReponseCourte`.
+   *
+   * ⚠️ C'EST UN CORRIGÉ : jamais exposé à l'élève, filtré par
+   * `lectureQuizForEleve`. Un champ de corrigé oublié dans ce filtre, ce sont
+   * les réponses livrées avec l'énoncé — c'est déjà arrivé une fois.
+   */
+  reponsesAcceptees?: string[];
   // QCM
   choices?: string[];
   correctIndex?: number;            // jamais exposé à l'élève (filtré côté serveur)
@@ -321,8 +336,33 @@ export function melangeStable<T>(items: T[], graine: string): T[] {
  * QUE s'il porte des catégories : sans catégorie, un soulignage se compare par
  * degrés et c'est le professeur qui tranche (comportement historique inchangé).
  */
+/**
+ * La forme sur laquelle deux réponses courtes se comparent.
+ *
+ * Tolérances retenues avec JP (2026-08-17) : les MAJUSCULES, les ESPACES en
+ * trop et les ACCENTS. Rien d'autre — la ponctuation reste significative, et
+ * une faute d'orthographe reste une faute. Un élève ne perd pas un point pour
+ * avoir tapé « Cheval » au lieu de « cheval » ; il le perd pour « chevale ».
+ *
+ * `NFD` sépare la lettre de son accent, la plage ̀-ͯ retire les
+ * accents ainsi détachés — la seule façon fiable de le faire sans table de
+ * correspondance.
+ */
+export function normaliserReponseCourte(texte: string): string {
+  return texte
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function estAutoCorrigeable(q: LectureQuestion): boolean {
   switch (q.type) {
+    // Une réponse courte ne se corrige seule que si le prof a dit ce qu'il
+    // accepte. Sans liste, elle reste à sa main — comme avant.
+    case 'texte-court':
+      return (q.reponsesAcceptees ?? []).some((r) => r.trim() !== '');
     case 'qcm':
       return q.multiple
         ? Array.isArray(q.correctIndexes) && q.correctIndexes.length > 0
@@ -359,6 +399,16 @@ export function partReussite(q: LectureQuestion, a: LectureAnswer | undefined): 
   const part = (justes: number, total: number) => (total > 0 ? justes / total : null);
 
   switch (q.type) {
+    case 'texte-court': {
+      // Tout ou rien : une réponse courte est juste ou ne l'est pas. Le
+      // barème partiel n'a de sens que là où il y a plusieurs éléments à
+      // trouver — ici, il n'y en a qu'un.
+      const donnee = normaliserReponseCourte(a?.text ?? '');
+      if (!donnee) return 0;
+      return (q.reponsesAcceptees ?? []).some((r) => normaliserReponseCourte(r) === donnee)
+        ? 1
+        : 0;
+    }
     case 'qcm': {
       if (!q.multiple) return a?.choiceIndex === q.correctIndex ? 1 : 0;
       // Une coche fausse annule une coche juste : sans cela, tout cocher

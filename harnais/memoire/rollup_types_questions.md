@@ -102,3 +102,76 @@ multiple » là). Une seule désormais : `LECTURE_TYPE_LABELS`.
 - [ ] Vérifier le **barème partiel** sur une vraie copie corrigée.
 - [ ] Les jetons **audio** d'un appariement n'ont pas de limite d'écoutes
       (volontaire) — à confirmer à l'usage.
+
+---
+
+# Suite du 2026-08-17
+
+## Le likert gagne sa dimension matrice
+
+Demande de JP dès le 16, mal comprise alors : il ne voulait pas un type
+`matrice` **à la place** de l'échelle 1-5, mais une **dimension** ajoutée à
+l'échelle — ce que `multiple` est au QCM. (Il avait cru l'échelle disparue :
+elle était bien là, 4ᵉ bouton du bandeau. Fausse alerte, vérifiée avec lui.)
+
+- `AutoEvalQuestion.matriceItems` **sert aux deux** : c'est le même objet —
+  des lignes qui partagent une réponse. Absent = curseur simple, donc tous les
+  questionnaires déjà écrits gardent leur comportement.
+- À l'écran, une échelle à items est rendue par **`MatriceField`**, colonnes
+  `1…5`, bornes annoncées au-dessus. Aucun composant neuf.
+- **Lucidité : comparaison LIGNE À LIGNE** (`autoeval-scoring`). Une moyenne
+  dirait « se voit juste en moyenne », ce qui ne veut rien dire — un élève peut
+  se surestimer sur un point et se sous-estimer sur un autre, et c'est
+  justement ce qu'il faut lui montrer. `EcartQuestion.questionId` vaut alors
+  `AE-…#3` : **ne jamais s'en servir pour retrouver la question sans couper au
+  `#`**. L'écran de correction affiche un décompte (« 3 justes · 1
+  surestimation ») au lieu d'un verdict unique.
+
+## Entrée ajoute une option (les TROIS constructeurs)
+
+`src/lib/choix-liste.ts` — `insererChoix` + `focaliserChamp`. Partagé par
+lecture, auto-évaluation et recherche NavigKid : les trois tenaient déjà
+chacun leur *suppression* d'option et elles avaient divergé sur le décalage du
+corrigé ; l'insertion ne devait pas repartir pour un tour.
+
+⚠️ **PIÈGE TROUVÉ ET CORRIGÉ** — `sanitizeLectureQuiz` jetait les choix vides
+**sans redécaler le corrigé**. Scénario : A / **B**, on se place sur A, Entrée,
+on n'écrit rien, on enregistre → l'option vide disparaît, l'indice 2 ne pointe
+plus sur rien, **la bonne réponse redevient A**, sans un mot. Le bug existait
+avant ; la touche Entrée le rendait facile à déclencher. Corrigé pour le QCM
+simple, le QCM multiple **et la matrice sur ses deux axes** (une ligne vide
+décalait aussi les réponses des lignes du dessous) — table de correspondance
+`rangDuChoix`, vérifiée hors écran sur les trois cas.
+
+## Réponse courte AUTO-CORRIGÉE
+
+`LectureQuestion.reponsesAcceptees: string[]` — le prof liste ce qu'il accepte
+(« le cheval », « cheval », « chevalin »). **Vide = correction à la main**,
+comportement de tout ce qui est déjà encodé.
+
+- **Tolérance arbitrée par JP** : majuscules, espaces, accents. **PAS la
+  ponctuation, PAS l'orthographe** — `cheval.` est faux, `chevaline` est faux,
+  `le chevàl` est juste. Voir `normaliserReponseCourte` (NFD + retrait des
+  diacritiques).
+- **Tout ou rien** : le barème partiel n'a de sens que là où il y a plusieurs
+  éléments à trouver.
+- **La note du prof prime** — sur la réponse courte SEULEMENT. C'est la seule
+  question dont le corrigé peut être incomplet (une formulation juste qu'il
+  n'avait pas prévue) ; un QCM n'a rien d'imprévu. L'écran de correction
+  affiche donc la note automatique **dans un champ ouvert** : on écrit pour
+  reprendre la main, on vide pour la rendre.
+- ⚠️ **C'EST UN CORRIGÉ** : `reponsesAcceptees` est filtré par
+  `lectureQuizForEleve`, au même endroit que `correctIndex`. Oublier ce filtre,
+  c'est livrer les réponses avec l'énoncé.
+- Élève : ✅ « Réponse juste » ou ❌ « Réponse attendue : … » quand le corrigé
+  est rendu — immédiat dans une œuvre, où le corrigé est ouvert.
+
+## Reste à faire
+- [ ] **Tester à l'écran** tout ce qui précède, plus les 5 types de questions
+      jamais ouverts (matrice, appariement, remise en ordre, image annotée,
+      ensembles) — inchangé depuis le 16.
+- [ ] Étendre « Entrée ajoute une ligne » aux **lignes d'une matrice**, aux
+      **paires d'un appariement**, aux **jetons d'une remise en ordre** et aux
+      **items d'un ensemble** : même mécanique, proposé à JP, pas tranché.
+- [ ] Faut-il pardonner un point final dans une réponse courte ? Proposé,
+      pas tranché.

@@ -383,14 +383,26 @@ function QuestionCard({
       )}
 
       {question.type === 'texte-court' && (
-        <textarea
-          className={`${styles.shortAnswer} ${styles.reponseZone}`}
-          rows={2}
-          value={answer.text ?? ''}
-          onChange={(e) => onAnswerChange({ text: e.target.value })}
-          placeholder="Ta réponse..."
-          disabled={disabled}
-        />
+        <>
+          <textarea
+            className={`${styles.shortAnswer} ${styles.reponseZone}`}
+            rows={2}
+            value={answer.text ?? ''}
+            onChange={(e) => onAnswerChange({ text: e.target.value })}
+            placeholder="Ta réponse..."
+            disabled={disabled}
+          />
+          {/* Réponse courte auto-corrigée : l'élève doit voir POURQUOI, pas
+              seulement combien. Rien ne s'affiche tant que le corrigé n'est
+              pas rendu — la liste des formulations est filtrée côté serveur,
+              `part` vaut alors null. */}
+          {showCorrection && part !== null && (
+            <p className={part === 1 ? styles.reponseJuste : styles.reponseFausse}>
+              {part === 1 ? '✅ Réponse juste' : '❌ Réponse attendue : '}
+              {part !== 1 && (question.reponsesAcceptees ?? []).join(' · ')}
+            </p>
+          )}
+        </>
       )}
 
       {question.type === 'texte-long' && (

@@ -116,9 +116,34 @@ export default function LectureQuizReview({
               {/* Note automatique — toutes les questions que la machine sait
                   corriger, pas seulement les QCM. Le barème est partiel :
                   d'où un score qui peut tomber sur un demi-point. */}
-              {q.points > 0 && seCorrigeSeule(q) && (
-                <span className={styles.pts}>
-                  {scoreByQuestion.get(q.id)?.points ?? 0}/{q.points} pt{q.points > 1 ? 's' : ''}
+              {q.points > 0 &&
+                seCorrigeSeule(q) &&
+                (q.type !== 'texte-court' || !onQuestionScoreChange) && (
+                  <span className={styles.pts}>
+                    {scoreByQuestion.get(q.id)?.points ?? 0}/{q.points} pt{q.points > 1 ? 's' : ''}
+                  </span>
+                )}
+              {/* Réponse courte auto-corrigée : la note automatique s'affiche,
+                  ET le champ reste ouvert. Une formulation juste que le prof
+                  n'avait pas listée doit pouvoir être rattrapée — c'est la
+                  seule question dont le corrigé peut être incomplet. */}
+              {q.points > 0 && seCorrigeSeule(q) && q.type === 'texte-court' && onQuestionScoreChange && (
+                <span className={styles.scoreInput}>
+                  <input
+                    type="number"
+                    min={0}
+                    max={q.points}
+                    step={0.5}
+                    value={questionScores?.[q.id] ?? ''}
+                    placeholder={String(scoreByQuestion.get(q.id)?.points ?? 0)}
+                    title="Correction automatique. Écrivez une note pour la reprendre à la main ; videz le champ pour rendre la main à l’automatique."
+                    disabled={disabled}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      onQuestionScoreChange?.(q.id, v === '' ? null : Number(v));
+                    }}
+                  />
+                  <span>/ {q.points}</span>
                 </span>
               )}
               {q.points > 0 && !seCorrigeSeule(q) && onQuestionScoreChange && (

@@ -83,7 +83,9 @@ export function sanitizeAutoEvalQuiz(input: unknown): AutoEvalQuestionnaire | nu
       cleaned.multiple = true;
     }
 
-    if (type === 'matrice') {
+    // Les lignes — celles de la matrice, et celles d'une échelle de 1 à 5 qui
+    // porte plusieurs items (voir estLikertMatrice).
+    if (type === 'matrice' || type === 'likert') {
       const items = Array.isArray(question.matriceItems)
         ? question.matriceItems
             .filter((s): s is string => typeof s === 'string')
@@ -92,8 +94,10 @@ export function sanitizeAutoEvalQuiz(input: unknown): AutoEvalQuestionnaire | nu
         : [];
       // Une matrice à une seule ligne, c'est un QCM : autant le dire au prof
       // en refusant la question plutôt qu'en affichant un tableau d'une ligne.
-      if (items.length < 2) continue;
-      cleaned.matriceItems = items;
+      // Une ÉCHELLE, elle, se passe très bien d'items : sans eux, c'est le
+      // curseur simple, et c'est le cas de tout ce qui a été écrit avant.
+      if (type === 'matrice' && items.length < 2) continue;
+      if (items.length >= 2) cleaned.matriceItems = items;
     }
 
     if (type === 'likert') {

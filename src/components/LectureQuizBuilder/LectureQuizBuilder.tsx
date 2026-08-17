@@ -16,6 +16,7 @@ import { FluoExtrait } from '@/components/LectureQuizActivity/LectureQuizActivit
 import {
   LECTURE_COMPETENCE_LABELS,
   LECTURE_TYPE_LABELS,
+  estAutoCorrigeable,
   generateLectureQuestionId,
 } from '@/types/lecture';
 import type { LectureCompetence } from '@/types/lecture';
@@ -37,6 +38,7 @@ import {
   EditeurOrdre,
 } from './TypeEditors';
 import styles from './LectureQuizBuilder.module.css';
+import { focaliserChamp, insererChoix } from '@/lib/choix-liste';
 
 // Éditeur riche des blocs informatifs (même éditeur que l'onglet Texte des ressources)
 const InfoEditor = dynamic(() => import('@/components/RessourcesInput/DocumentEditor'), {
@@ -780,10 +782,27 @@ export default function LectureQuizBuilder({
                         <input
                           type="text"
                           value={choice}
+                          data-champ={`${q.id}-choix-${ci}`}
                           onChange={(e) => {
                             const choices = [...(q.choices ?? [])];
                             choices[ci] = e.target.value;
                             updateQuestion(q.id, { choices });
+                          }}
+                          // Entrée ajoute le choix suivant et y va : on écrit
+                          // ses cinq propositions sans quitter le clavier.
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return;
+                            e.preventDefault();
+                            const suite = insererChoix(q.choices ?? [], ci, {
+                              correctIndex: q.correctIndex,
+                              correctIndexes: q.correctIndexes,
+                            });
+                            updateQuestion(q.id, {
+                              choices: suite.choix,
+                              correctIndex: suite.correctIndex,
+                              correctIndexes: suite.correctIndexes,
+                            });
+                            focaliserChamp(`${q.id}-choix-${ci + 1}`);
                           }}
                           placeholder={`Choix ${ci + 1}`}
                           disabled={disabled}
@@ -1015,6 +1034,84 @@ export default function LectureQuizBuilder({
                         maxRows={12}
                         disabled={disabled}
                       />
+
+                      {/* ── Réponse courte CORRIGÉE SEULE ──
+                          Le prof liste ce qu'il accepte : « le cheval »,
+                          « cheval », « chevalin » valent toutes juste. Tant
+                          que la liste est vide, la question se corrige à la
+                          main — le comportement de tout ce qui a été écrit
+                          jusqu'ici ne bouge pas. */}
+                      {q.type === 'texte-court' && (
+                        <div className={styles.reponsesAcceptees}>
+                          <label className={styles.detailsLabel}>
+                            Réponses acceptées — correction automatique
+                            <span
+                              className={styles.info}
+                              title="Une réponse par ligne. L'élève est compté juste s'il écrit l'une d'elles. Majuscules, espaces en trop et accents sont ignorés ; l'orthographe et la ponctuation, non. Laissez vide pour corriger vous-même."
+                            >
+                              i
+                            </span>
+                          </label>
+                          {(q.reponsesAcceptees ?? []).map((r, ri) => (
+                            <div key={ri} className={styles.choice}>
+                              <span className={styles.choiceLabel}>≡</span>
+                              <input
+                                type="text"
+                                value={r}
+                                data-champ={`${q.id}-rep-${ri}`}
+                                onChange={(e) => {
+                                  const reponsesAcceptees = [...(q.reponsesAcceptees ?? [])];
+                                  reponsesAcceptees[ri] = e.target.value;
+                                  updateQuestion(q.id, { reponsesAcceptees });
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key !== 'Enter') return;
+                                  e.preventDefault();
+                                  updateQuestion(q.id, {
+                                    reponsesAcceptees: insererChoix(q.reponsesAcceptees ?? [], ri)
+                                      .choix,
+                                  });
+                                  focaliserChamp(`${q.id}-rep-${ri + 1}`);
+                                }}
+                                placeholder="Ex. : le cheval"
+                                disabled={disabled}
+                              />
+                              <button
+                                type="button"
+                                className={styles.choiceDel}
+                                onClick={() =>
+                                  updateQuestion(q.id, {
+                                    reponsesAcceptees: (q.reponsesAcceptees ?? []).filter(
+                                      (_, k) => k !== ri
+                                    ),
+                                  })
+                                }
+                                title="Retirer cette formulation"
+                                disabled={disabled}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            className={styles.addChoice}
+                            onClick={() => {
+                              const liste = [...(q.reponsesAcceptees ?? []), ''];
+                              updateQuestion(q.id, { reponsesAcceptees: liste });
+                              focaliserChamp(`${q.id}-rep-${liste.length - 1}`);
+                            }}
+                            disabled={disabled}
+                          >
+                            + Ajouter une formulation acceptée
+                          </button>
+                          <p className={styles.hint}>
+                            {estAutoCorrigeable(q)
+                              ? 'Cette question se corrige toute seule. Vous pourrez toujours reprendre la note à la main.'
+                              : 'Aucune formulation : vous corrigerez cette question vous-même.'}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </details>
                 )}

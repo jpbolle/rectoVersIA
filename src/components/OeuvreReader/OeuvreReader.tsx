@@ -15,8 +15,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { blocsDeFace } from '@/types/oeuvre';
+import { blocsDeFace, estCouverture } from '@/types/oeuvre';
 import type { OeuvreSection, OeuvreProgression } from '@/types/oeuvre';
+import {
+  estAutoCorrigeable,
+  partReussite,
+  reponseLiseuseVersAnswer,
+} from '@/types/lecture';
 import type { LectureAnswer, LectureQuestion } from '@/types/lecture';
 import ChampManipule, { estTypeManipule } from '@/components/QuestionInteractions';
 import OeuvreBlocRendu from './OeuvreBlocRendu';
@@ -28,6 +33,10 @@ interface OeuvreReaderProps {
   /** Titre affiché en tête — vient du sommaire, disponible avant le chargement */
   titreSection?: string;
   groupeSection?: string;
+  /** L'œuvre elle-même — servent à composer la page de couverture */
+  titreOeuvre?: string;
+  auteurOeuvre?: string;
+  couverture?: { url: string; fileId: string } | null;
   progression: OeuvreProgression | null;
   /** Position dans le parcours, pour les boutons précédent / suivant */
   peutReculer: boolean;
@@ -45,6 +54,12 @@ interface OeuvreReaderProps {
   onActivite?: (sectionId: string) => void;
   /** Première ouverture d'une section — sert au « lu » et à la fréquence */
   onSectionVue: (sectionId: string) => void;
+  /**
+   * L'élève a ouvert un commentaire du professeur. Tracé (demande de JP) :
+   * ce qu'un élève va chercher renseigne plus que le fait qu'il ait tourné
+   * la page.
+   */
+  onCommentaireOuvert?: (sectionId: string, commentaireId: string) => void;
   lectureSeule?: boolean;
 }
 
@@ -53,6 +68,9 @@ export default function OeuvreReader({
   sectionId,
   titreSection,
   groupeSection,
+  titreOeuvre,
+  auteurOeuvre,
+  couverture = null,
   progression,
   peutReculer,
   peutAvancer,
@@ -60,6 +78,7 @@ export default function OeuvreReader({
   onAvancer,
   onVerificationTerminee,
   onSectionVue,
+  onCommentaireOuvert,
   onActivite,
   lectureSeule = false,
 }: OeuvreReaderProps) {
@@ -69,6 +88,12 @@ export default function OeuvreReader({
   const [questionnaireOuvert, setQuestionnaireOuvert] = useState(false);
   const [reponses, setReponses] = useState<Record<string, unknown>>({});
   const [devoilees, setDevoilees] = useState<Set<string>>(new Set());
+  // ── Les deux faces de la liseuse ──
+  // Recto « Espace textuel », verso « Espace multimédia ». Le verso n'apparaît
+  // que si le prof y a déposé quelque chose : sur les 67 scènes de Molière,
+  // un onglet vide en permanence ne serait que du bruit. Déclaré ICI, avant le
+  // chargement : c'est lui qui choisit la face d'arrivée.
+  const [face, setFace] = useState<'recto' | 'verso'>('recto');
 
   // getAuthHeaders vient d'AuthContext et n'est PAS stable : le mettre dans
   // les dépendances d'un effet relance la requête en boucle (gotcha connu du
@@ -79,7 +104,9 @@ export default function OeuvreReader({
 
   // ── Chargement paresseux de la section ──
   useEffect(() => {
-    if (!sectionId) {
+    // La couverture n'est pas une section : rien à charger, et surtout rien à
+    // écrire dans la progression — on ne « travaille » pas une couverture.
+    if (!sectionId || estCouverture(sectionId)) {
       setSection(null);
       return;
     }
@@ -97,6 +124,11 @@ export default function OeuvreReader({
         if (annule) return;
         if (!json.success) throw new Error(json.message || 'Section introuvable');
         setSection(json.data);
+        // L'espace d'arrivée est celui que le prof a choisi — à condition
+        // qu'il ait quelque chose à montrer : ouvrir sur un multimédia vide
+        // donnerait une page blanche pour toute entrée en matière.
+        const versoPeuple = blocsDeFace(json.data?.blocs ?? [], 'verso').length > 0;
+        setFace(json.data?.facesInversees && versoPeuple ? 'verso' : 'recto');
         onSectionVue(sectionId);
       } catch (e) {
         if (!annule) setErreur(e instanceof Error ? e.message : 'Erreur de chargement');
@@ -113,11 +145,6 @@ export default function OeuvreReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [oeuvreId, sectionId]);
 
-  // ── Les deux faces de la liseuse ──
-  // Recto « Espace textuel », verso « Espace multimédia ». Le verso n'apparaît
-  // que si le prof y a déposé quelque chose : sur les 67 scènes de Molière,
-  // un onglet vide en permanence ne serait que du bruit.
-  const [face, setFace] = useState<'recto' | 'verso'>('recto');
   const blocsRecto = useMemo(() => blocsDeFace(section?.blocs ?? [], 'recto'), [section]);
   const blocsVerso = useMemo(() => blocsDeFace(section?.blocs ?? [], 'verso'), [section]);
   const aUnVerso = blocsVerso.length > 0;
@@ -146,6 +173,45 @@ export default function OeuvreReader({
     setQuestionnaireOuvert(false);
   }, [sectionId, reponses, onVerificationTerminee]);
 
+  // ── Le commentaire ouvert ──
+  // Un seul à la fois, et sa lecture est un signal d'activité : c'est le 3ᵉ
+  // déclencheur de la pastille orange, celui qui manquait.
+  const [commentaireOuvert, setCommentaireOuvert] = useState<string | null>(null);
+  const ouvrirCommentaire = useCallback(
+    (id: string) => {
+      setCommentaireOuvert(id);
+      if (!sectionId) return;
+      onCommentaireOuvert?.(sectionId, id);
+      onActivite?.(sectionId);
+    },
+    [sectionId, onCommentaireOuvert, onActivite]
+  );
+  const commentaire = useMemo(
+    () => (section?.commentaires ?? []).find((c) => c.id === commentaireOuvert) ?? null,
+    [section, commentaireOuvert]
+  );
+
+  // ── LA COUVERTURE : la première page du livre ──
+  // L'élève l'ouvre en arrivant et la tourne comme une page. Elle n'a ni
+  // vérification ni face multimédia : c'est un seuil, pas une scène.
+  if (estCouverture(sectionId)) {
+    return (
+      <div className={styles.couverturePage}>
+        {couverture && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={couverture.url} alt="" className={styles.couvertureImage} />
+        )}
+        <h2 className={styles.couvertureTitre}>{titreOeuvre}</h2>
+        {auteurOeuvre && <p className={styles.couvertureAuteur}>{auteurOeuvre}</p>}
+        {peutAvancer && (
+          <button type="button" className={styles.couvertureBouton} onClick={onAvancer}>
+            Commencer la lecture →
+          </button>
+        )}
+      </div>
+    );
+  }
+
   if (!sectionId) {
     return (
       <div className={styles.vide}>
@@ -164,33 +230,42 @@ export default function OeuvreReader({
 
         {/* Les deux faces — même geste que le recto/verso de l'espace de
             rédaction (FlipEditor). Absentes tant que le prof n'a rien déposé
-            au verso : l'immense majorité des scènes n'a que du texte. */}
+            au verso : l'immense majorité des scènes n'a que du texte.
+            L'ORDRE suit le choix du prof (`facesInversees`) : une scène qu'on
+            aborde par un extrait filmé présente le multimédia en premier. */}
         {aUnVerso && (
           <div className={styles.faces} role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={face === 'recto'}
-              className={`${styles.face} ${face === 'recto' ? styles.faceActive : ''}`}
-              onClick={() => setFace('recto')}
-            >
-              Espace textuel
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={face === 'verso'}
-              className={`${styles.face} ${face === 'verso' ? styles.faceActive : ''}`}
-              onClick={() => {
-                setFace('verso');
-                // Aller voir les compléments, c'est travailler la scène —
-                // la pastille du sommaire passe à l'orange.
-                if (sectionId) onActivite?.(sectionId);
-              }}
-            >
-              Espace multimédia
-              <span className={styles.faceCompteur}>{blocsVerso.length}</span>
-            </button>
+            {(section?.facesInversees ? ['verso', 'recto'] : ['recto', 'verso']).map((f) =>
+              f === 'recto' ? (
+                <button
+                  key="recto"
+                  type="button"
+                  role="tab"
+                  aria-selected={face === 'recto'}
+                  className={`${styles.face} ${face === 'recto' ? styles.faceActive : ''}`}
+                  onClick={() => setFace('recto')}
+                >
+                  Espace textuel
+                </button>
+              ) : (
+                <button
+                  key="verso"
+                  type="button"
+                  role="tab"
+                  aria-selected={face === 'verso'}
+                  className={`${styles.face} ${face === 'verso' ? styles.faceActive : ''}`}
+                  onClick={() => {
+                    setFace('verso');
+                    // Aller voir les compléments, c'est travailler la scène —
+                    // la pastille du sommaire passe à l'orange.
+                    if (sectionId) onActivite?.(sectionId);
+                  }}
+                >
+                  Espace multimédia
+                  <span className={styles.faceCompteur}>{blocsVerso.length}</span>
+                </button>
+              )
+            )}
           </div>
         )}
       </header>
@@ -205,7 +280,12 @@ export default function OeuvreReader({
 
             <div className={section.colonnes === 2 ? styles.texteDeuxColonnes : undefined}>
               {blocsRecto.map((bloc) => (
-                <OeuvreBlocRendu key={bloc.id} bloc={bloc} />
+                <OeuvreBlocRendu
+                  key={bloc.id}
+                  bloc={bloc}
+                  commentaires={section.commentaires}
+                  onCommentaire={ouvrirCommentaire}
+                />
               ))}
             </div>
           </>
@@ -215,11 +295,24 @@ export default function OeuvreReader({
           // Le verso ne suit jamais les colonnes du texte : une vidéo dans une
           // demi-colonne de Chromebook est inregardable.
           <div className={styles.verso}>
+            {/* Quand le multimédia ouvre la scène, c'est lui qui porte la
+                phrase de présentation : sans elle, l'élève arriverait sur une
+                vidéo sans savoir ce qu'il regarde. */}
+            {section.facesInversees && section.chapeau && (
+              <p className={styles.chapeau}>{section.chapeau}</p>
+            )}
             <p className={styles.versoIntro}>
-              Les compléments déposés par ton professeur pour cette scène.
+              {section.facesInversees
+                ? 'À voir avant de lire la scène.'
+                : 'Les compléments déposés par ton professeur pour cette scène.'}
             </p>
             {blocsVerso.map((bloc) => (
-              <OeuvreBlocRendu key={bloc.id} bloc={bloc} />
+              <OeuvreBlocRendu
+                key={bloc.id}
+                bloc={bloc}
+                commentaires={section.commentaires}
+                onCommentaire={ouvrirCommentaire}
+              />
             ))}
           </div>
         )}
@@ -269,6 +362,32 @@ export default function OeuvreReader({
           </p>
         )}
       </div>
+
+      {/* ── Le commentaire du professeur ──
+          En popup, comme le dictionnaire : c'est le même geste (je bute sur
+          quelque chose, j'ouvre, je referme, je reprends ma lecture) et
+          l'élève le connaît déjà. */}
+      {commentaire && (
+        <div
+          className={styles.cmtOverlay}
+          onClick={(e) => e.target === e.currentTarget && setCommentaireOuvert(null)}
+        >
+          <div className={styles.cmtFenetre} role="dialog" aria-modal="true">
+            <header className={styles.cmtEntete}>
+              <span className={styles.cmtMots}>« {commentaire.mots} »</span>
+              <button
+                type="button"
+                className={styles.cmtFermer}
+                onClick={() => setCommentaireOuvert(null)}
+                aria-label="Fermer"
+              >
+                ✕
+              </button>
+            </header>
+            <p className={styles.cmtTexte}>{commentaire.texte}</p>
+          </div>
+        </div>
+      )}
 
       {questionnaireOuvert && section && (
         <QuestionnairePopup
@@ -431,14 +550,38 @@ function QuestionnairePopup({
                       onRepondre(question.id, e.target.value)
                     }
                   />
-                  {question.reponseIdeale && !devoilees.has(question.id) && (
-                    <button
-                      type="button"
-                      className={styles.navBtn}
-                      onClick={() => onRepondre(question.id, reponses[question.id] ?? '')}
+                  {(question.reponseIdeale || estAutoCorrigeable(question)) &&
+                    !devoilees.has(question.id) && (
+                      <button
+                        type="button"
+                        className={styles.navBtn}
+                        onClick={() => onRepondre(question.id, reponses[question.id] ?? '')}
+                      >
+                        Voir la réponse attendue
+                      </button>
+                    )}
+
+                  {/* Réponse courte auto-corrigée : dans cet atelier le corrigé
+                      est ouvert, l'élève voit donc tout de suite si sa réponse
+                      est reconnue — et sinon, ce qui était attendu. */}
+                  {devoilees.has(question.id) && estAutoCorrigeable(question) && (
+                    <p
+                      className={
+                        partReussite(
+                          question,
+                          reponseLiseuseVersAnswer(question, reponses[question.id])
+                        ) === 1
+                          ? styles.verdictJuste
+                          : styles.verdictFaux
+                      }
                     >
-                      Voir la réponse attendue
-                    </button>
+                      {partReussite(
+                        question,
+                        reponseLiseuseVersAnswer(question, reponses[question.id])
+                      ) === 1
+                        ? '✅ Réponse juste'
+                        : `❌ Attendu : ${(question.reponsesAcceptees ?? []).join(' · ')}`}
+                    </p>
                   )}
                 </>
               )}

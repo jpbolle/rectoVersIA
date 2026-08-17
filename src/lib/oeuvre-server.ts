@@ -16,6 +16,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import type {
   Oeuvre,
   OeuvreBloc,
+  OeuvreCommentaire,
   OeuvreChapitre,
   OeuvrePartage,
   OeuvreSection,
@@ -154,6 +155,29 @@ export function blocsPourFirestore(blocs: unknown): OeuvreBloc[] {
     });
 }
 
+/**
+ * Les commentaires du prof sur des mots, prêts pour Firestore.
+ *
+ * Même piège que les blocs : `undefined` fait échouer l'écriture entière, et
+ * `orphelin` est justement le champ qui vaut `undefined` la plupart du temps.
+ * Un commentaire sans texte ou sans bloc ne surlignerait rien : on le jette.
+ */
+export function commentairesPourFirestore(brut: unknown): OeuvreCommentaire[] {
+  if (!Array.isArray(brut)) return [];
+  return brut
+    .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
+    .map((c) => ({
+      id: String(c.id || ''),
+      blocId: String(c.blocId || ''),
+      debut: Number.isFinite(c.debut) ? Number(c.debut) : -1,
+      fin: Number.isFinite(c.fin) ? Number(c.fin) : -1,
+      mots: typeof c.mots === 'string' ? c.mots : '',
+      texte: typeof c.texte === 'string' ? c.texte.slice(0, 4000) : '',
+      orphelin: c.orphelin === true,
+    }))
+    .filter((c) => c.id && c.blocId && c.texte.trim() && c.debut >= 0 && c.fin >= c.debut);
+}
+
 export function docToSection(doc: Doc): OeuvreSection {
   const d = doc.data() || {};
   const colonnes = d.colonnes === 2 ? 2 : 1;
@@ -164,9 +188,14 @@ export function docToSection(doc: Doc): OeuvreSection {
     groupe: d.groupe || undefined,
     chapeau: d.chapeau || undefined,
     colonnes,
+    facesInversees: d.facesInversees === true,
     blocs: Array.isArray(d.blocs)
       ? d.blocs.map(normaliserBloc).filter((b): b is OeuvreBloc => !!b)
       : [],
+    // Les commentaires ORPHELINS ne partent pas : ils sont ancrés sur des mots
+    // qui n'existent plus, l'élève n'a rien à en faire. Le prof, lui, les
+    // récupère par la même route — c'est le seul écart, et il est voulu.
+    commentaires: commentairesPourFirestore(d.commentaires),
     // Les questions partent TELLES QUELLES vers l'élève — corrigé compris.
     // Voir l'avertissement en tête de fichier.
     //

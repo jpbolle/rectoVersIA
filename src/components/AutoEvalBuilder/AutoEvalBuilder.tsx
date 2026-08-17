@@ -23,6 +23,7 @@ import {
   LIKERT_MIN_DEFAUT,
   MATRICE_MODELES,
   LIKERT_NIVEAUX,
+  estLikertMatrice,
   estQuestion,
   generateAutoEvalQuestionId,
 } from '@/types/autoevaluation';
@@ -33,6 +34,7 @@ import type {
 } from '@/types/autoevaluation';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import styles from './AutoEvalBuilder.module.css';
+import { focaliserChamp, insererChoix } from '@/lib/choix-liste';
 
 interface Props {
   quiz: AutoEvalQuestionnaire | null;
@@ -54,6 +56,72 @@ const AJOUTS: { type: AutoEvalQuestionType; label: string; icone: string }[] = [
   { type: 'texte-long', label: 'Réponse longue', icone: '📝' },
   { type: 'info', label: 'Bloc informatif', icone: 'ℹ️' },
 ];
+
+/**
+ * Les LIGNES d'un tableau — les affirmations d'une matrice, et celles d'une
+ * échelle de 1 à 5 qui en porte plusieurs.
+ *
+ * Un seul éditeur pour les deux : ce sont les mêmes lignes, dans le même
+ * champ (`matriceItems`). Deux éditeurs auraient divergé sur le minimum de
+ * lignes, sur le libellé, ou sur la suppression — c'est exactement ce qui
+ * était arrivé aux trois champs « énoncé ».
+ */
+function EditeurItems({
+  items,
+  minimum,
+  onChange,
+  disabled,
+  styles: s,
+}: {
+  items: string[];
+  /** En dessous, on n'offre plus de supprimer : la question n'aurait plus de sens */
+  minimum: number;
+  onChange: (items: string[]) => void;
+  disabled?: boolean;
+  styles: Record<string, string>;
+}) {
+  return (
+    <>
+      <div className={s.fieldLabel} style={{ marginTop: 12 }}>
+        Les affirmations (les lignes)
+      </div>
+      {items.map((item, j) => (
+        <div key={j} className={s.choice}>
+          <span className={s.choiceLabel}>{j + 1}</span>
+          <input
+            type="text"
+            value={item}
+            onChange={(e) => {
+              const next = [...items];
+              next[j] = e.target.value;
+              onChange(next);
+            }}
+            placeholder={`Affirmation ${j + 1}`}
+            disabled={disabled}
+          />
+          {items.length > minimum && (
+            <button
+              type="button"
+              className={s.choiceDel}
+              onClick={() => onChange(items.filter((_, k) => k !== j))}
+              disabled={disabled}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        className={s.addChoice}
+        onClick={() => onChange([...items, ''])}
+        disabled={disabled}
+      >
+        + Ajouter une affirmation
+      </button>
+    </>
+  );
+}
 
 function excerpt(texte: string): string {
   const t = texte.trim();
@@ -339,33 +407,66 @@ export default function AutoEvalBuilder({
                   )}
 
                   {q.type === 'likert' && (
-                    <div className={styles.likertRow}>
-                      <label className={styles.likertBorne}>
-                        Borne basse
+                    <>
+                      <div className={styles.likertRow}>
+                        <label className={styles.likertBorne}>
+                          Borne basse
+                          <input
+                            type="text"
+                            value={q.likertMin ?? LIKERT_MIN_DEFAUT}
+                            onChange={(e) => majQuestion(q.id, { likertMin: e.target.value })}
+                            disabled={disabled}
+                          />
+                        </label>
+                        <span className={styles.likertApercu}>
+                          {Array.from({ length: LIKERT_NIVEAUX }, (_, i) => (
+                            <span key={i} className={styles.likertPoint}>
+                              {i + 1}
+                            </span>
+                          ))}
+                        </span>
+                        <label className={styles.likertBorne}>
+                          Borne haute
+                          <input
+                            type="text"
+                            value={q.likertMax ?? LIKERT_MAX_DEFAUT}
+                            onChange={(e) => majQuestion(q.id, { likertMax: e.target.value })}
+                            disabled={disabled}
+                          />
+                        </label>
+                      </div>
+
+                      {/* ── La dimension MATRICE de l'échelle ──
+                          Ce que « réponses multiples » est au QCM : la même
+                          question posée sur plusieurs lignes. Décochée, on
+                          revient au curseur simple — et les questionnaires
+                          déjà écrits n'ont jamais coché quoi que ce soit. */}
+                      <label className={styles.multipleToggle}>
                         <input
-                          type="text"
-                          value={q.likertMin ?? LIKERT_MIN_DEFAUT}
-                          onChange={(e) => majQuestion(q.id, { likertMin: e.target.value })}
+                          type="checkbox"
+                          checked={estLikertMatrice(q)}
+                          onChange={(e) =>
+                            majQuestion(q.id, {
+                              matriceItems: e.target.checked ? ['', ''] : [],
+                            })
+                          }
                           disabled={disabled}
                         />
+                        Plusieurs items sur la même échelle (tableau)
                       </label>
-                      <span className={styles.likertApercu}>
-                        {Array.from({ length: LIKERT_NIVEAUX }, (_, i) => (
-                          <span key={i} className={styles.likertPoint}>
-                            {i + 1}
-                          </span>
-                        ))}
-                      </span>
-                      <label className={styles.likertBorne}>
-                        Borne haute
-                        <input
-                          type="text"
-                          value={q.likertMax ?? LIKERT_MAX_DEFAUT}
-                          onChange={(e) => majQuestion(q.id, { likertMax: e.target.value })}
-                          disabled={disabled}
-                        />
-                      </label>
-                    </div>
+
+                      {estLikertMatrice(q) && (
+                        <div className={styles.choices}>
+                          <EditeurItems
+                            items={q.matriceItems ?? []}
+                            minimum={2}
+                            onChange={(matriceItems) => majQuestion(q.id, { matriceItems })}
+                            disabled={disabled}
+                            styles={styles}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* Le QCM et la matrice partagent leur éditeur de réponses :
@@ -418,6 +519,18 @@ export default function AutoEvalBuilder({
                               choices[j] = e.target.value;
                               majQuestion(q.id, { choices });
                             }}
+                            data-champ={`${q.id}-choix-${j}`}
+                            // Entrée ajoute l'option suivante et y va. Aucun
+                            // corrigé à décaler ici : en auto-évaluation,
+                            // aucune option n'est « juste ».
+                            onKeyDown={(e) => {
+                              if (e.key !== 'Enter') return;
+                              e.preventDefault();
+                              majQuestion(q.id, {
+                                choices: insererChoix(q.choices ?? [], j).choix,
+                              });
+                              focaliserChamp(`${q.id}-choix-${j + 1}`);
+                            }}
                             placeholder={`Option ${String.fromCharCode(65 + j)}`}
                             disabled={disabled}
                           />
@@ -449,51 +562,13 @@ export default function AutoEvalBuilder({
                       {/* Les lignes de la matrice : c'est ce qui la distingue
                           du QCM — plusieurs affirmations, mêmes réponses. */}
                       {q.type === 'matrice' && (
-                        <>
-                          <div className={styles.fieldLabel} style={{ marginTop: 12 }}>
-                            Les affirmations (les lignes)
-                          </div>
-                          {(q.matriceItems ?? []).map((item, j) => (
-                            <div key={j} className={styles.choice}>
-                              <span className={styles.choiceLabel}>{j + 1}</span>
-                              <input
-                                type="text"
-                                value={item}
-                                onChange={(e) => {
-                                  const matriceItems = [...(q.matriceItems ?? [])];
-                                  matriceItems[j] = e.target.value;
-                                  majQuestion(q.id, { matriceItems });
-                                }}
-                                placeholder={`Affirmation ${j + 1}`}
-                                disabled={disabled}
-                              />
-                              {(q.matriceItems ?? []).length > 2 && (
-                                <button
-                                  type="button"
-                                  className={styles.choiceDel}
-                                  onClick={() =>
-                                    majQuestion(q.id, {
-                                      matriceItems: (q.matriceItems ?? []).filter((_, k) => k !== j),
-                                    })
-                                  }
-                                  disabled={disabled}
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                          <button
-                            type="button"
-                            className={styles.addChoice}
-                            onClick={() =>
-                              majQuestion(q.id, { matriceItems: [...(q.matriceItems ?? []), ''] })
-                            }
-                            disabled={disabled}
-                          >
-                            + Ajouter une affirmation
-                          </button>
-                        </>
+                        <EditeurItems
+                          items={q.matriceItems ?? []}
+                          minimum={2}
+                          onChange={(matriceItems) => majQuestion(q.id, { matriceItems })}
+                          disabled={disabled}
+                          styles={styles}
+                        />
                       )}
                     </div>
                   )}

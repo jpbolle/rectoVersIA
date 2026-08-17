@@ -154,40 +154,45 @@ export default function OeuvreSommaireEditable({
 
   return (
     <aside className={styles.sommaire}>
-      {/* ── LA COUVERTURE, EN PREMIER ──
-          Demande de JP (2026-08-16) : on construit un livre en commençant par
-          sa couverture, puis on ajoute les chapitres. Juste une image — ni
-          titre ni sous-titre à composer dessus : c'est la vignette qui
-          distingue les cartes de la bibliothèque, où douze « 📖 » identiques
-          ne se départagent qu'en lisant les titres. */}
+      {/* ── LA COUVERTURE : UNE VIGNETTE, EN PREMIÈRE LIGNE DU SOMMAIRE ──
+          Elle se dépose une fois pour toute la vie du livre, mais mangeait la
+          moitié de la colonne sur un petit écran, où c'est justement la liste
+          des scènes qu'on veut voir. Réduite à une vignette, elle prend la
+          forme de ce qu'elle est côté élève depuis 2026-08-17 : la PREMIÈRE
+          PAGE du livre, une entrée du sommaire comme les autres. */}
       {onDeposerCouverture && (
-        <div className={styles.couverture}>
+        <div className={styles.couvLigne}>
           {couverture ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={couverture.url} alt="Couverture du livre" />
-              <div className={styles.couvertureActions}>
-                <button type="button" onClick={onDeposerCouverture} disabled={occupe}>
-                  Remplacer
-                </button>
-                {onRetirerCouverture && (
-                  <button type="button" onClick={onRetirerCouverture} disabled={occupe}>
-                    Retirer
-                  </button>
-                )}
-              </div>
-            </>
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={couverture.url} alt="Couverture du livre" className={styles.couvVignette} />
           ) : (
+            <span className={`${styles.couvVignette} ${styles.couvVignetteVide}`}>🖼</span>
+          )}
+          {/* « Couverture » suffit : dire en dessous qu'elle est la première
+              page du livre répétait le mot avec d'autres mots. */}
+          <span className={styles.couvTexte}>
+            <strong>Couverture</strong>
+          </span>
+          <span className={styles.couvOutils}>
             <button
               type="button"
-              className={styles.couvertureVide}
               onClick={onDeposerCouverture}
               disabled={occupe}
+              title={couverture ? 'Remplacer l’image' : 'Déposer une couverture'}
             >
-              <span className={styles.couvertureIcone}>🖼</span>
-              <span>Déposer une couverture</span>
+              {couverture ? '⤴' : '+'}
             </button>
-          )}
+            {couverture && onRetirerCouverture && (
+              <button
+                type="button"
+                onClick={onRetirerCouverture}
+                disabled={occupe}
+                title="Retirer la couverture"
+              >
+                ✕
+              </button>
+            )}
+          </span>
         </div>
       )}
 

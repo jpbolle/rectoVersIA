@@ -184,7 +184,8 @@
 .champLarge textarea,
 .champLocuteur,
 .zoneVers,
-.bloc input {
+.zoneCollage textarea,
+.passageOuvert input {
   border: 1px solid var(--c-border);
   border-radius: var(--c-radius);
   padding: 9px 11px;
@@ -196,63 +197,9 @@
   width: 100%;
 }
 
-.titreSection {
-  font-family: var(--c-font-title);
-  font-size: 16.5px;
-  margin: 14px 0 0;
-  padding-top: 14px;
-  border-top: 1px solid var(--c-border);
-  color: var(--c-text);
-}
-
-/* ── Blocs ── */
-.bloc {
-  border: 1px solid var(--c-border);
-  border-radius: var(--c-radius-lg);
-  background: var(--c-bg-card);
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.blocEntete {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.blocType {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-primary);
-}
-
-.blocOutils {
-  display: flex;
-  gap: 2px;
-}
-
-.blocOutils button {
-  background: none;
-  border: 0;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--c-text-muted);
-  padding: 3px 7px;
-  border-radius: var(--c-radius-sm);
-}
-
-.blocOutils button:hover {
-  background: var(--c-bg-element);
-  color: var(--c-text);
-}
 
 .outilDanger:hover {
-  background: #fbefef !important;
+  border-color: var(--c-danger) !important;
   color: var(--c-danger) !important;
 }
 
@@ -277,10 +224,164 @@
   display: block;
 }
 
-.ajoutBlocs {
+/* ══════════════════════════════════════════════════════════════════
+   LE PASSAGE — au repos, puis ouvert
+   ══════════════════════════════════════════════════════════════════
+   Il n'y a plus deux modes : le flux est toujours modifiable. Un
+   passage se survole, se clique, s'ouvre à sa place. D'où un habillage
+   qui doit dire « cliquable » sans hacher la lecture de la scène —
+   c'est elle qui permet de décider où couper. */
+
+.passage {
+  border: 1px solid transparent;
+  border-radius: var(--c-radius);
+  padding: 4px 8px;
+  margin: 0 -8px;
+  cursor: text;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+
+.passage:hover {
+  background: var(--c-bg);
+  border-color: var(--c-border);
+}
+
+/* ── Un média dans le flux ──
+   Il s'affiche POUR DE VRAI (OeuvreBlocRendu). Une ligne « Vidéo » ne disait
+   pas laquelle : le prof ne pouvait vérifier son extrait sans ouvrir le bloc.
+   La barre au-dessus porte le type et le seul geste d'édition — le clic ne
+   peut pas servir, un cadre YouTube l'avale. */
+.passageMedia {
+  margin: 2px -8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--c-radius);
+}
+.passageMedia:hover {
+  background: var(--c-bg);
+  border-color: var(--c-border);
+}
+.passageMediaBarre {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+}
+.passageMediaBarre button {
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius);
+  padding: 3px 10px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+.passageMediaBarre button:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+/* ── LE BLOC INFORMATIF ──
+   C'est une note du professeur, pas du texte d'auteur : fond ambré et filet
+   à gauche le sortent du flux littéraire sans l'en extraire. */
+.passageInfo {
+  background: #fdf4e7;
+  border-left: 4px solid var(--c-accent);
+  border-radius: var(--c-radius);
+  padding: 10px 14px;
+}
+.passageInfo:hover {
+  background: #fbeed9;
+  border-color: var(--c-accent);
+  border-left-color: var(--c-accent);
+}
+
+.infoEtiquette {
+  margin: 0 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-accent-dark);
+}
+
+/* ── Le passage OUVERT ──
+   Le champ prend la place exacte du texte : le prof écrit là où il lisait. */
+.passageOuvert {
+  border: 1px solid var(--c-primary);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  padding: 10px 12px;
+  margin: 2px -8px;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+
+.outilsPassage {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
   flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid var(--c-border);
+}
+
+.outilsPassage button {
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius);
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+.outilsPassage button:hover:not(:disabled) {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+.outilsPassage button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── La zone de collage d'une scène vide ──
+   Le premier geste du prof : coller le texte d'un seul tenant. */
+.zoneCollage {
+  border: 2px dashed var(--c-border-strong);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg-element);
+  padding: 22px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.zoneCollage h4 {
+  font-family: var(--c-font-title);
+  font-size: 16px;
+  margin: 0 0 6px;
+  color: var(--c-text);
+}
+.zoneCollage p {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: var(--c-text-muted);
+}
+.zoneCollage textarea {
+  resize: vertical;
+  margin-bottom: 12px;
+  text-align: left;
 }
 
 /* ── Recto / verso — côté prof ──
@@ -555,67 +656,6 @@
   margin-bottom: 0;
 }
 
-.barreOnglets .bascule {
-  margin-bottom: 7px;
-}
-
-/* ── L'outil d'édition : un INTERRUPTEUR ──
-   Collé aux onglets (et non renvoyé à l'autre bout de la ligne) : c'est le
-   même geste de travail que choisir une face, il appartient au même groupe.
-   Un interrupteur plutôt qu'un bouton : on entre dans un mode et on en sort,
-   ce n'est pas une action qu'on déclenche — et on doit voir d'un coup d'œil,
-   sans cliquer, si on y est. */
-.bascule {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  border: 1px solid var(--c-border);
-  background: var(--c-bg-card);
-  border-radius: 999px;
-  /* L'interrupteur est à DROITE du libellé : on lit ce que c'est, puis on
-     voit s'il est allumé */
-  padding: 5px 6px 5px 14px;
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--c-text-secondary);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-.bascule:hover { border-color: var(--c-accent-dark); color: var(--c-accent-dark); }
-
-.basculeRail {
-  position: relative;
-  width: 34px;
-  height: 19px;
-  border-radius: 999px;
-  background: var(--c-border-strong);
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-.basculeBouton {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-  transition: transform 0.15s ease;
-}
-.basculeTexte { white-space: nowrap; }
-
-/* Allumé : le rail passe à l'orange et la pastille glisse à droite. */
-.basculeActive {
-  border-color: var(--c-accent-dark);
-  background: #fff7ec;
-  color: var(--c-accent-dark);
-}
-.basculeActive .basculeRail { background: var(--c-accent); }
-.basculeActive .basculeBouton { transform: translateX(15px); }
-
 /* ── Le flux d'édition ──
    La scène d'un seul tenant : c'est la lecture suivie qui permet de décider
    où couper, et les cartes de blocs la hachaient. */
@@ -628,11 +668,6 @@
   padding: 6px 14px 10px;
 }
 
-/* Les blocs ne se distinguent plus par une carte : c'est le trait qui marque
-   leur frontière (voir .traitEntreBlocs). */
-.blocEnLecture {
-  display: block;
-}
 
 /* Un média n'a pas de lignes : on l'annonce quand même, sinon le prof perd le
    fil de sa scène là où il a posé une vidéo. */
@@ -738,47 +773,6 @@
   .traitActions { flex-wrap: wrap; }
 }
 
-/* ── Popup de saisie à l'insertion (SaisieBlocModal) ── */
-.saisieFenetre {
-  width: min(680px, 100%);
-  max-height: 88vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--c-bg-card);
-  border-radius: var(--c-radius-lg);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
-}
-.saisieCorps {
-  padding: 16px 22px;
-  overflow-y: auto;
-}
-.saisieChamp {
-  width: 100%;
-  border: 1px solid var(--c-border);
-  border-radius: var(--c-radius);
-  padding: 10px 12px;
-  font-family: inherit;
-  font-size: 14px;
-  color: var(--c-text);
-  background: var(--c-bg-card);
-}
-/* Un vers ne se justifie pas : la saisie doit ressembler au rendu */
-.saisieZone {
-  font-family: var(--c-font-title);
-  font-size: 15px;
-  line-height: 1.6;
-  resize: vertical;
-}
-.saisiePied {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 12px 22px;
-  border-top: 1px solid var(--c-border);
-  background: var(--c-bg);
-}
-
 /* ── Bloc vide dans le flux d'édition ──
    Il n'a rien à montrer mais occupe une place : on l'annonce et on offre de
    le jeter sur place, plutôt que d'obliger à quitter l'outil pour le faire. */
@@ -807,4 +801,156 @@
 .blocVide button:hover {
   border-color: var(--c-danger);
   color: var(--c-danger);
+}
+
+/* ── Saisie d'un commentaire sur des mots ──
+   Une petite fenêtre : le prof doit garder la scène en tête, c'est d'elle
+   qu'il parle. */
+.cmtOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1250;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.cmtFenetre {
+  width: min(520px, 100%);
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.cmtEntete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg);
+}
+.cmtEntete h3 {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 16px;
+  color: var(--c-text);
+}
+.cmtEntete button {
+  border: 0;
+  background: none;
+  font-size: 15px;
+  color: var(--c-text-muted);
+  cursor: pointer;
+}
+.cmtEntete button:hover { color: var(--c-text); }
+.cmtCorps { padding: 16px 18px; }
+.cmtMots {
+  margin: 0 0 12px;
+  font-family: var(--c-font-title);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--c-text);
+  background: linear-gradient(transparent 58%, #ffe680 58%);
+  display: inline;
+}
+.cmtChamp {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--c-text);
+  background: var(--c-bg-card);
+  resize: vertical;
+}
+.cmtPied {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-bg);
+}
+
+/* ── Commentaires à replacer ──
+   Un commentaire dont les mots ont disparu ne s'affiche dans aucun passage :
+   sans cette liste, il serait invisible ET indéboulonnable. */
+.orphelins {
+  border: 1px solid var(--c-danger);
+  border-radius: var(--c-radius-lg);
+  background: #fdf3f3;
+  padding: 14px 16px;
+  margin-top: 14px;
+}
+.orphelins h4 {
+  margin: 0 0 4px;
+  font-family: var(--c-font-title);
+  font-size: 15px;
+  color: var(--c-danger);
+}
+.orphelinLigne {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--c-border);
+  font-size: 13px;
+}
+.orphelinMots {
+  font-family: var(--c-font-title);
+  font-size: 14px;
+  color: var(--c-text);
+  flex-shrink: 0;
+  max-width: 40%;
+}
+.orphelinTexte {
+  flex: 1;
+  color: var(--c-text-secondary);
+}
+.orphelinLigne button {
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius);
+  padding: 3px 10px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.orphelinLigne button:hover {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+
+/* ── Le bouton qui flotte au-dessus des mots sélectionnés ──
+   `position: fixed` : les coordonnées viennent d'un rectangle de sélection,
+   qui est déjà relatif à la fenêtre. Il se centre sur la sélection et se pose
+   juste au-dessus, à portée de la souris qui vient de relâcher. */
+.boutonCommenter {
+  position: fixed;
+  z-index: 1400;
+  transform: translate(-50%, -100%);
+  border: 1px solid var(--c-accent-dark);
+  background: var(--c-accent-dark);
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+.boutonCommenter:hover {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
 }

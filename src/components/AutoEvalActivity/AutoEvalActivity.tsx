@@ -13,7 +13,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   aRepondu,
   echelleDe,
+  estLikertMatrice,
   estQuestion,
+  LIKERT_COLONNES,
   LIKERT_MAX_DEFAUT,
   LIKERT_MIN_DEFAUT,
   LIKERT_NIVEAUX,
@@ -119,8 +121,28 @@ export default function AutoEvalActivity({
         );
       }
 
-      // ── Échelle de 1 à 5, au curseur ──
+      // ── Échelle de 1 à 5 ──
+      // Avec des items, c'est un tableau (le même MatriceField que la matrice,
+      // aux colonnes numérotées) ; sans items, le curseur d'origine.
       case 'likert': {
+        if (estLikertMatrice(q)) {
+          return (
+            <div className={styles.likertMatrice}>
+              <div className={styles.likertBornes}>
+                <span>1 — {q.likertMin || LIKERT_MIN_DEFAUT}</span>
+                <span>{LIKERT_NIVEAUX} — {q.likertMax || LIKERT_MAX_DEFAUT}</span>
+              </div>
+              <MatriceField
+                items={q.matriceItems ?? []}
+                colonnes={LIKERT_COLONNES}
+                valeurs={a.matrice ?? {}}
+                onChange={(matrice) => majReponse(q.id, { matrice })}
+                disabled={readOnly}
+                nomGroupe={`ae-${q.id}`}
+              />
+            </div>
+          );
+        }
         const valeur = a.likert ?? 0;
         return (
           <div className={styles.likert}>

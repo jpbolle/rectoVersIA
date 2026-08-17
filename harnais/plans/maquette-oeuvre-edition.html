@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette — édition d'une œuvre (refonte)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   Design system Classica — repris de src/app/globals.css
+   ══════════════════════════════════════════════════════════════════ */
+:root {
+  --c-primary: #2d6a5a;
+  --c-primary-light: #357a68;
+  --c-primary-dark: #245649;
+  --c-accent: #d4944c;
+  --c-accent-dark: #c4862e;
+  --c-bg: #faf6f0;
+  --c-bg-card: #ffffff;
+  --c-bg-element: #f0ebe3;
+  --c-text: #3d3832;
+  --c-text-secondary: #5a534b;
+  --c-text-muted: #8a7f72;
+  --c-text-dim: #a89e92;
+  --c-border: #d5cec4;
+  --c-border-strong: #b5ad9f;
+  --c-danger: #b44040;
+  --c-success: #2d8a4e;
+  --c-warning: #c4862e;
+  --c-shadow-card: 0 2px 8px rgba(0,0,0,.08);
+  --c-shadow-popup: 0 4px 16px rgba(0,0,0,.15), 0 1px 4px rgba(0,0,0,.1);
+  --c-gradient-header: linear-gradient(135deg,#2d6a5a 0%,#357a68 100%);
+  --c-radius: 4px;
+  --c-radius-lg: 8px;
+  --c-font-title: 'Playfair Display', Georgia, serif;
+  --c-font-body: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* Le bloc informatif : une teinte qui le sort du flux du texte littéraire */
+  --info-bg: #fdf4e7;
+  --info-bord: #d4944c;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  font-family: var(--c-font-body);
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ══════════════ Écran plein ══════════════ */
+.plein { display: flex; flex-direction: column; height: 100vh; }
+
+.entete {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 18px;
+  background: var(--c-gradient-header);
+  color: #fff;
+  flex-shrink: 0;
+}
+.entete .logo {
+  width: 34px; height: 34px; border-radius: 6px;
+  background: rgba(255,255,255,.2);
+  display: grid; place-items: center; font-size: 18px;
+}
+.btnRetour, .btnGhostClair {
+  background: rgba(255,255,255,.15); color: #fff;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: var(--c-radius); padding: 6px 12px;
+  font: 600 12.5px var(--c-font-body); cursor: pointer;
+}
+.btnRetour:hover, .btnGhostClair:hover { background: rgba(255,255,255,.28); }
+.enteteTitre { flex: 1; }
+.enteteTitre h2 { font: 700 19px var(--c-font-title); margin: 0; }
+.enteteTitre p { margin: 0; font-size: 11.5px; opacity: .85; }
+.enteteActions { display: flex; gap: 8px; align-items: center; }
+.pastilleModifiee {
+  background: var(--c-accent); color: #fff; font-size: 11px; font-weight: 600;
+  padding: 3px 9px; border-radius: 999px;
+}
+
+.corps { flex: 1; display: flex; min-height: 0; }
+
+/* ══════════════ Colonne gauche — sommaire ══════════════ */
+.sommaire {
+  width: 290px; flex-shrink: 0;
+  background: var(--c-bg-card);
+  border-right: 1px solid var(--c-border);
+  display: flex; flex-direction: column; min-height: 0;
+}
+.sommaireScroll { overflow-y: auto; padding: 12px; flex: 1; }
+
+/* ── LA COUVERTURE : une vignette, plus un panneau ──
+   Elle prenait la moitié de la colonne sur un petit écran, alors qu'elle se
+   dépose une fois pour toute la vie du livre. */
+.couvLigne {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px; border-radius: var(--c-radius-lg);
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-element);
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+.couvLigne:hover { border-color: var(--c-primary); }
+.couvLigne.actif { border-color: var(--c-primary); background: #e8f0ed; }
+.couvVignette {
+  width: 34px; height: 46px; flex-shrink: 0;
+  border-radius: 3px; object-fit: cover;
+  background: linear-gradient(160deg,#8a7f72,#5a534b);
+  display: grid; place-items: center; color: #fff; font-size: 16px;
+  box-shadow: var(--c-shadow-card);
+}
+.couvTexte { flex: 1; min-width: 0; }
+.couvTexte strong { display: block; font-size: 12.5px; }
+.couvTexte span { font-size: 11px; color: var(--c-text-muted); }
+.couvOutils { display: flex; gap: 3px; }
+.couvOutils button {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 12px; color: var(--c-text-muted); padding: 3px 5px; border-radius: 3px;
+}
+.couvOutils button:hover { background: rgba(0,0,0,.06); color: var(--c-text); }
+
+.chapitre { margin-bottom: 10px; }
+.chapitreEntete {
+  display: flex; align-items: center; gap: 6px;
+  font: 600 12.5px var(--c-font-body); color: var(--c-text-secondary);
+  padding: 5px 4px; cursor: pointer;
+}
+.chapitreEntete:hover { color: var(--c-primary); }
+.chev { font-size: 10px; color: var(--c-text-dim); }
+.sectionLigne {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 8px; margin: 2px 0 2px 12px;
+  border-radius: var(--c-radius); cursor: pointer;
+  font-size: 12.5px; color: var(--c-text-secondary);
+}
+.sectionLigne:hover { background: var(--c-bg-element); }
+.sectionLigne.actif { background: #e8f0ed; color: var(--c-primary); font-weight: 600; }
+.pastille { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.pastille.grise { background: var(--c-border-strong); }
+.pastille.orange { background: var(--c-accent); }
+.pastille.verte { background: var(--c-success); }
+.btnAjout {
+  width: 100%; margin-top: 4px;
+  border: 1px dashed var(--c-border-strong); background: transparent;
+  border-radius: var(--c-radius); padding: 6px;
+  font: 600 11.5px var(--c-font-body); color: var(--c-text-muted); cursor: pointer;
+}
+.btnAjout:hover { border-color: var(--c-primary); color: var(--c-primary); }
+
+/* ══════════════ Colonne droite — la section ══════════════ */
+.editeur { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.editeurScroll { flex: 1; overflow-y: auto; padding: 18px 22px 26px; }
+
+.champsSection { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.champ { display: flex; flex-direction: column; gap: 3px; font: 600 11.5px var(--c-font-body); color: var(--c-text-muted); }
+.champ input, .champ select, .champLarge textarea {
+  font: 400 13px var(--c-font-body); color: var(--c-text);
+  border: 1px solid var(--c-border); border-radius: var(--c-radius);
+  padding: 6px 9px; background: var(--c-bg-card);
+}
+.champ:first-child input { width: 260px; }
+.champLarge { display: flex; flex-direction: column; gap: 3px; font: 600 11.5px var(--c-font-body); color: var(--c-text-muted); margin-bottom: 16px; }
+
+/* ── LES TROIS ONGLETS ── */
+.onglets {
+  display: flex; gap: 4px; align-items: flex-end;
+  border-bottom: 2px solid var(--c-border);
+  margin-bottom: 4px;
+  position: sticky; top: 0; background: var(--c-bg); z-index: 5;
+  padding-top: 2px;
+}
+.onglet {
+  border: 1px solid var(--c-border); border-bottom: none;
+  background: var(--c-bg-element); color: var(--c-text-secondary);
+  border-radius: var(--c-radius-lg) var(--c-radius-lg) 0 0;
+  padding: 9px 16px; cursor: pointer;
+  font: 600 13px var(--c-font-body);
+  display: flex; align-items: center; gap: 7px;
+  margin-bottom: -2px;
+}
+.onglet:hover { color: var(--c-primary); }
+.onglet.actif {
+  background: var(--c-bg-card); color: var(--c-primary);
+  border-color: var(--c-border); border-bottom: 2px solid var(--c-bg-card);
+}
+.compteurOnglet {
+  background: var(--c-bg-card); border: 1px solid var(--c-border);
+  border-radius: 999px; min-width: 20px; text-align: center;
+  font-size: 11px; font-weight: 700; padding: 0 6px; color: var(--c-text-muted);
+}
+.onglet.actif .compteurOnglet { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
+
+.panneau {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border); border-top: none;
+  border-radius: 0 0 var(--c-radius-lg) var(--c-radius-lg);
+  padding: 16px 20px 20px;
+}
+.aide { font-size: 12px; color: var(--c-text-muted); margin: 0 0 14px; }
+
+/* ══════════════ LE FLUX — toujours modifiable ══════════════ */
+.flux { max-width: 720px; margin: 0 auto; }
+
+/* Le trait d'insertion. Sa hauteur est RÉSERVÉE en permanence : s'il
+   n'apparaissait qu'au survol, le texte sauterait sous la souris. */
+.trait {
+  height: 24px; position: relative;
+  display: flex; align-items: center; gap: 8px;
+  opacity: 0; transition: opacity .12s;
+}
+.trait:hover, .trait.ouvert { opacity: 1; }
+.traitBarre { flex: 1; height: 1px; background: var(--c-border); }
+.traitActions { display: flex; gap: 3px; }
+.traitActions button {
+  border: 1px solid var(--c-border); background: var(--c-bg-card);
+  border-radius: 999px; padding: 2px 9px; cursor: pointer;
+  font: 600 11px var(--c-font-body); color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+.traitActions button:hover { border-color: var(--c-primary); color: var(--c-primary); }
+/* Entre deux blocs : le trait reste légèrement visible, sinon la frontière
+   des blocs disparaît complètement du flux. */
+.trait.entreBlocs { opacity: .35; }
+.trait.entreBlocs:hover { opacity: 1; }
+.trait.entreBlocs .traitBarre { background: var(--c-border-strong); }
+
+/* ── Un passage, au repos ── */
+.passage {
+  border-radius: var(--c-radius); padding: 4px 8px;
+  cursor: text; position: relative;
+  border: 1px solid transparent;
+}
+.passage:hover { background: #faf8f4; border-color: var(--c-border); }
+.locuteur {
+  font: 700 12px var(--c-font-body); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--c-primary);
+  margin: 0 0 2px;
+}
+.ligne { margin: 0; font-size: 14.5px; line-height: 1.75; }
+.ligne.vers { font-family: Georgia, serif; }
+
+/* ── Le BLOC INFORMATIF : encadré, teinté, il sort du flux ── */
+.passage.info {
+  background: var(--info-bg);
+  border-left: 4px solid var(--info-bord);
+  border-radius: var(--c-radius);
+  padding: 10px 14px;
+}
+.passage.info:hover { background: #fbeed9; border-color: var(--info-bord); }
+.infoEtiquette {
+  font: 700 10px var(--c-font-body); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--c-accent-dark); margin: 0 0 4px;
+}
+.passage.info .ligne { font-size: 13.5px; color: var(--c-text-secondary); }
+
+/* ── Un passage OUVERT : le champ prend sa place, à sa place ── */
+.passage.ouvert { border-color: var(--c-primary); background: #fff; padding: 8px; cursor: default; }
+.passage.ouvert textarea, .passage.ouvert input {
+  width: 100%; border: none; outline: none; resize: vertical;
+  font: 400 14.5px/1.75 var(--c-font-body); color: var(--c-text);
+  background: transparent; padding: 0;
+}
+.passage.ouvert.info textarea { font-size: 13.5px; }
+.passage.ouvert .champLocuteur {
+  font: 700 12px var(--c-font-body); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--c-primary);
+  border-bottom: 1px dashed var(--c-border); margin-bottom: 6px; padding-bottom: 3px;
+}
+.outilsPassage {
+  display: flex; gap: 4px; justify-content: flex-end;
+  margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--c-border);
+}
+.outilsPassage button {
+  border: 1px solid var(--c-border); background: var(--c-bg-card);
+  border-radius: var(--c-radius); padding: 3px 9px; cursor: pointer;
+  font: 600 11px var(--c-font-body); color: var(--c-text-secondary);
+}
+.outilsPassage button:hover { border-color: var(--c-primary); color: var(--c-primary); }
+.outilsPassage button.danger:hover { border-color: var(--c-danger); color: var(--c-danger); }
+
+/* ── Médias dans le flux ── */
+.media {
+  border: 1px dashed var(--c-border-strong); border-radius: var(--c-radius);
+  padding: 12px; text-align: center; color: var(--c-text-muted);
+  font-size: 12.5px; background: var(--c-bg-element); cursor: pointer;
+}
+.media:hover { border-color: var(--c-primary); color: var(--c-primary); }
+
+/* ── Section vide : la zone de collage ── */
+.zoneCollage {
+  border: 2px dashed var(--c-border-strong); border-radius: var(--c-radius-lg);
+  padding: 26px; text-align: center; background: var(--c-bg-element);
+}
+.zoneCollage h4 { font: 700 15px var(--c-font-title); margin: 0 0 6px; }
+.zoneCollage p { margin: 0 0 14px; font-size: 12.5px; color: var(--c-text-muted); }
+.zoneCollage textarea {
+  width: 100%; min-height: 130px; border: 1px solid var(--c-border);
+  border-radius: var(--c-radius); padding: 10px;
+  font: 400 13.5px/1.7 var(--c-font-body); background: #fff; resize: vertical;
+}
+
+/* ══════════════ Boutons ══════════════ */
+.btnPrimary {
+  background: var(--c-primary); color: #fff; border: none;
+  border-radius: var(--c-radius); padding: 0 22px; min-height: 42px;
+  font: 600 14px var(--c-font-body); cursor: pointer;
+}
+.btnPrimary:hover { background: var(--c-primary-dark); }
+.btnPrimary:disabled { background: var(--c-border-strong); cursor: default; }
+.btnAccent {
+  background: var(--c-accent); color: #fff; border: none;
+  border-radius: var(--c-radius); padding: 0 22px; min-height: 42px;
+  font: 600 14px var(--c-font-body); cursor: pointer;
+}
+.btnAccent:hover { background: var(--c-accent-dark); }
+.btnGhost {
+  background: var(--c-bg-card); color: var(--c-text-secondary);
+  border: 1px solid var(--c-border); border-radius: var(--c-radius);
+  padding: 7px 14px; font: 600 12.5px var(--c-font-body); cursor: pointer;
+}
+.btnGhost:hover { border-color: var(--c-primary); color: var(--c-primary); }
+
+/* Pied HORS de la zone qui défile — gotcha `position: sticky` consigné le 16 */
+.piedEditeur {
+  flex-shrink: 0; border-top: 1px solid var(--c-border);
+  background: var(--c-bg-card); padding: 12px 22px;
+  display: flex; justify-content: flex-end; gap: 10px;
+}
+
+/* ══════════════ Onglet Évaluation ══════════════ */
+.questionCarte {
+  border: 1px solid var(--c-border); border-radius: var(--c-radius-lg);
+  background: var(--c-bg-card); margin-bottom: 10px;
+}
+.questionEntete {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: var(--c-bg-element);
+  border-radius: var(--c-radius-lg) var(--c-radius-lg) 0 0;
+  cursor: pointer; font-size: 13px;
+}
+.questionEntete .num { font-weight: 700; color: var(--c-primary); }
+.questionEntete .typeTag {
+  font-size: 11px; font-weight: 600; color: var(--c-text-muted);
+  border: 1px solid var(--c-border); border-radius: 999px; padding: 1px 8px;
+}
+.questionEntete .apercu { flex: 1; color: var(--c-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bareme { background: var(--c-accent); color: #fff; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 2px 8px; }
+.ajoutTypes { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 14px; }
+.ajoutTypes button {
+  border: 1px solid var(--c-border); background: var(--c-bg-card);
+  border-radius: 9px; padding: 8px 14px; cursor: pointer;
+  font: 600 12.5px var(--c-font-body); color: var(--c-text-secondary);
+}
+.ajoutTypes button:hover { border-color: var(--c-primary); color: var(--c-primary); }
+
+/* ══════════════ Notes de maquette ══════════════ */
+.notes {
+  max-width: 940px; margin: 0 auto; padding: 26px 22px 60px;
+}
+.notes h3 { font: 700 17px var(--c-font-title); color: var(--c-primary); margin: 26px 0 8px; }
+.notes ul { margin: 0 0 10px; padding-left: 20px; }
+.notes li { margin-bottom: 5px; font-size: 13.5px; }
+.notes .q { background: #fff; border-left: 3px solid var(--c-accent); padding: 10px 14px; border-radius: var(--c-radius); margin-bottom: 8px; font-size: 13.5px; }
+.separateur { border: none; border-top: 1px solid var(--c-border); margin: 0; }
+.bandeauNotes { background: var(--c-bg-element); border-top: 1px solid var(--c-border); }
+</style>
+</head>
+<body>
+
+<div class="plein">
+
+  <!-- ══════════ Bandeau ══════════ -->
+  <header class="entete">
+    <div class="logo">📖</div>
+    <button class="btnRetour">← Retour</button>
+    <div class="enteteTitre">
+      <h2>Molière — Anthologie comique</h2>
+      <p>4 chapitres · 67 sections · 12 vérifications</p>
+    </div>
+    <div class="enteteActions">
+      <span class="pastilleModifiee" id="pastille" style="display:none">modifications non enregistrées</span>
+      <button class="btnGhostClair">👁 Prévisualiser</button>
+      <button class="btnGhostClair">Fermer</button>
+    </div>
+  </header>
+
+  <div class="corps">
+
+    <!-- ══════════ Sommaire ══════════ -->
+    <aside class="sommaire">
+      <div class="sommaireScroll">
+
+        <!-- La couverture : une VIGNETTE, et une entrée du livre comme une autre -->
+        <div class="couvLigne" id="couvLigne">
+          <div class="couvVignette">🎭</div>
+          <div class="couvTexte">
+            <strong>Couverture</strong>
+            <span>1<sup>re</sup> page du livre</span>
+          </div>
+          <div class="couvOutils">
+            <button title="Remplacer l'image">⤴</button>
+            <button title="Retirer la couverture">✕</button>
+          </div>
+        </div>
+
+        <div class="chapitre">
+          <div class="chapitreEntete"><span class="chev">▾</span> L'Avare <span style="color:var(--c-text-dim);font-weight:400">· 8</span></div>
+          <div class="sectionLigne"><span class="pastille verte"></span> Acte I, scène 1</div>
+          <div class="sectionLigne"><span class="pastille verte"></span> Acte I, scène 2</div>
+          <div class="sectionLigne actif" id="ligneCourante"><span class="pastille orange"></span> Acte I, scène 3</div>
+          <div class="sectionLigne"><span class="pastille grise"></span> Acte I, scène 4</div>
+          <div class="sectionLigne" id="ligneVide"><span class="pastille grise"></span> Acte II, scène 1 <span style="font-size:10.5px;color:var(--c-text-dim)">(vide)</span></div>
+          <button class="btnAjout">+ Section</button>
+        </div>
+
+        <div class="chapitre">
+          <div class="chapitreEntete"><span class="chev">▸</span> Le Tartuffe <span style="color:var(--c-text-dim);font-weight:400">· 12</span></div>
+        </div>
+        <div class="chapitre">
+          <div class="chapitreEntete"><span class="chev">▸</span> Le Malade imaginaire <span style="color:var(--c-text-dim);font-weight:400">· 9</span></div>
+        </div>
+
+        <button class="btnAjout">+ Chapitre</button>
+      </div>
+    </aside>
+
+    <!-- ══════════ La section ouverte ══════════ -->
+    <main class="editeur">
+      <div class="editeurScroll">
+
+        <div class="champsSection">
+          <label class="champ">Titre<input type="text" value="Acte I, scène 3"></label>
+          <label class="champ">Acte / regroupement<input type="text" value="Acte I" style="width:130px"></label>
+          <label class="champ">Mise en page
+            <select><option>Une colonne</option><option>Deux colonnes</option></select>
+          </label>
+        </div>
+
+        <label class="champLarge">Chapeau — la phrase de présentation, en italique avant le texte
+          <textarea rows="2">Harpagon chasse La Flèche, qu'il soupçonne de vouloir le voler.</textarea>
+        </label>
+
+        <!-- ══════════ LES TROIS ONGLETS ══════════ -->
+        <div class="onglets" role="tablist">
+          <button class="onglet actif" data-onglet="texte">Espace textuel <span class="compteurOnglet" id="cptTexte">6</span></button>
+          <button class="onglet" data-onglet="media">Espace multimédia <span class="compteurOnglet">2</span></button>
+          <button class="onglet" data-onglet="eval">Évaluation de la compréhension <span class="compteurOnglet">3</span></button>
+        </div>
+
+        <!-- ── Onglet 1 : le texte, flux continu toujours modifiable ── -->
+        <div class="panneau" id="panneauTexte">
+          <p class="aide">
+            Clique sur un passage pour le modifier. Passe entre deux lignes pour insérer, couper,
+            ou renvoyer la suite dans une nouvelle section. Les noms de personnages en capitales
+            deviennent le locuteur d'un extrait.
+          </p>
+          <div class="flux" id="flux"></div>
+        </div>
+
+        <!-- ── Onglet 2 : le multimédia ── -->
+        <div class="panneau" id="panneauMedia" style="display:none">
+          <p class="aide">
+            Les compléments : vidéos, images, enregistrements. L'élève y bascule d'un onglet —
+            ils n'apparaissent que si tu en déposes.
+          </p>
+          <div class="flux">
+            <div class="trait entreBlocs"><span class="traitBarre"></span><span class="traitActions"><button>🎬 Vidéo</button><button>🖼 Image</button><button>🎧 Audio</button><button>ℹ Bloc informatif</button></span><span class="traitBarre"></span></div>
+            <div class="media">🎬 Vidéo — L'Avare, mise en scène de la Comédie-Française (extrait)</div>
+            <div class="trait entreBlocs"><span class="traitBarre"></span><span class="traitActions"><button>🎬 Vidéo</button><button>🖼 Image</button><button>🎧 Audio</button><button>ℹ Bloc informatif</button></span><span class="traitBarre"></span></div>
+            <div class="media">🖼 Image — Gravure de l'édition de 1682</div>
+            <div class="trait entreBlocs"><span class="traitBarre"></span><span class="traitActions"><button>🎬 Vidéo</button><button>🖼 Image</button><button>🎧 Audio</button><button>ℹ Bloc informatif</button></span><span class="traitBarre"></span></div>
+          </div>
+        </div>
+
+        <!-- ── Onglet 3 : LA NOUVEAUTÉ — la vérification remonte en onglet ── -->
+        <div class="panneau" id="panneauEval" style="display:none">
+          <p class="aide">
+            Facultative. Ce sont ces vérifications que l'élève complète — c'est elles qui comptent
+            dans son total, pas les pages ouvertes. Le corrigé lui est montré immédiatement :
+            dans cet atelier, rien n'est noté.
+          </p>
+
+          <div class="questionCarte">
+            <div class="questionEntete">
+              <span class="num">1</span>
+              <span class="typeTag">Choix multiple</span>
+              <span class="apercu">Pourquoi Harpagon fouille-t-il La Flèche ?</span>
+              <span class="bareme">2 pts</span>
+              <span class="chev">▸</span>
+            </div>
+          </div>
+          <div class="questionCarte">
+            <div class="questionEntete">
+              <span class="num">2</span>
+              <span class="typeTag">Appariement</span>
+              <span class="apercu">Relie chaque réplique au trait de caractère qu'elle révèle</span>
+              <span class="bareme">4 pts</span>
+              <span class="chev">▸</span>
+            </div>
+          </div>
+          <div class="questionCarte">
+            <div class="questionEntete">
+              <span class="num">3</span>
+              <span class="typeTag">Réponse longue</span>
+              <span class="apercu">En quoi cette scène est-elle comique ?</span>
+              <span class="bareme">5 pts</span>
+              <span class="chev">▸</span>
+            </div>
+          </div>
+
+          <div class="ajoutTypes">
+            <button>☑ Choix multiple</button>
+            <button>✏️ Réponse courte</button>
+            <button>📝 Réponse longue</button>
+            <button>🖍 Souligner du texte</button>
+            <button>▦ Matrice</button>
+            <button>🔗 Appariement</button>
+            <button>↕ Remise en ordre</button>
+            <button>🖼 Image à annoter</button>
+            <button>🗂 Ensembles</button>
+            <button>ℹ️ Bloc informatif</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="piedEditeur">
+        <button class="btnPrimary" id="btnEnregistrer" disabled>Enregistré</button>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     Notes de maquette
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="bandeauNotes">
+<div class="notes">
+  <h3>Ce qui change</h3>
+  <ul>
+    <li><strong>Trois onglets</strong> au lieu de deux : la vérification de lecture n'est plus au bas d'une scène de trente répliques, elle a son onglet. Le compteur dit combien de questions sans avoir à y aller.</li>
+    <li><strong>Un seul mode d'édition.</strong> La bascule « ✂ Outil d'édition » disparaît : le flux est toujours modifiable. Clic sur un passage → il s'ouvre à sa place ; Échap ou clic ailleurs → il se referme.</li>
+    <li><strong>Le trait porte tout</strong> : couper, insérer (bloc informatif, extrait, vidéo, image), nouvelle section. Les boutons « + Bloc informatif / + Extrait… » du bas disparaissent — ils posaient un bloc au bout de la scène, jamais là où on le voulait.</li>
+    <li><strong>Le bloc informatif est teinté et bordé d'ambre</strong> : il se voit comme une note du professeur, pas comme du Molière.</li>
+    <li><strong>La couverture est une vignette</strong> dans le sommaire, à la place du panneau qui mangeait la colonne — et elle devient la première entrée du sommaire, côté prof comme côté élève.</li>
+    <li><strong>Une section vide s'ouvre sur une zone de collage</strong> (clique « Acte II, scène 1 » à gauche) : le premier geste du prof, c'est coller la scène entière ; il la débite ensuite de l'intérieur.</li>
+  </ul>
+
+  <h3>À regarder de près</h3>
+  <div class="q"><strong>Le clic sur un passage.</strong> Ouvre-t-il assez vite ? Le champ garde-t-il bien la place du texte (pas de saut) ? Les outils du passage (supprimer, monter, descendre, envoyer au multimédia) sont-ils au bon endroit — sous le champ, ou en haut à droite ?</div>
+  <div class="q"><strong>Le trait.</strong> Il apparaît au survol entre chaque ligne, et reste légèrement visible entre deux blocs. Six boutons, est-ce trop ? (« ✂ Couper ici » n'a de sens qu'à l'intérieur d'un bloc, il ne s'affiche pas entre deux.)</div>
+  <div class="q"><strong>Le bloc informatif.</strong> Teinte d'ambre à 8 %, filet gauche de 4 px. Assez visible sans écraser le texte ?</div>
+  <div class="q"><strong>L'onglet Évaluation.</strong> Il porte le questionnaire tel quel (accordéon, drag &amp; drop, dix types). Faut-il aussi y montrer le <em>texte</em> de la scène en regard, pour écrire les questions sans changer d'onglet ?</div>
+
+  <h3>Ce que la maquette ne montre pas</h3>
+  <ul>
+    <li>Le glisser-déposer des questions (inchangé).</li>
+    <li>La popup de saisie à l'insertion — elle disparaît : puisque le flux est éditable, un bloc inséré s'ouvre <em>directement</em> en champ, à sa place.</li>
+    <li>Côté élève : la couverture en première entrée du sommaire, avec un bouton « Commencer la lecture ».</li>
+  </ul>
+</div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   Le flux — un modèle de blocs, rendu à chaque changement.
+   La maquette tient le même modèle que l'app (blocs typés, locuteur,
+   lignes) pour que ce qu'on valide ici soit codable tel quel.
+   ══════════════════════════════════════════════════════════════════ */
+
+let blocs = [
+  { id: 'b1', type: 'info', contenu: "Harpagon vit dans la terreur d'être volé. La scène qui suit met en place le ressort comique de toute la pièce : l'avarice qui rend fou." },
+  { id: 'b2', type: 'vers', locuteur: 'Harpagon', contenu: "Hors d'ici tout à l'heure, et qu'on ne réplique pas.\nAllons, que l'on détale de chez moi, maître juré filou,\nvrai gibier de potence." },
+  { id: 'b3', type: 'vers', locuteur: 'La Flèche', contenu: "Je n'ai jamais rien vu de si méchant que ce maudit vieillard,\net je pense, sauf correction, qu'il a le diable au corps." },
+  { id: 'b4', type: 'media', contenu: "🖼 Image — Harpagon fouillant La Flèche (gravure, 1682)" },
+  { id: 'b5', type: 'vers', locuteur: 'Harpagon', contenu: "Tu murmures entre tes dents ?" },
+  { id: 'b6', type: 'vers', locuteur: 'La Flèche', contenu: "Pourquoi me chassez-vous ?" },
+];
+
+let ouvert = null;     // id du passage ouvert
+let sectionVide = false;
+
+const flux = document.getElementById('flux');
+const pastille = document.getElementById('pastille');
+const btnEnr = document.getElementById('btnEnregistrer');
+
+function modifie() {
+  pastille.style.display = '';
+  btnEnr.disabled = false;
+  btnEnr.textContent = 'Enregistrer la section';
+}
+
+/* Les gestes du trait. `intra` = à l'intérieur d'un bloc (on peut y couper). */
+function boutonsTrait(intra) {
+  const gestes = [
+    ['✂', 'Couper ici', 'couper', true],
+    ['ℹ', 'Bloc informatif', 'info', false],
+    ['📝', 'Extrait', 'vers', false],
+    ['🎬', 'Vidéo', 'media', false],
+    ['🖼', 'Image', 'media', false],
+    ['📄', 'Nouvelle section', 'section', false],
+  ];
+  return gestes
+    .filter(g => intra || !g[3])
+    .map(g => `<button data-geste="${g[2]}">${g[0]} ${g[1]}</button>`)
+    .join('');
+}
+
+function trait(position, indexLigne, entreBlocs) {
+  const intra = indexLigne !== null;
+  return `<div class="trait ${entreBlocs ? 'entreBlocs' : ''}" data-pos="${position}" data-ligne="${indexLigne === null ? '' : indexLigne}">
+    <span class="traitBarre"></span>
+    <span class="traitActions">${boutonsTrait(intra)}</span>
+    <span class="traitBarre"></span>
+  </div>`;
+}
+
+function rendre() {
+  if (sectionVide) {
+    flux.innerHTML = `
+      <div class="zoneCollage">
+        <h4>Colle ici le texte de la scène</h4>
+        <p>D'un seul tenant — tu le découperas ensuite ligne à ligne, sans quitter cette page.</p>
+        <textarea id="collage" placeholder="Colle le texte…"></textarea>
+        <div style="margin-top:12px"><button class="btnPrimary" id="btnCollage">Poser ce texte dans la scène</button></div>
+      </div>`;
+    document.getElementById('btnCollage').onclick = () => {
+      const t = document.getElementById('collage').value.trim();
+      if (!t) return;
+      blocs = [{ id: 'c' + Date.now(), type: 'vers', locuteur: '', contenu: t }];
+      sectionVide = false;
+      modifie();
+      rendre();
+    };
+    return;
+  }
+
+  let html = trait(0, null, true);
+
+  blocs.forEach((b, i) => {
+    if (i > 0) html += trait(i, null, true);
+
+    if (b.id === ouvert) {
+      /* ── Le passage OUVERT : le champ prend exactement sa place ── */
+      html += `<div class="passage ouvert ${b.type === 'info' ? 'info' : ''}" data-id="${b.id}">
+        ${b.type === 'vers' ? `<input class="champLocuteur" value="${b.locuteur || ''}" placeholder="Personnage (facultatif)">` : ''}
+        ${b.type === 'info' ? '<p class="infoEtiquette">Bloc informatif</p>' : ''}
+        <textarea rows="${Math.max(2, (b.contenu.split('\\n').length))}">${b.contenu}</textarea>
+        <div class="outilsPassage">
+          <button data-outil="haut" title="Monter">↑</button>
+          <button data-outil="bas" title="Descendre">↓</button>
+          <button data-outil="verso" title="Envoyer à l'espace multimédia">⇥ Multimédia</button>
+          <button data-outil="fermer">✓ Terminé</button>
+          <button data-outil="suppr" class="danger">✕ Supprimer</button>
+        </div>
+      </div>`;
+    } else if (b.type === 'media') {
+      html += `<div class="media" data-id="${b.id}">${b.contenu}</div>`;
+    } else {
+      /* ── Au repos : le texte, ligne à ligne, avec un trait entre les lignes ── */
+      const lignes = b.contenu.split('\n');
+      html += `<div class="passage ${b.type === 'info' ? 'info' : ''}" data-id="${b.id}">`;
+      if (b.type === 'info') html += `<p class="infoEtiquette">Bloc informatif</p>`;
+      if (b.locuteur) html += `<p class="locuteur">${b.locuteur}</p>`;
+      lignes.forEach((l, j) => {
+        if (j > 0) html += trait(i, j, false);
+        html += `<p class="ligne ${b.type === 'vers' ? 'vers' : ''}">${l || '&nbsp;'}</p>`;
+      });
+      html += `</div>`;
+    }
+  });
+
+  html += trait(blocs.length, null, true);
+  flux.innerHTML = html;
+  document.getElementById('cptTexte').textContent = blocs.length;
+
+  /* ── Clic sur un passage → il s'ouvre ── */
+  flux.querySelectorAll('.passage:not(.ouvert), .media').forEach(el => {
+    el.onclick = (e) => {
+      if (e.target.closest('.trait')) return;
+      // SANS CECI le clic remonte jusqu'au document, qui referme le passage
+      // dans la foulée : le champ s'ouvre et disparaît aussitôt. Le rendu
+      // ayant remplacé le DOM, le garde-fou du listener global ne reconnaît
+      // plus sa propre cible — elle est déjà détachée.
+      e.stopPropagation();
+      ouvert = el.dataset.id;
+      rendre();
+      const champ = flux.querySelector('.passage.ouvert textarea');
+      if (champ) { champ.focus(); champ.setSelectionRange(champ.value.length, champ.value.length); }
+    };
+  });
+
+  /* ── Le champ ouvert : on écrit, on referme ── */
+  const zone = flux.querySelector('.passage.ouvert textarea');
+  if (zone) {
+    zone.oninput = () => {
+      const b = blocs.find(x => x.id === ouvert);
+      b.contenu = zone.value;
+      modifie();
+    };
+    zone.onkeydown = (e) => { if (e.key === 'Escape') { ouvert = null; rendre(); } };
+  }
+  const loc = flux.querySelector('.passage.ouvert .champLocuteur');
+  if (loc) loc.oninput = () => { blocs.find(x => x.id === ouvert).locuteur = loc.value; modifie(); };
+
+  flux.querySelectorAll('.outilsPassage button').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const i = blocs.findIndex(x => x.id === ouvert);
+      const outil = btn.dataset.outil;
+      if (outil === 'fermer') ouvert = null;
+      if (outil === 'suppr') { blocs.splice(i, 1); ouvert = null; modifie(); }
+      if (outil === 'haut' && i > 0) { [blocs[i-1], blocs[i]] = [blocs[i], blocs[i-1]]; modifie(); }
+      if (outil === 'bas' && i < blocs.length - 1) { [blocs[i+1], blocs[i]] = [blocs[i], blocs[i+1]]; modifie(); }
+      if (outil === 'verso') { blocs.splice(i, 1); ouvert = null; modifie(); }
+      rendre();
+    };
+  });
+
+  /* ── Les gestes du trait ── */
+  flux.querySelectorAll('.trait button').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const t = btn.closest('.trait');
+      const pos = parseInt(t.dataset.pos, 10);
+      const ligne = t.dataset.ligne === '' ? null : parseInt(t.dataset.ligne, 10);
+      const geste = btn.dataset.geste;
+
+      /* Couper : le bloc se sépare en deux à la ligne visée */
+      if (geste === 'couper' || (ligne !== null && geste !== 'section')) {
+        const b = blocs[pos];
+        const lignes = b.contenu.split('\n');
+        const haut = { ...b, id: b.id + 'h', contenu: lignes.slice(0, ligne).join('\n') };
+        const bas  = { ...b, id: b.id + 'b', contenu: lignes.slice(ligne).join('\n'), locuteur: '' };
+        blocs.splice(pos, 1, haut, bas);
+        if (geste === 'couper') { modifie(); rendre(); return; }
+      }
+
+      if (geste === 'section') {
+        alert("Tout ce qui suit ce trait part dans une nouvelle section du chapitre.\n\n(Non simulé dans la maquette.)");
+        return;
+      }
+
+      /* Insérer : le bloc neuf s'ouvre DIRECTEMENT en champ, à sa place —
+         plus de popup de saisie préalable. */
+      const iInsert = ligne !== null ? pos + 1 : pos;
+      const neuf = geste === 'media'
+        ? { id: 'n' + Date.now(), type: 'media', contenu: '🖼 Image — clique pour déposer un fichier' }
+        : { id: 'n' + Date.now(), type: geste, locuteur: '', contenu: '' };
+      blocs.splice(iInsert, 0, neuf);
+      ouvert = neuf.type === 'media' ? null : neuf.id;
+      modifie();
+      rendre();
+      const champ = flux.querySelector('.passage.ouvert textarea');
+      if (champ) champ.focus();
+    };
+  });
+}
+
+/* Clic hors du passage ouvert → il se referme */
+document.addEventListener('click', (e) => {
+  if (!ouvert) return;
+  if (e.target.closest('.passage.ouvert') || e.target.closest('.trait')) return;
+  ouvert = null;
+  rendre();
+});
+
+/* ── Onglets ── */
+document.querySelectorAll('.onglet').forEach(o => {
+  o.onclick = () => {
+    document.querySelectorAll('.onglet').forEach(x => x.classList.remove('actif'));
+    o.classList.add('actif');
+    document.getElementById('panneauTexte').style.display = o.dataset.onglet === 'texte' ? '' : 'none';
+    document.getElementById('panneauMedia').style.display = o.dataset.onglet === 'media' ? '' : 'none';
+    document.getElementById('panneauEval').style.display  = o.dataset.onglet === 'eval'  ? '' : 'none';
+  };
+});
+
+/* ── Sommaire : une section vide montre la zone de collage ── */
+document.getElementById('ligneVide').onclick = () => {
+  document.querySelectorAll('.sectionLigne').forEach(l => l.classList.remove('actif'));
+  document.getElementById('ligneVide').classList.add('actif');
+  document.getElementById('couvLigne').classList.remove('actif');
+  sectionVide = true; ouvert = null; rendre();
+};
+document.getElementById('ligneCourante').onclick = () => {
+  document.querySelectorAll('.sectionLigne').forEach(l => l.classList.remove('actif'));
+  document.getElementById('ligneCourante').classList.add('actif');
+  document.getElementById('couvLigne').classList.remove('actif');
+  sectionVide = false; ouvert = null; rendre();
+};
+document.getElementById('couvLigne').onclick = (e) => {
+  if (e.target.closest('.couvOutils')) return;
+  document.querySelectorAll('.sectionLigne').forEach(l => l.classList.remove('actif'));
+  document.getElementById('couvLigne').classList.add('actif');
+  alert("La couverture s'ouvre comme une page : l'image, et la façon dont l'élève la découvrira en ouvrant le livre.\n\n(Non simulé dans la maquette.)");
+};
+
+rendre();
+</script>
+
+</body>
+</html>

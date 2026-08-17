@@ -14,10 +14,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
+  COUVERTURE_ID,
   emptyProgression,
+  estCouverture,
   parseOeuvreProgression,
   sectionsAPlat,
   type Oeuvre,
+  type OeuvreChapitre,
   type OeuvreProgression,
 } from '@/types/oeuvre';
 import type { Devoir } from '@/types/devoir';
@@ -90,10 +93,31 @@ export function useOeuvreLecture({ devoir, content, onProgression }: Options) {
     [content]
   );
 
-  const parcours = useMemo(() => (oeuvre ? sectionsAPlat(oeuvre) : []), [oeuvre]);
+  /**
+   * Le parcours de lecture — LA COUVERTURE EN TÊTE.
+   *
+   * Elle est traitée comme une page du livre (voir COUVERTURE_ID) : les
+   * flèches précédent/suivant, le sommaire et la reprise de lecture n'ont
+   * ainsi qu'un seul cas à connaître. Elle n'existe que si le prof a déposé
+   * une image — un livre sans couverture s'ouvre sur sa première scène.
+   */
+  const parcours = useMemo(() => {
+    if (!oeuvre) return [];
+    const sections = sectionsAPlat(oeuvre);
+    if (!oeuvre.couverture) return sections;
+    const chapitreFictif: OeuvreChapitre = { id: COUVERTURE_ID, titre: '', sections: [] };
+    return [
+      {
+        chapitre: chapitreFictif,
+        section: { id: COUVERTURE_ID, titre: 'Couverture', aQuestions: false },
+      },
+      ...sections,
+    ];
+  }, [oeuvre]);
 
   // Première ouverture : on reprend là où l'élève s'est arrêté — la dernière
-  // section vue, à défaut la première du parcours.
+  // section vue, à défaut la première page, qui est la couverture quand il y
+  // en a une. Un élève qui revient ne repasse donc pas par elle.
   useEffect(() => {
     if (sectionId || !parcours.length) return;
     const derniere = [...parcours]
@@ -168,6 +192,35 @@ export function useOeuvreLecture({ devoir, content, onProgression }: Options) {
     [ecrire]
   );
 
+  /**
+   * L'élève a ouvert un commentaire du professeur.
+   *
+   * On garde son id — savoir CE QU'IL est allé chercher renseigne plus que le
+   * fait qu'il ait tourné la page (demande de JP). Un id déjà connu ne
+   * réécrit rien : sans cette garde, chaque réouverture déclencherait une
+   * sauvegarde, comme le piège déjà rencontré avec `agiLe`.
+   */
+  const marquerCommentaireOuvert = useCallback(
+    (id: string, commentaireId: string) => {
+      const dejaVus = progressionRef.current.sections[id]?.commentairesOuverts ?? [];
+      if (dejaVus.includes(commentaireId)) return;
+      ecrire((prev) => ({
+        ...prev,
+        sections: {
+          ...prev.sections,
+          [id]: {
+            ...prev.sections[id],
+            commentairesOuverts: [
+              ...(prev.sections[id]?.commentairesOuverts ?? []),
+              commentaireId,
+            ],
+          },
+        },
+      }));
+    },
+    [ecrire]
+  );
+
   const marquerTerminee = useCallback(
     (id: string, reponses: Record<string, unknown>) => {
       ecrire((prev) => ({
@@ -201,7 +254,9 @@ export function useOeuvreLecture({ devoir, content, onProgression }: Options) {
       index >= 0 && index < parcours.length - 1 && setSectionId(parcours[index + 1].section.id),
     marquerVue,
     marquerActivite,
+    marquerCommentaireOuvert,
     marquerTerminee,
-    nbSections: parcours.length,
+    // La couverture n'est pas une scène : elle ne compte pas dans le parcours
+    nbSections: parcours.filter(({ section }) => !estCouverture(section.id)).length,
   };
 }

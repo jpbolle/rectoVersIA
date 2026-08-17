@@ -12,7 +12,13 @@ import type {
   LectureQuestionType,
   LectureResume,
 } from '@/types/lecture';
-import { FLUO_COULEUR_IDS, estAutoCorrigeable, melangeStable, partReussite } from '@/types/lecture';
+import {
+  FLUO_COULEUR_IDS,
+  estAutoCorrigeable,
+  melangeStable,
+  normaliserReponseCourte,
+  partReussite,
+} from '@/types/lecture';
 
 const QUESTION_TYPES: LectureQuestionType[] = [
   'qcm',
@@ -161,24 +167,56 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
       cleaned.points = 0;
     }
 
+    // Réponse courte auto-corrigée : les formulations acceptées par le prof.
+    // Vides jetées, doublons écartés à la forme normalisée — deux entrées qui
+    // ne diffèrent que par une majuscule sont la même réponse.
+    if (type === 'texte-court' && Array.isArray(question.reponsesAcceptees)) {
+      const vues = new Set<string>();
+      const acceptees: string[] = [];
+      for (const r of question.reponsesAcceptees) {
+        if (typeof r !== 'string' || !r.trim()) continue;
+        const cle = normaliserReponseCourte(r);
+        if (!cle || vues.has(cle)) continue;
+        vues.add(cle);
+        acceptees.push(r.trim());
+      }
+      if (acceptees.length > 0) cleaned.reponsesAcceptees = acceptees;
+    }
+
+    // ── Les choix, et le REPÈRE de ce qu'ils deviennent ──
+    // Jeter les choix vides DÉCALE tous ceux qui suivent. Sans la table de
+    // correspondance ci-dessous, une bonne réponse posée après un choix vide
+    // désignerait sa voisine — silencieusement, à l'enregistrement, sans que
+    // rien ne l'annonce ni au prof ni à l'élève. Le cas est devenu courant
+    // depuis que la touche Entrée insère une option (2026-08-17).
+    let rangDuChoix: Map<number, number> | null = null;
+
     if (type === 'qcm' || type === 'matrice') {
-      const choices = Array.isArray(question.choices)
-        ? question.choices.filter((c): c is string => typeof c === 'string' && c.trim() !== '')
-        : [];
+      const choices: string[] = [];
+      rangDuChoix = new Map();
+      const bruts = Array.isArray(question.choices) ? question.choices : [];
+      bruts.forEach((c, i) => {
+        if (typeof c !== 'string' || c.trim() === '') return;
+        rangDuChoix!.set(i, choices.length);
+        choices.push(c);
+      });
       if (choices.length < 2) continue;
       cleaned.choices = choices;
     }
 
+    /** Ancien rang -> nouveau. `null` = ce choix a disparu. */
+    const suivreChoix = (i: unknown): number | null =>
+      typeof i === 'number' ? rangDuChoix?.get(i) ?? null : null;
+
     if (type === 'qcm') {
-      const choices = cleaned.choices!;
       if (question.multiple === true) {
         cleaned.multiple = true;
         const idx = Array.isArray(question.correctIndexes)
           ? [
               ...new Set(
-                question.correctIndexes.filter(
-                  (i): i is number => typeof i === 'number' && i >= 0 && i < choices.length
-                )
+                question.correctIndexes
+                  .map(suivreChoix)
+                  .filter((i): i is number => i !== null)
               ),
             ].sort((a, b) => a - b)
           : [];
@@ -186,25 +224,31 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
         // on retombe alors sur la première, comme le QCM simple le fait déjà.
         cleaned.correctIndexes = idx.length > 0 ? idx : [0];
       } else {
-        const ci = question.correctIndex;
-        cleaned.correctIndex =
-          typeof ci === 'number' && ci >= 0 && ci < choices.length ? ci : 0;
+        cleaned.correctIndex = suivreChoix(question.correctIndex) ?? 0;
       }
     }
 
     if (type === 'matrice') {
-      const items = Array.isArray(question.matriceItems)
-        ? question.matriceItems
-            .filter((s): s is string => typeof s === 'string' && s.trim() !== '')
-            .map((s) => s.trim())
-        : [];
+      // Mêmes précautions que pour les colonnes, sur les DEUX axes : jeter une
+      // ligne vide décale les lignes suivantes, et une colonne vide décale les
+      // réponses attendues. On retient donc le rang d'origine de chaque ligne
+      // conservée, et on fait passer sa colonne par la même table que le QCM.
+      const items: string[] = [];
+      const rangsOrigine: number[] = [];
+      const bruts = Array.isArray(question.matriceItems) ? question.matriceItems : [];
+      bruts.forEach((s, i) => {
+        if (typeof s !== 'string' || s.trim() === '') return;
+        items.push(s.trim());
+        rangsOrigine.push(i);
+      });
       if (items.length === 0) continue;
       cleaned.matriceItems = items;
-      const nbCol = cleaned.choices!.length;
       // -1 = ligne sans réponse attendue (elle sort du barème)
-      cleaned.matriceCorrect = items.map((_, i) => {
-        const v = Array.isArray(question.matriceCorrect) ? question.matriceCorrect[i] : undefined;
-        return typeof v === 'number' && v >= 0 && v < nbCol ? v : -1;
+      cleaned.matriceCorrect = rangsOrigine.map((origine) => {
+        const v = Array.isArray(question.matriceCorrect)
+          ? question.matriceCorrect[origine]
+          : undefined;
+        return suivreChoix(v) ?? -1;
       });
     }
 
@@ -383,6 +427,7 @@ export function lectureQuizForEleve(quiz: LectureQuiz | null | undefined): Lectu
         correctIndexes: _correctIndexes,
         matriceCorrect: _matriceCorrect,
         reponseIdeale: _reponseIdeale,
+        reponsesAcceptees: _reponsesAcceptees,
         fluoAttendu: _fluoAttendu,
         fluoAttenduParCategorie: _fluoAttenduParCategorie,
         appariementPaires: _appariementPaires,

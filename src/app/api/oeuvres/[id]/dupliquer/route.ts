@@ -63,6 +63,14 @@ export async function POST(
           ...section,
           id: nouveauSectionId,
           chapitreId: nouveauChapitreId,
+          // `docToSection` pose `undefined` sur les champs vides — parfait
+          // pour le rendu, FATAL à l'écriture : Firestore refuse `undefined`
+          // et l'écriture entière échoue. Même piège que
+          // `chapitresPourFirestore`, ici sur une section entière.
+          groupe: section.groupe || '',
+          chapeau: section.chapeau || '',
+          facesInversees: section.facesInversees === true,
+          commentaires: section.commentaires ?? [],
         });
         refs.push({
           id: nouveauSectionId,

@@ -70,6 +70,21 @@ function scoreQuestion(
     if (!estAutoCorrigeable(q)) {
       return { questionId: q.id, points: null, max, auto: true };
     }
+    // ── LA NOTE DU PROF PRIME, sur la réponse courte seulement ──
+    // C'est la seule dont le corrigé peut être incomplet : une formulation
+    // juste que le prof n'avait pas prévue est comptée fausse, et il doit
+    // pouvoir la rattraper. Un QCM, lui, n'a pas de formulation imprévue —
+    // son corrigé est complet par construction, et le prof n'a rien à y
+    // reprendre. (Même doctrine que la recherche : cf. recherche-scoring.)
+    const reprise = questionScores?.[q.id];
+    if (q.type === 'texte-court' && typeof reprise === 'number') {
+      return {
+        questionId: q.id,
+        points: Math.max(0, Math.min(max, reprise)),
+        max,
+        auto: false,
+      };
+    }
     const part = partReussite(q, answers[q.id]) ?? 0;
     return {
       questionId: q.id,
@@ -103,6 +118,13 @@ function scoreQuestion(
  */
 export function seCorrigeSeule(q: LectureQuestion): boolean {
   switch (q.type) {
+    // La réponse courte fait exception à la règle du commentaire ci-dessus :
+    // c'est la LISTE DES FORMULATIONS ACCEPTÉES qui la rend automatique, et
+    // cette liste est justement la clé. Sans elle — donc côté élève tant que
+    // la correction n'est pas rendue — la question compte comme « à noter »,
+    // ce qui est exactement ce qu'il faut lui montrer.
+    case 'texte-court':
+      return (q.reponsesAcceptees ?? []).length > 0;
     case 'qcm':
     case 'matrice':
     case 'appariement':

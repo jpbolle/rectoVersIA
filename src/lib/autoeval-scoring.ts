@@ -14,7 +14,7 @@
 //
 // Partagé serveur (profil) et client (écran de correction, onglet Évaluation).
 
-import { ECHELLE_COMPETENCE } from '@/types/autoevaluation';
+import { ECHELLE_COMPETENCE, estLikertMatrice } from '@/types/autoevaluation';
 import type {
   AutoEvalAnswer,
   AutoEvalQuestion,
@@ -24,6 +24,9 @@ import type {
 export type Lucidite = 'juste' | 'sousEstime' | 'surestime';
 
 export interface EcartQuestion {
+  // `AE-…` pour une question, `AE-…#3` pour la 4ᵉ ligne d'une échelle à items :
+  // chaque ligne se compare séparément. Ne jamais s'en servir pour retrouver
+  // la question dans le questionnaire sans couper au « # ».
   questionId: string;
   enonce: string;
   // Positions ramenées à une échelle de 1 à 5
@@ -69,6 +72,35 @@ export function position(q: AutoEvalQuestion, a: AutoEvalAnswer | undefined): nu
   return null;
 }
 
+/**
+ * Ce qui se compare dans UNE question — une ligne, ou plusieurs.
+ *
+ * Une échelle à items est une matrice de positions : chaque ligne est une
+ * question ordonnée à part entière, avec sa propre lucidité. Les fondre en une
+ * moyenne dirait à l'élève qu'il « se voit juste en moyenne », ce qui ne veut
+ * rien dire — il peut se surestimer sur un point et se sous-estimer sur un
+ * autre, et c'est justement ce qu'il faut lui montrer.
+ */
+function lignesComparables(q: AutoEvalQuestion): { cle: string; enonce: string; ligne: number | null }[] {
+  if (!estLikertMatrice(q)) return [{ cle: q.id, enonce: q.enonce, ligne: null }];
+  return (q.matriceItems ?? []).map((item, i) => ({
+    cle: `${q.id}#${i}`,
+    enonce: item.trim() ? `${q.enonce} — ${item}` : q.enonce,
+    ligne: i,
+  }));
+}
+
+/** Position d'une LIGNE d'échelle : la colonne cochée vaut 1 à 5. */
+function positionLigne(
+  q: AutoEvalQuestion,
+  a: AutoEvalAnswer | undefined,
+  ligne: number | null
+): number | null {
+  if (ligne === null) return position(q, a);
+  const colonne = a?.matrice?.[ligne];
+  return typeof colonne === 'number' ? colonne + 1 : null;
+}
+
 function lucditeDe(ecart: number): Lucidite {
   if (ecart === 0) return 'juste';
   return ecart < 0 ? 'sousEstime' : 'surestime';
@@ -95,25 +127,27 @@ export function comparer(
   let enAttenteProf = 0;
 
   quiz.questions.filter(estComparable).forEach((q) => {
-    const pEleve = position(q, reponsesEleve?.[q.id]);
-    const pProf = position(q, reponsesProf?.[q.id]);
-    if (pProf === null) {
-      // Le prof ne s'est pas encore prononcé : rien à comparer, mais on le compte
-      if (pEleve !== null) enAttenteProf++;
-      return;
-    }
-    if (pEleve === null) return; // l'élève n'a pas répondu : pas d'écart à mesurer
+    lignesComparables(q).forEach(({ cle, enonce, ligne }) => {
+      const pEleve = positionLigne(q, reponsesEleve?.[q.id], ligne);
+      const pProf = positionLigne(q, reponsesProf?.[q.id], ligne);
+      if (pProf === null) {
+        // Le prof ne s'est pas encore prononcé : rien à comparer, mais on le compte
+        if (pEleve !== null) enAttenteProf++;
+        return;
+      }
+      if (pEleve === null) return; // l'élève n'a pas répondu : pas d'écart à mesurer
 
-    const ecart = pEleve - pProf;
-    ecarts.push({
-      questionId: q.id,
-      enonce: q.enonce,
-      eleve: pEleve,
-      prof: pProf,
-      ecart,
-      lucidite: lucditeDe(ecart),
-      net: Math.abs(ecart) >= 2,
-      competences: q.competences ?? [],
+      const ecart = pEleve - pProf;
+      ecarts.push({
+        questionId: cle,
+        enonce,
+        eleve: pEleve,
+        prof: pProf,
+        ecart,
+        lucidite: lucditeDe(ecart),
+        net: Math.abs(ecart) >= 2,
+        competences: q.competences ?? [],
+      });
     });
   });
 

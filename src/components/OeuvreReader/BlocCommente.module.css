@@ -1,0 +1,41 @@
+/* ── Le fluorage commenté ──
+   UNE SEULE COULEUR (décision de JP, 2026-08-17) : l'élève n'a qu'un signe à
+   apprendre — « ici, mon professeur a quelque chose à me dire ». Plusieurs
+   couleurs auraient demandé une légende, donc un mode d'emploi. */
+
+.mot {
+  /* Les mots non commentés ne se voient pas : c'est un ancrage, pas un style */
+  display: inline;
+}
+
+.marque {
+  background: linear-gradient(transparent 58%, #ffe680 58%);
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0 1px;
+  transition: background-color 0.12s;
+}
+.marque:hover {
+  background: #ffe680;
+}
+.marque:focus-visible {
+  outline: 2px solid var(--c-accent-dark);
+  outline-offset: 1px;
+}
+
+/* Vue PROF uniquement : les mots n'ont pas été retrouvés après une
+   modification du texte. Barré de rouge pour que ça saute aux yeux — un
+   commentaire orphelin n'est pas montré à l'élève. */
+.orphelin {
+  background: #fbe3e3;
+  text-decoration: underline wavy var(--c-danger);
+}
+
+.locuteur {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-primary-dark);
+  margin: 0 0 6px;
+}

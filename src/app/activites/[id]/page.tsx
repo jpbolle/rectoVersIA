@@ -707,6 +707,9 @@ export default function TravailPage() {
               sectionId={oeuvreLecture.sectionId}
               titreSection={oeuvreLecture.sectionCourante?.titre}
               groupeSection={oeuvreLecture.sectionCourante?.groupe}
+              titreOeuvre={oeuvreLecture.oeuvre?.titre}
+              auteurOeuvre={oeuvreLecture.oeuvre?.auteur}
+              couverture={oeuvreLecture.oeuvre?.couverture}
               progression={oeuvreLecture.progression}
               peutReculer={oeuvreLecture.peutReculer}
               peutAvancer={oeuvreLecture.peutAvancer}
@@ -714,6 +717,7 @@ export default function TravailPage() {
               onAvancer={oeuvreLecture.avancer}
               onSectionVue={oeuvreLecture.marquerVue}
               onActivite={oeuvreLecture.marquerActivite}
+              onCommentaireOuvert={oeuvreLecture.marquerCommentaireOuvert}
               onVerificationTerminee={oeuvreLecture.marquerTerminee}
               lectureSeule={isPreviewMode}
             />
@@ -801,6 +805,7 @@ export default function TravailPage() {
                   chapitres={oeuvreLecture.oeuvre.chapitres}
                   sectionCourante={oeuvreLecture.sectionId}
                   progression={oeuvreLecture.progression}
+                  couverture={oeuvreLecture.oeuvre.couverture}
                   onAller={oeuvreLecture.allerA}
                 />
               ) : undefined

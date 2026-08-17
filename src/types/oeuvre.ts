@@ -91,10 +91,45 @@ export interface OeuvreSection {
   // Le texte peut se lire en deux colonnes sans rien perdre (demande de JP) :
   // vrai par défaut sur les longues scènes, à la main du prof.
   colonnes?: 1 | 2;
+  /**
+   * QUEL ESPACE S'OUVRE EN PREMIER.
+   *
+   * Absent ou faux : le texte, puis le multimédia — l'ordre de toutes les
+   * scènes déjà encodées. Vrai : le multimédia d'abord, pour une scène qu'on
+   * aborde par un extrait filmé ou une gravure et dont le texte vient
+   * ensuite. C'est un ordre d'ARRIVÉE, pas un déménagement : les blocs
+   * gardent leur face, seul l'ordre des onglets et l'onglet ouvert changent.
+   */
+  facesInversees?: boolean;
   blocs: OeuvreBloc[];
   // Vérification de lecture — mêmes questions que le questionnaire de lecture.
   // Vide = section sans formulaire : elle se lit, elle ne se vérifie pas.
   questions: LectureQuestion[];
+  // Le fluorage commenté — voir OeuvreCommentaire et src/lib/oeuvre-commentaires.ts
+  commentaires?: OeuvreCommentaire[];
+}
+
+/**
+ * UN COMMENTAIRE DU PROF SUR DES MOTS.
+ *
+ * Le prof surligne un mot ou un groupe de mots ; l'élève clique et lit. Ce
+ * clic est tracé (`commentairesOuverts`) : savoir ce qu'un élève est allé
+ * chercher en dit plus que de savoir qu'il a ouvert la page.
+ *
+ * L'ancrage est un RANG DE MOTS (`debut`/`fin`, inclus), doublé des mots
+ * eux-mêmes (`mots`) qui permettent de se recaler quand le prof modifie son
+ * texte. Voir `recalerCommentaires`.
+ */
+export interface OeuvreCommentaire {
+  id: string;             // CMT-{timestamp}-{rand}
+  blocId: string;
+  debut: number;          // rang du premier mot couvert
+  fin: number;            // rang du dernier mot couvert (inclus)
+  mots: string;           // les mots exacts, séparés par une espace
+  texte: string;          // ce que le prof a écrit
+  // Les mots n'ont pas été retrouvés après une modification du texte : le
+  // commentaire n'est plus affiché à l'élève et attend le prof.
+  orphelin?: boolean;
 }
 
 // Ce que le sommaire connaît d'une section : de quoi l'afficher et y aller,
@@ -151,6 +186,8 @@ export interface Oeuvre {
    */
   couverture?: { url: string; fileId: string } | null;
   chapitres: OeuvreChapitre[];
+  // ⚠️ Voir COUVERTURE_ID plus bas : côté élève, la couverture est une PAGE
+  // du parcours de lecture, pas seulement une vignette.
   // Partage calqué sur les grilles : chacun voit les œuvres des autres et
   // peut les dupliquer ; seul l'admin marque une œuvre comme exemple partagé.
   profId: string;
@@ -217,6 +254,15 @@ export interface OeuvreSectionEtat {
   // Vérification considérée comme complétée — c'est ELLE qui compte dans le
   // total, pas l'ouverture de la page
   termineLe?: string;
+  /**
+   * Les commentaires du prof que l'élève a OUVERTS (leurs ids).
+   *
+   * Demande de JP (2026-08-17) : c'est ce qu'un élève est allé chercher qui
+   * renseigne, bien plus que le fait qu'il ait tourné la page. Chaque id ne
+   * s'écrit qu'une fois — sinon chaque clic déclencherait une sauvegarde.
+   * N'entre dans AUCUN compteur de progression : rien n'est noté ici.
+   */
+  commentairesOuverts?: string[];
 }
 
 /**
@@ -357,6 +403,10 @@ export function generateBlocId(): string {
   return `BL-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+export function generateCommentaireId(): string {
+  return `CMT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
 // Toutes les sections d'une œuvre, à plat et dans l'ordre du sommaire —
 // la liseuse navigue linéairement (scène précédente / suivante), pas par
 // chapitre.
@@ -364,4 +414,23 @@ export function sectionsAPlat(oeuvre: Oeuvre): { chapitre: OeuvreChapitre; secti
   const out: { chapitre: OeuvreChapitre; section: OeuvreSectionRef }[] = [];
   oeuvre.chapitres.forEach((c) => c.sections.forEach((s) => out.push({ chapitre: c, section: s })));
   return out;
+}
+
+/**
+ * LA COUVERTURE EST UNE PAGE.
+ *
+ * Côté élève, elle ouvre le livre : c'est la première entrée du sommaire, et
+ * la première page qu'on tourne. Elle emprunte donc l'identifiant d'une
+ * section — le parcours de lecture, les flèches précédent/suivant et le
+ * sommaire ne connaissent que des sections, et leur inventer un cas
+ * particulier à chacun ferait trois façons de dire la même chose.
+ *
+ * Ce n'est PAS une section Firestore : rien ne se charge, rien ne s'écrit
+ * dans la progression (une couverture ne se « travaille » pas), et le préfixe
+ * `__` ne peut entrer en collision avec un id `SEC-…`.
+ */
+export const COUVERTURE_ID = '__couverture__';
+
+export function estCouverture(sectionId: string | null | undefined): boolean {
+  return sectionId === COUVERTURE_ID;
 }

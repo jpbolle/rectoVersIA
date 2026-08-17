@@ -498,3 +498,108 @@ tentées à l'aveugle avant.
 - [ ] Profil : les deux indicateurs dans l'onglet Lire, la notification de
       rythme (5ᵉ type) — inchangé depuis le 15.
 - [ ] Les seuils de la notification (7 jours ? marge de 2 ?) — toujours non validés.
+
+---
+
+# Session du 2026-08-17 — refonte de l'outil d'édition + fluorage commenté
+
+> Tout est livré, `tsc` / `eslint` / `build` passent. **Rien n'est testé à
+> l'écran** sauf l'outil d'édition et la pose d'un commentaire, validés en
+> cours de session par JP.
+
+## L'écran d'édition, repensé (demande de JP : « l'UX n'est pas top »)
+
+**TROIS ONGLETS** au lieu de deux : Espace textuel · Espace multimédia ·
+**Évaluation de la compréhension**. Le troisième porte le `LectureQuizBuilder`,
+qui vivait au bas de la scène — donc après trente répliques, donc jamais lu.
+Compteurs sur chaque onglet.
+
+**UN SEUL MODE.** La bascule « ✂ Outil d'édition » a disparu : le flux est
+toujours modifiable. Clic sur un passage → il s'ouvre **à sa place** ; les
+traits d'insertion restent entre les lignes. `SaisieBlocModal` **supprimé** :
+un bloc inséré s'ouvre directement, la popup était un intermédiaire de plus.
+Le bandeau « + Bloc informatif / + Extrait… » a disparu aussi — il posait un
+bloc au bout de la scène, jamais là où on le voulait.
+
+Autres changements : **zone de collage** sur une scène vide (le premier geste
+du prof, c'est coller le texte d'un seul tenant) · **bloc informatif** teinté
+d'ambre et bordé à gauche · les **médias s'affichent pour de vrai** dans le
+flux (`OeuvreBlocRendu`, le rendu partagé) avec une barre « ✏️ Modifier » — le
+clic ne peut pas servir, un cadre YouTube l'avale.
+
+## La couverture est une PAGE
+
+`COUVERTURE_ID` (`__couverture__`) : côté élève, la couverture est la première
+entrée du sommaire et la première page qu'on tourne. Elle emprunte
+l'identifiant d'une section pour que le parcours, les flèches et le sommaire
+n'aient **qu'un seul cas** à connaître — mais rien ne se charge et **rien ne
+s'écrit dans la progression** (une couverture ne se « travaille » pas).
+N'existe que si le prof a déposé une image. Côté prof : réduite à une
+**vignette** pleine largeur en tête du sommaire.
+
+## `facesInversees` — quel espace s'ouvre en premier
+
+Réglage **par scène** (pas par livre) : une scène qu'on aborde par un extrait
+filmé présente le multimédia d'abord. Les blocs **gardent leur face** — c'est
+un ordre d'arrivée, pas un déménagement. Le chapeau suit la face d'arrivée.
+Garde-fou : « multimédia d'abord » sans verso déposé retombe sur le texte.
+
+**Le sélecteur est `FlipChoice`** — extrait de `CreationForm` sur indication de
+JP (« va voir dans création d'activité, tu trouveras une orga plus facile ») :
+il existait déjà en DEUX copies (création + édition d'activité), ma liste
+déroulante en aurait fait une troisième divergente. Mécanisme partagé,
+contenus propres à chaque dispositif.
+
+## LE FLUORAGE COMMENTÉ (le n°1 du reste-à-faire, livré)
+
+`src/lib/oeuvre-commentaires.ts` + `BlocCommente` (rendu **partagé** prof/élève).
+
+| Décision | Arbitrage de JP |
+|---|---|
+| Texte modifié | Le commentaire retient **les mots exacts** et se recherche lui-même ; introuvable → **orphelin**, retiré de la vue élève, listé en rouge chez le prof |
+| Couleur | **Une seule** — l'élève n'a qu'un signe à apprendre |
+| Ouverture | **Popup au clic** — « ce qui permettra de voir ce qu'il clique pour ses stats !!! » |
+
+Le clic de l'élève est tracé (`OeuvreSectionEtat.commentairesOuverts`), fait
+passer la pastille à l'orange (**3ᵉ déclencheur, celui qui manquait**) et
+remonte dans `/api/oeuvres/suivi` → colonne « Commentaires » du tableau de
+classe, affichée seulement si des élèves en ont ouvert.
+
+### Ce qui a coûté trois allers-retours : LE GESTE DE SÉLECTION
+
+JP : « je ne vois pas du tout comment le prof peut ajouter un commentaire ».
+C'était implémenté et **invisible**, puis implémenté et **cassé** :
+
+1. **rien ne le disait** → bouton flottant « 🖍 Commenter ces mots » au-dessus
+   de la sélection + mention dans la ligne d'aide de l'onglet ;
+2. **le double-clic ne pouvait pas marcher** : le premier clic ouvre le
+   passage en édition avant que le second n'arrive ;
+3. **dans le champ ouvert**, la sélection d'un `<textarea>` **n'existe pas**
+   pour `window.getSelection()` → lecture par `selectionStart/End`
+   (`indicesDepuisOffsets`), sur `onSelect` pour couvrir glisser, double-clic
+   et Maj+flèches ;
+4. **au repos**, je lisais les **deux extrémités** de la sélection — or les
+   espaces entre les mots sont des nœuds nus sans `data-mot` : une sélection
+   qui commence ou finit sur une espace (donc presque toutes) n'avait aucune
+   extrémité identifiable → on prend désormais **tous les mots que la plage
+   traverse** (`intersectsNode` + `compareBoundaryPoints`).
+
+⚠️ Le bouton flottant distingue **deux sources** de sélection : au repos,
+`selectionchange` le referme ; dans un champ, surtout pas — la sélection d'un
+`<textarea>` étant invisible à `window.getSelection()`, le bouton
+disparaîtrait à l'instant où il se pose.
+
+## Bug corrigé au passage
+
+`/api/oeuvres/[id]/dupliquer` écrivait `undefined` sur un `groupe` ou un
+`chapeau` vide (`docToSection` les pose ainsi) → **Firestore refuse**, la
+duplication échouait en 500. Même piège que `chapitresPourFirestore`, ici sur
+une section entière.
+
+## Reste à faire
+- [ ] **Tout tester à l'écran** — c'est le gros du reste.
+- [ ] Profil : les deux indicateurs dans l'onglet Lire, la notification de
+      rythme (5ᵉ type) — inchangé depuis le 15.
+- [ ] Les seuils de la notification (7 jours ? marge de 2 ?) — non validés.
+- [ ] Le fluorage commenté ne vaut que pour les blocs **extrait** et **bloc
+      informatif** — un média n'a pas de mots. Non demandé, à confirmer.

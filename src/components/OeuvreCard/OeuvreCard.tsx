@@ -31,6 +31,17 @@ function compterSections(o: Oeuvre): number {
   return o.chapitres.reduce((n, c) => n + c.sections.length, 0);
 }
 
+/**
+ * Sections portant une vérification de lecture.
+ *
+ * `aQuestions` vit déjà dans le sommaire : le compteur ne coûte donc aucune
+ * requête supplémentaire — les questions elles-mêmes, elles, dorment dans la
+ * sous-collection.
+ */
+function compterFormulaires(o: Oeuvre): number {
+  return o.chapitres.reduce((n, c) => n + c.sections.filter((s) => s.aQuestions).length, 0);
+}
+
 export default function OeuvreCard({
   oeuvre,
   mienne,
@@ -43,6 +54,7 @@ export default function OeuvreCard({
   onArchiver,
 }: OeuvreCardProps) {
   const sections = compterSections(oeuvre);
+  const formulaires = compterFormulaires(oeuvre);
   const nbPartages = oeuvre.partages?.length ?? 0;
   const editable = (mienne || coEditable) && !oeuvre.archive;
 
@@ -84,8 +96,6 @@ export default function OeuvreCard({
         <p className={styles.auteur}>{oeuvre.auteur}</p>
       )}
 
-      {oeuvre.description && <p className={styles.description}>{oeuvre.description}</p>}
-
       {!mienne && oeuvre.profName && <p className={styles.profName}>de {oeuvre.profName}</p>}
 
       <div className={styles.metaRow}>
@@ -96,6 +106,13 @@ export default function OeuvreCard({
         <span className={styles.metaItem}>
           <span className={styles.metaIcon}>📄</span>
           <span>{sections} section{sections > 1 ? 's' : ''}</span>
+        </span>
+        {/* Ce que le livre demande à l'élève : c'est le seul compteur qui dise
+            si l'œuvre est déjà exploitable en classe ou s'il reste à écrire
+            les vérifications. */}
+        <span className={styles.metaItem}>
+          <span className={styles.metaIcon}>❓</span>
+          <span>{formulaires} vérification{formulaires > 1 ? 's' : ''}</span>
         </span>
       </div>
 

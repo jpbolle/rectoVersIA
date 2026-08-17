@@ -429,3 +429,12 @@
   background: var(--c-bg-element);
   color: var(--c-text-secondary);
 }
+
+/* ── Échelle de 1 à 5 servie en TABLEAU (plusieurs items) ──
+   Les bornes ne peuvent plus encadrer un curseur : elles annoncent les deux
+   extrémités des colonnes numérotées, au-dessus du tableau. */
+.likertMatrice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

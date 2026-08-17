@@ -20,6 +20,64 @@
   text-align: center;
 }
 
+/* ── LA COUVERTURE : la première page du livre ──
+   Pas un écran d'accueil : une page qu'on tourne. D'où le format d'un livre
+   posé — l'image d'abord, le titre dessous, et un seul geste pour entrer. */
+.couverturePage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 100%;
+  padding: 36px 30px 48px;
+  text-align: center;
+}
+
+.couvertureImage {
+  max-width: min(320px, 70%);
+  max-height: 52vh;
+  width: auto;
+  height: auto;
+  border-radius: var(--c-radius-lg);
+  border: 1px solid var(--c-border);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  display: block;
+}
+
+.couvertureTitre {
+  font-family: var(--c-font-title);
+  font-size: 26px;
+  line-height: 1.25;
+  margin: 6px 0 0;
+  color: var(--c-text);
+  max-width: 26ch;
+}
+
+.couvertureAuteur {
+  margin: 0;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--c-text-muted);
+}
+
+.couvertureBouton {
+  margin-top: 10px;
+  border: 0;
+  border-radius: var(--c-radius);
+  background: var(--c-primary);
+  color: #fff;
+  min-height: 42px;
+  padding: 0 24px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.couvertureBouton:hover {
+  background: var(--c-primary-dark);
+}
+
 /* ── En-tête de la scène ── */
 .entete {
   padding: 16px 30px 12px;
@@ -696,6 +754,22 @@
   color: var(--c-text-dim);
 }
 
+/* La couverture en tête du sommaire : une vignette à la place de la pastille
+   — il n'y a rien à y faire, donc rien à signaler d'un point de couleur. */
+.sommaireCouverture {
+  align-items: center;
+  margin-bottom: 4px;
+}
+.sommaireCouvVignette {
+  width: 26px;
+  height: 35px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--c-border);
+  display: block;
+}
+
 .sommaireItem {
   display: flex;
   gap: 9px;
@@ -794,3 +868,72 @@
   color: var(--c-text-dim);
   font-weight: 400;
 }
+
+/* ── Le commentaire du professeur, en popup ──
+   Petite fenêtre, pas un plein écran : l'élève doit garder la scène sous les
+   yeux — c'est d'elle qu'on lui parle. */
+.cmtOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.cmtFenetre {
+  width: min(460px, 100%);
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.cmtEntete {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px 10px 16px;
+  background: linear-gradient(transparent 55%, #ffe680 55%);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.cmtMots {
+  flex: 1;
+  font-family: var(--c-font-title);
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--c-text);
+}
+
+.cmtFermer {
+  border: 0;
+  background: none;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.cmtFermer:hover { color: var(--c-text); }
+
+.cmtTexte {
+  margin: 0;
+  padding: 14px 16px 18px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--c-text);
+  white-space: pre-wrap;
+}
+
+/* Verdict d'une réponse courte auto-corrigée — corrigé ouvert, rien n'est noté */
+.verdictJuste,
+.verdictFaux {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.verdictJuste { color: var(--c-success); }
+.verdictFaux { color: var(--c-danger); font-weight: 500; }

@@ -36,6 +36,7 @@ interface SuiviEleve {
   qcmJustes: number;
   qcmRepondus: number;
   ouvertesRepondues: number;
+  commentairesLus: number;
 }
 
 interface SuiviQuestion {
@@ -197,6 +198,9 @@ export default function OeuvreSuivi({ devoirId, titreActivite }: Props) {
   }
 
   const denominateur = data.minimum || data.totalVerifications;
+  // Un élève au moins est allé lire un commentaire du prof : c'est ce qui
+  // décide d'afficher la colonne. Ailleurs, elle ne montrerait que des zéros.
+  const aDesCommentaires = data.eleves.some((e) => e.commentairesLus > 0);
 
   return (
     <div className={styles.suivi}>
@@ -243,6 +247,9 @@ export default function OeuvreSuivi({ devoirId, titreActivite }: Props) {
       )}
 
       {/* ── Tableau de progression ── */}
+      {/* Un élève au moins a ouvert un commentaire : c'est ce qui décide
+          d'afficher la colonne — le suivi ne connaît pas les commentaires de
+          l'œuvre, seulement ce que les élèves en ont lu. */}
       <div className={styles.tableauCadre}>
         <table className={styles.tableau}>
           <thead>
@@ -267,6 +274,14 @@ export default function OeuvreSuivi({ devoirId, titreActivite }: Props) {
                 QCM
                 <span className={styles.thSous}>justes / répondus</span>
               </th>
+              {/* La colonne n'apparaît QUE si des commentaires existent :
+                  ailleurs, ce serait une colonne de zéros. */}
+              {aDesCommentaires && (
+                <th className={styles.colNombre}>
+                  Commentaires
+                  <span className={styles.thSous}>ouverts par l’élève</span>
+                </th>
+              )}
               <th className={styles.colActions}>Un mot</th>
             </tr>
           </thead>
@@ -360,6 +375,16 @@ export default function OeuvreSuivi({ devoirId, titreActivite }: Props) {
                       </>
                     )}
                   </td>
+
+                  {aDesCommentaires && (
+                    <td className={styles.colNombre}>
+                      {e.commentairesLus > 0 ? (
+                        e.commentairesLus
+                      ) : (
+                        <span className={styles.rien}>—</span>
+                      )}
+                    </td>
+                  )}
 
                   <td className={styles.colActions}>
                     <div className={styles.actions}>

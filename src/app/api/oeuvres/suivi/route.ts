@@ -42,6 +42,8 @@ export interface SuiviEleve {
   qcmRepondus: number;
   /** Questions ouvertes auxquelles il a écrit quelque chose */
   ouvertesRepondues: number;
+  /** Commentaires du professeur qu'il est allé lire (fluorage commenté) */
+  commentairesLus: number;
 }
 
 export interface SuiviQuestion {
@@ -158,6 +160,10 @@ export async function GET(request: NextRequest) {
       let qcmJustes = 0;
       let qcmRepondus = 0;
       let ouvertesRepondues = 0;
+      // Les commentaires du prof que l'élève est allé lire — demande de JP :
+      // ce qu'un élève va chercher renseigne plus que le fait qu'il ait
+      // tourné la page. Ce n'est PAS une note, c'est un signe de lecture.
+      let commentairesLus = 0;
 
       for (const [sectionId, etat] of Object.entries(progression?.sections || {})) {
         // Une section retirée de l'activité ne compte plus, même si l'élève
@@ -168,6 +174,12 @@ export async function GET(request: NextRequest) {
 
         const section = sections.get(sectionId);
         if (!section) continue;
+
+        // On ne compte que les commentaires qui existent ENCORE : un
+        // commentaire supprimé depuis gonflerait le compteur d'une lecture
+        // que plus personne ne peut faire.
+        const vivants = new Set((section.commentaires ?? []).map((c) => c.id));
+        commentairesLus += (etat.commentairesOuverts ?? []).filter((id) => vivants.has(id)).length;
 
         for (const question of section.questions) {
           const reponse = etat.reponses?.[question.id];
@@ -219,6 +231,7 @@ export async function GET(request: NextRequest) {
         qcmJustes,
         qcmRepondus,
         ouvertesRepondues,
+        commentairesLus,
       };
     });
 

@@ -1077,3 +1077,13 @@
   color: var(--c-primary);
 }
 .btnExtrait:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Réponses acceptées d'une réponse courte auto-corrigée ──
+   Détachée de la réponse idéale par un filet : l'une est un modèle qu'on
+   montre, l'autre un corrigé que la machine applique. Les confondre, c'est
+   croire qu'une belle phrase rédigée sera comparée mot à mot. */
+.reponsesAcceptees {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--c-border);
+}

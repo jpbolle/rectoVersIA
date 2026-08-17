@@ -26,9 +26,13 @@ interface Props {
 }
 
 export default function OeuvreSectionApercu({ section, onFermer }: Props) {
-  const [face, setFace] = useState<OeuvreFace>('recto');
-  const blocs = blocsDeFace(section.blocs, face);
   const aUnVerso = blocsDeFace(section.blocs, 'verso').length > 0;
+  // L'aperçu s'ouvre sur la face d'ARRIVÉE de l'élève, pas sur le recto par
+  // principe : un aperçu qui commence ailleurs que la vraie liseuse ment.
+  const [face, setFace] = useState<OeuvreFace>(
+    section.facesInversees && aUnVerso ? 'verso' : 'recto'
+  );
+  const blocs = blocsDeFace(section.blocs, face);
 
   // Échap ferme l'aperçu : on y entre pour un coup d'œil, on doit pouvoir en
   // sortir sans viser une croix.
@@ -64,25 +68,26 @@ export default function OeuvreSectionApercu({ section, onFermer }: Props) {
 
         {aUnVerso && (
           <div className={styles.apercuFaces}>
-            <button
-              type="button"
-              className={`${styles.face} ${face === 'recto' ? styles.faceActive : ''}`}
-              onClick={() => setFace('recto')}
-            >
-              Espace textuel
-            </button>
-            <button
-              type="button"
-              className={`${styles.face} ${face === 'verso' ? styles.faceActive : ''}`}
-              onClick={() => setFace('verso')}
-            >
-              Espace multimédia
-            </button>
+            {(section.facesInversees
+              ? (['verso', 'recto'] as OeuvreFace[])
+              : (['recto', 'verso'] as OeuvreFace[])
+            ).map((f) => (
+              <button
+                key={f}
+                type="button"
+                className={`${styles.face} ${face === f ? styles.faceActive : ''}`}
+                onClick={() => setFace(f)}
+              >
+                {f === 'recto' ? 'Espace textuel' : 'Espace multimédia'}
+              </button>
+            ))}
           </div>
         )}
 
         <div className={styles.apercuCorps}>
-          {face === 'recto' && section.chapeau && (
+          {/* Le chapeau accompagne la face d'ARRIVÉE — c'est là que l'élève
+              a besoin de savoir ce qu'il regarde. */}
+          {section.chapeau && (face === 'recto') !== !!section.facesInversees && (
             <p className={liseuse.chapeau}>{section.chapeau}</p>
           )}
 

@@ -513,60 +513,62 @@
 /* ── La couverture, tout en haut de la colonne ──
    Ratio 2/3, celui d'un livre : une image d'affiche ou de gravure s'y
    reconnaît d'un coup d'œil, et la vignette de la carte aura la même forme. */
-.couverture {
-  padding: 12px 12px 0;
+/* ── La couverture, réduite à une VIGNETTE ──
+   Elle occupait un tiers de la colonne pour une image déposée une seule fois
+   dans la vie du livre, alors que c'est la liste des scènes qu'on vient
+   chercher ici. Elle prend maintenant la forme d'une entrée de sommaire —
+   ce qu'elle est aussi devenue côté élève : la première page. */
+/* Elle prend TOUTE la largeur de la colonne, comme l'en-tête qui la suit :
+   un encadré flottant au milieu du blanc se lisait comme un élément détaché,
+   alors que c'est une bande de la colonne. */
+.couvLigne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg-element);
   flex-shrink: 0;
 }
-.couverture img {
-  width: 100%;
-  aspect-ratio: 2 / 3;
+.couvVignette {
+  width: 34px;
+  height: 46px;
+  flex-shrink: 0;
   object-fit: cover;
-  border-radius: var(--c-radius-lg);
+  border-radius: 3px;
   border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
   display: block;
-  background: var(--c-bg-element);
 }
-.couvertureActions {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
+.couvVignetteVide {
+  display: grid;
+  place-items: center;
+  border-style: dashed;
+  font-size: 16px;
+  color: var(--c-text-dim);
 }
-.couvertureActions button {
+.couvTexte {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.couvTexte strong { font-size: 12.5px; color: var(--c-text); }
+.couvTexte span { font-size: 11px; color: var(--c-text-muted); }
+.couvOutils { display: flex; gap: 3px; }
+.couvOutils button {
   border: 1px solid var(--c-border);
   background: var(--c-bg-card);
   border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 11.5px;
+  padding: 3px 8px;
+  font-size: 12px;
   font-family: inherit;
   color: var(--c-text-secondary);
   cursor: pointer;
 }
-.couvertureActions button:hover:not(:disabled) {
+.couvOutils button:hover:not(:disabled) {
   border-color: var(--c-primary);
   color: var(--c-primary);
 }
-.couvertureVide {
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  max-height: 190px;
-  border: 2px dashed var(--c-border-strong);
-  border-radius: var(--c-radius-lg);
-  background: var(--c-bg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--c-text-muted);
-  cursor: pointer;
-}
-.couvertureVide:hover:not(:disabled) {
-  border-color: var(--c-primary);
-  color: var(--c-primary);
-  background: var(--c-bg-card);
-}
-.couvertureIcone { font-size: 24px; }

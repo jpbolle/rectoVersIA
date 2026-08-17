@@ -21,22 +21,43 @@ import { useAuth } from '@/hooks/useAuth';
 import { compressImage } from '@/lib/image-compress';
 import { parseYoutubeId } from '@/lib/youtube';
 import { decouperBloc, extraireLocuteur, lignesDuBloc } from '@/lib/oeuvre-decoupe';
-import SaisieBlocModal from './SaisieBlocModal';
+import {
+  accepteCommentaires,
+  baliserContenu,
+  indicesDepuisOffsets,
+  motsDuBloc,
+  recalerCommentaires,
+} from '@/lib/oeuvre-commentaires';
+import commentaireStyles from '@/components/OeuvreReader/BlocCommente.module.css';
+import FlipChoice from '@/components/FlipChoice/FlipChoice';
 import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
+import OeuvreBlocRendu from '@/components/OeuvreReader/OeuvreBlocRendu';
 import OeuvreSectionApercu from './OeuvreSectionApercu';
 import OeuvreSommaireEditable from './OeuvreSommaireEditable';
 import {
   blocsDeFace,
   generateBlocId,
   generateChapitreId,
+  generateCommentaireId,
   type Oeuvre,
   type OeuvreBloc,
   type OeuvreChapitre,
+  type OeuvreCommentaire,
   type OeuvreFace,
   type OeuvreSection,
 } from '@/types/oeuvre';
+
 import type { LectureQuiz } from '@/types/lecture';
 import styles from './OeuvreBuilder.module.css';
+
+// Le surlignage du prof est EXACTEMENT celui de l'élève : mêmes classes, même
+// module CSS. Deux habillages parallèles divergeraient, et le prof poserait
+// des commentaires sans voir ce qu'il pose.
+const CLASSES_BALISAGE = {
+  mot: commentaireStyles.mot,
+  marque: commentaireStyles.marque,
+  orphelin: commentaireStyles.orphelin,
+};
 
 /** Destination « couverture » d'un dépôt de fichier — voir `blocCibleRef`. */
 const CIBLE_COUVERTURE = '__couverture__';
@@ -53,19 +74,36 @@ type ActionTrait =
   | { quoi: 'inserer'; type: OeuvreBloc['type'] }
   | { quoi: 'section' };
 
-const ACTIONS_TRAIT: {
+type GesteTrait = {
   action: ActionTrait;
   icone: string;
   label: string;
   intraSeulement?: boolean;
-}[] = [
-  { action: { quoi: 'couper' }, icone: '✂', label: 'Couper ici', intraSeulement: true },
-  { action: { quoi: 'inserer', type: 'texte' }, icone: 'ℹ', label: 'Bloc informatif' },
-  { action: { quoi: 'inserer', type: 'vers' }, icone: '📝', label: 'Extrait' },
-  { action: { quoi: 'inserer', type: 'video' }, icone: '🎬', label: 'Vidéo' },
-  { action: { quoi: 'inserer', type: 'image' }, icone: '🖼', label: 'Image' },
-  { action: { quoi: 'section' }, icone: '📄', label: 'Nouvelle section' },
-];
+};
+
+/**
+ * Ce que le trait propose, PAR FACE.
+ *
+ * L'espace multimédia n'a ni extrait ni découpage de scène : on n'y compose
+ * pas de texte suivi, on y dépose des compléments. Lui offrir « Couper ici »
+ * ou « Nouvelle section » serait proposer des gestes sans objet.
+ */
+const ACTIONS_TRAIT: Record<OeuvreFace, GesteTrait[]> = {
+  recto: [
+    { action: { quoi: 'couper' }, icone: '✂', label: 'Couper ici', intraSeulement: true },
+    { action: { quoi: 'inserer', type: 'texte' }, icone: 'ℹ', label: 'Bloc informatif' },
+    { action: { quoi: 'inserer', type: 'vers' }, icone: '📝', label: 'Extrait' },
+    { action: { quoi: 'inserer', type: 'video' }, icone: '🎬', label: 'Vidéo' },
+    { action: { quoi: 'inserer', type: 'image' }, icone: '🖼', label: 'Image' },
+    { action: { quoi: 'section' }, icone: '📄', label: 'Nouvelle section' },
+  ],
+  verso: [
+    { action: { quoi: 'inserer', type: 'video' }, icone: '🎬', label: 'Vidéo' },
+    { action: { quoi: 'inserer', type: 'image' }, icone: '🖼', label: 'Image' },
+    { action: { quoi: 'inserer', type: 'audio' }, icone: '🎧', label: 'Audio' },
+    { action: { quoi: 'inserer', type: 'texte' }, icone: 'ℹ', label: 'Bloc informatif' },
+  ],
+};
 
 /**
  * Le trait d'édition — invisible jusqu'au survol, mais sa hauteur est
@@ -74,21 +112,28 @@ const ACTIONS_TRAIT: {
  */
 function Trait({
   intra,
+  face,
   onAction,
 }: {
   /** À l'intérieur d'un bloc (on peut y couper) ou entre deux blocs */
   intra: boolean;
+  face: OeuvreFace;
   onAction: (a: ActionTrait) => void;
 }) {
   return (
     <div className={`${styles.trait} ${intra ? '' : styles.traitEntreBlocs}`}>
       <span className={styles.traitBarre} />
       <span className={styles.traitActions}>
-        {ACTIONS_TRAIT.filter((a) => intra || !a.intraSeulement).map((a) => (
+        {ACTIONS_TRAIT[face].filter((a) => intra || !a.intraSeulement).map((a) => (
           <button
             key={a.label}
             type="button"
-            onClick={() => onAction(a.action)}
+            // Le trait vit DANS un passage cliquable : sans cet arrêt, choisir
+            // « Couper ici » ouvrirait aussi le passage en édition.
+            onClick={(e) => {
+              e.stopPropagation();
+              onAction(a.action);
+            }}
             title={
               a.action.quoi === 'couper'
                 ? 'Séparer le bloc en deux à cet endroit'
@@ -107,81 +152,197 @@ function Trait({
 }
 
 /**
- * Un bloc affiché EN LECTURE pendant l'édition, ligne à ligne.
+ * Un passage AU REPOS : le bloc tel qu'il se lit dans le flux, ligne à ligne.
+ * Un clic dessus l'ouvre en édition, à sa place (voir PassageOuvert).
  *
  * Un bloc d'une seule ligne s'affiche comme les autres — il n'a simplement pas
  * de trait intérieur. Le remplacer par un message (« ce bloc n'a qu'une
  * ligne… ») cassait la lecture continue de la scène, qui est justement ce qui
  * permet de décider où couper.
+ *
+ * Le BLOC INFORMATIF porte un habillage à lui (fond ambré, filet à gauche) :
+ * c'est une note du professeur, pas du texte d'auteur, et le flux doit le dire
+ * d'un coup d'œil.
  */
-function BlocEnLecture({
+function Passage({
   bloc,
   vide,
+  face,
+  commentaires,
   onAction,
+  onOuvrir,
   onSupprimer,
+  onSelection,
+  onCommentaire,
 }: {
   bloc: OeuvreBloc;
   /** Aucun contenu d'aucune sorte : il ne coûte rien de le jeter */
   vide: boolean;
+  face: OeuvreFace;
+  commentaires: OeuvreCommentaire[];
   onAction: (indexLigne: number, a: ActionTrait) => void;
+  onOuvrir: () => void;
   onSupprimer: () => void;
+  /** Des mots viennent d'être sélectionnés : on propose de les commenter */
+  onSelection: (blocId: string, debut: number, fin: number, rect: DOMRect) => void;
+  /** Un passage déjà commenté a été cliqué : on rouvre son commentaire */
+  onCommentaire: (id: string) => void;
 }) {
-  const lignes = lignesDuBloc(bloc);
+  const info = bloc.type === 'texte';
+
+  // Le texte, avec chaque mot enveloppé et les passages commentés surlignés.
+  // On balise le contenu ENTIER puis on le recoupe en lignes : le rang des
+  // mots court d'une ligne à l'autre, le remettre à zéro à chaque ligne
+  // ancrerait les commentaires n'importe où. Le découpage tient parce que le
+  // balisage n'ajoute que des balises équilibrées.
+  const lignes = useMemo(() => {
+    if (!accepteCommentaires(bloc)) return lignesDuBloc(bloc);
+    const zones = commentaires
+      .filter((c) => c.blocId === bloc.id)
+      .map((c) => ({ id: c.id, debut: c.debut, fin: c.fin, orphelin: c.orphelin }));
+    const balise = baliserContenu(bloc.contenu || '', info, zones, CLASSES_BALISAGE);
+    return lignesDuBloc({ ...bloc, contenu: balise });
+  }, [bloc, commentaires, info]);
+
+  /**
+   * Le geste distingue les deux intentions, sans remettre un mode :
+   * CLIQUER un passage l'ouvre en édition, SÉLECTIONNER des mots propose de
+   * les commenter. Un clic qui suit une sélection ne doit donc rien ouvrir.
+   */
+  const auRelachement = (e: React.MouseEvent) => {
+    if (!accepteCommentaires(bloc)) return;
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !selection.toString().trim()) return;
+    const plage = selection.getRangeAt(0);
+
+    // ── On prend TOUS LES MOTS QUE LA PLAGE TRAVERSE ──
+    // Et non les mots des deux extrémités : les espaces entre les mots sont
+    // des nœuds de texte nus, sans `data-mot`. Une sélection qui commence ou
+    // finit sur une espace — c'est-à-dire presque toutes — n'avait donc aucune
+    // extrémité identifiable, et le bouton n'apparaissait jamais.
+    const rangs: number[] = [];
+    (e.currentTarget as HTMLElement).querySelectorAll('[data-mot]').forEach((span) => {
+      if (!plage.intersectsNode(span)) return;
+      // `intersectsNode` est vrai pour un voisin qui ne fait qu'effleurer la
+      // plage : on écarte ceux dont aucun caractère n'est réellement dedans.
+      const r = document.createRange();
+      r.selectNodeContents(span);
+      const commenceAvantLaFinDuMot = plage.compareBoundaryPoints(Range.END_TO_START, r) < 0;
+      const finitApresLeDebutDuMot = plage.compareBoundaryPoints(Range.START_TO_END, r) > 0;
+      if (commenceAvantLaFinDuMot && finitApresLeDebutDuMot) {
+        rangs.push(Number(span.getAttribute('data-mot')));
+      }
+    });
+    if (rangs.length === 0) return;
+
+    // Le rectangle de la sélection : c'est là que se posera le bouton, à
+    // portée de la souris qui vient de relâcher.
+    const rect = plage.getBoundingClientRect();
+    e.stopPropagation();
+    onSelection(bloc.id, Math.min(...rangs), Math.max(...rangs), rect);
+  };
+
+  const auClic = (e: React.MouseEvent) => {
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed && selection.toString().trim()) return;
+    const cible = (e.target as HTMLElement).closest('[data-cmt]');
+    const id = cible?.getAttribute('data-cmt');
+    if (id) {
+      e.stopPropagation();
+      onCommentaire(id);
+      return;
+    }
+    onOuvrir();
+  };
 
   // Un bloc vide n'a rien à montrer, mais il occupe une place dans la scène :
-  // on l'annonce et on offre de le jeter sur-le-champ. Sans cela il faudrait
-  // quitter l'outil d'édition pour aller le supprimer dans la liste.
+  // on l'annonce et on offre de le jeter sur-le-champ.
   if (vide) {
     return (
-      <p className={styles.blocVide}>
-        {LIBELLE_BLOC[bloc.type]} vide
-        <button type="button" onClick={onSupprimer} title="Supprimer ce bloc vide">
+      <p className={styles.blocVide} onClick={onOuvrir}>
+        {LIBELLE_BLOC[bloc.type]} vide — clique pour le remplir
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSupprimer();
+          }}
+          title="Supprimer ce bloc vide"
+        >
           ✕ Supprimer
         </button>
       </p>
     );
   }
 
-  // Les médias n'ont pas de lignes : on les annonce quand même, sans quoi le
-  // prof perd le fil de sa scène là où il a posé une vidéo.
+  // ── LES MÉDIAS SE MONTRENT ──
+  // Une ligne « Vidéo » ne dit pas quelle vidéo : le prof ne pouvait vérifier
+  // ni son extrait, ni sa gravure, sans ouvrir le bloc un par un. On rend donc
+  // le média TEL QUE L'ÉLÈVE LE VERRA — c'est `OeuvreBlocRendu`, le rendu
+  // partagé, jamais une seconde version qui divergerait.
+  // Le bouton est nécessaire : un cadre YouTube avale les clics, et un média
+  // qu'on ne pourrait pas jouer dans le constructeur ne se vérifierait pas.
   if (lignes.length === 0) {
     return (
-      <p className={styles.decoupeMedia}>
-        {LIBELLE_BLOC[bloc.type]}
-        {bloc.legende ? ` — ${bloc.legende}` : ''}
-      </p>
+      <div className={styles.passageMedia}>
+        <div className={styles.passageMediaBarre}>
+          <span>{LIBELLE_BLOC[bloc.type]}</span>
+          <button type="button" onClick={onOuvrir} title="Modifier ce média">
+            ✏️ Modifier
+          </button>
+        </div>
+        <OeuvreBlocRendu bloc={bloc} />
+      </div>
     );
   }
 
   return (
-    <div className={styles.blocEnLecture}>
+    <div
+      className={`${styles.passage} ${info ? styles.passageInfo : ''}`}
+      onClick={auClic}
+      onMouseUp={auRelachement}
+      title="Cliquer pour modifier · sélectionner des mots pour les commenter"
+    >
+      {info && <p className={styles.infoEtiquette}>Bloc informatif</p>}
       {bloc.locuteur && <p className={styles.decoupeLocuteur}>{bloc.locuteur}</p>}
       {lignes.map((ligne, i) => (
         <Fragment key={i}>
-          {i > 0 && <Trait intra onAction={(a) => onAction(i, a)} />}
-          {bloc.type === 'texte' ? (
-            <div className={styles.decoupeLigne} dangerouslySetInnerHTML={{ __html: ligne }} />
-          ) : (
-            <p className={styles.decoupeLigne}>{ligne || ' '}</p>
-          )}
+          {i > 0 && <Trait intra face={face} onAction={(a) => onAction(i, a)} />}
+          {/* Le contenu est balisé (mots enveloppés) : même pour un extrait en
+              texte brut, c'est donc du HTML — `baliserContenu` échappe ce qui
+              vient du prof. */}
+          <div className={styles.decoupeLigne} dangerouslySetInnerHTML={{ __html: ligne || '&nbsp;' }} />
         </Fragment>
       ))}
     </div>
   );
 }
 
-// Les deux faces de la liseuse, côté prof. Le libellé DOIT être celui que
-// l'élève lit, sinon le prof compose à l'aveugle.
-const FACES: { id: OeuvreFace; label: string; aide: string }[] = [
+/**
+ * Les TROIS onglets de la section.
+ *
+ * Les deux premiers sont les faces de la liseuse — leur libellé DOIT être
+ * celui que l'élève lit, sinon le prof compose à l'aveugle. Le troisième est
+ * la vérification de lecture : elle vivait au bas de la scène, donc après
+ * trente répliques, donc invisible.
+ */
+type Onglet = OeuvreFace | 'eval';
+
+const ONGLETS: { id: Onglet; label: string; aide: string }[] = [
   {
     id: 'recto',
     label: 'Espace textuel',
-    aide: 'Le texte de la scène. Une image ou une vidéo peut s’y intercaler à l’endroit voulu.',
+    aide: 'Clique sur un passage pour le modifier · sélectionne des mots pour y attacher un commentaire que l’élève ouvrira d’un clic · passe entre deux lignes pour insérer, couper, ou renvoyer la suite dans une nouvelle section.',
   },
   {
     id: 'verso',
     label: 'Espace multimédia',
     aide: 'Les compléments : vidéos, images, enregistrements. L’élève y bascule d’un onglet — ils n’apparaissent que si tu en déposes.',
+  },
+  {
+    id: 'eval',
+    label: 'Évaluation de la compréhension',
+    aide: 'Facultative. Ce sont ces vérifications que l’élève complète — c’est elles qui comptent dans son total, pas les pages ouvertes. Le corrigé lui est montré immédiatement : dans cet atelier, rien n’est noté.',
   },
 ];
 
@@ -220,20 +381,44 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
   const [modifiee, setModifiee] = useState(false);
   const [occupe, setOccupe] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  // Face en cours d'édition — le prof compose une face à la fois, comme
-  // l'élève en lit une à la fois.
-  const [face, setFace] = useState<OeuvreFace>('recto');
+  // Onglet en cours — le prof compose une face à la fois, comme l'élève en lit
+  // une à la fois.
+  const [onglet, setOnglet] = useState<Onglet>('recto');
+  // La face éditée découle de l'onglet : sur l'onglet Évaluation, il n'y a pas
+  // de flux à afficher, la valeur n'est simplement pas lue.
+  const face: OeuvreFace = onglet === 'verso' ? 'verso' : 'recto';
   // Aperçu : la section telle que l'élève la verra, sans quitter l'édition
   const [apercu, setApercu] = useState(false);
-  // Mode découpe : on colle une scène entière dans un bloc, puis on la débite
-  // de l'intérieur. Les éditeurs se retirent le temps de la découpe.
-  const [modeDecoupe, setModeDecoupe] = useState(false);
-  // Popup de saisie ouverte pour une insertion en attente : on demande le
-  // contenu AVANT de poser le bloc.
-  const [saisie, setSaisie] = useState<{
-    positionFace: number;
-    indexLigne: number | null;
-    type: OeuvreBloc['type'];
+  // Le passage ouvert en édition — un seul à la fois : deux champs ouverts
+  // dans un même flux, et on ne sait plus lequel on modifie.
+  const [blocOuvert, setBlocOuvert] = useState<string | null>(null);
+  // Texte collé dans une section vide, avant d'être posé dans la scène
+  const [collage, setCollage] = useState('');
+  // Des mots sélectionnés, en attente : le bouton « Commenter » flotte au-
+  // dessus d'eux tant qu'on ne l'a pas pris ou quitté.
+  const [selectionMots, setSelectionMots] = useState<{
+    blocId: string;
+    debut: number;
+    fin: number;
+    mots: string;
+    x: number;
+    y: number;
+    /**
+     * D'où vient la sélection. ⚠️ Une sélection faite DANS UN CHAMP n'apparaît
+     * PAS dans `window.getSelection()` : la surveiller comme celle du texte au
+     * repos ferait disparaître le bouton à l'instant où il se pose.
+     */
+    source: 'repos' | 'champ';
+  } | null>(null);
+  // Le commentaire en cours de rédaction — soit une sélection fraîche, soit un
+  // commentaire existant qu'on rouvre.
+  const [redaction, setRedaction] = useState<{
+    id: string | null;
+    blocId: string;
+    debut: number;
+    fin: number;
+    mots: string;
+    texte: string;
   } | null>(null);
 
   const imageRef = useRef<HTMLInputElement>(null);
@@ -392,9 +577,11 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
       setSectionId(id);
       setSection(null);
       setModifiee(false);
-      // La découpe est un moment de travail, pas un réglage : on ouvre toujours
-      // une scène dans son éditeur, jamais dans les ciseaux.
-      setModeDecoupe(false);
+      // On ouvre une scène sur son texte, jamais sur ses questions — et jamais
+      // avec un passage resté ouvert de la scène précédente.
+      setOnglet('recto');
+      setBlocOuvert(null);
+      setCollage('');
       try {
         const res = await fetch(`/api/oeuvres/${initiale.id}/sections/${id}`, {
           headers: await entetes(),
@@ -402,6 +589,8 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
         const json = await res.json();
         if (!json.success) throw new Error(json.message);
         setSection(json.data);
+        // On ouvre la scène sur l'espace que l'élève verra en premier
+        setOnglet(json.data?.facesInversees ? 'verso' : 'recto');
       } catch (e) {
         setMessage(e instanceof Error ? e.message : 'Erreur');
       }
@@ -418,16 +607,29 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
     if (!section) return;
     setOccupe(true);
     try {
+      // ── RECALAGE DES COMMENTAIRES ──
+      // C'est le seul moment où le texte a pu changer. Un commentaire ancré
+      // sur des rangs de mots devient faux dès qu'on ajoute une ligne
+      // au-dessus de lui : on le fait donc se retrouver lui-même, et on
+      // l'annonce quand il n'y parvient pas.
+      const commentaires = recalerCommentaires(section.blocs, section.commentaires ?? []);
+      const aRecoller = commentaires.filter((c) => c.orphelin).length;
+      const aSauver = { ...section, commentaires };
+
       const res = await fetch(`/api/oeuvres/${initiale.id}/sections/${section.id}`, {
         method: 'PUT',
         headers: await entetesJson(),
-        body: JSON.stringify(section),
+        body: JSON.stringify(aSauver),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
       setSection(json.data);
       setModifiee(false);
-      setMessage('Section enregistrée');
+      setMessage(
+        aRecoller > 0
+          ? `Section enregistrée — ${aRecoller} commentaire${aRecoller > 1 ? 's' : ''} à replacer : le texte qu'${aRecoller > 1 ? 'ils surlignaient' : 'il surlignait'} a disparu.`
+          : 'Section enregistrée'
+      );
       // Le titre et la pastille « vérification » se répercutent au sommaire
       setOeuvre((o) => ({
         ...o,
@@ -463,20 +665,22 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
     [section, majSection]
   );
 
-  const ajouterBloc = useCallback(
-    (type: OeuvreBloc['type']) => {
-      if (!section) return;
-      majSection({
-        blocs: [
-          ...section.blocs,
-          // `face` n'est écrite que pour le verso : absente = recto, ce qui
-          // laisse intactes les œuvres encodées avant l'existence des faces.
-          { id: generateBlocId(), type, contenu: '', ...(face === 'verso' ? { face } : {}) },
-        ],
-      });
-    },
-    [section, majSection, face]
-  );
+  /**
+   * Le premier geste sur une scène vide : coller le texte d'un seul tenant.
+   *
+   * UN SEUL BLOC, jamais un découpage automatique. Où commence une réplique,
+   * où finit une tirade, ce qui est didascalie : la machine se tromperait, et
+   * le prof passerait plus de temps à défaire qu'à découper lui-même. Le
+   * locuteur en capitales, lui, ne trompe personne — d'où `extraireLocuteur`.
+   */
+  const poserCollage = useCallback(() => {
+    const texte = collage.trim();
+    if (!section || !texte) return;
+    const bloc = extraireLocuteur({ id: generateBlocId(), type: 'vers', contenu: texte });
+    majSection({ blocs: [...section.blocs, bloc] });
+    setCollage('');
+    setBlocOuvert(null);
+  }, [collage, section, majSection]);
 
   // Le déplacement se fait DANS la face affichée : l'index vu par le prof
   // n'est pas celui du tableau complet, qui mêle les deux faces.
@@ -512,6 +716,125 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
     [section, majSection]
   );
 
+  // ── LE FLUORAGE COMMENTÉ ──
+
+  /**
+   * Des mots viennent d'être sélectionnés : on POSE UN BOUTON, on n'ouvre pas
+   * la fenêtre.
+   *
+   * Ouvrir d'autorité à chaque sélection interromprait tous les autres usages
+   * de la sélection — relire une réplique, copier un vers. Le bouton, lui,
+   * apparaît là où la souris vient de relâcher : il se voit sans rien
+   * imposer, et c'est lui qui apprend au prof que le geste existe.
+   */
+  const proposerCommentaire = useCallback(
+    (blocId: string, debut: number, fin: number, rect: DOMRect) => {
+      if (!section) return;
+      const bloc = section.blocs.find((b) => b.id === blocId);
+      if (!bloc) return;
+      const mots = motsDuBloc(bloc).slice(debut, fin + 1).join(' ');
+      if (!mots) return;
+      setSelectionMots({
+        blocId,
+        debut,
+        fin,
+        mots,
+        x: rect.left + rect.width / 2,
+        y: rect.top,
+        source: 'repos',
+      });
+    },
+    [section]
+  );
+
+  /**
+   * Des mots sélectionnés DANS LE CHAMP d'un passage ouvert.
+   *
+   * C'est le cas courant, et il était le seul à ne pas marcher : le champ n'a
+   * pas de mots balisés, `window.getSelection()` n'y renvoie rien
+   * d'exploitable. On passe donc par les offsets de caractères.
+   *
+   * Le bouton se pose au-dessus du champ (et non au point de la souris) : un
+   * double-clic ne donne pas de coordonnées de relâchement fiables, et un
+   * bouton qui saute d'un endroit à l'autre se cherche.
+   */
+  const selectionDansChamp = useCallback(
+    (bloc: OeuvreBloc, champ: HTMLTextAreaElement) => {
+      const bornes = indicesDepuisOffsets(
+        bloc.contenu || '',
+        champ.selectionStart ?? 0,
+        champ.selectionEnd ?? 0
+      );
+      if (!bornes) {
+        setSelectionMots(null);
+        return;
+      }
+      const mots = motsDuBloc(bloc).slice(bornes.debut, bornes.fin + 1).join(' ');
+      if (!mots) return;
+      const rect = champ.getBoundingClientRect();
+      setSelectionMots({
+        blocId: bloc.id,
+        debut: bornes.debut,
+        fin: bornes.fin,
+        mots,
+        x: rect.left + rect.width / 2,
+        y: rect.top,
+        source: 'champ',
+      });
+    },
+    []
+  );
+
+  /** Un passage déjà commenté a été cliqué : on rouvre son commentaire. */
+  const ouvrirCommentaire = useCallback(
+    (id: string) => {
+      const c = (section?.commentaires ?? []).find((x) => x.id === id);
+      if (!c) return;
+      setRedaction({ ...c, id: c.id });
+    },
+    [section]
+  );
+
+  const enregistrerCommentaire = useCallback(() => {
+    if (!section || !redaction) return;
+    const texte = redaction.texte.trim();
+    // Un commentaire vide n'est pas un commentaire : on le retire plutôt que
+    // de laisser un surlignage qui n'ouvre rien.
+    if (!texte) {
+      if (redaction.id) {
+        majSection({
+          commentaires: (section.commentaires ?? []).filter((c) => c.id !== redaction.id),
+        });
+      }
+      setRedaction(null);
+      return;
+    }
+    const existants = section.commentaires ?? [];
+    const commentaire: OeuvreCommentaire = {
+      id: redaction.id ?? generateCommentaireId(),
+      blocId: redaction.blocId,
+      debut: redaction.debut,
+      fin: redaction.fin,
+      mots: redaction.mots,
+      texte,
+    };
+    majSection({
+      commentaires: redaction.id
+        ? existants.map((c) => (c.id === redaction.id ? commentaire : c))
+        : [...existants, commentaire],
+    });
+    setRedaction(null);
+  }, [section, redaction, majSection]);
+
+  const supprimerCommentaire = useCallback(
+    (id: string) => {
+      if (!section) return;
+      majSection({ commentaires: (section.commentaires ?? []).filter((c) => c.id !== id) });
+      setRedaction(null);
+    },
+    [section, majSection]
+  );
+
   const supprimerBloc = useCallback(
     (id: string) => {
       if (!section) return;
@@ -536,13 +859,7 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
    * on insère seulement.
    */
   const actionTrait = useCallback(
-    async (
-      positionFace: number,
-      indexLigne: number | null,
-      action: ActionTrait,
-      /** Contenu déjà saisi dans la popup — `undefined` = il reste à demander */
-      contenuSaisi?: string
-    ) => {
+    async (positionFace: number, indexLigne: number | null, action: ActionTrait) => {
       if (!section) return;
       const memeFace = section.blocs.filter((b) => (b.face ?? 'recto') === face);
       const blocs = [...section.blocs];
@@ -581,39 +898,20 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
       }
 
       if (action.quoi === 'inserer') {
-        // Le prof colle son contenu LÀ OÙ il vient de décider de le poser.
-        // Poser un bloc vide l'obligeait à quitter l'outil, retrouver le bloc
-        // dans la liste, coller, puis revenir — quatre gestes pour un collage.
-        if (contenuSaisi === undefined && action.type !== 'image' && action.type !== 'audio') {
-          setSaisie({ positionFace, indexLigne, type: action.type });
-          return;
-        }
-
-        let bloc = neuf(action.type);
-        if (contenuSaisi?.trim()) {
-          if (action.type === 'video') {
-            const brut = contenuSaisi.trim();
-            const yt = parseYoutubeId(brut);
-            // YouTube : on ne garde que l'identifiant. Drive : le lecteur
-            // intégré (/preview), seul format affichable.
-            bloc = yt
-              ? { ...bloc, videoId: yt }
-              : { ...bloc, videoUrl: brut.replace('/view', '/preview') };
-          } else {
-            bloc = { ...bloc, contenu: contenuSaisi };
-            // Un extrait collé porte souvent son personnage en première ligne
-            if (action.type === 'vers') bloc = extraireLocuteur(bloc);
-          }
-        }
-
+        // Le bloc neuf est posé À SA PLACE et s'ouvre aussitôt en édition :
+        // le prof écrit là où il vient de décider d'écrire. C'est ce qui a
+        // remplacé la popup de saisie — un intermédiaire de plus entre
+        // l'intention et le texte.
+        const bloc = neuf(action.type);
         blocs.splice(iApresCoupe, 0, bloc);
         majSection({ blocs });
+        setBlocOuvert(bloc.id);
 
-        // L'image n'a pas de champ à remplir : son « champ », c'est le
-        // sélecteur de fichier. On l'ouvre dans la foulée.
-        if (action.type === 'image') {
+        // Image et audio n'ont pas de champ à remplir : leur « champ », c'est
+        // le sélecteur de fichier. On l'ouvre dans la foulée.
+        if (action.type === 'image' || action.type === 'audio') {
           blocCibleRef.current = bloc.id;
-          imageRef.current?.click();
+          (action.type === 'image' ? imageRef : audioRef).current?.click();
         }
         return;
       }
@@ -638,11 +936,18 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
         // a. La scène courante, réduite à ce qui reste AVANT le trait. Les
         //    questions ne bougent pas : la vérification porte sur la scène
         //    telle que le prof l'a conçue, pas sur un découpage matériel.
+        //    Les COMMENTAIRES, eux, suivent leur bloc : ils sont ancrés sur
+        //    ses mots, les laisser derrière les rendrait tous orphelins.
         const restants = blocs.slice(0, iApresCoupe);
+        const idsRestants = new Set(restants.map((b) => b.id));
+        const tousCommentaires = section.commentaires ?? [];
+        const cmtRestants = tousCommentaires.filter((c) => idsRestants.has(c.blocId));
+        const cmtPartants = tousCommentaires.filter((c) => !idsRestants.has(c.blocId));
+
         const resA = await fetch(`/api/oeuvres/${initiale.id}/sections/${section.id}`, {
           method: 'PUT',
           headers: await entetesJson(),
-          body: JSON.stringify({ ...section, blocs: restants }),
+          body: JSON.stringify({ ...section, blocs: restants, commentaires: cmtRestants }),
         });
         if (!(await resA.json()).success) throw new Error('La scène courante n’a pas pu être enregistrée');
 
@@ -665,7 +970,7 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
         const resC = await fetch(`/api/oeuvres/${initiale.id}/sections/${nouvelle.id}`, {
           method: 'PUT',
           headers: await entetesJson(),
-          body: JSON.stringify({ ...nouvelle, blocs: partants }),
+          body: JSON.stringify({ ...nouvelle, blocs: partants, commentaires: cmtPartants }),
         });
         if (!(await resC.json()).success) throw new Error('Le contenu déplacé n’a pas pu être écrit');
 
@@ -687,7 +992,7 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
         });
         await enregistrerSommaire(chapitres);
 
-        setSection({ ...section, blocs: restants });
+        setSection({ ...section, blocs: restants, commentaires: cmtRestants });
         setModifiee(false);
         setMessage(`« ${titre.trim()} » créée juste après cette scène.`);
       } catch (e) {
@@ -783,10 +1088,58 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
     return () => clearTimeout(t);
   }, [message]);
 
+  // Changer de passage, d'onglet ou de scène emporte la sélection en attente :
+  // le bouton désignerait des mots qui ne sont plus à l'écran.
+  useEffect(() => {
+    setSelectionMots(null);
+  }, [blocOuvert, onglet, sectionId]);
+
+  /**
+   * Le bouton « Commenter » suit la sélection : il disparaît dès qu'elle
+   * n'existe plus (clic ailleurs) ou dès que la page défile — laissé en
+   * place, il désignerait des mots qui ne sont plus sous lui.
+   */
+  useEffect(() => {
+    if (!selectionMots) return;
+    const fermer = () => setSelectionMots(null);
+    // Dans un champ, c'est `onSelect` qui fait le ménage : la sélection d'un
+    // `<textarea>` n'existe pas pour `window.getSelection()`.
+    if (selectionMots.source === 'champ') {
+      window.addEventListener('scroll', fermer, true);
+      return () => window.removeEventListener('scroll', fermer, true);
+    }
+    // `selectionchange` plutôt que `mousedown` : au moment du mousedown, le
+    // navigateur n'a pas encore défait la sélection, et on lirait l'ancienne.
+    const siPlusRienDeSelectionne = () => {
+      const s = window.getSelection();
+      if (!s || s.isCollapsed || !s.toString().trim()) fermer();
+    };
+    document.addEventListener('selectionchange', siPlusRienDeSelectionne);
+    window.addEventListener('scroll', fermer, true);
+    return () => {
+      document.removeEventListener('selectionchange', siPlusRienDeSelectionne);
+      window.removeEventListener('scroll', fermer, true);
+    };
+  }, [selectionMots]);
+
   // Blocs de la face en cours — le prof n'édite jamais les deux à la fois
   const blocsFace = useMemo(
     () => (section ? blocsDeFace(section.blocs, face) : []),
     [section, face]
+  );
+
+  // Les commentaires que le recalage n'a pas su replacer — ils n'apparaissent
+  // dans aucun passage, il faut donc les montrer à part.
+  const orphelins = useMemo(
+    () => (section?.commentaires ?? []).filter((c) => c.orphelin),
+    [section?.commentaires]
+  );
+
+  // Les onglets suivent l'ordre d'arrivée choisi pour la scène : le prof doit
+  // les voir dans l'ordre où l'élève les verra, sinon il compose à l'envers.
+  const ongletsOrdonnes = useMemo(
+    () => (section?.facesInversees ? [ONGLETS[1], ONGLETS[0], ONGLETS[2]] : ONGLETS),
+    [section?.facesInversees]
   );
 
   return (
@@ -903,6 +1256,23 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                 </label>
               </div>
 
+              {/* Quel espace l'élève trouve en arrivant. Même sélecteur que
+                  la création d'une activité d'écriture (FlipChoice) : c'est
+                  le même geste, il doit avoir la même forme. Rien ne déménage
+                  pour autant — les blocs gardent leur face, seul l'ordre
+                  d'arrivée change. */}
+              <FlipChoice
+                label="Espaces de la scène"
+                faces={['✏️ Espace textuel', '🎬 Espace multimédia']}
+                inverse={section.facesInversees === true}
+                onChange={(inverse) => {
+                  majSection({ facesInversees: inverse });
+                  setOnglet(inverse ? 'verso' : 'recto');
+                }}
+                hint="Le recto est la face affichée à l’ouverture de la scène par l’élève."
+                disabled={occupe}
+              />
+
               <label className={styles.champLarge}>
                 Chapeau — la phrase de présentation, en italique avant le texte
                 <textarea
@@ -912,302 +1282,353 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                 />
               </label>
 
-              {/* ── Blocs, face par face ──
+              {/* ── LES TROIS ONGLETS ──
                   Le prof compose une face à la fois, comme l'élève en lit une
-                  à la fois : mêler les deux dans une seule liste rendrait
-                  impossible de savoir ce que l'élève verra d'abord. */}
-              <h3 className={styles.titreSection}>Contenu</h3>
-
-              {/* ── Barre des faces + outil d'édition ──
-                  COLLANTE : sur une scène de trente répliques, le bouton
-                  disparaissait dès qu'on faisait défiler, et on ne pouvait
-                  plus quitter l'outil d'édition sans remonter tout en haut. */}
+                  à la fois. Le troisième onglet porte la vérification de
+                  lecture : au bas de la scène, elle arrivait après trente
+                  répliques, donc jamais.
+                  La barre est COLLANTE : sur une longue scène, changer
+                  d'onglet obligeait sinon à remonter tout en haut. */}
               <div className={styles.barreOnglets}>
                 <div className={styles.faces} role="tablist">
-                  {FACES.map((f) => {
-                    const combien = blocsDeFace(section.blocs, f.id).length;
+                  {ongletsOrdonnes.map((o) => {
+                    const combien =
+                      o.id === 'eval'
+                        ? section.questions.length
+                        : blocsDeFace(section.blocs, o.id).length;
                     return (
                       <button
-                        key={f.id}
+                        key={o.id}
                         type="button"
                         role="tab"
-                        aria-selected={face === f.id}
-                        className={`${styles.face} ${face === f.id ? styles.faceActive : ''}`}
-                        onClick={() => setFace(f.id)}
+                        aria-selected={onglet === o.id}
+                        className={`${styles.face} ${onglet === o.id ? styles.faceActive : ''}`}
+                        onClick={() => {
+                          setOnglet(o.id);
+                          setBlocOuvert(null);
+                        }}
                       >
-                        {f.label}
+                        {o.label}
                         <span className={styles.faceCompteur}>{combien}</span>
                       </button>
                     );
                   })}
                 </div>
-
-                {/* Un INTERRUPTEUR et non un bouton : l'outil d'édition est un
-                    état dans lequel on entre et dont on sort, pas une action
-                    qu'on déclenche. La forme doit le dire. */}
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={modeDecoupe}
-                  className={`${styles.bascule} ${modeDecoupe ? styles.basculeActive : ''}`}
-                  onClick={() => setModeDecoupe((m) => !m)}
-                  title="Permet le découpage d’un bloc de texte en plusieurs, l’ajout de commentaires ou de documents"
-                >
-                  <span className={styles.basculeTexte}>✂ Outil d’édition</span>
-                  <span className={styles.basculeRail} aria-hidden="true">
-                    <span className={styles.basculeBouton} />
-                  </span>
-                </button>
               </div>
 
-              <p className={styles.aide}>
-                {modeDecoupe
-                  ? 'Passe entre deux lignes ou entre deux blocs, puis choisis ce qui s’insère là. Les noms de personnages en capitales deviennent le locuteur des extraits.'
-                  : FACES.find((f) => f.id === face)?.aide}
-              </p>
+              <p className={styles.aide}>{ONGLETS.find((o) => o.id === onglet)?.aide}</p>
 
-              {blocsFace.length === 0 && (
-                <p className={styles.aide}>
-                  {face === 'recto'
-                    ? 'Aucun contenu — commence par un bloc informatif ou un extrait.'
-                    : 'Aucun complément. Tant que cet espace reste vide, l’élève ne voit aucun onglet : il lit simplement le texte.'}
-                </p>
-              )}
-
-              {/* ── MODE ÉDITION : un flux continu ──
-                  Les cartes de blocs et leurs en-têtes hachent le texte ; or
-                  c'est justement la lecture suivie de la scène qui permet de
-                  décider où couper. En édition, on affiche donc la scène d'un
-                  seul tenant, avec un trait entre chaque ligne ET entre chaque
-                  bloc — les frontières de blocs restent visibles par le trait
-                  lui-même, légèrement marqué au repos. */}
-              {modeDecoupe && (
-                <div className={styles.fluxEdition}>
-                  <Trait
-                    intra={false}
-                    onAction={(a) => actionTrait(0, null, a)}
-                  />
-                  {blocsFace.map((bloc, i) => (
-                    <Fragment key={bloc.id}>
-                      {i > 0 && (
-                        <Trait intra={false} onAction={(a) => actionTrait(i, null, a)} />
-                      )}
-                      <BlocEnLecture
-                        bloc={bloc}
-                        vide={blocEstVide(bloc)}
-                        onAction={(indexLigne, a) => actionTrait(i, indexLigne, a)}
-                        onSupprimer={() => supprimerBloc(bloc.id)}
-                      />
-                    </Fragment>
-                  ))}
-                  {blocsFace.length > 0 && (
-                    <Trait
-                      intra={false}
-                      onAction={(a) => actionTrait(blocsFace.length, null, a)}
-                    />
-                  )}
-                </div>
-              )}
-
-              {!modeDecoupe && blocsFace.map((bloc, index) => (
-                <div key={bloc.id} className={styles.bloc}>
-                  <div className={styles.blocEntete}>
-                    <span className={styles.blocType}>{LIBELLE_BLOC[bloc.type]}</span>
-                    <span className={styles.blocOutils}>
-                      <button
-                        type="button"
-                        onClick={() => changerFaceBloc(bloc.id, face === 'recto' ? 'verso' : 'recto')}
-                        title={
-                          face === 'recto'
-                            ? 'Déplacer vers l’espace multimédia'
-                            : 'Ramener dans l’espace textuel'
-                        }
-                      >
-                        {face === 'recto' ? '⇥' : '⇤'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deplacerBloc(bloc.id, -1)}
-                        title="Monter"
-                        disabled={index === 0}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deplacerBloc(bloc.id, 1)}
-                        title="Descendre"
-                        disabled={index === blocsFace.length - 1}
-                      >
-                        ↓
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => supprimerBloc(bloc.id)}
-                        className={styles.outilDanger}
-                        title="Supprimer"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  </div>
-
-                  {bloc.type === 'texte' && (
-                    <TexteEditor
-                      content={bloc.contenu || ''}
-                      onChange={(html: string) => majBloc(bloc.id, { contenu: html })}
-                      placeholder="Le texte, l’analyse, la présentation…"
-                    />
-                  )}
-
-                  {bloc.type === 'vers' && (
-                    <>
-                      <input
-                        type="text"
-                        className={styles.champLocuteur}
-                        placeholder="Personnage qui parle (facultatif)"
-                        value={bloc.locuteur || ''}
-                        onChange={(e) => majBloc(bloc.id, { locuteur: e.target.value })}
-                      />
-                      <textarea
-                        className={styles.zoneVers}
-                        rows={6}
-                        placeholder="Un vers par ligne — ils ne seront ni coupés ni justifiés."
-                        value={bloc.contenu || ''}
-                        onChange={(e) => majBloc(bloc.id, { contenu: e.target.value })}
-                      />
-                    </>
-                  )}
-
-                  {bloc.type === 'video' && (
-                    <>
-                      <input
-                        type="text"
-                        placeholder="Lien YouTube ou Google Drive"
-                        value={bloc.videoId ? `https://youtu.be/${bloc.videoId}` : bloc.videoUrl || ''}
-                        onChange={(e) => {
-                          const brut = e.target.value.trim();
-                          const yt = parseYoutubeId(brut);
-                          // YouTube : on ne garde que l'identifiant. Drive : le
-                          // lecteur intégré (/preview), seul format affichable.
-                          if (yt) majBloc(bloc.id, { videoId: yt, videoUrl: undefined });
-                          else {
-                            const drive = brut.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
-                            majBloc(bloc.id, {
-                              videoId: undefined,
-                              videoUrl: drive
-                                ? `https://drive.google.com/file/d/${drive[1]}/preview`
-                                : brut,
-                            });
-                          }
-                        }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Légende (facultatif)"
-                        value={bloc.legende || ''}
-                        onChange={(e) => majBloc(bloc.id, { legende: e.target.value })}
-                      />
-                    </>
-                  )}
-
-                  {bloc.type === 'image' && (
-                    <>
-                      {bloc.imageUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={bloc.imageUrl} alt="" className={styles.apercuImage} />
-                      )}
-                      <button
-                        type="button"
-                        className={styles.btnGhost}
-                        disabled={occupe}
-                        onClick={() => {
-                          blocCibleRef.current = bloc.id;
-                          imageRef.current?.click();
-                        }}
-                      >
-                        {bloc.imageUrl ? 'Remplacer l’image' : 'Déposer une image'}
-                      </button>
-                      <input
-                        type="text"
-                        placeholder="Légende (facultatif)"
-                        value={bloc.legende || ''}
-                        onChange={(e) => majBloc(bloc.id, { legende: e.target.value })}
-                      />
-                    </>
-                  )}
-
-                  {bloc.type === 'audio' && (
-                    <>
-                      {bloc.audioUrl && (
-                        <audio controls src={bloc.audioUrl} className={styles.apercuAudio} />
-                      )}
-                      <button
-                        type="button"
-                        className={styles.btnGhost}
-                        disabled={occupe}
-                        onClick={() => {
-                          blocCibleRef.current = bloc.id;
-                          audioRef.current?.click();
-                        }}
-                      >
-                        {bloc.audioUrl ? 'Remplacer l’audio' : 'Déposer un audio'}
-                      </button>
-                      <input
-                        type="text"
-                        placeholder="Légende (facultatif)"
-                        value={bloc.legende || ''}
-                        onChange={(e) => majBloc(bloc.id, { legende: e.target.value })}
-                      />
-                    </>
-                  )}
-                </div>
-              ))}
-
-              {/* Les types proposés suivent la face : composer un extrait dans
-                  l'espace multimédia n'aurait aucun sens, et l'inverse
-                  encombrerait le texte. */}
-              <div className={styles.ajoutBlocs}>
-                {face === 'recto' && (
-                  <>
-                    <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('texte')}>
-                      + Bloc informatif
-                    </button>
-                    <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('vers')}>
-                      + Extrait
-                    </button>
-                  </>
-                )}
-                <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('video')}>
-                  + Vidéo
-                </button>
-                <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('image')}>
-                  + Image
-                </button>
-                <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('audio')}>
-                  + Audio
-                </button>
-                {face === 'verso' && (
-                  <button type="button" className={styles.btnGhost} onClick={() => ajouterBloc('texte')}>
-                    + Bloc informatif
-                  </button>
-                )}
-              </div>
-
-              {/* ── Vérification de lecture ──
+              {/* ══ Onglet Évaluation ══
                   Le questionnaire de lecture, tel quel : c'est le même objet,
                   il se construit avec le même outil. */}
-              <h3 className={styles.titreSection}>Vérification de lecture</h3>
-              <p className={styles.aide}>
-                Facultative. Ce sont ces vérifications que l’élève complète — c’est elles qui
-                comptent dans son total, pas les pages ouvertes. Le corrigé lui est montré
-                immédiatement : dans cet atelier, rien n’est noté.
-              </p>
-              <LectureQuizBuilder
-                value={{ mode: 'worksheet', questions: section.questions }}
-                onChange={(quiz: LectureQuiz) => majSection({ questions: quiz.questions })}
-                getAuthHeaders={headersRef.current}
-              />
+              {onglet === 'eval' && (
+                <LectureQuizBuilder
+                  value={{ mode: 'worksheet', questions: section.questions }}
+                  onChange={(quiz: LectureQuiz) => majSection({ questions: quiz.questions })}
+                  getAuthHeaders={headersRef.current}
+                />
+              )}
+
+              {/* ══ Onglets de contenu : LE FLUX, toujours modifiable ══
+                  Il n'y a plus deux modes (lire / éditer) : les cartes de
+                  blocs hachaient le texte, et c'est la lecture suivie de la
+                  scène qui permet de décider où couper. Un clic ouvre le
+                  passage à sa place ; le trait insère entre deux lignes. */}
+              {onglet !== 'eval' && (
+                <>
+                  {/* Une scène vide s'ouvre sur une zone de collage : le
+                      premier geste du prof, c'est de coller le texte d'un
+                      seul tenant. Il le débitera ensuite de l'intérieur. */}
+                  {face === 'recto' && blocsFace.length === 0 && (
+                    <div className={styles.zoneCollage}>
+                      <h4>Colle ici le texte de la scène</h4>
+                      <p>
+                        D’un seul tenant — tu le découperas ensuite ligne à ligne, sans quitter
+                        cette page. Un nom de personnage en capitales sur la première ligne
+                        devient le locuteur.
+                      </p>
+                      <textarea
+                        value={collage}
+                        onChange={(e) => setCollage(e.target.value)}
+                        placeholder="Colle le texte…"
+                        rows={8}
+                      />
+                      <button
+                        type="button"
+                        className={styles.btnPrimary}
+                        disabled={!collage.trim()}
+                        onClick={poserCollage}
+                      >
+                        Poser ce texte dans la scène
+                      </button>
+                    </div>
+                  )}
+
+                  {face === 'verso' && blocsFace.length === 0 && (
+                    <p className={styles.aide}>
+                      Aucun complément. Tant que cet espace reste vide, l’élève ne voit aucun
+                      onglet : il lit simplement le texte.
+                    </p>
+                  )}
+
+                  {/* Un clic dans le vide du flux referme le passage ouvert —
+                      d'où le test sur la cible : un clic SUR un passage ne
+                      doit pas le refermer aussitôt. */}
+                  <div
+                    className={styles.fluxEdition}
+                    onClick={(e) => {
+                      if (e.target === e.currentTarget) setBlocOuvert(null);
+                    }}
+                  >
+                    <Trait intra={false} face={face} onAction={(a) => actionTrait(0, null, a)} />
+
+                    {blocsFace.map((bloc, index) => (
+                      <Fragment key={bloc.id}>
+                        {index > 0 && (
+                          <Trait
+                            intra={false}
+                            face={face}
+                            onAction={(a) => actionTrait(index, null, a)}
+                          />
+                        )}
+
+                        {blocOuvert === bloc.id ? (
+                          /* ══ LE PASSAGE OUVERT ══
+                             Le champ prend la place exacte du texte : le prof
+                             écrit là où il lisait. */
+                          <div
+                            className={`${styles.passageOuvert} ${
+                              bloc.type === 'texte' ? styles.passageInfo : ''
+                            }`}
+                          >
+                            {bloc.type === 'texte' && (
+                              <>
+                                <p className={styles.infoEtiquette}>Bloc informatif</p>
+                                {/* Éditeur riche, et non un simple champ : ces
+                                    blocs portent du gras, des listes, des
+                                    liens — les réduire à du texte brut
+                                    perdrait tout ce qui est déjà encodé. */}
+                                <TexteEditor
+                                  content={bloc.contenu || ''}
+                                  onChange={(html: string) => majBloc(bloc.id, { contenu: html })}
+                                  placeholder="Une note, une consigne, une présentation…"
+                                />
+                              </>
+                            )}
+
+                            {bloc.type === 'vers' && (
+                              <>
+                                <input
+                                  type="text"
+                                  className={styles.champLocuteur}
+                                  placeholder="Personnage qui parle (facultatif)"
+                                  value={bloc.locuteur || ''}
+                                  onChange={(e) => majBloc(bloc.id, { locuteur: e.target.value })}
+                                />
+                                {/* La sélection DANS le champ est le vrai geste
+                                    du prof : cliquer un passage l'ouvre, il
+                                    ne lit donc plus jamais le texte au repos.
+                                    `onSelect` couvre tout — glisser, double-
+                                    clic, Maj+flèches. */}
+                                <textarea
+                                  className={styles.zoneVers}
+                                  rows={Math.max(3, (bloc.contenu || '').split('\n').length + 1)}
+                                  autoFocus
+                                  placeholder="Un vers par ligne — ils ne seront ni coupés ni justifiés."
+                                  value={bloc.contenu || ''}
+                                  onChange={(e) => majBloc(bloc.id, { contenu: e.target.value })}
+                                  onSelect={(e) => selectionDansChamp(bloc, e.currentTarget)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Escape') setBlocOuvert(null);
+                                  }}
+                                />
+                              </>
+                            )}
+
+                            {bloc.type === 'video' && (
+                              <>
+                                <input
+                                  type="text"
+                                  placeholder="Lien YouTube ou Google Drive"
+                                  autoFocus
+                                  value={
+                                    bloc.videoId ? `https://youtu.be/${bloc.videoId}` : bloc.videoUrl || ''
+                                  }
+                                  onChange={(e) => {
+                                    const brut = e.target.value.trim();
+                                    const yt = parseYoutubeId(brut);
+                                    // YouTube : on ne garde que l'identifiant.
+                                    // Drive : le lecteur intégré (/preview),
+                                    // seul format affichable.
+                                    if (yt) majBloc(bloc.id, { videoId: yt, videoUrl: undefined });
+                                    else {
+                                      const drive = brut.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
+                                      majBloc(bloc.id, {
+                                        videoId: undefined,
+                                        videoUrl: drive
+                                          ? `https://drive.google.com/file/d/${drive[1]}/preview`
+                                          : brut,
+                                      });
+                                    }
+                                  }}
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Légende (facultatif)"
+                                  value={bloc.legende || ''}
+                                  onChange={(e) => majBloc(bloc.id, { legende: e.target.value })}
+                                />
+                              </>
+                            )}
+
+                            {bloc.type === 'image' && (
+                              <>
+                                {bloc.imageUrl && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={bloc.imageUrl} alt="" className={styles.apercuImage} />
+                                )}
+                                <button
+                                  type="button"
+                                  className={styles.btnGhost}
+                                  disabled={occupe}
+                                  onClick={() => {
+                                    blocCibleRef.current = bloc.id;
+                                    imageRef.current?.click();
+                                  }}
+                                >
+                                  {bloc.imageUrl ? 'Remplacer l’image' : 'Déposer une image'}
+                                </button>
+                                <input
+                                  type="text"
+                                  placeholder="Légende (facultatif)"
+                                  value={bloc.legende || ''}
+                                  onChange={(e) => majBloc(bloc.id, { legende: e.target.value })}
+                                />
+                              </>
+                            )}
+
+                            {bloc.type === 'audio' && (
+                              <>
+                                {bloc.audioUrl && (
+                                  <audio controls src={bloc.audioUrl} className={styles.apercuAudio} />
+                                )}
+                                <button
+                                  type="button"
+                                  className={styles.btnGhost}
+                                  disabled={occupe}
+                                  onClick={() => {
+                                    blocCibleRef.current = bloc.id;
+                                    audioRef.current?.click();
+                                  }}
+                                >
+                                  {bloc.audioUrl ? 'Remplacer l’audio' : 'Déposer un audio'}
+                                </button>
+                                <input
+                                  type="text"
+                                  placeholder="Légende (facultatif)"
+                                  value={bloc.legende || ''}
+                                  onChange={(e) => majBloc(bloc.id, { legende: e.target.value })}
+                                />
+                              </>
+                            )}
+
+                            <div className={styles.outilsPassage}>
+                              <button
+                                type="button"
+                                onClick={() => deplacerBloc(bloc.id, -1)}
+                                title="Monter"
+                                disabled={index === 0}
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deplacerBloc(bloc.id, 1)}
+                                title="Descendre"
+                                disabled={index === blocsFace.length - 1}
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  changerFaceBloc(bloc.id, face === 'recto' ? 'verso' : 'recto')
+                                }
+                                title={
+                                  face === 'recto'
+                                    ? 'Déplacer vers l’espace multimédia'
+                                    : 'Ramener dans l’espace textuel'
+                                }
+                              >
+                                {face === 'recto' ? '⇥ Multimédia' : '⇤ Texte'}
+                              </button>
+                              <button type="button" onClick={() => setBlocOuvert(null)}>
+                                ✓ Terminé
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.outilDanger}
+                                onClick={() => {
+                                  supprimerBloc(bloc.id);
+                                  setBlocOuvert(null);
+                                }}
+                                title="Supprimer ce passage"
+                              >
+                                ✕ Supprimer
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Passage
+                            bloc={bloc}
+                            vide={blocEstVide(bloc)}
+                            face={face}
+                            commentaires={section.commentaires ?? []}
+                            onAction={(indexLigne, a) => actionTrait(index, indexLigne, a)}
+                            onOuvrir={() => setBlocOuvert(bloc.id)}
+                            onSupprimer={() => supprimerBloc(bloc.id)}
+                            onSelection={proposerCommentaire}
+                            onCommentaire={ouvrirCommentaire}
+                          />
+                        )}
+                      </Fragment>
+                    ))}
+
+                    {blocsFace.length > 0 && (
+                      <Trait
+                        intra={false}
+                        face={face}
+                        onAction={(a) => actionTrait(blocsFace.length, null, a)}
+                      />
+                    )}
+                  </div>
+
+                  {/* ── Les commentaires à replacer ──
+                      Un commentaire dont le bloc a disparu ne s'affiche nulle
+                      part : sans cette liste, il serait ni réparable ni
+                      supprimable, et compterait pourtant dans la section. */}
+                  {orphelins.length > 0 && (
+                    <div className={styles.orphelins}>
+                      <h4>
+                        {orphelins.length} commentaire{orphelins.length > 1 ? 's' : ''} à replacer
+                      </h4>
+                      <p className={styles.aide}>
+                        Le texte qu’ils surlignaient a été modifié ou supprimé. Ils ne sont plus
+                        montrés à l’élève. Repose-les sur les bons mots, ou jette-les.
+                      </p>
+                      {orphelins.map((c) => (
+                        <div key={c.id} className={styles.orphelinLigne}>
+                          <span className={styles.orphelinMots}>« {c.mots} »</span>
+                          <span className={styles.orphelinTexte}>{c.texte}</span>
+                          <button type="button" onClick={() => supprimerCommentaire(c.id)}>
+                            ✕ Supprimer
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
 
             </>
           )}
@@ -1243,17 +1664,77 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
         onChange={(e) => deposerFichier(e.target.files?.[0], 'audio')}
       />
 
-      {/* Saisie du contenu au moment de l'insertion (voir SaisieBlocModal) */}
-      {saisie && (
-        <SaisieBlocModal
-          type={saisie.type}
-          onAnnuler={() => setSaisie(null)}
-          onValider={(contenu) => {
-            const s = saisie;
-            setSaisie(null);
-            actionTrait(s.positionFace, s.indexLigne, { quoi: 'inserer', type: s.type }, contenu);
+      {/* ── Le bouton qui flotte au-dessus des mots sélectionnés ──
+          C'est LUI qui apprend le geste : sans rien à l'écran, il fallait
+          deviner qu'une sélection ouvrait quelque chose. Il se pose au milieu
+          de la sélection, juste au-dessus. */}
+      {selectionMots && (
+        <button
+          type="button"
+          className={styles.boutonCommenter}
+          style={{ left: selectionMots.x, top: selectionMots.y - 10 }}
+          onMouseDown={(e) => e.preventDefault()} // garder la sélection visible
+          onClick={() => {
+            setRedaction({
+              id: null,
+              blocId: selectionMots.blocId,
+              debut: selectionMots.debut,
+              fin: selectionMots.fin,
+              mots: selectionMots.mots,
+              texte: '',
+            });
+            setSelectionMots(null);
           }}
-        />
+        >
+          🖍 Commenter ces mots
+        </button>
+      )}
+
+      {/* ── Saisie d'un commentaire sur des mots ──
+          Le prof voit les mots qu'il surligne en tête de la fenêtre : sans
+          eux, il écrit à l'aveugle et découvre son erreur chez l'élève. */}
+      {redaction && (
+        <div
+          className={styles.cmtOverlay}
+          onClick={(e) => e.target === e.currentTarget && setRedaction(null)}
+        >
+          <div className={styles.cmtFenetre} role="dialog" aria-modal="true">
+            <header className={styles.cmtEntete}>
+              <h3>Commentaire sur des mots</h3>
+              <button type="button" onClick={() => setRedaction(null)} aria-label="Fermer">
+                ✕
+              </button>
+            </header>
+            <div className={styles.cmtCorps}>
+              <p className={styles.cmtMots}>« {redaction.mots} »</p>
+              <textarea
+                className={styles.cmtChamp}
+                rows={5}
+                autoFocus
+                value={redaction.texte}
+                placeholder="Ce que l’élève lira en cliquant sur ces mots…"
+                onChange={(e) => setRedaction({ ...redaction, texte: e.target.value })}
+              />
+            </div>
+            <div className={styles.cmtPied}>
+              {redaction.id && (
+                <button
+                  type="button"
+                  className={styles.btnGhost}
+                  onClick={() => supprimerCommentaire(redaction.id!)}
+                >
+                  Supprimer
+                </button>
+              )}
+              <button type="button" className={styles.btnGhost} onClick={() => setRedaction(null)}>
+                Annuler
+              </button>
+              <button type="button" className={styles.btnPrimary} onClick={enregistrerCommentaire}>
+                {redaction.id ? 'Modifier' : 'Commenter'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Aperçu de la section en cours ──

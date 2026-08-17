@@ -110,7 +110,8 @@ Trois couches qui doivent rester cohérentes : **interface ⊆ route serveur ⊆
 
 ### `devoirs`
 > Champs récents : `lectureQuiz` (questionnaire de lecture, type lire — voir
-> `src/types/lecture.ts` ; `correctIndex`, `reponseIdeale` et `fluoAttendu`
+> `src/types/lecture.ts` ; `correctIndex`, `reponseIdeale`, `reponsesAcceptees`
+> et `fluoAttendu`
 > **filtrés côté élève** par `src/lib/lecture-server.ts` — **sauf quand
 > `corrigeDisponible`** : l'élève reçoit alors le quiz complet pour voir sa
 > correction) ; questions avec `audio` (base64 `ressourceImages`, ≤ 700 Ko,
@@ -269,6 +270,14 @@ interface Questionnaire {
   qui laisse intactes les œuvres encodées avant l'existence du verso. Accès **serveur
   uniquement**, donc aucune règle Firestore. L'**acte** n'est pas un niveau
   d'imbrication : c'est l'étiquette `groupe` d'une section.
+  Une section porte aussi `facesInversees` (quel espace s'ouvre en premier — **par
+  scène**, les blocs ne bougent pas) et `commentaires[]` : le **fluorage commenté**
+  (`OeuvreCommentaire` — ancrage par **rang de mots** doublé des mots eux-mêmes, qui
+  permettent le **recalage** quand le prof modifie son texte ; introuvable = `orphelin`,
+  retiré de la vue élève. Voir `src/lib/oeuvre-commentaires.ts`).
+  **La COUVERTURE est une page** : `COUVERTURE_ID` (`__couverture__`) est un id de
+  section factice qui ouvre le parcours de lecture — première entrée du sommaire élève,
+  rien ne se charge, **rien ne s'écrit dans la progression**.
   **DEUX PARTAGES à ne jamais confondre** : (a) `shared` / « Œuvres des professeurs » →
   on **duplique**, chacun repart avec sa copie (modèle des grilles) ; (b) `partages[]`
   (`{ email, nom, mode: 'lecture' | 'edition' }`) → un collègue désigné **nommément**
@@ -523,14 +532,28 @@ interface Questionnaire {
   (tooltip au survol) et détail dépliable ; carte Vocabulaire du Général en barre
   empilée ; `EmptyState` : `icon="hourglass"` = spinner, sinon emoji (jamais de mot-clé)
 
-- Œuvre (constructeur) : `OeuvreBuilder` (écran plein), `OeuvreSommaireEditable`
-  (+ **couverture** du livre, premier élément déposé), `TypeEditors` (éditeurs des
-  types de questions, sortis de `LectureQuizBuilder` qui faisait déjà 899 lignes),
-  `ExtraitOeuvreModal` (« prendre un extrait dans une œuvre » depuis un questionnaire :
-  livre → scène → passages ; rend du **texte brut**, pas une référence vivante),
-  `SaisieBlocModal` (contenu saisi AU MOMENT de l'insertion), `src/lib/oeuvre-decoupe.ts`
-  (**outil d'édition** : couper un bloc collé entre deux lignes, insérer, ou renvoyer la
-  suite dans une **nouvelle section** ; détection du locuteur en capitales)
+- **`FlipChoice`** : quelle face l'élève trouve en arrivant — deux faces côte à côte et
+  un bouton ⇄. **Partagé** par la création d'activité, l'édition d'activité et le
+  constructeur d'œuvre. Le mécanisme est commun, les libellés propres à chaque
+  dispositif (rédaction/planification · espace textuel/multimédia)
+- **`BlocCommente`** (+ `src/lib/oeuvre-commentaires.ts`) : le texte d'un bloc avec le
+  **fluorage commenté**, rendu **partagé prof/élève**. Chaque mot est enveloppé dans un
+  `<span data-mot>` — c'est ce qui permet d'ancrer un commentaire sans arithmétique
+  d'offsets. Les passages commentés portent `role="button"` : `DictionaryClickLayer`
+  laisse passer ces éléments, les deux mécanismes ne se marchent pas dessus
+- Œuvre (constructeur) : `OeuvreBuilder` (écran plein — **trois onglets** : Espace
+  textuel / Espace multimédia / **Évaluation de la compréhension**, ce dernier portant
+  le `LectureQuizBuilder` ; le flux textuel est **toujours modifiable**, un clic ouvre
+  le passage à sa place, une **sélection** propose de le commenter),
+  `OeuvreSommaireEditable`
+  (+ **couverture** du livre en vignette, première ligne du sommaire), `TypeEditors`
+  (éditeurs des types de questions, sortis de `LectureQuizBuilder` qui faisait déjà
+  899 lignes), `ExtraitOeuvreModal` (« prendre un extrait dans une œuvre » depuis un
+  questionnaire : livre → scène → passages ; rend du **texte brut**, pas une référence
+  vivante), `src/lib/oeuvre-decoupe.ts` (**outil d'édition** : couper un bloc collé
+  entre deux lignes, insérer, ou renvoyer la suite dans une **nouvelle section** ;
+  détection du locuteur en capitales). Une scène vide s'ouvre sur une **zone de
+  collage** — le premier geste du prof, c'est coller le texte d'un seul tenant
 
 ### Hooks
 `useAuth` (expose `getAuthHeaders`), `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,
@@ -568,6 +591,39 @@ verticale**. Pour un pied de page, plus simple encore : le sortir de la zone qui
 (`.editeur` / `.editeurScroll` dans `OeuvreBuilder`).
 **Symptôme** : le texte défile sous la barre puis réapparaît au-dessus d'elle.
 *(trois diagnostics erronés avant d'y arriver, 2026-08-16)*
+
+### La sélection d'un `<textarea>` n'existe pas pour `window.getSelection()`
+Un texte sélectionné **dans un champ de formulaire** n'apparaît pas dans la sélection
+du document : `window.getSelection()` y renvoie une sélection vide. Tout geste bâti
+dessus (bouton flottant, menu contextuel) est donc **muet dans un champ**, alors qu'il
+fonctionne sur du texte affiché.
+**Remède** : lire `selectionStart` / `selectionEnd` du champ, sur l'événement
+`onSelect` — le seul qui couvre à la fois le glisser, le **double-clic** et
+Maj+flèches (`indicesDepuisOffsets` dans `src/lib/oeuvre-commentaires.ts`).
+**Corollaire** : un même bouton flottant servant les deux cas doit retenir **d'où
+vient** la sélection. Surveiller `selectionchange` pour le refermer est juste pour le
+texte affiché, et le fait disparaître à l'instant où il se pose dans un champ.
+*(2026-08-17, trois allers-retours)*
+
+### Sélectionner « du mot X au mot Y » : jamais par les extrémités
+Les espaces entre les mots sont des **nœuds de texte nus**. Une sélection qui commence
+ou finit sur une espace — donc presque toutes — n'a aucune extrémité rattachable à un
+mot, et le geste échoue sans rien dire.
+**Remède** : prendre **tous les mots que la plage traverse** (`intersectsNode`, puis
+`compareBoundaryPoints` pour écarter ceux qu'elle ne fait qu'effleurer).
+
+### Un clic qui ouvre un éditeur interdit le double-clic
+Là où un simple clic passe en édition, le **premier** clic ouvre le champ avant que le
+second n'arrive : aucun geste de double-clic ne peut exister sur l'élément au repos.
+Le prévoir dans le champ ouvert, pas au repos.
+
+### Jeter des choix vides DÉCALE le corrigé
+`sanitizeLectureQuiz` supprime les choix vides à l'enregistrement. Sans table de
+correspondance ancien rang → nouveau, la bonne réponse posée après un choix vide
+désigne sa voisine — **silencieusement**. Vaut pour `correctIndex`, `correctIndexes`
+et `matriceCorrect` (dont les **lignes** vides décalent aussi les réponses des lignes
+suivantes). Symétrique du recalcul déjà fait à la suppression manuelle.
+*(le cas est devenu courant depuis que la touche Entrée insère une option)*
 
 ### Les devoirs référencent les classes par NOM
 `devoirs.classes` contient des **noms** de classes, pas des ids. Le renommage d'une
@@ -778,10 +834,23 @@ prof.
   `Habilete`, `habiletesPourAtelier`, `ATELIER_PAR_MODE`.
 - `src/lib/lecture-scoring.ts` — notation d'un questionnaire de lecture et
   agrégation par habileté. Partagé serveur (profil) et client (onglets Évaluation).
+  La **réponse courte** se corrige seule dès que le prof a listé ses
+  `reponsesAcceptees` (tolérance : majuscules, espaces, accents — jamais la
+  ponctuation ni l'orthographe, cf. `normaliserReponseCourte`). C'est la seule
+  question auto-corrigée dont **la note du prof prime** : son corrigé peut être
+  incomplet, un QCM non.
+- `src/lib/choix-liste.ts` — la touche **Entrée** ajoute une option dans les trois
+  constructeurs de questionnaires, et **décale les corrigés** avec elle.
+- `src/lib/oeuvre-commentaires.ts` — le **fluorage commenté** : tokenisation des mots
+  (texte brut ET HTML, sans casser les balises), ancrage, **recalage** après
+  modification du texte, balisage du rendu.
 - `src/types/autoevaluation.ts` / `src/lib/autoeval-scoring.ts` — auto-évaluation.
   **Seules les questions ORDONNÉES se comparent** (sentiment de compétence, échelle 1-5) :
   une émotion ne s'évalue pas, un texte ne se place sur aucun axe. L'écart élève/prof
-  donne « se voit juste / se sous-estime / se surestime ».
+  donne « se voit juste / se sous-estime / se surestime ». Une **échelle à plusieurs
+  items** (`matriceItems` sur un `likert`) se compare **ligne à ligne** — d'où un
+  `EcartQuestion.questionId` de la forme `AE-…#3`, à couper au `#` avant de chercher
+  la question.
 - `src/lib/recherche-scoring.ts` — son pendant pour la recherche : **deux
   volets** (réponses / démarche), QCM recalculés à chaque lecture, note du prof
   prioritaire sur l'automatique, agrégation par habileté, statistiques de

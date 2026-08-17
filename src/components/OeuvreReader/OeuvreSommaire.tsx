@@ -21,7 +21,7 @@
 // son propre retrait, sinon le texte colle au bord (gotcha du projet).
 
 import { useState } from 'react';
-import { etatPastille, type EtatPastille } from '@/types/oeuvre';
+import { COUVERTURE_ID, etatPastille, type EtatPastille } from '@/types/oeuvre';
 import type { OeuvreChapitre, OeuvreProgression } from '@/types/oeuvre';
 import styles from './OeuvreReader.module.css';
 
@@ -39,6 +39,8 @@ interface OeuvreSommaireProps {
   chapitres: OeuvreChapitre[];
   sectionCourante: string | null;
   progression: OeuvreProgression | null;
+  /** Présente = la couverture ouvre le sommaire, comme une page du livre */
+  couverture?: { url: string; fileId: string } | null;
   onAller: (sectionId: string) => void;
 }
 
@@ -46,6 +48,7 @@ export default function OeuvreSommaire({
   chapitres,
   sectionCourante,
   progression,
+  couverture = null,
   onAller,
 }: OeuvreSommaireProps) {
   // Le chapitre ouvert suit l'élève : il change de pièce, le sommaire le suit.
@@ -111,6 +114,29 @@ export default function OeuvreSommaire({
       </div>
 
       <nav className={styles.sommaireNav} aria-label="Navigation dans le texte">
+        {/* ── LA COUVERTURE, PREMIÈRE PAGE ──
+            Elle n'appartient à aucun chapitre et ne porte aucune pastille :
+            il n'y a rien à y faire, on l'ouvre et on la tourne. Mais on doit
+            pouvoir y revenir, d'où sa présence ici plutôt qu'un écran
+            d'accueil qu'on ne retrouve jamais. */}
+        {couverture && (
+          <button
+            type="button"
+            className={`${styles.sommaireItem} ${styles.sommaireCouverture} ${
+              sectionCourante === COUVERTURE_ID ? styles.sommaireItemActif : ''
+            }`}
+            onClick={() => onAller(COUVERTURE_ID)}
+            aria-current={sectionCourante === COUVERTURE_ID ? 'true' : undefined}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={couverture.url} alt="" className={styles.sommaireCouvVignette} />
+            <span className={styles.sommaireLabel}>
+              Couverture
+              <span className={styles.sommaireIndice}>première page</span>
+            </span>
+          </button>
+        )}
+
         {chapitres.map((chapitre) => {
           const deplie = ouvert === chapitre.id;
           const faitesIci = chapitre.sections.filter(

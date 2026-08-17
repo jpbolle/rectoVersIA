@@ -17,6 +17,7 @@ import { habileteLabel, habiletesOfType } from '@/types/didactique';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import styles from './QuestionnaireBuilder.module.css';
+import { focaliserChamp, insererChoix } from '@/lib/choix-liste';
 
 interface QuestionnaireBuilderProps {
   questions: NavigKidQuestion[];
@@ -463,6 +464,23 @@ export default function QuestionnaireBuilder({
                                 updateOption(index, j, e.target.value);
                               }}
                               onClick={(e) => e.stopPropagation()}
+                              data-champ={`nk-${index}-choix-${j}`}
+                              // Entrée ajoute l'option suivante et y va. Les
+                              // cases cochées se décalent avec elle : sans
+                              // cela, la bonne réponse glisserait sur sa
+                              // voisine sans que rien ne le dise.
+                              onKeyDown={(e) => {
+                                if (e.key !== 'Enter') return;
+                                e.preventDefault();
+                                const suite = insererChoix(q.options || [], j, {
+                                  correctIndexes: q.correctes,
+                                });
+                                updateQuestion(index, {
+                                  options: suite.choix,
+                                  correctes: suite.correctIndexes,
+                                });
+                                focaliserChamp(`nk-${index}-choix-${j + 1}`);
+                              }}
                               placeholder={`Option ${String.fromCharCode(65 + j)}`}
                               disabled={disabled}
                             />

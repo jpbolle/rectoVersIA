@@ -17,8 +17,11 @@
 
 import { useMemo } from 'react';
 import {
+  aRepondu,
   echelleDe,
+  estLikertMatrice,
   estQuestion,
+  LIKERT_COLONNES,
   LIKERT_MAX_DEFAUT,
   LIKERT_MIN_DEFAUT,
   LIKERT_NIVEAUX,
@@ -27,7 +30,7 @@ import {
 } from '@/types/autoevaluation';
 import type { AutoEvalAnswer, AutoEvalQuestion, AutoEvalQuestionnaire } from '@/types/autoevaluation';
 import { MatriceField } from '@/components/QuestionInteractions';
-import { LUCIDITE_LABELS, estComparable, position } from '@/lib/autoeval-scoring';
+import { LUCIDITE_LABELS, comparer, estComparable, position } from '@/lib/autoeval-scoring';
 import type { Lucidite } from '@/lib/autoeval-scoring';
 import styles from './AutoEvalReview.module.css';
 
@@ -54,7 +57,9 @@ export default function AutoEvalReview({
 
   const questions = quiz.questions ?? [];
   const comparables = questions.filter(estComparable);
-  const faites = comparables.filter((q) => position(q, prof[q.id]) !== null).length;
+  // « Le prof s'est-il prononcé ? » — via aRepondu, seul à connaître les
+  // échelles à items (toutes leurs lignes, ou rien).
+  const faites = comparables.filter((q) => aRepondu(q, prof[q.id])).length;
 
   // ── Rendu d'une échelle : la même pour le prof et pour l'élève ──
 
@@ -86,6 +91,29 @@ export default function AutoEvalReview({
               </button>
             );
           })}
+        </div>
+      );
+    }
+
+    // Une échelle à items se donne en tableau — le même que l'élève a rempli,
+    // sans quoi le prof se prononcerait sur une forme qu'il n'a pas vue.
+    if (q.type === 'likert' && estLikertMatrice(q)) {
+      return (
+        <div className={styles.likert}>
+          <div className={styles.likertBornes}>
+            <span>1 — {q.likertMin || LIKERT_MIN_DEFAUT}</span>
+            <span>
+              {LIKERT_NIVEAUX} — {q.likertMax || LIKERT_MAX_DEFAUT}
+            </span>
+          </div>
+          <MatriceField
+            items={q.matriceItems ?? []}
+            colonnes={LIKERT_COLONNES}
+            valeurs={valeur?.matrice ?? {}}
+            onChange={(matrice) => onProfAnswerChange(q.id, { matrice })}
+            disabled={!modifiable}
+            nomGroupe={`${modifiable ? 'prof' : 'eleve'}-${q.id}`}
+          />
         </div>
       );
     }
@@ -214,12 +242,24 @@ export default function AutoEvalReview({
 
           const numero = questions.slice(0, index).filter(estQuestion).length + 1;
           const comparable = estComparable(q);
+          // Une échelle à items n'a pas UNE position mais une par ligne : le
+          // regard est donné quand toutes le sont, et le verdict devient un
+          // décompte (voir bilanLigne plus bas).
+          const matrice = estLikertMatrice(q);
           const pProf = position(q, prof[q.id]);
           const pEleve = position(q, eleve[q.id]);
-          const devoile = pProf !== null;
-          const ecart = devoile && pEleve !== null ? pEleve - pProf : null;
+          const devoile = matrice ? aRepondu(q, prof[q.id]) : pProf !== null;
+          const eleveARepondu = matrice ? aRepondu(q, eleve[q.id]) : pEleve !== null;
+          const ecart =
+            !matrice && devoile && pEleve !== null && pProf !== null ? pEleve - pProf : null;
           const lucidite: Lucidite | null =
             ecart === null ? null : ecart === 0 ? 'juste' : ecart < 0 ? 'sousEstime' : 'surestime';
+          // Le décompte ligne à ligne d'une échelle à items — calculé par le
+          // même comparateur que le bilan, jamais par une seconde règle.
+          const bilanLigne =
+            matrice && devoile && eleveARepondu
+              ? comparer({ questions: [q] }, eleve, prof)
+              : null;
 
           return (
             <div key={q.id} className={styles.bloc}>
@@ -245,9 +285,18 @@ export default function AutoEvalReview({
                   <div className={`${styles.colonne} ${devoile ? '' : styles.colonneVoilee}`}>
                     <span className={styles.colonneTitre}>L’élève</span>
                     {devoile ? (
-                      pEleve !== null ? (
+                      eleveARepondu ? (
                         <>
                           {rendreEchelle(q, eleve[q.id], false)}
+                          {bilanLigne && bilanLigne.comparees > 0 && (
+                            <span className={styles.verdict}>
+                              {bilanLigne.justes} juste{bilanLigne.justes > 1 ? 's' : ''} ·{' '}
+                              {bilanLigne.sousEstimations} sous-estimation
+                              {bilanLigne.sousEstimations > 1 ? 's' : ''} ·{' '}
+                              {bilanLigne.surestimations} surestimation
+                              {bilanLigne.surestimations > 1 ? 's' : ''}
+                            </span>
+                          )}
                           {lucidite && (
                             <span className={`${styles.verdict} ${styles[lucidite]}`}>
                               {lucidite === 'juste' && '✓ '}

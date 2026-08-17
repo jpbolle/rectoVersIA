@@ -103,6 +103,12 @@ export interface AutoEvalQuestion {
   // Matrice : les lignes. Les colonnes réutilisent `choices` — c'est le même
   // éditeur que le QCM, et surtout la même chose : des réponses partagées.
   // Ici aucune colonne n'est « juste » : ce sont des positions.
+  //
+  // ⚠️ SERT AUSSI À L'ÉCHELLE DE 1 À 5 (dimension « plusieurs items », ajoutée
+  // le 2026-08-17) : une échelle qui porte des items devient une matrice dont
+  // les colonnes sont 1…5. Même champ, parce que c'est la même chose — des
+  // lignes qui partagent une réponse. Absent = échelle simple, au curseur :
+  // les questionnaires déjà écrits gardent exactement leur comportement.
   matriceItems?: string[];
   // Likert : les deux bornes de l'échelle
   likertMin?: string;
@@ -159,6 +165,24 @@ export function estQuestion(q: AutoEvalQuestion): boolean {
   return q.type !== 'info';
 }
 
+/**
+ * L'échelle de 1 à 5 porte-t-elle plusieurs items ?
+ *
+ * C'est au QCM à réponses multiples ce que la matrice est au QCM : la même
+ * question, posée sur plusieurs lignes. Une échelle à items s'affiche donc en
+ * tableau (MatriceField) plutôt qu'au curseur — et se compare LIGNE À LIGNE
+ * dans le bilan de lucidité, chaque ligne étant une position ordonnée à part
+ * entière (voir autoeval-scoring.ts).
+ */
+export function estLikertMatrice(q: AutoEvalQuestion): boolean {
+  return q.type === 'likert' && (q.matriceItems?.length ?? 0) > 0;
+}
+
+/** Les colonnes d'une échelle servie en tableau : « 1 » … « 5 ». */
+export const LIKERT_COLONNES: string[] = Array.from({ length: LIKERT_NIVEAUX }, (_, i) =>
+  String(i + 1)
+);
+
 // Réponse donnée ou non — sert au décompte de progression et à la remise
 export function aRepondu(q: AutoEvalQuestion, a: AutoEvalAnswer | undefined): boolean {
   if (!estQuestion(q)) return true;
@@ -176,6 +200,11 @@ export function aRepondu(q: AutoEvalQuestion, a: AutoEvalAnswer | undefined): bo
     case 'humeur':
       return !!a.echelon;
     case 'likert':
+      // Une échelle à items suit la règle de la matrice : toutes les lignes,
+      // ou la question n'est pas répondue.
+      if (estLikertMatrice(q)) {
+        return (q.matriceItems ?? []).every((_, i) => typeof a.matrice?.[i] === 'number');
+      }
       return typeof a.likert === 'number' && a.likert > 0;
     case 'texte-court':
       return !!a.text?.trim();

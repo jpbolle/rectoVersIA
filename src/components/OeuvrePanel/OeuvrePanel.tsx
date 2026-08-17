@@ -220,12 +220,6 @@ export default function OeuvrePanel() {
 
   return (
     <div className={styles.panneau}>
-      <p className={styles.intro}>
-        Une œuvre s’encode <strong>une fois</strong> et se donne à autant de classes qu’on veut.
-        Pour qu’un collègue accède au <strong>même</strong> livre, partage-la ; pour qu’il reparte
-        avec sa propre version, il la duplique.
-      </p>
-
       {message && (
         <div className={styles.message} onClick={() => setMessage(null)} role="status">
           {message}
@@ -240,9 +234,6 @@ export default function OeuvrePanel() {
           <section className={styles.groupe}>
             <div className={styles.groupeEntete}>
               <h2 className={styles.groupeTitre}>Mes œuvres</h2>
-              <p className={styles.groupeAide}>
-                Une œuvre s’encode une fois et se donne à autant de classes qu’on veut
-              </p>
             </div>
             {grille(paniers.miennes, { mienne: true, avecCarteAjout: true })}
           </section>

@@ -14,6 +14,7 @@ import { verifyAuth } from '@/lib/api-auth';
 import {
   blocsPourFirestore,
   chapitresPourFirestore,
+  commentairesPourFirestore,
   docToOeuvre,
   docToSection,
 } from '@/lib/oeuvre-server';
@@ -91,7 +92,12 @@ export async function PUT(
       groupe: typeof body.groupe === 'string' ? body.groupe.trim() : '',
       chapeau: typeof body.chapeau === 'string' ? body.chapeau : '',
       colonnes: body.colonnes === 2 ? 2 : 1,
+      // Quel espace s'ouvre en premier — jamais `undefined` (Firestore refuse)
+      facesInversees: body.facesInversees === true,
       blocs,
+      // Le fluorage commenté — recalé côté client avant l'envoi
+      // (recalerCommentaires) : ici on ne fait que nettoyer.
+      commentaires: commentairesPourFirestore(body.commentaires),
       questions: quiz?.questions || [],
     };
 

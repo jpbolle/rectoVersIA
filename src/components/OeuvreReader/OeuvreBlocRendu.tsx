@@ -11,18 +11,52 @@
 // l'espace multimédia : ce qui change, c'est seulement l'endroit où le prof
 // l'a rangé.
 
-import type { OeuvreBloc } from '@/types/oeuvre';
+import type { OeuvreBloc, OeuvreCommentaire } from '@/types/oeuvre';
 import { youtubeEmbedUrl } from '@/lib/youtube';
+import BlocCommente from './BlocCommente';
 import styles from './OeuvreReader.module.css';
 
-export default function OeuvreBlocRendu({ bloc }: { bloc: OeuvreBloc }) {
+interface Props {
+  bloc: OeuvreBloc;
+  /**
+   * Le fluorage commenté. Absent ou vide : le rendu ne change pas d'un iota
+   * et ne coûte rien — les 67 scènes de Molière n'en portent aucun.
+   */
+  commentaires?: OeuvreCommentaire[];
+  onCommentaire?: (id: string) => void;
+}
+
+export default function OeuvreBlocRendu({ bloc, commentaires, onCommentaire }: Props) {
+  const commentes = (commentaires ?? []).filter((c) => c.blocId === bloc.id && !c.orphelin);
+
   if (bloc.type === 'texte') {
+    if (commentes.length > 0) {
+      return (
+        <BlocCommente
+          bloc={bloc}
+          commentaires={commentes}
+          onCommentaire={onCommentaire}
+          className={styles.prose}
+        />
+      );
+    }
     return (
       <div className={styles.prose} dangerouslySetInnerHTML={{ __html: bloc.contenu || '' }} />
     );
   }
 
   if (bloc.type === 'vers') {
+    if (commentes.length > 0) {
+      return (
+        <BlocCommente
+          bloc={bloc}
+          commentaires={commentes}
+          onCommentaire={onCommentaire}
+          className={styles.tirade}
+          ligneClassName={styles.vers}
+        />
+      );
+    }
     return (
       <div className={styles.tirade}>
         {bloc.locuteur && <p className={styles.locuteur}>{bloc.locuteur}</p>}
