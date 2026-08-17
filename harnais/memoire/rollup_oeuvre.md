@@ -603,3 +603,34 @@ une section entière.
 - [ ] Les seuils de la notification (7 jours ? marge de 2 ?) — non validés.
 - [ ] Le fluorage commenté ne vaut que pour les blocs **extrait** et **bloc
       informatif** — un média n'a pas de mots. Non demandé, à confirmer.
+
+---
+
+## Session du 2026-08-17 (fin) — la vidéo invisible au verso
+
+**Symptôme** : côté élève, l'« Espace multimédia » d'une scène affichait ses
+images mais **rien** à la place de la vidéo (un trait résiduel). Côté prof,
+dans l'aperçu du constructeur, la même vidéo s'affichait. La console crachait
+des messages Drive (`frame-ancestors`), qui ont **envoyé le diagnostic dans le
+décor** pendant un bon moment.
+
+**Cause** : `.media` (la figure d'un média) porte `margin: 24px auto` pour se
+centrer. Chez l'élève elle vit dans `.verso`, un **flex en colonne** — et une
+marge horizontale `auto` y **annule l'étirement** de l'enfant, qui se réduit
+alors à la largeur de son contenu. Une image en a une ; un cadre vidéo, dont le
+seul enfant est un `<iframe>` en position absolue, n'en a **aucune** → largeur
+0, puis hauteur 0 par l'`aspect-ratio`. L'aperçu prof, lui, utilise un `<div>`
+ordinaire : la figure s'y étire normalement. **Composant partagé, conteneurs
+différents.**
+
+**Correction** : `width: 100%` explicite sur `.media`
+(`OeuvreReader.module.css`). Le **bloc « contenu interactif »** souffrait du
+même défaut sans que personne l'ait encore vu — il aurait été invisible au
+verso lui aussi.
+
+**Vérifié à l'écran le 2026-08-17 sur localhost.** ⚠️ Le test avait d'abord été
+fait **sur la production**, où la correction n'était évidemment pas — d'où un
+faux « ça ne marche toujours pas ».
+
+Deux gotchas consignés dans `init.md` §7 : la marge automatique dans un flex,
+et le bruit permanent du lecteur Drive dans la console.

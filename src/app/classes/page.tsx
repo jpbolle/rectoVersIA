@@ -80,7 +80,7 @@ export default function ClassesPage() {
     if (!isAuthenticated) {
       router.replace('/login');
     } else if (role !== 'prof') {
-      router.replace('/activites');
+      router.replace('/accueil');
     }
   }, [isAuthenticated, authLoading, role, router]);
 

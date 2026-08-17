@@ -37,10 +37,11 @@ export default function LoginPage() {
     // Pour l'élève, attendre que ses classes soient chargées
     if (role === 'eleve' && classesLoading) return;
 
-    // Élève avec des classes → rediriger
+    // Élève avec des classes → rediriger vers SA page d'accueil (retards,
+    // échéances, ceintures) — pas vers la liste de ses activités.
     if (role === 'eleve' && classes.length > 0) {
       setRedirecting(true);
-      router.replace('/activites');
+      router.replace('/accueil');
       return;
     }
 

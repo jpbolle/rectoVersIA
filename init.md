@@ -369,7 +369,10 @@ interface Questionnaire {
 ### Parcours élève
 - Nouvel élève : login → popup « Rejoindre une classe » (3 tentatives max)
 - Élève sans classe : redirigé vers `/login` depuis toutes les pages protégées
-- Page `/` : prof → `/dashboard`, élève → `/login`
+- **Point d'entrée élève = `/accueil`** (2026-08-17). Trois chemins y mènent et doivent
+  rester d'accord : `/` (page racine), `/login` (après la connexion Google — c'est LUI
+  qui décide en pratique) et l'éjection d'un élève d'une page prof
+  (`/grilles`, `/classes`, `/archives`). Prof : `/dashboard` dans les trois cas.
 
 ---
 
@@ -665,6 +668,28 @@ complémentaire** : tout le reste du cercle.
 **Symptôme** : une couronne de 240° qui s'affiche en 120° du côté opposé, ou un
 tracé qui remplit l'écran.
 **Règle** : avec un repère mathématique, `sweep = 0`. Voir `CeinturesRoue`.
+*(2026-08-17)*
+
+### Une marge automatique annule l'étirement dans un flex en colonne
+Un enfant de flex s'étire par défaut sur toute la largeur (`align-items: stretch`).
+**Une marge horizontale `auto` — celle qu'on met pour centrer — annule cet
+étirement** : l'enfant se réduit à la largeur de son contenu. Invisible tant que le
+contenu a une largeur propre (une image, du texte) ; **fatal** dès que le seul enfant
+est un `<iframe>` en position absolue : largeur 0, puis hauteur 0 par l'`aspect-ratio`.
+**Symptôme** : la vidéo disparaît d'un côté de l'app et s'affiche de l'autre — le
+conteneur diffère (`.verso` en flex chez l'élève, un `<div>` ordinaire dans l'aperçu
+prof), pas le composant, qui est partagé.
+**Règle** : une figure média centrée porte une `width` **explicite**, pas seulement
+`max-width`. Voir `.media` dans `OeuvreReader.module.css`.
+*(2026-08-17 — cherché longtemps du côté de Drive : sa console crache
+`frame-ancestors` même quand la vidéo marche. Voir le gotcha suivant.)*
+
+### Le lecteur Drive se plaint TOUJOURS dans la console
+Un `drive.google.com/file/d/…/preview` embarqué produit systématiquement
+`Framing 'https://accounts.google.com/' violates … frame-ancestors` — ce sont les
+cadres internes de Drive, pas notre page. **Ces messages apparaissent aussi quand la
+vidéo s'affiche normalement** : ils ne prouvent rien et ne se corrigent pas.
+Pour trancher : une page HTML isolée avec le seul `<iframe>` (hors de l'app).
 *(2026-08-17)*
 
 ### `position: sticky` : la marge intérieure du conteneur décale le calage

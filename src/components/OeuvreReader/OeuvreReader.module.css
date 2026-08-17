@@ -258,6 +258,14 @@
    coincée dans une demi-colonne serait inregardable. */
 .media {
   margin: 24px auto;
+  /* `width` EXPLICITE, et pas seulement `max-width` : au verso, la figure est
+     un enfant de `.verso`, qui est un flex en colonne. Or une marge horizontale
+     automatique (le `auto` ci-dessus, qui centre) annule l'étirement par
+     défaut d'un enfant de flex : la figure se réduit alors à la largeur de son
+     contenu. Une image en a une, un cadre vidéo ou une intégration n'en ont
+     pas (leur seul enfant est un iframe en position absolue) — ils tombaient
+     donc à 0 de large, puis à 0 de haut par le rapport 16/9. */
+  width: 100%;
   max-width: 640px;
   column-span: all;
   text-align: center;
