@@ -891,12 +891,15 @@
   overflow: hidden;
 }
 
+/* En-tête au style des popups de l'application (fond retiré + filet), et NON
+   le surlignage jaune du texte : la popup n'est pas un morceau de page, c'est
+   une fenêtre. Le passage y est cité, le commentaire vient dessous. */
 .cmtEntete {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 14px 10px 16px;
-  background: linear-gradient(transparent 55%, #ffe680 55%);
+  padding: 14px 16px;
+  background: var(--c-bg-element);
   border-bottom: 1px solid var(--c-border);
 }
 
@@ -904,8 +907,23 @@
   flex: 1;
   font-family: var(--c-font-title);
   font-size: 15px;
-  line-height: 1.35;
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.4;
   color: var(--c-text);
+}
+
+/* Ce que dit l'en-tête : un passage cité, pas un titre de fenêtre */
+.cmtLabel {
+  display: block;
+  font-family: var(--c-font-body);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+  margin-bottom: 4px;
 }
 
 .cmtFermer {
@@ -937,3 +955,32 @@
 }
 .verdictJuste { color: var(--c-success); }
 .verdictFaux { color: var(--c-danger); font-weight: 500; }
+
+/* ── Bloc « intégration » : une page tierce embarquée ──
+   Contrairement à la vidéo, une frise ou un Genially n'a pas de proportion
+   fixe : sa hauteur est déclarée par le prof (défaut 520 px). */
+.cadreIntegration {
+  width: 100%;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  overflow: hidden;
+  background: var(--c-bg-element);
+}
+
+.cadreIntegration iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.integrationRefus {
+  margin: 0;
+  padding: 18px;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+  background: var(--c-bg-element);
+  border: 1px dashed var(--c-border);
+  border-radius: var(--c-radius);
+}

@@ -170,7 +170,7 @@ export default function ActivitesPage() {
         })()}
       </main>
 
-      <Footer version="2.0" />
+      <Footer />
     </div>
   );
 }

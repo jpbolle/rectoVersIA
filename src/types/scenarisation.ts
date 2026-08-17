@@ -82,6 +82,26 @@ export interface ModuleDidactique {
   periodeAnnee: PeriodeAnnee;
   objectifs: ObjectifsModule;
   activites: ModuleActivite[];
+  // ─── Propre au genre « certification » ───
+  // La scénarisation est le REGISTRE des certifications : beaucoup d'entre
+  // elles ne passent pas par l'application (épreuve orale, dossier papier) et
+  // n'existeraient nulle part ailleurs.
+  //
+  // `uaaCertifiees` est distinct du champ hérité `uaa` : moduleUaa() fait
+  // primer les UAA des activités, ce qui est juste pour un module mais faux
+  // pour une certification, où la déclaration du prof doit gagner.
+  uaaCertifiees?: string[];
+  ceinture?: string;      // id de CEINTURES_ATTRIBUABLES (jamais la blanche)
+  ponderation?: number;   // poids en % du total de l'UAA (défaut 100)
+  // Toutes les certifications ne se notent pas : certaines accordent leur
+  // ceinture au seul fait d'avoir été FAITES (un carnet de lecture tenu, un
+  // exposé présenté). Absent = 'note', ce qui laisse intactes les
+  // certifications encodées avant ce champ.
+  //
+  // Une certification 'fait' n'entre PAS dans le pourcentage de l'UAA — ni au
+  // numérateur ni dans la somme des poids : un « fait » n'est pas un 100 %, et
+  // le compter comme tel gonflerait la moyenne de l'élève.
+  cotation?: 'note' | 'fait';
   // ─── Valeurs HÉRITÉES ───
   // Saisies au module avant que la didactique ne descende sur l'activité. Plus
   // jamais éditées, mais relues : un module sans activité les affiche encore,
@@ -150,6 +170,10 @@ export interface Scenarisation {
   // (semaines × heuresParSemaine ÷ dureePeriodeMin)
   dureePeriodeMin: number;  // 90
   heuresParSemaine: number; // 5
+  // Classes concernées, par NOM — comme devoirs.classes (⚠ le renommage d'une
+  // classe doit être propagé, cf. PATCH /api/classes/[id]). Sans ce lien,
+  // l'app ne sait pas quels élèves sont concernés par une certification.
+  classes?: string[];
   semaines: Record<string, number>; // { 'sept-oct': 9, … }
   chapitres: ChapitreDidactique[];
   profId: string;
@@ -227,6 +251,63 @@ export function moduleOutils(m: ModuleDidactique): string[] {
 
 export function genreDe(m: ModuleDidactique): GenreModule {
   return m.genre ?? 'module';
+}
+
+// ─── Certifications ───
+
+export interface CertificationSituee {
+  chapitreId: string;
+  chapitreTitre: string;
+  module: ModuleDidactique;
+}
+
+// Toutes les certifications d'une scénarisation, dans l'ordre de lecture.
+// Elles vivent dans la liste des modules (genre `certification`) : c'est ce
+// qui leur permet de s'intercaler entre deux modules.
+export function certificationsDe(scen: Scenarisation): CertificationSituee[] {
+  const out: CertificationSituee[] = [];
+  (scen.chapitres ?? []).forEach((c) => {
+    c.modules.forEach((m) => {
+      if (genreDe(m) === 'certification') {
+        out.push({ chapitreId: c.id, chapitreTitre: c.titre, module: m });
+      }
+    });
+  });
+  return out;
+}
+
+// Les UAA qu'une certification certifie. Repli sur les UAA des activités
+// rattachées tant que le prof n'a rien déclaré : une certification encodée
+// avant ce champ n'apparaît pas vide.
+export function uaaCertifiees(m: ModuleDidactique): string[] {
+  if (m.uaaCertifiees?.length) return m.uaaCertifiees;
+  return moduleUaa(m);
+}
+
+// Une certification est-elle notée, ou accordée au seul fait d'être faite ?
+export function estCotee(m: ModuleDidactique): boolean {
+  return (m.cotation ?? 'note') === 'note';
+}
+
+export function ponderationDe(m: ModuleDidactique): number {
+  if (!estCotee(m)) return 0;
+  const p = m.ponderation;
+  return typeof p === 'number' && p > 0 ? p : 100;
+}
+
+// Somme des poids déclarés pour une UAA — sert à signaler un encodage
+// incomplet (« 30 % + 50 % = 80 % ») sans jamais l'interdire : le prof encode
+// son année au fil des mois, la somme ne fait 100 % qu'à la fin.
+// Les certifications non cotées en sont absentes : elles ne pèsent rien.
+export function ponderationUaa(scen: Scenarisation, uaa: string): number {
+  return certificationsDe(scen)
+    .filter((c) => estCotee(c.module) && uaaCertifiees(c.module).includes(uaa))
+    .reduce((s, c) => s + ponderationDe(c.module), 0);
+}
+
+// L'activité Recto-versIA dont une certification tire sa note, s'il y en a une
+export function devoirCertificatif(m: ModuleDidactique): string | null {
+  return m.activites.find((a) => a.devoirId)?.devoirId ?? null;
 }
 
 // Une SUGGESTION est une note pour l'année suivante : elle ne consomme aucune
@@ -335,6 +416,10 @@ export function nouveauModule(
     periodeAnnee,
     objectifs: { concepts: '', gestesCognitifs: [], gestesSavoirEtre: [] },
     activites: [],
+    // Une certification neuve pèse pour tout le total de ses UAA : c'est le cas
+    // le plus fréquent, et le prof ne descend le poids que s'il en ajoute une
+    // seconde sur la même UAA.
+    ...(genre === 'certification' ? { uaaCertifiees: [], ceinture: '', ponderation: 100 } : {}),
   };
 }
 
@@ -362,6 +447,60 @@ export function nouveauChapitre(rang = 0): ChapitreDidactique {
     objectifsGeneraux: [],
     modules: [],
     suggestions: [],
+  };
+}
+
+// Les années scolaires proposées autour d'une année de référence : la suivante
+// (on prépare l'année d'avance), celle-ci, et les deux précédentes (on relit ce
+// qu'on a fait). Partagé par la popup de création et le bandeau du parcours —
+// deux listes divergentes laisseraient un parcours inaccessible dans l'une.
+export function anneesVoisines(reference: string): string[] {
+  const debut = Number(reference.slice(0, 4));
+  if (!Number.isFinite(debut)) return [reference];
+  return [debut + 1, debut, debut - 1, debut - 2].map((a) => `${a}-${a + 1}`);
+}
+
+// ─── Dupliquer un parcours ───
+//
+// Sert à préparer l'année suivante à partir de celle qui s'achève : toute la
+// structure et toute la didactique sont reprises, y compris les CRITIQUES
+// (c'est justement la mémoire qu'on vient chercher) et la déclaration des
+// certifications (UAA, ceinture, poids).
+//
+// Deux choses ne se copient PAS, et ce n'est pas un oubli :
+//  - les IDENTIFIANTS, tous régénérés. Une note de certification est classée
+//    par `moduleId` seul : deux parcours portant le même id de module verraient
+//    leurs notes d'élèves se confondre.
+//  - les LIENS vers les activités Recto-versIA (`devoirId`) et les CLASSES.
+//    Un devoir n'appartient qu'à un parcours (`devoir.scenarisationRef` est
+//    unique) et une classe ne repasse pas les mêmes certifications deux fois.
+export function dupliquerScenarisation(
+  scen: Scenarisation,
+  nom: string,
+  anneeScolaire: string
+): Omit<Scenarisation, 'id' | 'profId' | 'createdAt' | 'updatedAt'> {
+  return {
+    nom,
+    anneeScolaire,
+    dureePeriodeMin: scen.dureePeriodeMin,
+    heuresParSemaine: scen.heuresParSemaine,
+    semaines: { ...scen.semaines },
+    classes: [],
+    archive: false,
+    chapitres: scen.chapitres.map((c) => ({
+      ...c,
+      id: rid('CHA'),
+      modules: c.modules.map((m) => ({
+        ...m,
+        id: rid('MOD'),
+        activites: m.activites.map((a) => ({
+          ...a,
+          id: rid('ACT'),
+          devoirId: null,
+          typeTravail: null,
+        })),
+      })),
+    })),
   };
 }
 

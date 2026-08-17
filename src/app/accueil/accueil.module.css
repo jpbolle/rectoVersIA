@@ -1,0 +1,217 @@
+/* Page d'ouverture de l'élève — même armature que /activites (header fixe de
+   180 px, contenu centré à 1200 px). */
+
+.pageWrapper {
+  min-height: 100vh;
+  background: var(--c-bg);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.ready {
+  opacity: 1;
+  visibility: visible;
+}
+
+.main {
+  flex: 1;
+  margin: 180px auto 0;
+  padding: 40px 20px 60px;
+  max-width: 1200px;
+  width: 100%;
+}
+
+.hello {
+  font-family: var(--c-font-title);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--c-primary);
+  margin: 0 0 4px;
+}
+
+.helloSub {
+  font-size: 14px;
+  color: var(--c-text-secondary);
+  margin: 0 0 26px;
+}
+
+/* ── Les trois blocs ── */
+
+.blocs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 36px;
+}
+
+.bloc {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Le retard est la seule chose de cette page qui appelle une action tout de
+   suite : elle est la seule à porter une couleur d'alerte. */
+.blocRetard {
+  border-color: rgba(180, 64, 64, 0.35);
+  background: rgba(180, 64, 64, 0.04);
+}
+
+.blocHead {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding-bottom: 11px;
+  margin-bottom: 5px;
+  border-bottom: 1.5px solid var(--c-border);
+}
+
+.blocTitre {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text);
+  margin: 0;
+}
+
+.blocCount {
+  margin-left: auto;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-primary);
+}
+
+.blocRetard .blocCount {
+  color: var(--c-danger);
+}
+
+.ligne {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 0;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-text);
+  text-decoration: none;
+}
+
+.ligne:last-of-type {
+  border-bottom: none;
+}
+
+.ligne:hover .ligneTitre {
+  color: var(--c-primary);
+  text-decoration: underline;
+}
+
+.ligneTitre {
+  flex: 1;
+  min-width: 0;
+}
+
+/* L'atelier dit de quoi il s'agit sans allonger l'intitulé */
+.ligneAtelier {
+  display: block;
+  font-size: 11px;
+  color: var(--c-text-muted);
+  margin-top: 1px;
+}
+
+.ligneMeta {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  white-space: nowrap;
+}
+
+.ligneRetard {
+  color: var(--c-danger);
+  font-weight: 600;
+}
+
+.pastille {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.blocVide {
+  font-size: 13px;
+  color: var(--c-text-muted);
+  padding: 10px 0;
+  margin: 0;
+}
+
+.blocLien {
+  margin-top: auto;
+  padding-top: 11px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-primary);
+  text-decoration: none;
+}
+
+.blocLien:hover {
+  text-decoration: underline;
+}
+
+/* ── La roue ── */
+
+.roue {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  overflow: hidden;
+}
+
+.roueHead {
+  background: var(--c-primary);
+  color: #fff;
+  padding: 16px 24px;
+}
+
+.roueTitre {
+  font-family: var(--c-font-title);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.roueSub {
+  font-size: 13px;
+  opacity: 0.85;
+  margin: 3px 0 0;
+  line-height: 1.5;
+}
+
+.roueBody {
+  padding: 8px 16px 4px;
+}
+
+.roueNote {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  padding: 0 24px 16px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.lien {
+  color: var(--c-primary);
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .blocs {
+    grid-template-columns: 1fr;
+  }
+}

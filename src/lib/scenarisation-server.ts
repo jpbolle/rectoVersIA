@@ -6,6 +6,8 @@
 // les `?? null` systématiques.
 
 import { PERIODE_IDS } from '@/types/scenarisation';
+import { CEINTURE_DEPART, CEINTURE_IDS } from '@/types/ceintures';
+import { calculateSchoolYear } from '@/lib/auth-utils';
 import type {
   Certification,
   ChapitreDidactique,
@@ -83,6 +85,28 @@ function sanitizeActivite(raw: unknown, i: number): ModuleActivite | null {
 
 const GENRES_VALIDES = ['module', 'certification', 'suggestion'];
 
+// Chaîne vide admise : le prof peut déclarer une certification avant de savoir
+// quelle ceinture elle accordera. La BLANCHE est refusée : elle est acquise dès
+// l'entrée dans le parcours, aucune certification ne l'accorde.
+function ceinture(v: unknown): string {
+  if (typeof v !== 'string' || v === CEINTURE_DEPART) return '';
+  return CEINTURE_IDS.includes(v) ? v : '';
+}
+
+// Notée, ou accordée au seul fait d'être faite. Absent = 'note' : les
+// certifications encodées avant ce champ gardent leur comportement.
+function cotation(v: unknown): 'note' | 'fait' {
+  return v === 'fait' ? 'fait' : 'note';
+}
+
+// Poids en % du total de l'UAA. Firestore refuse `undefined` et 0 n'aurait
+// aucun sens (une certification qui ne compte pas) : on retombe sur 100.
+function ponderation(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  if (!Number.isFinite(n) || n <= 0) return 100;
+  return Math.min(100, Math.round(n));
+}
+
 function genre(v: unknown): ModuleDidactique['genre'] {
   return typeof v === 'string' && GENRES_VALIDES.includes(v)
     ? (v as ModuleDidactique['genre'])
@@ -96,11 +120,12 @@ function sanitizeModule(raw: unknown, i: number): ModuleDidactique | null {
   const activites = Array.isArray(m.activites)
     ? m.activites.map(sanitizeActivite).filter((a): a is ModuleActivite => a !== null)
     : [];
+  const g = genre(m.genre);
   return {
     id: texte(m.id, 60) || `MOD-${i}`,
     titre: texte(m.titre, MAX_TITRE),
     // Module, certification ou suggestion : trois genres, une seule liste
-    genre: genre(m.genre),
+    genre: g,
     periodeAnnee: periode(m.periodeAnnee) as ModuleDidactique['periodeAnnee'],
     objectifs: {
       concepts: texte(obj.concepts),
@@ -122,6 +147,17 @@ function sanitizeModule(raw: unknown, i: number): ModuleDidactique | null {
     uaa: activites.length ? [] : ids(m.uaa),
     habiletes: activites.length ? [] : ids(m.habiletes, MAX_TITRE),
     outils: activites.length ? '' : texte(m.outils, MAX_TITRE),
+    // Propre à la certification : ce qu'elle certifie, la ceinture qu'elle
+    // accorde et son poids dans l'UAA. Un module ordinaire ne les porte pas —
+    // les écrire à vide ne ferait qu'alourdir le document.
+    ...(g === 'certification'
+      ? {
+          uaaCertifiees: ids(m.uaaCertifiees, 10),
+          ceinture: ceinture(m.ceinture),
+          ponderation: ponderation(m.ponderation),
+          cotation: cotation(m.cotation),
+        }
+      : {}),
   };
 }
 
@@ -183,11 +219,20 @@ function sanitizeChapitre(raw: unknown, i: number): ChapitreDidactique | null {
   };
 }
 
-// Champs modifiables d'une scénarisation. `id`, `profId`, `anneeScolaire` et
-// les horodatages restent la propriété du serveur.
+// Champs modifiables d'une scénarisation. `id`, `profId` et les horodatages
+// restent la propriété du serveur.
+//
+// L'ANNÉE SCOLAIRE, elle, est saisie par le prof, pas déduite de la date : « Français
+// — 4e générale » revient chaque année, et c'est elle qui distingue les copies.
+// Une valeur hors format retombe sur l'année en cours plutôt que d'être écrite
+// telle quelle — elle sert de filtre, elle ne peut pas être libre.
+function anneeScolaire(v: unknown): string {
+  return typeof v === 'string' && /^\d{4}-\d{4}$/.test(v) ? v : calculateSchoolYear();
+}
+
 export function sanitizeScenarisation(
   body: unknown
-): Omit<Scenarisation, 'id' | 'profId' | 'anneeScolaire' | 'createdAt' | 'updatedAt'> {
+): Omit<Scenarisation, 'id' | 'profId' | 'createdAt' | 'updatedAt'> {
   const b = (body ?? {}) as Record<string, unknown>;
 
   const semaines: Record<string, number> = {};
@@ -198,11 +243,15 @@ export function sanitizeScenarisation(
 
   return {
     nom: texte(b.nom, MAX_TITRE) || 'Scénarisation sans nom',
+    anneeScolaire: anneeScolaire(b.anneeScolaire),
     // Ni objectif général ni certification au niveau du parcours : ils ne sont
     // plus écrits, et disparaissent des documents antérieurs à leur prochaine
     // réécriture (décision de JP, 2026-08-14)
     dureePeriodeMin: nombre(b.dureePeriodeMin, 90, 300) || 90,
     heuresParSemaine: nombre(b.heuresParSemaine, 5, 40),
+    // Classes concernées, par NOM (comme devoirs.classes) : c'est ce qui dit
+    // quels élèves seront notés aux certifications du parcours.
+    classes: ids(b.classes, MAX_TITRE),
     semaines,
     chapitres: Array.isArray(b.chapitres)
       ? b.chapitres.map(sanitizeChapitre).filter((c): c is ChapitreDidactique => c !== null)

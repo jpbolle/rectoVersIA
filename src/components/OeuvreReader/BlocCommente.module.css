@@ -8,11 +8,18 @@
   display: inline;
 }
 
+/* Le surlignage enveloppe la SUITE des mots d'un commentaire, espaces compris
+   (voir baliserContenu) : il n'y a donc plus qu'un fond par passage, continu,
+   au lieu d'un fond par mot séparé par des blancs.
+   `box-decoration-break: clone` rend les extrémités arrondies sur CHAQUE ligne
+   quand le passage revient à la ligne — sinon le retour est coupé net. */
 .marque {
   background: linear-gradient(transparent 58%, #ffe680 58%);
-  border-radius: 2px;
+  border-radius: 3px;
   cursor: pointer;
-  padding: 0 1px;
+  padding: 0 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
   transition: background-color 0.12s;
 }
 .marque:hover {

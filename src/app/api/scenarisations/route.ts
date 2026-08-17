@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { calculateSchoolYear } from '@/lib/auth-utils';
 import { sanitizeScenarisation } from '@/lib/scenarisation-server';
 import { DEFAULT_SEMAINES } from '@/types/scenarisation-defaults';
 import type { Scenarisation } from '@/types/scenarisation';
@@ -56,7 +55,6 @@ export async function POST(request: NextRequest) {
       semaines: Object.keys(clean.semaines).length ? clean.semaines : { ...DEFAULT_SEMAINES },
       id,
       profId: auth.uid,
-      anneeScolaire: calculateSchoolYear(),
       createdAt: now,
       updatedAt: now,
     };

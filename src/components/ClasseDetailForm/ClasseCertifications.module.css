@@ -1,0 +1,112 @@
+/* Bloc « Certifications » du détail d'une classe — porte d'entrée vers la
+   saisie des notes.
+   Il porte le MÊME contenant que « Liste des élèves » (`.elevesSection` de
+   ClasseDetailForm) : deux blocs de même rang dans la page doivent avoir le
+   même sol et le même titre, sinon celui-ci passe pour un appendice du
+   précédent. */
+
+.section {
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.title {
+  color: var(--c-primary);
+  font-size: 18px;
+  font-weight: 600;
+  font-family: var(--c-font-title);
+  margin: 0 0 20px;
+}
+
+.dim {
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.link {
+  color: var(--c-primary);
+  text-decoration: underline;
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+/* Les cartes reposent sur le blanc, comme les cartes d'élèves : le sol du bloc
+   (#f0ebe3) et un aplat ambre à 7 % se séparaient de moins de 1,1:1 — les
+   cartes disparaissaient dans leur contenant. L'ambre reste, en bordure. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1.5px solid rgba(212, 148, 76, 0.55);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.card:hover {
+  border-color: var(--c-accent);
+  box-shadow: 0 4px 12px rgba(212, 148, 76, 0.22);
+}
+
+.card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 148, 76, 0.4);
+}
+
+.cardTop {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.cardTitle {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.belt {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+.beltDot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+}
+
+.cardMeta {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  line-height: 1.5;
+}
+
+.progress {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+
+.progressDone {
+  color: var(--c-primary);
+}

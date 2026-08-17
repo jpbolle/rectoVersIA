@@ -1,0 +1,95 @@
+/* La roue des ceintures — tracé porté de la maquette du 2026-08-17. */
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* La ceinture obtenue : une ombre portée la détache de sa couronne, dont elle
+   partage la couleur — sans elle, un karatéka noir sur la couronne noire
+   disparaît. */
+.karateka {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.badgeAcquis {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.28));
+}
+
+/* En attente : TRANSPARENT, mais en couleur.
+   Le gris ajouté à la transparence les rendait blafards — or ces boucliers
+   sont ce que l'élève vise, et un objectif délavé n'attire pas. La
+   transparence seule suffit à dire « pas encore » ; c'est l'ombre portée du
+   badge acquis, elle, qui marque la différence une fois gagné. */
+.badgeAttente {
+  opacity: 0.22;
+}
+
+.chip {
+  font-size: 12px;
+  font-weight: 700;
+  fill: #fff;
+}
+
+/* L'étiquette porte l'intitulé de l'UAA dans son infobulle : le curseur
+   « help » est ce qui le fait deviner — sans lui, personne ne survole. */
+.etiquette {
+  cursor: help;
+}
+
+.etiquette rect {
+  transition: filter 0.15s;
+}
+
+.etiquette:hover rect {
+  filter: brightness(1.18);
+}
+
+.centreChiffre {
+  font-size: 26px;
+  font-weight: 700;
+  fill: #fff;
+}
+
+.centreTexte {
+  font-family: var(--c-font-title);
+  font-size: 15px;
+  font-weight: 600;
+  fill: #fff;
+}
+
+.centreNote {
+  font-size: 11px;
+  fill: #fff8ec;
+}
+
+/* ── Légende ── */
+
+.legende {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 4px 16px 10px;
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+.legItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.legFleche {
+  color: var(--c-text-muted);
+}

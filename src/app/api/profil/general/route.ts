@@ -5,6 +5,7 @@ import {
   loadStudentBase, buildSectionStats, buildVocabulaireProfil,
   buildRechercheProfil, resumeRecherche,
 } from '@/lib/profil-stats';
+import { buildCertificationsProfil, chargerLabelsUaa } from '@/lib/certification-server';
 import type { ProfilGeneral } from '@/types/profil';
 
 // GET - Onglet Général : données élève uniquement, pas de stats de classe (rapide)
@@ -25,14 +26,26 @@ export async function GET(request: NextRequest) {
   try {
     const empty: ProfilGeneral = {
       travauxRemis: 0, reussites: 0, echecs: 0, attention: [], nonRendusSanctionnes: [],
-      lire: null, ecrire: null, rechercher: null, vocabulaire: null,
+      lire: null, ecrire: null, rechercher: null, vocabulaire: null, certifications: null,
     };
 
     const base = await loadStudentBase(target.uid, target.email, {
       withGrilles: true, withContent: true,
     });
-    if (!base || base.travaux.length === 0) {
+    if (!base) {
       return NextResponse.json({ success: true, data: empty });
+    }
+
+    // Les certifications ne dépendent d'AUCUN travail : une épreuve orale ou un
+    // dossier papier se note sans que l'élève ait rien remis dans l'app. Elles
+    // se calculent donc avant la sortie « aucun travail ».
+    const certifications = await buildCertificationsProfil(
+      base.eleveIds,
+      await chargerLabelsUaa()
+    );
+
+    if (base.travaux.length === 0) {
+      return NextResponse.json({ success: true, data: { ...empty, certifications } });
     }
 
     const typeOf = (devoirId: string) => base.devoirs.get(devoirId)?.type || 'ecrire';
@@ -116,6 +129,7 @@ export async function GET(request: NextRequest) {
         : null,
       rechercher,
       vocabulaire,
+      certifications,
     };
 
     return NextResponse.json({ success: true, data: profil });

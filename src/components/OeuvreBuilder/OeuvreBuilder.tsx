@@ -35,10 +35,13 @@ import OeuvreBlocRendu from '@/components/OeuvreReader/OeuvreBlocRendu';
 import OeuvreSectionApercu from './OeuvreSectionApercu';
 import OeuvreSommaireEditable from './OeuvreSommaireEditable';
 import {
+  DOMAINES_INTEGRATION,
   blocsDeFace,
   generateBlocId,
   generateChapitreId,
   generateCommentaireId,
+  integrationAutorisee,
+  urlDepuisIntegration,
   type Oeuvre,
   type OeuvreBloc,
   type OeuvreChapitre,
@@ -101,6 +104,7 @@ const ACTIONS_TRAIT: Record<OeuvreFace, GesteTrait[]> = {
     { action: { quoi: 'inserer', type: 'video' }, icone: '🎬', label: 'Vidéo' },
     { action: { quoi: 'inserer', type: 'image' }, icone: '🖼', label: 'Image' },
     { action: { quoi: 'inserer', type: 'audio' }, icone: '🎧', label: 'Audio' },
+    { action: { quoi: 'inserer', type: 'integration' }, icone: '🧩', label: 'Contenu interactif' },
     { action: { quoi: 'inserer', type: 'texte' }, icone: 'ℹ', label: 'Bloc informatif' },
   ],
 };
@@ -356,6 +360,7 @@ const LIBELLE_BLOC: Record<OeuvreBloc['type'], string> = {
   video: 'Vidéo',
   image: 'Image',
   audio: 'Audio',
+  integration: 'Contenu interactif',
 };
 
 const TexteEditor = dynamic(() => import('@/components/RessourcesInput/DocumentEditor'), {
@@ -1498,6 +1503,63 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                                 >
                                   {bloc.imageUrl ? 'Remplacer l’image' : 'Déposer une image'}
                                 </button>
+                                <input
+                                  type="text"
+                                  placeholder="Légende (facultatif)"
+                                  value={bloc.legende || ''}
+                                  onChange={(e) => majBloc(bloc.id, { legende: e.target.value })}
+                                />
+                              </>
+                            )}
+
+                            {/* Contenu interactif : une page tierce embarquée.
+                                Le domaine est vérifié à la frappe ET côté
+                                serveur — une iframe exécute du code étranger
+                                dans une page vue par des mineurs. */}
+                            {bloc.type === 'integration' && (
+                              <>
+                                {/* On accepte le bloc `<iframe …>` du bouton
+                                    « Intégrer » aussi bien que l'adresse nue :
+                                    c'est le premier qu'on colle naturellement.
+                                    Le `type` reste `text` — un champ `url`
+                                    refuserait le collage avant qu'on ait pu en
+                                    extraire l'adresse. */}
+                                <input
+                                  type="text"
+                                  placeholder="Colle l’adresse ou le code &lt;iframe&gt; de l’outil"
+                                  value={bloc.integrationUrl || ''}
+                                  onChange={(e) =>
+                                    majBloc(bloc.id, {
+                                      integrationUrl: urlDepuisIntegration(e.target.value),
+                                    })
+                                  }
+                                />
+                                {bloc.integrationUrl &&
+                                  !integrationAutorisee(bloc.integrationUrl) && (
+                                    <p className={styles.aideRefus}>
+                                      Domaine non autorisé. Admis : {DOMAINES_INTEGRATION.slice(0, 8).join(', ')}…
+                                      Demande l’ajout d’un domaine si le tien manque.
+                                    </p>
+                                  )}
+                                <label className={styles.champHauteur}>
+                                  Hauteur du cadre
+                                  <input
+                                    type="number"
+                                    min={200}
+                                    max={1200}
+                                    step={20}
+                                    value={bloc.integrationHauteur || 520}
+                                    onChange={(e) =>
+                                      majBloc(bloc.id, {
+                                        integrationHauteur: Math.max(
+                                          200,
+                                          Math.min(1200, Number(e.target.value) || 520)
+                                        ),
+                                      })
+                                    }
+                                  />
+                                  px
+                                </label>
                                 <input
                                   type="text"
                                   placeholder="Légende (facultatif)"

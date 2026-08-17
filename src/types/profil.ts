@@ -77,6 +77,48 @@ export interface ProfilGeneral {
     activites: number;          // nb d'activités vocabulaire
     evalMoyenne: number | null; // moyenne des évaluations (%), null si aucune
   } | null;
+  // Résultats CERTIFIÉS, regroupés par UAA. null tant qu'aucune certification
+  // n'a été notée — le bloc est alors absent de l'écran, pas vide.
+  certifications: ProfilCertifications | null;
+}
+
+// ─── Certifications par UAA ───
+//
+// Une certification est déclarée dans la scénarisation du cours : elle dit
+// quelles UAA elle certifie, quelle CEINTURE elle accorde à partir de 60 %, et
+// quel POIDS elle pèse dans le total de l'UAA (plusieurs certifications peuvent
+// viser la même : « celle-ci vaut 30 %, celle-là 70 % »).
+
+export interface LigneCertification {
+  moduleId: string;
+  titre: string;
+  date: string;
+  // Certification NOTÉE (true) ou accordée au seul fait d'être faite (false).
+  // Une non cotée n'entre ni au numérateur ni dans la somme des poids.
+  cotee: boolean;
+  percent: number | null;     // null pour une certification non cotée
+  ponderation: number;        // % du total de l'UAA — 0 si non cotée
+  ceinture: string | null;    // id de CEINTURES
+  // Cotée : percent >= 60. Non cotée : l'épreuve a été faite.
+  obtenue: boolean;
+}
+
+export interface UaaCertifiee {
+  uaa: string;                // "0".."6"
+  label: string;
+  percent: number | null;     // moyenne pondérée des certifications NOTÉES
+  // La plus haute ceinture obtenue — jamais nulle : la blanche est acquise dès
+  // l'entrée dans le parcours.
+  ceinture: string;
+  badge: boolean;             // ceinture noire atteinte = UAA réussie
+  lignes: LigneCertification[];
+  // Somme des poids déclarés dans le parcours. ≠ 100 = encodage en cours :
+  // le pourcentage est alors calculé sur ce qui existe, et l'écran le dit.
+  ponderationTotale: number;
+}
+
+export interface ProfilCertifications {
+  uaa: UaaCertifiee[];
 }
 
 // Onglets Lire / Écrire

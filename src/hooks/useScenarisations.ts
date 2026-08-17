@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from './useAuth';
 import type { Scenarisation } from '@/types/scenarisation';
-import { normaliserScenarisation } from '@/types/scenarisation';
+import { dupliquerScenarisation, normaliserScenarisation } from '@/types/scenarisation';
 import { DEFAULT_SEMAINES } from '@/types/scenarisation-defaults';
 
 // Frappe au clavier : on laisse le temps de finir un mot, pas davantage.
@@ -149,7 +149,7 @@ export function useScenarisations() {
   }, [vider]);
 
   const creer = useCallback(
-    async (nom: string): Promise<Scenarisation | null> => {
+    async (nom: string, anneeScolaire?: string): Promise<Scenarisation | null> => {
       const headers = await getAuthHeaders();
       if (!headers) return null;
       try {
@@ -158,6 +158,7 @@ export function useScenarisations() {
           headers,
           body: JSON.stringify({
             nom,
+            anneeScolaire,
             dureePeriodeMin: 90,
             heuresParSemaine: 5,
             semaines: DEFAULT_SEMAINES,
@@ -172,6 +173,39 @@ export function useScenarisations() {
         const creee = normaliserScenarisation(json.data as Scenarisation);
         setScenarisations((prev) => [creee, ...prev]);
         return creee;
+      } catch {
+        setError('Erreur réseau');
+        return null;
+      }
+    },
+    [getAuthHeaders]
+  );
+
+  // Copie complète d'un parcours — préparer l'année suivante sans tout
+  // ressaisir. La transformation vit dans `dupliquerScenarisation` (types) :
+  // c'est elle qui régénère les identifiants et détache les activités.
+  const dupliquer = useCallback(
+    async (
+      source: Scenarisation,
+      nom: string,
+      anneeScolaire: string
+    ): Promise<Scenarisation | null> => {
+      const headers = await getAuthHeaders();
+      if (!headers) return null;
+      try {
+        const res = await fetch('/api/scenarisations', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(dupliquerScenarisation(source, nom, anneeScolaire)),
+        });
+        const json = await res.json();
+        if (!json.success) {
+          setError(json.message || 'Duplication impossible');
+          return null;
+        }
+        const copie = normaliserScenarisation(json.data as Scenarisation);
+        setScenarisations((prev) => [copie, ...prev]);
+        return copie;
       } catch {
         setError('Erreur réseau');
         return null;
@@ -198,6 +232,7 @@ export function useScenarisations() {
     error,
     modifier,
     creer,
+    dupliquer,
     supprimer,
     vider,
     refetch: charger,

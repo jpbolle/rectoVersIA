@@ -243,12 +243,26 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
       });
       if (items.length === 0) continue;
       cleaned.matriceItems = items;
-      // -1 = ligne sans réponse attendue (elle sort du barème)
+      const multiple = question.matriceMultiple === true;
+      cleaned.matriceMultiple = multiple;
+      // -1 (ou tableau vide) = ligne sans réponse attendue : elle sort du barème.
+      // ⚠ `suivreChoix` mappe l'ancien rang de colonne vers le nouveau — c'est
+      // lui qui évite le décalage silencieux quand une colonne vide est jetée
+      // (piège déjà payé, cf. INIT.md). Il s'applique donc à CHAQUE colonne,
+      // en réponse simple comme en réponse multiple.
       cleaned.matriceCorrect = rangsOrigine.map((origine) => {
         const v = Array.isArray(question.matriceCorrect)
           ? question.matriceCorrect[origine]
           : undefined;
-        return suivreChoix(v) ?? -1;
+        if (multiple) {
+          const cols = Array.isArray(v) ? v : typeof v === 'number' && v >= 0 ? [v] : [];
+          return cols
+            .map((c) => suivreChoix(c))
+            .filter((c): c is number => typeof c === 'number' && c >= 0)
+            .sort((a, b) => a - b);
+        }
+        const simple = Array.isArray(v) ? v[0] : v;
+        return suivreChoix(simple) ?? -1;
       });
     }
 

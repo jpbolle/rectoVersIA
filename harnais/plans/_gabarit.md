@@ -19,6 +19,10 @@ RÈGLES DE REMPLISSAGE
 
 # {{AAAA-MM-JJ}} — {{SUJET}}
 
+> ⚠ **Trace datée.** Ce plan dit ce qui a été décidé le {{AAAA-MM-JJ}} et pourquoi.
+> Il n'est pas mis à jour : depuis, la décision a **peut-être été dépassée**.
+> Ce qui existe réellement se lit dans `init.md` et dans `harnais/memoire/`.
+
 - **Statut** : proposé <!-- → validé le {{DATE}} → livré le {{DATE}} -->
 - **Demande initiale** : {{CE_QUE_L_UTILISATEUR_A_DEMANDE}}
 

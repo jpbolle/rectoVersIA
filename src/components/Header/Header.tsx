@@ -84,6 +84,14 @@ export default function Header({ variant, topOffset = 0, adminTab, onAdminTabCha
           </nav>
         ) : (
           <nav className={styles.navButtons}>
+            {/* La page d'ouverture de l'élève : ses retards, ses échéances, ses
+                derniers résultats et sa progression en ceintures. */}
+            <button
+              className={styles.navBtn}
+              onClick={() => router.push('/accueil')}
+            >
+              Accueil
+            </button>
             <button
               className={styles.navBtn}
               onClick={() => router.push('/activites')}

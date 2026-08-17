@@ -87,7 +87,14 @@ export default function OeuvreReader({
   const [erreur, setErreur] = useState<string | null>(null);
   const [questionnaireOuvert, setQuestionnaireOuvert] = useState(false);
   const [reponses, setReponses] = useState<Record<string, unknown>>({});
-  const [devoilees, setDevoilees] = useState<Set<string>>(new Set());
+  // Le corrigé est-il ouvert ? UN SEUL état pour tout le questionnaire.
+  //
+  // Il était par QUESTION, et posé dès la première réponse : cocher une case
+  // d'un QCM à réponses multiples affichait aussitôt toutes les bonnes, cocher
+  // une ligne de matrice verdissait toute la grille. L'élève n'avait pas fini
+  // de répondre qu'il savait déjà. Le corrigé s'ouvre maintenant au SEUL clic
+  // sur « Terminer » — et reste ouvert quand il rouvre une scène déjà faite.
+  const [corrigeOuvert, setCorrigeOuvert] = useState(false);
   // ── Les deux faces de la liseuse ──
   // Recto « Espace textuel », verso « Espace multimédia ». Le verso n'apparaît
   // que si le prof y a déposé quelque chose : sur les 67 scènes de Molière,
@@ -154,7 +161,9 @@ export default function OeuvreReader({
   useEffect(() => {
     const dejaFait = sectionId ? progression?.sections[sectionId]?.reponses : null;
     setReponses((dejaFait as Record<string, unknown>) || {});
-    setDevoilees(new Set(dejaFait ? Object.keys(dejaFait) : []));
+    // Scène déjà vérifiée : on la rouvre sur son corrigé, il n'y a plus rien à
+    // découvrir. Sinon, corrigé fermé.
+    setCorrigeOuvert(!!(sectionId && progression?.sections[sectionId]?.termineLe));
     setQuestionnaireOuvert(false);
     setFace('recto');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,13 +174,19 @@ export default function OeuvreReader({
 
   const repondre = useCallback((questionId: string, valeur: unknown) => {
     setReponses((r) => ({ ...r, [questionId]: valeur }));
-    setDevoilees((d) => new Set(d).add(questionId));
   }, []);
 
+  // « Terminer » ne ferme plus la popup : il OUVRE le corrigé. L'élève vient
+  // de répondre, c'est le moment où il veut voir — le refermer sous son nez
+  // l'obligeait à rouvrir la vérification pour lire ses résultats.
   const terminer = useCallback(() => {
+    if (corrigeOuvert) {
+      setQuestionnaireOuvert(false);
+      return;
+    }
     if (sectionId) onVerificationTerminee(sectionId, reponses);
-    setQuestionnaireOuvert(false);
-  }, [sectionId, reponses, onVerificationTerminee]);
+    setCorrigeOuvert(true);
+  }, [corrigeOuvert, sectionId, reponses, onVerificationTerminee]);
 
   // ── Le commentaire ouvert ──
   // Un seul à la fois, et sa lecture est un signal d'activité : c'est le 3ᵉ
@@ -374,7 +389,9 @@ export default function OeuvreReader({
         >
           <div className={styles.cmtFenetre} role="dialog" aria-modal="true">
             <header className={styles.cmtEntete}>
-              <span className={styles.cmtMots}>« {commentaire.mots} »</span>
+              <span className={styles.cmtMots}>
+                <span className={styles.cmtLabel}>Le passage</span>« {commentaire.mots} »
+              </span>
               <button
                 type="button"
                 className={styles.cmtFermer}
@@ -394,7 +411,7 @@ export default function OeuvreReader({
           section={section}
           questions={questions}
           reponses={reponses}
-          devoilees={devoilees}
+          corrigeOuvert={corrigeOuvert}
           lectureSeule={lectureSeule}
           onRepondre={repondre}
           onFermer={() => setQuestionnaireOuvert(false)}
@@ -415,7 +432,7 @@ interface PopupProps {
   section: OeuvreSection;
   questions: LectureQuestion[];
   reponses: Record<string, unknown>;
-  devoilees: Set<string>;
+  corrigeOuvert: boolean;
   lectureSeule: boolean;
   onRepondre: (questionId: string, valeur: unknown) => void;
   onFermer: () => void;
@@ -426,7 +443,7 @@ function QuestionnairePopup({
   section,
   questions,
   reponses,
-  devoilees,
+  corrigeOuvert,
   lectureSeule,
   onRepondre,
   onFermer,
@@ -481,7 +498,7 @@ function QuestionnairePopup({
                     const choisi = question.multiple
                       ? dejaCoches.includes(i)
                       : reponses[question.id] === i;
-                    const devoile = devoilees.has(question.id);
+                    const devoile = corrigeOuvert;
                     const juste = question.multiple
                       ? (question.correctIndexes ?? []).includes(i)
                       : i === question.correctIndex;
@@ -493,7 +510,7 @@ function QuestionnairePopup({
                         key={i}
                         type="button"
                         className={classe}
-                        disabled={lectureSeule}
+                        disabled={lectureSeule || corrigeOuvert}
                         onClick={() => {
                           if (!question.multiple) return onRepondre(question.id, i);
                           const set = new Set(dejaCoches);
@@ -518,9 +535,10 @@ function QuestionnairePopup({
                   un texte) mais un objet `LectureAnswer` : `reponses` est
                   volontairement typé `unknown`, il l'accueille tel quel.
 
-                  `showCorrection` est TOUJOURS vrai ici : dans l'atelier
-                  Œuvre le corrigé est ouvert (règle en tête de
-                  `oeuvre-server.ts`). Ne pas « corriger » ce comportement. */}
+                  `showCorrection` suit `corrigeOuvert` : dans l'atelier Œuvre
+                  le corrigé est ouvert — mais APRÈS « Terminer », pas pendant
+                  la saisie. Une matrice qui verdit à la première case cochée
+                  donne la grille entière avant que l'élève ait réfléchi. */}
               {(estTypeManipule(question.type) ||
                 (question.type === 'fluorage' && !!question.fluoCategories?.length)) && (
                 <ChampManipule
@@ -532,8 +550,8 @@ function QuestionnairePopup({
                       ...partial,
                     })
                   }
-                  disabled={lectureSeule}
-                  showCorrection
+                  disabled={lectureSeule || corrigeOuvert}
+                  showCorrection={corrigeOuvert}
                 />
               )}
 
@@ -543,28 +561,18 @@ function QuestionnairePopup({
                     className={styles.zoneTexte}
                     rows={question.type === 'texte-long' ? 6 : 3}
                     placeholder="Ta réponse…"
-                    disabled={lectureSeule}
+                    disabled={lectureSeule || corrigeOuvert}
                     value={(reponses[question.id] as string) || ''}
                     onChange={(e) =>
                       // On enregistre sans dévoiler : c'est le bouton qui dévoile
                       onRepondre(question.id, e.target.value)
                     }
                   />
-                  {(question.reponseIdeale || estAutoCorrigeable(question)) &&
-                    !devoilees.has(question.id) && (
-                      <button
-                        type="button"
-                        className={styles.navBtn}
-                        onClick={() => onRepondre(question.id, reponses[question.id] ?? '')}
-                      >
-                        Voir la réponse attendue
-                      </button>
-                    )}
-
-                  {/* Réponse courte auto-corrigée : dans cet atelier le corrigé
-                      est ouvert, l'élève voit donc tout de suite si sa réponse
-                      est reconnue — et sinon, ce qui était attendu. */}
-                  {devoilees.has(question.id) && estAutoCorrigeable(question) && (
+                  {/* Plus de bouton « Voir la réponse attendue » : c'était le
+                      dévoilement question par question, celui qui donnait le
+                      corrigé avant que l'élève ait fini. Tout s'ouvre d'un coup,
+                      à « Terminer ». */}
+                  {corrigeOuvert && estAutoCorrigeable(question) && (
                     <p
                       className={
                         partReussite(
@@ -587,7 +595,7 @@ function QuestionnairePopup({
               )}
 
               {/* Le corrigé, ouvert — décision assumée pour cet atelier */}
-              {devoilees.has(question.id) && question.reponseIdeale && (
+              {corrigeOuvert && question.reponseIdeale && (
                 <div className={styles.corrige}>
                   <span className={styles.corrigeLabel}>Réponse du professeur</span>
                   <p>{question.reponseIdeale}</p>
@@ -598,9 +606,18 @@ function QuestionnairePopup({
         </div>
 
         <footer className={styles.popupPied}>
-          <span className={styles.popupNote}>Corrigé ouvert · aucune note</span>
-          <button type="button" className={styles.actionBtn} onClick={onTerminer} disabled={lectureSeule}>
-            Terminer
+          <span className={styles.popupNote}>
+            {corrigeOuvert
+              ? 'Corrigé · aucune note'
+              : 'Réponds à tout, puis termine pour voir le corrigé'}
+          </span>
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={onTerminer}
+            disabled={lectureSeule && !corrigeOuvert}
+          >
+            {corrigeOuvert ? 'Fermer' : 'Terminer'}
           </button>
         </footer>
       </div>

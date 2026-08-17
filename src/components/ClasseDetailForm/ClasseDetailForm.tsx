@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useEleves } from '@/hooks/useClasses';
+import ClasseCertifications from './ClasseCertifications';
 import type { Classe, Eleve } from '@/types/classe';
 import styles from './ClasseDetailForm.module.css';
 
@@ -72,6 +73,8 @@ export default function ClasseDetailForm({
           </div>
         </div>
       </div>
+
+      {isVisible && <ClasseCertifications classeId={classe.id} />}
 
       <div className={styles.elevesSection}>
         <div className={styles.elevesSectionHeader}>

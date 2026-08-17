@@ -13,20 +13,27 @@
 // `LectureQuestion` : ce composant ne doit rien savoir du dispositif qui
 // l'emploie, sinon il faudra le dupliquer au premier écart.
 
+import { matriceColonnes } from '@/types/lecture';
 import styles from './QuestionInteractions.module.css';
 
 interface Props {
   items: string[];
   colonnes: string[];
-  /** index de ligne -> index de colonne */
-  valeurs: Record<number, number>;
-  onChange: (valeurs: Record<number, number>) => void;
+  /** index de ligne -> la ou les colonnes cochées */
+  valeurs: Record<number, number | number[]>;
+  onChange: (valeurs: Record<number, number | number[]>) => void;
   disabled?: boolean;
   /**
-   * Colonne attendue par ligne (-1 = ligne hors barème).
+   * Plusieurs colonnes cochables par ligne — comme le `multiple` du QCM.
+   * Les boutons radio deviennent alors des cases à cocher : une radio ne sait
+   * pas se décocher, ce qui rendrait une erreur irrattrapable.
+   */
+  multiple?: boolean;
+  /**
+   * Ce qui est attendu par ligne (-1 ou tableau vide = ligne hors barème).
    * Absent en auto-évaluation, et absent tant que le corrigé n'est pas rendu.
    */
-  attendu?: number[] | null;
+  attendu?: (number | number[])[] | null;
   /** Préfixe des groupes de boutons radio — doit être unique dans la page. */
   nomGroupe: string;
 }
@@ -37,12 +44,21 @@ export default function MatriceField({
   valeurs,
   onChange,
   disabled,
+  multiple,
   attendu,
   nomGroupe,
 }: Props) {
   const choisir = (ligne: number, colonne: number) => {
     if (disabled) return;
-    onChange({ ...valeurs, [ligne]: colonne });
+    if (!multiple) {
+      onChange({ ...valeurs, [ligne]: colonne });
+      return;
+    }
+    const deja = matriceColonnes(valeurs[ligne]);
+    const suivantes = deja.includes(colonne)
+      ? deja.filter((c) => c !== colonne)
+      : [...deja, colonne].sort((a, b) => a - b);
+    onChange({ ...valeurs, [ligne]: suivantes });
   };
 
   return (
@@ -60,9 +76,14 @@ export default function MatriceField({
         </thead>
         <tbody>
           {items.map((item, ligne) => {
-            const attenduLigne = attendu?.[ligne];
-            const notee = typeof attenduLigne === 'number' && attenduLigne >= 0;
-            const faux = notee && valeurs[ligne] !== attenduLigne;
+            const attenduLigne = matriceColonnes(attendu?.[ligne]);
+            const notee = attenduLigne.length > 0;
+            const cochees = matriceColonnes(valeurs[ligne]);
+            // Juste = EXACTEMENT ce qui est attendu, ni plus ni moins
+            const faux =
+              notee &&
+              (cochees.length !== attenduLigne.length ||
+                !attenduLigne.every((c) => cochees.includes(c)));
             return (
               <tr key={ligne} className={faux ? styles.ligneKo : ''}>
                 <th scope="row">{item}</th>
@@ -72,12 +93,12 @@ export default function MatriceField({
                     // La colonne attendue se teinte en vert quand la
                     // correction est rendue — l'élève voit d'un coup d'œil
                     // les lignes qu'il a manquées, sans relire un bandeau.
-                    className={notee && attenduLigne === colonne ? styles.attenduCell : ''}
+                    className={notee && attenduLigne.includes(colonne) ? styles.attenduCell : ''}
                   >
                     <input
-                      type="radio"
-                      name={`${nomGroupe}-${ligne}`}
-                      checked={valeurs[ligne] === colonne}
+                      type={multiple ? 'checkbox' : 'radio'}
+                      name={multiple ? undefined : `${nomGroupe}-${ligne}`}
+                      checked={cochees.includes(colonne)}
                       onChange={() => choisir(ligne, colonne)}
                       disabled={disabled}
                       aria-label={`${item} : ${colonnes[colonne]}`}

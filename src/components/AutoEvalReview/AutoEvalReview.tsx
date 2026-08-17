@@ -30,6 +30,17 @@ import {
 } from '@/types/autoevaluation';
 import type { AutoEvalAnswer, AutoEvalQuestion, AutoEvalQuestionnaire } from '@/types/autoevaluation';
 import { MatriceField } from '@/components/QuestionInteractions';
+
+// `MatriceField` sert aussi au questionnaire de lecture, où une ligne peut
+// porter plusieurs colonnes. L'auto-évaluation n'en a jamais qu'une.
+function uneParLigne(v: Record<number, number | number[]>): Record<number, number> {
+  const out: Record<number, number> = {};
+  Object.entries(v).forEach(([ligne, valeur]) => {
+    const n = Array.isArray(valeur) ? valeur[0] : valeur;
+    if (typeof n === 'number') out[Number(ligne)] = n;
+  });
+  return out;
+}
 import { LUCIDITE_LABELS, comparer, estComparable, position } from '@/lib/autoeval-scoring';
 import type { Lucidite } from '@/lib/autoeval-scoring';
 import styles from './AutoEvalReview.module.css';
@@ -110,7 +121,7 @@ export default function AutoEvalReview({
             items={q.matriceItems ?? []}
             colonnes={LIKERT_COLONNES}
             valeurs={valeur?.matrice ?? {}}
-            onChange={(matrice) => onProfAnswerChange(q.id, { matrice })}
+            onChange={(matrice) => onProfAnswerChange(q.id, { matrice: uneParLigne(matrice) })}
             disabled={!modifiable}
             nomGroupe={`${modifiable ? 'prof' : 'eleve'}-${q.id}`}
           />

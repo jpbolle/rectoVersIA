@@ -13,6 +13,7 @@
 // navigateur, sinon la porte s'ouvrirait pour toutes les activités.
 
 import { adminDb } from '@/lib/firebase/admin';
+import { integrationAutorisee, urlDepuisIntegration } from '@/types/oeuvre';
 import type {
   Oeuvre,
   OeuvreBloc,
@@ -104,7 +105,7 @@ export function docToOeuvre(doc: Doc): Oeuvre {
   };
 }
 
-const TYPES_BLOC: OeuvreBloc['type'][] = ['texte', 'vers', 'video', 'image', 'audio'];
+const TYPES_BLOC: OeuvreBloc['type'][] = ['texte', 'vers', 'video', 'image', 'audio', 'integration'];
 
 function normaliserBloc(raw: unknown): OeuvreBloc | null {
   const b = raw as Partial<OeuvreBloc>;
@@ -125,6 +126,19 @@ function normaliserBloc(raw: unknown): OeuvreBloc | null {
     imageFileId: typeof b.imageFileId === 'string' ? b.imageFileId : undefined,
     audioUrl: typeof b.audioUrl === 'string' ? b.audioUrl : undefined,
     audioFileId: typeof b.audioFileId === 'string' ? b.audioFileId : undefined,
+    // L'URL d'intégration est vérifiée ICI, pas seulement à l'écran : le
+    // serveur est le seul endroit qu'une requête forgée ne contourne pas.
+    // L'extraction est refaite ICI : le client peut avoir envoyé le bloc
+    // `<iframe>` tel quel, et c'est le serveur qui décide ce qui est écrit.
+    integrationUrl: (() => {
+      if (typeof b.integrationUrl !== 'string') return undefined;
+      const url = urlDepuisIntegration(b.integrationUrl);
+      return integrationAutorisee(url) ? url : undefined;
+    })(),
+    integrationHauteur:
+      typeof b.integrationHauteur === 'number' && b.integrationHauteur > 0
+        ? Math.min(1200, Math.round(b.integrationHauteur))
+        : undefined,
     legende: typeof b.legende === 'string' && b.legende ? b.legende : undefined,
   };
 }
@@ -148,6 +162,8 @@ export function blocsPourFirestore(blocs: unknown): OeuvreBloc[] {
       if (b.videoUrl) net.videoUrl = b.videoUrl;
       if (b.imageUrl) net.imageUrl = b.imageUrl;
       if (b.imageFileId) net.imageFileId = b.imageFileId;
+      if (b.integrationUrl) net.integrationUrl = b.integrationUrl;
+      if (b.integrationHauteur) net.integrationHauteur = b.integrationHauteur;
       if (b.audioUrl) net.audioUrl = b.audioUrl;
       if (b.audioFileId) net.audioFileId = b.audioFileId;
       if (b.legende) net.legende = b.legende;

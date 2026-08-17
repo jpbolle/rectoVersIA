@@ -13,9 +13,10 @@ import { useAuth } from '@/hooks/useAuth';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import type {
   CriterionStats, DevoirCriterionStat, HabileteStat,
-  ProfilGeneral, ProfilSection, ProfilRecherche, ProfilVocabulaire, ProfilVocabGroup,
-  VocabActiviteStat, ProfilReflexif,
+  ProfilCertifications, ProfilGeneral, ProfilSection, ProfilRecherche,
+  ProfilVocabulaire, ProfilVocabGroup, VocabActiviteStat, ProfilReflexif,
 } from '@/types/profil';
+import { badgeUaa, ceintureParId } from '@/types/ceintures';
 import { useDidactique } from '@/hooks/useDidactique';
 import { habileteLabel } from '@/types/didactique';
 import { LECTURE_COMPETENCE_LABELS } from '@/types/lecture';
@@ -534,6 +535,148 @@ function SectionTab({ data }: { data: ProfilSection }) {
   );
 }
 
+// ─── Les certifications, par UAA ─────────────────────────────────────────────
+//
+// C'est le seul endroit du profil où l'élève lit ce qui COMPTE : les
+// évaluations certificatives, leur poids, et la ceinture qu'elles lui ont fait
+// gagner. Une UAA sans aucune certification notée n'apparaît pas — sept lignes
+// vides ne diraient rien.
+//
+// Chaque certification vise parfois deux UAA : elle compte alors entièrement
+// dans chacune. C'est déjà la règle des habiletés dans l'onglet Lire, et c'est
+// dit sous le bloc plutôt que laissé à deviner.
+function CertificationsBlock({ data }: { data: ProfilCertifications }) {
+  if (data.uaa.length === 0) return null;
+
+  return (
+    <section className={`${styles.section} ${styles.certSection}`}>
+      <h2 className={styles.sectionTitle}>Mes certifications par UAA</h2>
+      <div className={styles.certGrid}>
+        {data.uaa.map((u) => {
+          const ceinture = ceintureParId(u.ceinture);
+          const incomplet = u.ponderationTotale > 0 && u.ponderationTotale !== 100;
+          return (
+            <div key={u.uaa} className={styles.certCard}>
+              {/* Le résultat et la CEINTURE vivent dans une colonne à droite :
+                  posés dans le fil du titre, ils passaient inaperçus alors que
+                  c'est ce que l'élève vient chercher. */}
+              <aside className={styles.certAside}>
+                {ceinture && (
+                  <img
+                    src={ceinture.image}
+                    alt={`Ceinture ${ceinture.label.toLowerCase()}`}
+                    className={styles.certBeltImg}
+                  />
+                )}
+                <span className={styles.certBeltNom}>
+                  {ceinture ? ceinture.label.toLowerCase() : '—'}
+                </span>
+                <span
+                  className={styles.certPercent}
+                  style={{ color: u.percent !== null ? scoreColor(u.percent) : 'var(--c-text-muted)' }}
+                  title={u.percent === null ? 'Aucune certification notée dans cette UAA' : undefined}
+                >
+                  {u.percent !== null ? `${u.percent}%` : '—'}
+                </span>
+                {u.badge && (
+                  <img
+                    src={badgeUaa(u.uaa)}
+                    alt={`UAA ${u.uaa} acquise`}
+                    title="UAA acquise — ceinture noire atteinte"
+                    className={styles.certBadge}
+                  />
+                )}
+              </aside>
+
+              <div className={styles.certHead}>
+                <div className={styles.certHeadText}>
+                  <span className={styles.certUaa}>UAA {u.uaa}</span>
+                  <span className={styles.certUaaLabel}>{u.label}</span>
+                </div>
+              </div>
+
+              <table className={styles.certTable}>
+                <thead>
+                  <tr>
+                    <th>Certification</th>
+                    <th className={styles.certThNum}>Poids</th>
+                    <th className={styles.certThNum}>Résultat</th>
+                    <th className={styles.certThBelt}>Ceinture</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {u.lignes.map((l, i) => {
+                    const c = ceintureParId(l.ceinture);
+                    return (
+                      <tr key={`${l.moduleId}-${i}`}>
+                        <td>
+                          {l.titre}
+                          {l.date && (
+                            <span className={styles.certDate}> — {formatDateShort(l.date)}</span>
+                          )}
+                        </td>
+                        {/* Une certification non cotée n'a ni poids ni
+                            pourcentage : elle accorde sa ceinture au seul fait
+                            d'avoir été faite. L'écran le dit plutôt que
+                            d'afficher un 0 % qui serait faux. */}
+                        <td className={styles.certTdNum}>
+                          {l.cotee ? `${l.ponderation} %` : <span className={styles.certHorsNote}>—</span>}
+                        </td>
+                        <td
+                          className={styles.certTdNum}
+                          style={l.cotee && l.percent !== null ? { color: scoreColor(l.percent) } : undefined}
+                        >
+                          {l.cotee && l.percent !== null ? (
+                            `${l.percent} %`
+                          ) : (
+                            <span className={styles.certHorsNote}>
+                              {l.obtenue ? 'fait' : 'à faire'}
+                            </span>
+                          )}
+                        </td>
+                        <td className={styles.certTdBelt}>
+                          {l.obtenue && c ? (
+                            <span className={styles.certWon}>
+                              <span
+                                className={styles.certDot}
+                                style={{
+                                  background: c.couleur,
+                                  borderColor: c.contour ?? c.couleur,
+                                }}
+                              />
+                              {c.label.toLowerCase()}
+                            </span>
+                          ) : (
+                            <span className={styles.certMissed}>—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {incomplet && (
+                <p className={styles.certNote}>
+                  Les certifications passées pèsent {u.ponderationTotale} % de cette UAA — le
+                  reste est encore à venir.
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <p className={styles.certFooter}>
+        La ceinture <strong>blanche</strong> est acquise dès l’entrée dans le parcours. La
+        <strong> noire</strong> vaut réussite de l’UAA et fait apparaître son badge ; la rouge se
+        gagne au-delà. Certaines certifications ne se notent pas : elles accordent leur ceinture
+        au seul fait d’avoir été faites, et n’entrent pas dans le pourcentage. Une certification
+        qui vise deux UAA compte entièrement dans chacune.
+      </p>
+    </section>
+  );
+}
+
 // ─── Onglet Général ──────────────────────────────────────────────────────────
 function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab: TabId) => void }) {
   const voc = data.vocabulaire;
@@ -679,6 +822,8 @@ function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab:
           </button>
         ))}
       </div>
+
+      {data.certifications && <CertificationsBlock data={data.certifications} />}
     </>
   );
 }

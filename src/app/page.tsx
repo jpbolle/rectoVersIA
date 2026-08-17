@@ -22,7 +22,9 @@ export default function Home() {
     if (role === 'prof') {
       router.replace('/dashboard');
     } else {
-      router.replace('/activites');
+      // L'élève entre par sa page d'accueil : ses retards et sa progression
+      // avant la liste de ses activités (2026-08-17)
+      router.replace('/accueil');
     }
   }, [isAuthenticated, isLoading, role, router, redirecting]);
 

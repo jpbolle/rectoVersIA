@@ -31,17 +31,6 @@
   margin-bottom: 16px;
 }
 
-.scenSelect {
-  padding: 9px 13px;
-  border: 1.5px solid var(--c-border);
-  border-radius: 9px;
-  background: var(--c-bg-card);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--c-text);
-  min-width: 240px;
-}
 
 .btn {
   border: 1px solid var(--c-border);
@@ -51,7 +40,7 @@
   font-family: inherit;
   font-size: 13px;
   cursor: pointer;
-  color: var(--c-text-secondary);
+  color: var(--c-text-secondary); 
 }
 
 .btn:hover:not(:disabled) {
@@ -81,6 +70,51 @@
   border-color: var(--c-accent);
   color: var(--c-accent);
   font-weight: 600;
+}
+
+/* ← Mes parcours — la seule sortie de cet écran.
+   Il portait le style neutre de `.btn`, indistinguable du bouton de réglages
+   juste à côté : le prof ne voyait pas par où revenir. Il passe en AMBRE, la
+   couleur des boutons qui NAVIGUENT (le vert est réservé à ce qui génère du
+   contenu — convention d'INIT.md §2), avec la flèche qui recule au survol.
+   Texte en ambre foncé sur aplat clair : #d4944c en fond blanc ne tient pas
+   4,5:1, un aplat plein aurait été illisible. */
+.btnRetour {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1.5px solid var(--c-accent);
+  background: rgba(212, 148, 76, 0.14);
+  border-radius: 9px;
+  padding: 0 17px;
+  min-height: 40px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--c-accent-dark);
+  cursor: pointer;
+  transition: background 0.16s, border-color 0.16s, box-shadow 0.16s;
+}
+
+.btnRetour:hover {
+  background: rgba(212, 148, 76, 0.26);
+  border-color: var(--c-accent-dark);
+  box-shadow: 0 2px 8px rgba(212, 148, 76, 0.3);
+}
+
+.btnRetour:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 148, 76, 0.45);
+}
+
+.btnRetourFleche {
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 0.16s;
+}
+
+.btnRetour:hover .btnRetourFleche {
+  transform: translateX(-3px);
 }
 
 .btnDanger {
@@ -180,27 +214,8 @@
   text-align: center;
 }
 
-/* ── État vide ── */
 
-.empty {
-  text-align: center;
-  padding: 50px 20px;
-}
 
-.emptyTitle {
-  font-family: var(--c-font-title);
-  font-size: 20px;
-  margin: 0 0 8px;
-  color: var(--c-text);
-}
-
-.emptyText {
-  max-width: 520px;
-  margin: 0 auto 18px;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--c-text-secondary);
-}
 
 /* ── Bandeau du parcours ── */
 
@@ -248,6 +263,40 @@
   gap: 22px;
   flex-wrap: wrap;
   align-items: flex-start;
+}
+
+/* Les classes du parcours : elles ne distribuent aucune activité, elles disent
+   qui sera noté aux certifications. */
+.phClasses {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 8px;
+  max-width: 460px;
+}
+
+.phClassesLabel {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.phAnnee {
+  padding: 7px 11px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 9px;
+  background: var(--c-bg-card);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+.phAnnee:focus {
+  outline: none;
+  border-color: var(--c-primary);
 }
 
 /* ── Liste de textes libres (objectifs généraux d'un chapitre) ── */
@@ -1220,6 +1269,124 @@ textarea.phTitle,
    ne parle pas de cette année-ci). */
 .certRow {
   background: rgba(212, 148, 76, 0.09);
+}
+
+/* ── Ce qu'une certification déclare ──
+   Encadré ambre, comme la ligne dont il dépend : ces trois champs n'existent
+   sur aucun autre genre, l'écran doit le dire sans qu'on ait à le lire. */
+
+.certBox {
+  border: 1.5px solid rgba(212, 148, 76, 0.5);
+  background: rgba(212, 148, 76, 0.08);
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin-bottom: 12px;
+}
+
+.certFields {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.certField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.certLabel {
+  font-size: 11.5px;
+  color: var(--c-text-secondary);
+  font-weight: 600;
+}
+
+.certBelt {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.certBeltDot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+}
+
+.certWeight {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}
+
+.certNotesBtn {
+  margin-left: auto;
+  min-height: 34px;
+  padding: 0 15px;
+  border: 1.5px solid var(--c-accent);
+  border-radius: 8px;
+  background: var(--c-bg-card);
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.certNotesBtn:hover {
+  background: var(--c-accent);
+  color: #fff;
+}
+
+/* L'épreuve d'une certification : sa durée et l'activité qui la porte, s'il y
+   en a une. Remplace le tableau des activités, qui demandait méthode, gestes et
+   concepts pour quelque chose qui ne s'enseigne pas — qui s'évalue. */
+.certEpreuve {
+  display: flex;
+  align-items: flex-start;
+  gap: 26px;
+  flex-wrap: wrap;
+  padding: 4px 0 10px;
+}
+
+.certEpreuveLien {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.certSums {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(212, 148, 76, 0.35);
+}
+
+.certSum {
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 20px;
+}
+
+.certSumOk {
+  background: rgba(45, 106, 90, 0.13);
+  color: var(--c-primary);
+}
+
+.certSumWarn {
+  background: rgba(212, 148, 76, 0.22);
+  color: #8a5a1e;
 }
 
 .suggRow {
@@ -2311,4 +2478,22 @@ textarea.phTitle,
   .capaBar {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* ── Écran « Mes parcours » ──
+   Même grille que la bibliothèque d'œuvres (OeuvrePanel) : les onglets de Mes
+   Ressources s'ouvrent tous sur des cartes de même gabarit. */
+
+.libIntro {
+  font-size: 14px;
+  color: var(--c-text-secondary);
+  line-height: 1.6;
+  max-width: 640px;
+  margin: 0 0 18px;
+}
+
+.libGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
 }

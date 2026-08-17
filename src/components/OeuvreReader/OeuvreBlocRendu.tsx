@@ -11,6 +11,7 @@
 // l'espace multimédia : ce qui change, c'est seulement l'endroit où le prof
 // l'a rangé.
 
+import { integrationAutorisee } from '@/types/oeuvre';
 import type { OeuvreBloc, OeuvreCommentaire } from '@/types/oeuvre';
 import { youtubeEmbedUrl } from '@/lib/youtube';
 import BlocCommente from './BlocCommente';
@@ -86,6 +87,41 @@ export default function OeuvreBlocRendu({ bloc, commentaires, onCommentaire }: P
     return (
       <figure className={styles.media}>
         <audio controls src={bloc.audioUrl} className={styles.audio} />
+        {bloc.legende && <figcaption className={styles.legende}>{bloc.legende}</figcaption>}
+      </figure>
+    );
+  }
+
+  // intégration — une page tierce embarquée (Genially, frise, exerciseur).
+  // L'URL est revérifiée à l'affichage : un document écrit avant la liste
+  // blanche, ou par une requête forgée, ne doit pas s'afficher pour autant.
+  if (bloc.type === 'integration') {
+    if (!integrationAutorisee(bloc.integrationUrl)) {
+      return (
+        <figure className={styles.media}>
+          <p className={styles.integrationRefus}>
+            Contenu externe non affiché — le domaine n’est pas autorisé.
+          </p>
+        </figure>
+      );
+    }
+    return (
+      <figure className={styles.media}>
+        <div
+          className={styles.cadreIntegration}
+          style={{ height: `${bloc.integrationHauteur || 520}px` }}
+        >
+          <iframe
+            src={bloc.integrationUrl}
+            title={bloc.legende || 'Contenu interactif'}
+            allow="fullscreen; encrypted-media"
+            allowFullScreen
+            // Le contenu tiers tourne en bac à sable : il peut s'exécuter et
+            // naviguer, mais n'accède ni au document parent ni à sa session.
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+            referrerPolicy="no-referrer"
+          />
+        </div>
         {bloc.legende && <figcaption className={styles.legende}>{bloc.legende}</figcaption>}
       </figure>
     );

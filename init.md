@@ -12,7 +12,10 @@
   les élèves rédigent, s'autoévaluent, travaillent le vocabulaire, font des recherches
   guidées (extension Chrome NavigKid) et se prononcent sur leur propre travail
   (auto-évaluation à deux regards). Le prof scénarise son année (Design & scénarisation).
-- **Statut** : v3.8, en production au Collège Notre-Dame de Dinant (profs + élèves réels)
+- **Statut** : **v3.0**, en production au Collège Notre-Dame de Dinant (profs + élèves réels).
+  ⚠ Le numéro est reparti de 3.8 à **3.0** le 2026-08-17 — décision assumée de
+  JP, pour marquer la refonte des deux dernières semaines. Source unique :
+  `src/lib/version.ts` (géré à la main, jamais incrémenté automatiquement).
 - **Stack** : Next.js 16 (App Router) + React 19 + TypeScript 5 + Firestore (Blaze) +
   Tiptap 3 — CSS Modules, design system Classica
 - **Branche** : `main` → le push ne déploie pas ; déploiement manuel sur VPS (skill `/deploy`)
@@ -81,6 +84,8 @@ npm run build      # build complet
 | Accès à un objet instable (`user`, `travail`) dans un callback mémoïsé | Pattern `ref` (jamais l'objet dans les deps — règle AGENTS.md) | `userRef` dans `AuthContext.tsx`, `travailRef` dans `useTravail` |
 | Page avec `router.replace()` | State `redirecting` : `if (redirecting) return;` avant le replace, `return null;` dans le render | pages protégées existantes |
 | Nouvelle façon d'évaluer une activité | **Grille pour l'écriture, habiletés partout ailleurs** — jamais les deux. La grille n'est exigée que pour `typeTravail === 'ecrire'`, client ET serveur | `usesGrille` dans `CreationForm` / `EditDevoirModal` |
+| Demander une saisie ou une confirmation | **Jamais** `prompt()` / `confirm()` / `alert()` : popup de l'application, centrée, sur fond assombri, en-tête et pied d'actions. Consigne durable (dépôt `harnais`, `0-moi/consignes.md`) | `ScenarisationFormModal`, `CertificationNotesModal` |
+| Nouvelle carte dans **Mes Ressources** | Gabarit de `GrilleCard` : dégradé vert, relief au survol, barre d'actions en bas à droite (dupliquer · ✏️ ouvrir · 🗑️). Les onglets Grilles, Œuvres et Parcours forment une famille — un gabarit divergent se voit | `GrilleCard`, `OeuvreCard`, `ScenarisationCard` |
 | Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
 | Activité où **rien ne se remet** (recherche, questionnaire de lecture, auto-évaluation, lecture d'une œuvre) | `hideSubmit` sur `WorkTopBar` ; la remise, quand elle existe, vit **au bas de la colonne de gauche**, dans la ligne d'actions | `hideSubmit` dans `/activites/[id]` |
 | Panneau latéral élève | `WorkspaceRail` (rail icônes droite + panneau redimensionnable) — côté prof on garde `ResizableSplit` + onglets. **Ne pas uniformiser** | `/activites/[id]` vs `/dashboard/travaux/[devoirId]/[travailId]` |
@@ -270,6 +275,14 @@ interface Questionnaire {
   qui laisse intactes les œuvres encodées avant l'existence du verso. Accès **serveur
   uniquement**, donc aucune règle Firestore. L'**acte** n'est pas un niveau
   d'imbrication : c'est l'étiquette `groupe` d'une section.
+  Un bloc peut être de type **`integration`** : une page tierce embarquée
+  (Genially, TimelineJS, StoryMaps ArcGIS, LearningApps…). ⚠ **Liste blanche de
+  domaines** (`DOMAINES_INTEGRATION`, `src/types/oeuvre.ts`), HTTPS obligatoire,
+  vérifiée **côté serveur** et pas seulement à l'écran — une iframe exécute du
+  code étranger dans une page ouverte par des mineurs. Le champ accepte l'URL
+  nue **ou** le bloc `<iframe …>` du bouton « Intégrer » (`urlDepuisIntegration`
+  n'en garde que le `src`) ; l'affichage se fait en bac à sable, `no-referrer`,
+  hauteur réglée par le prof.
   Une section porte aussi `facesInversees` (quel espace s'ouvre en premier — **par
   scène**, les blocs ne bougent pas) et `commentaires[]` : le **fluorage commenté**
   (`OeuvreCommentaire` — ancrage par **rang de mots** doublé des mots eux-mêmes, qui
@@ -285,9 +298,27 @@ interface Questionnaire {
   collection `professeurs` a l'email pour identifiant, et un collègue jamais connecté
   n'a pas d'UID. `peutEditerOeuvre()` se vérifie **côté serveur** sur l'œuvre ET ses
   sections ; **seul l'auteur** décide des partages.
+- `certificationsEleves` : **notes de certification**, un document par
+  (certification, élève) — `CRT-{moduleId}-{eleveId}`. Ne porte que la NOTE
+  (`percent: number | null`, `fait: boolean`) et ses références : titre, UAA,
+  ceinture et pondération restent dans la **scénarisation**, source unique — une
+  pondération corrigée après coup se répercute partout. Accès **serveur
+  uniquement**, donc aucune règle Firestore, et **aucun index composite** (toutes
+  les requêtes sont à champ unique). `eleveId` est un id de document, pas une
+  identité : rien à chiffrer. Voir `src/lib/certification-server.ts`.
 - `scenarisations` : une par cours. `chapitres[].modules[].activites[]` imbriqués —
   accès **serveur uniquement**, donc **aucune règle Firestore**. Une activité de
   module peut être hors application (pas de `devoirId`).
+  Le parcours porte ses **`classes`** (des NOMS, comme `devoirs.classes`) — c'est
+  ce qui dit quels élèves seront notés à ses certifications — et son
+  **`anneeScolaire`** est **modifiable** (« Français — 4e générale » revient
+  chaque année). Un module de genre `certification` porte en plus
+  `uaaCertifiees` (⚠ **distinct** du champ hérité `uaa` : `moduleUaa()` fait
+  primer les UAA des activités, ce qui est faux pour une certification),
+  `ceinture`, `ponderation` (% du total de l'UAA) et
+  `cotation: 'note' | 'fait'` — certaines certifications accordent leur ceinture
+  au seul fait d'avoir été **faites**, et n'entrent alors **pas** dans le
+  pourcentage de l'UAA (un « fait » n'est pas un 100 %).
 - `configuration/didactique` : UAA + **habiletés** + **méthodes d'enseignement**
   (`methodes`, liste ouverte tenue par l'admin, lue par la colonne Méthode des
   modules). Une habileté =
@@ -357,6 +388,7 @@ interface Questionnaire {
 | `/admin` | admin | Titre de page = nom de l'onglet actif (`ADMIN_TABS`, source unique dans `Header.tsx`). Header dédié (variant `admin`) en onglets : Vue d'ensemble (stats) / Gestion des membres (professeurs) / Gestion didactique (UAA + habiletés, `DidactiquePanel`) / Gestion des coûts (compteurs d'usage IA — pas de suivi tokens) |
 | `/roadmap` | tous | Nouveautés + à venir — **pilotée par Firestore**, éditable par l'admin (drag « À venir » → « Nouveautés » pour marquer fait) |
 | `/rgpd` | tous | Données personnelles : quelles données, protection (chiffrement), services IA, droits RGPD — statique, menu avatar |
+| `/accueil` | élève | **Page d'ouverture** (`/` y renvoie) : 3 blocs (travaux et lectures en retard · échéances à venir · derniers résultats) + **roue des ceintures** (`CeinturesRoue`) |
 | `/activites` | élève | 3 blocs : devoirs disponibles / travaux corrigés (correction rendue) / travaux non rendus (cochés par le prof, badge justifié ou « Non fait — 0 ») |
 | `/mes-ressources` | élève | Mes ressources personnelles : onglet Liste de vocabulaire (mots dont il a demandé la définition) + onglet À venir (vide) |
 | `/activites/[id]` | élève | Rédaction + auto-évaluation + remise (`WorkspaceRail`) |
@@ -367,7 +399,7 @@ interface Questionnaire {
 - Prof : Mes Activités → `/dashboard` | Mes Classes → `/classes` | Mes Ressources →
   `/grilles` | Cloche notifications | Avatar menu (l'œil « Vue élève » a été retiré —
   l'aperçu passe par le bouton Prévisualiser des activités)
-- Élève : Mes Activités → `/activites` | Mes Classes → `/mes-classes` | Mes Ressources
+- Élève : **Accueil → `/accueil`** | Mes Activités → `/activites` | Mes Classes → `/mes-classes` | Mes Ressources
   personnelles → `/mes-ressources` | Mon Profil → `/profil` | Cloche | Avatar menu
 - Cloche (`NotificationBell`, 3 variantes) : notifications calculées à la lecture
   (`/api/notifications`), badge non-lus vs `users.notifsLastSeen`, désactivables
@@ -395,6 +427,9 @@ interface Questionnaire {
 | `/api/oeuvres/suivi` | GET | **Prof** : progression de toute la classe sur une lecture d'œuvre (vérifications, scènes vues, jours, rythme, QCM, questions les plus ratées). Calculé serveur — les bonnes réponses vivent dans les sections |
 | `/api/oeuvres/bilan` | GET | **Élève** : son propre bilan de lecture (onglet Évaluation). Aucune note — des compteurs et un degré de réussite aux seuls QCM |
 | `/api/professeurs/collegues` | GET | Liste minimale des collègues (nom + email) pour choisir avec qui partager. Lisible par tout **prof** — `/api/professeurs` reste admin |
+| `/api/accueil` | GET | **Élève** : retards, échéances, derniers résultats et progression en ceintures — tout calculé **à la lecture**, rien n'est stocké. Un prof reçoit une page vide, pas une erreur |
+| `/api/certifications/notes` | GET, PUT | **Prof** : notes d'une certification, élève par élève (`?moduleId=`, `?classeId=` pour restreindre à une classe). PUT par lot (`writeBatch`) ; vérifie que la scénarisation est bien la sienne |
+| `/api/certifications/classe` | GET | **Prof** : les certifications qui visent une classe + l'avancement de la saisie (bloc « Certifications » du détail d'une classe) |
 | `/api/notifications` | GET, PUT | Notifications calculées à la lecture (aucune collection) ; PUT : `lastSeen` / `enabled` |
 | `/api/travaux/status` | GET | Élève : statut `{ status, nonRendu }` de ses travaux par devoir (classement page /activites) |
 | `/api/classes/[id]/archive` | GET | Archive ZIP de la classe avant suppression : HTML par élève (nommé + évaluation) + notes.csv par activité + récapitulatif — ZIP maison `src/lib/zip.ts`, zéro dépendance |
@@ -488,6 +523,23 @@ interface Questionnaire {
   (bibliothèque, gabarit de `GrilleCard`), `OeuvreBuilder` + `OeuvreSommaireEditable`
   (constructeur : sommaire en accordéon + recherche) + `OeuvreSectionApercu`
   (« vue de l'élève »), `OeuvreSuivi` (**vue prof — remplace les 3 colonnes**)
+- **Ceintures et certifications** : `src/types/ceintures.ts` (source unique — 6
+  ceintures **blanche → jaune → verte → bleue → noire → rouge** ; la **blanche
+  est acquise d'emblée** et absente des menus, la **noire** vaut réussite de
+  l'UAA et allume son badge, la **rouge** est le dépassement ; seuil de 60 %).
+  Images dans `public/ceintures/`. `CertificationNotesModal` (popup de saisie
+  **partagée** par la ligne ⭐ de la scénarisation et le bloc « Certifications »
+  du détail d'une classe — `ClasseCertifications`), `CeinturesRoue` (la roue de
+  `/accueil`), bloc « Mes certifications par UAA » dans l'onglet Général du
+  profil. Une ligne ⭐ dépliée montre **« L'épreuve »** (durée + activité
+  rattachée), pas le tableau des activités : une certification n'a pas « des
+  activités », elle **est** une épreuve.
+- **`ScenarisationCard`** + `CreateScenarisationCard` + `ScenarisationFormModal` :
+  l'onglet Design & scénarisation s'ouvre sur des **cartes** de parcours (gabarit
+  de `GrilleCard`), avec duplication. Le crayon **ouvre** le parcours ; le nom se
+  change sur place dans son bandeau. ⚠ `dupliquerScenarisation()` **régénère tous
+  les identifiants** — deux certifications de même `moduleId` verraient leurs
+  notes d'élèves se confondre.
 - Fiche élève : `ProfilPanel` (profil 5 onglets partagé élève/prof),
   `EleveProfilModal` (grande popup), `MesElevesSection` (bloc Mes Élèves)
 - `DrawTools` (`DrawToolbar` + `DrawCanvas`) : atelier de tracé sur image (6 outils,
@@ -536,6 +588,10 @@ interface Questionnaire {
   un bouton ⇄. **Partagé** par la création d'activité, l'édition d'activité et le
   constructeur d'œuvre. Le mécanisme est commun, les libellés propres à chaque
   dispositif (rédaction/planification · espace textuel/multimédia)
+- **`CeinturesRoue`** : la roue de `/accueil` — 7 branches sur 240°, 6 couronnes,
+  la dernière ceinture obtenue (83 px) traversant sa couronne, le **bouclier au
+  bout de la branche** (le motif le plus extérieur), l'intitulé de l'UAA **au
+  survol** de son étiquette. Référence : `harnais/plans/maquette-accueil-ceintures.html`
 - **`BlocCommente`** (+ `src/lib/oeuvre-commentaires.ts`) : le texte d'un bloc avec le
   **fluorage commenté**, rendu **partagé prof/élève**. Chaque mot est enveloppé dans un
   `<span data-mot>` — c'est ce qui permet d'ancrer un commentaire sans arithmétique
@@ -560,7 +616,8 @@ interface Questionnaire {
 `useTravail` (auto-save 2,5 s), `useCorrection`, `usePreferences`, `useAudioRecorder`,
 `useAiSuggestions`, `useAiGridEvaluation`, `useVocabulaireThemes`, `useVocabulaireWords`,
 `useVocabulaireExercises`, `useDictionaryLookup` (cache client partagé du dictionnaire),
-`useDidactique` (config UAA/gestes, cache module partagé)
+`useDidactique` (config UAA/gestes, cache module partagé),
+`useScenarisations` (expose `dupliquer` — copie complète d'un parcours)
 
 ---
 
@@ -577,6 +634,38 @@ vides (pratique à l'affichage, fatal à l'écriture). D'où `chapitresPourFires
 `src/lib/oeuvre-server.ts`, par où passe **toute** route qui réécrit un sommaire.
 **Symptôme** : 500 sur une route qui lit puis réécrit un document.
 *(rencontré deux fois le 2026-08-15 : import Molière, puis ajout de section)*
+
+### Le corrigé d'une œuvre s'ouvre au bouton, jamais à la réponse
+Dans la liseuse d'œuvre, le corrigé était dévoilé **question par question, dès
+la première réponse** : cocher une case d'un QCM multiple affichait aussitôt
+toutes les bonnes, cocher une ligne de matrice verdissait la grille entière.
+L'élève savait avant d'avoir fini.
+**Règle** : un seul état `corrigeOuvert` pour tout le questionnaire, posé par le
+bouton **« Terminer »** — qui n'referme plus la popup mais l'ouvre sur le
+corrigé et **verrouille les réponses** (sans quoi l'élève « corrige » sa copie
+une fois les bonnes réponses affichées). `showCorrection` suit cet état.
+*(2026-08-17)*
+
+### Un surlignage par mot laisse un blanc à chaque espace
+Envelopper chaque mot dans son propre `<span>` surligné produit une suite de
+taches séparées, pas un passage continu : les espaces, eux, ne sont dans aucun
+span. **Règle** : le surlignage enveloppe la SUITE des mots d'un même
+commentaire, espaces compris (`baliserContenu`), avec
+`box-decoration-break: clone` pour que les extrémités restent arrondies quand
+le passage revient à la ligne. Une balise et un retour à la ligne ferment la
+suite — sinon `baliserVers` coupe le span en deux balises orphelines.
+*(2026-08-17)*
+
+### Arcs SVG : le drapeau de balayage se lit à l'envers d'un repère mathématique
+Une géométrie qui place ses points en angles **mathématiques** (`y = cy − r·sin θ`,
+donc y vers le haut) tourne dans le sens **antihoraire à l'écran** quand l'angle
+croît. Le drapeau de balayage d'un arc SVG (`A rx ry rot large sweep x y`) vaut,
+lui, 1 pour le sens **horaire**. Le laisser à 1 trace donc l'**arc
+complémentaire** : tout le reste du cercle.
+**Symptôme** : une couronne de 240° qui s'affiche en 120° du côté opposé, ou un
+tracé qui remplit l'écran.
+**Règle** : avec un repère mathématique, `sweep = 0`. Voir `CeinturesRoue`.
+*(2026-08-17)*
 
 ### `position: sticky` : la marge intérieure du conteneur décale le calage
 Une barre collante dans un conteneur qui défile se cale **sous la marge intérieure

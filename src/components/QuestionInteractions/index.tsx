@@ -75,6 +75,7 @@ export default function ChampManipule({
           items={question.matriceItems ?? []}
           colonnes={question.choices ?? []}
           valeurs={answer.matrice ?? {}}
+          multiple={question.matriceMultiple}
           onChange={(matrice) => onAnswerChange({ matrice })}
           disabled={disabled}
           attendu={showCorrection ? question.matriceCorrect : null}

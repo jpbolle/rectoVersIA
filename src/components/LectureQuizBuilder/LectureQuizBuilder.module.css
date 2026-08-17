@@ -1087,3 +1087,32 @@
   padding-top: 12px;
   border-top: 1px solid var(--c-border);
 }
+
+/* Matrice — réponses multiples par ligne */
+.matriceMultiple {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.matriceCases {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.matriceCase {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}

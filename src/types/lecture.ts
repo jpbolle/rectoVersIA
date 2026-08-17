@@ -186,10 +186,16 @@ export interface LectureQuestion {
 
   // ── Matrice : plusieurs items qui partagent les mêmes réponses ──
   // Les colonnes réutilisent `choices` (même éditeur que le QCM), les lignes
-  // sont `matriceItems`. `matriceCorrect[i]` = index de colonne attendu pour
-  // la ligne i ; -1 = aucune réponse attendue (ligne non notée).
+  // sont `matriceItems`. `matriceCorrect[i]` = ce qui est attendu pour la
+  // ligne i ; -1 (ou un tableau vide) = ligne non notée.
+  //
+  // `matriceMultiple` autorise PLUSIEURS colonnes par ligne — comme le QCM a
+  // son `multiple`. La case attendue devient alors un TABLEAU d'index. Le champ
+  // reste le même, élargi : deux champs parallèles auraient dédoublé tous les
+  // lecteurs, et un document encodé avant ce jour reste lisible tel quel.
   matriceItems?: string[];
-  matriceCorrect?: number[];        // jamais exposé à l'élève
+  matriceMultiple?: boolean;
+  matriceCorrect?: (number | number[])[];   // jamais exposé à l'élève
 
   // Souligner du texte (« fluorage ») : extrait collé dans la question, ou la
   // ressource de l'activité (l'élève souligne alors dans l'onglet Ressources)
@@ -250,8 +256,9 @@ export interface LectureAnswer {
   // appartenir qu'à une catégorie à la fois (le dernier clic gagne).
   fluoParCategorie?: Record<string, number[]>;
   audioPlays?: number;              // nombre d'écoutes de l'audio déjà consommées
-  // Matrice : index de colonne choisi pour chaque ligne (clé = index de ligne)
-  matrice?: Record<number, number>;
+  // Matrice : la ou les colonnes choisies pour chaque ligne (clé = index de
+  // ligne). Un nombre en réponse simple, un tableau en réponse multiple.
+  matrice?: Record<number, number | number[]>;
   // Appariement : idGauche -> idDroite
   paires?: Record<string, string>;
   // Remise en ordre : les ids des jetons, dans l'ordre où l'élève les a mis
@@ -348,6 +355,18 @@ export function melangeStable<T>(items: T[], graine: string): T[] {
  * accents ainsi détachés — la seule façon fiable de le faire sans table de
  * correspondance.
  */
+/**
+ * Les colonnes cochées sur une ligne de matrice, quelle que soit la forme
+ * stockée : un nombre (réponse simple) ou un tableau (réponse multiple).
+ *
+ * Un seul point de lecture, sinon chaque appelant réinvente la conversion —
+ * et l'un d'eux oublie le cas du `-1`, qui veut dire « rien ».
+ */
+export function matriceColonnes(v: number | number[] | undefined | null): number[] {
+  if (Array.isArray(v)) return v.filter((n) => typeof n === 'number' && n >= 0);
+  return typeof v === 'number' && v >= 0 ? [v] : [];
+}
+
 export function normaliserReponseCourte(texte: string): string {
   return texte
     .normalize('NFD')
@@ -368,7 +387,10 @@ export function estAutoCorrigeable(q: LectureQuestion): boolean {
         ? Array.isArray(q.correctIndexes) && q.correctIndexes.length > 0
         : typeof q.correctIndex === 'number';
     case 'matrice':
-      return Array.isArray(q.matriceCorrect) && q.matriceCorrect.some((c) => c >= 0);
+      return (
+        Array.isArray(q.matriceCorrect) &&
+        q.matriceCorrect.some((c) => matriceColonnes(c).length > 0)
+      );
     case 'appariement':
       return !!q.appariementPaires && Object.keys(q.appariementPaires).length > 0;
     case 'ordre':
@@ -422,8 +444,19 @@ export function partReussite(q: LectureQuestion, a: LectureAnswer | undefined): 
     }
     case 'matrice': {
       const attendu = q.matriceCorrect ?? [];
-      const notees = attendu.map((c, i) => ({ c, i })).filter((x) => x.c >= 0);
-      const justes = notees.filter((x) => a?.matrice?.[x.i] === x.c).length;
+      const notees = attendu
+        .map((c, i) => ({ c: matriceColonnes(c), i }))
+        .filter((x) => x.c.length > 0);
+      // Une ligne est juste quand l'élève a coché EXACTEMENT ce qui est
+      // attendu — ni une case en moins, ni une en trop. Un demi-point par
+      // ligne n'aurait pas de sens : c'est déjà le barème partiel de la
+      // question qui compte les lignes.
+      const justes = notees.filter((x) => {
+        const donne = matriceColonnes(a?.matrice?.[x.i]);
+        return (
+          donne.length === x.c.length && x.c.every((col) => donne.includes(col))
+        );
+      }).length;
       return part(justes, notees.length);
     }
     case 'appariement': {
@@ -512,7 +545,7 @@ export function lectureARepondu(q: LectureQuestion, a: LectureAnswer | undefined
       return (a.fluoWords?.length ?? 0) > 0
         || Object.values(a.fluoParCategorie ?? {}).some((m) => m.length > 0);
     case 'matrice':
-      return Object.keys(a.matrice ?? {}).length > 0;
+      return Object.values(a.matrice ?? {}).some((v) => matriceColonnes(v).length > 0);
     case 'appariement':
       return Object.keys(a.paires ?? {}).length > 0;
     case 'ordre':

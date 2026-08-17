@@ -1,0 +1,285 @@
+/* Popup de saisie des notes d'une certification.
+   Reprend l'habillage des popups de la scénarisation (backdrop, en-tête sur
+   fond retiré, pied d'actions) — deux recettes divergentes se verraient. */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(61, 56, 50, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal {
+  width: min(760px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg-card);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(61, 56, 50, 0.3);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px 20px;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.title {
+  font-family: var(--c-font-title);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--c-text);
+}
+
+.sub {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+.beltInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.beltDot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  display: inline-block;
+}
+
+.close {
+  margin-left: auto;
+  border: none;
+  background: none;
+  font-size: 16px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.close:hover {
+  color: var(--c-text);
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.info,
+.error {
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+  line-height: 1.6;
+  margin: 8px 0;
+}
+
+.error {
+  color: #b8362f;
+}
+
+/* ── Barre d'outils ── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.dateField {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}
+
+.dateInput {
+  padding: 6px 9px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--c-text);
+  background: var(--c-bg-card);
+}
+
+.dateInput:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.autoHint {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  font-style: italic;
+}
+
+/* ── Grille des élèves ── */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table thead th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-text-secondary);
+  padding: 0 10px 8px;
+  border-bottom: 1.5px solid var(--c-border);
+}
+
+.thClasse { width: 70px; }
+.thNote { width: 130px; }
+.thBelt { width: 150px; }
+
+.table tbody tr {
+  border-bottom: 1px solid var(--c-border);
+}
+
+.table tbody tr:hover {
+  background: var(--c-bg-element);
+}
+
+.table td {
+  padding: 7px 10px;
+}
+
+.tdClasse {
+  color: var(--c-text-secondary);
+  font-size: 13px;
+}
+
+.tdNom {
+  color: var(--c-text);
+}
+
+.noteInput {
+  width: 82px;
+  padding: 6px 9px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: right;
+  color: var(--c-text);
+  background: var(--c-bg-card);
+}
+
+.noteInput:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.noteInput::placeholder {
+  color: var(--c-text-secondary);
+  opacity: 0.65;
+}
+
+.beltWon {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.beltImg {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.beltNone,
+.beltMissed {
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}
+
+/* ── Pied ── */
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-bg-element);
+}
+
+.tally {
+  margin-right: auto;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}
+
+.btnPrimary,
+.btnGhost {
+  min-height: 38px;
+  padding: 0 18px;
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btnPrimary {
+  border: none;
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--c-primary-dark);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btnGhost {
+  border: 1.5px solid var(--c-border);
+  background: var(--c-bg-card);
+  color: var(--c-text-secondary);
+}
+
+.btnGhost:hover {
+  border-color: var(--c-text-secondary);
+  color: var(--c-text);
+}
+
+/* Certification non cotée : une case, pas un champ. Grande cible — le prof
+   coche une classe entière d'affilée. */
+.faitBox {
+  width: 22px;
+  height: 22px;
+  margin: 0 0 0 30px;
+  accent-color: var(--c-primary);
+  cursor: pointer;
+}

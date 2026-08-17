@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette — Accueil élève et roue des ceintures</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c-primary: #2d6a5a;
+    --c-primary-light: #357a68;
+    --c-primary-dark: #245649;
+    --c-accent: #d4944c;
+    --c-accent-dark: #c4862e;
+    --c-bg: #faf6f0;
+    --c-bg-card: #ffffff;
+    --c-bg-element: #f0ebe3;
+    --c-text: #3d3832;
+    --c-text-secondary: #6b635a;
+    --c-text-muted: #8f867c;
+    --c-border: #e3dbd0;
+    --c-danger: #b44040;
+    --c-radius: 8px;
+    --c-radius-lg: 14px;
+    --c-font-title: 'Playfair Display', serif;
+    --c-font-body: 'Inter', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--c-bg);
+    color: var(--c-text);
+    font-family: var(--c-font-body);
+  }
+
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 24px 60px; }
+
+  .note {
+    background: #fff8e8;
+    border: 1px solid var(--c-accent);
+    border-radius: var(--c-radius);
+    padding: 12px 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--c-text-secondary);
+    margin-bottom: 28px;
+  }
+  .note strong { color: var(--c-text); }
+
+  .hello { font-family: var(--c-font-title); font-size: 26px; font-weight: 700; margin: 0 0 4px; color: var(--c-primary); }
+  .helloSub { font-size: 14px; color: var(--c-text-secondary); margin: 0 0 26px; }
+
+  /* ── Ligne de blocs ── */
+  .blocs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .bloc {
+    background: var(--c-bg-card);
+    border: 1px solid var(--c-border);
+    border-radius: var(--c-radius-lg);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+  }
+  .blocRetard { border-color: rgba(180,64,64,.35); background: rgba(180,64,64,.04); }
+  .blocHead {
+    display: flex; align-items: baseline; gap: 9px;
+    padding-bottom: 11px; margin-bottom: 11px;
+    border-bottom: 1.5px solid var(--c-border);
+  }
+  .blocTitre { font-size: 14px; font-weight: 700; margin: 0; }
+  .blocCount {
+    margin-left: auto; font-size: 20px; font-weight: 700; line-height: 1;
+    font-variant-numeric: tabular-nums; color: var(--c-primary);
+  }
+  .blocRetard .blocCount { color: var(--c-danger); }
+  .ligne {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 7px 0; font-size: 13.5px;
+    border-bottom: 1px solid var(--c-border);
+  }
+  .ligne:last-child { border-bottom: none; }
+  .ligneTitre { flex: 1; min-width: 0; }
+  .ligneMeta { font-size: 12px; color: var(--c-text-muted); white-space: nowrap; }
+  .ligneRetard { color: var(--c-danger); font-weight: 600; }
+  .pastille {
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+    background: var(--c-bg-element); color: var(--c-text-secondary); white-space: nowrap;
+  }
+  .pcOk { background: rgba(45,106,90,.14); color: var(--c-primary); }
+  .pcKo { background: rgba(180,64,64,.13); color: var(--c-danger); }
+  .blocVide { font-size: 13px; color: var(--c-text-muted); padding: 10px 0; }
+  .blocLien {
+    margin-top: auto; padding-top: 11px; font-size: 12.5px; font-weight: 600;
+    color: var(--c-primary); text-decoration: none;
+  }
+
+  /* ── La roue ── */
+  .roue {
+    background: var(--c-bg-card);
+    border: 1px solid var(--c-border);
+    border-radius: var(--c-radius-lg);
+    overflow: hidden;
+  }
+  .roueHead {
+    background: var(--c-primary);
+    color: #fff;
+    padding: 16px 24px;
+  }
+  .roueTitre { font-family: var(--c-font-title); font-size: 20px; font-weight: 600; margin: 0; }
+  .roueSub { font-size: 13px; opacity: .85; margin: 3px 0 0; }
+  .roueBody { padding: 8px 16px 20px; }
+  svg { display: block; width: 100%; height: auto; }
+
+  .legende {
+    display: flex; align-items: center; justify-content: center;
+    gap: 14px; flex-wrap: wrap;
+    padding: 4px 16px 6px;
+    font-size: 12.5px; color: var(--c-text-secondary);
+  }
+  .legItem { display: inline-flex; align-items: center; gap: 6px; }
+  .legDot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.12); }
+  .legFleche { color: var(--c-text-muted); }
+  .legNote {
+    text-align: center; font-size: 12.5px; color: var(--c-text-secondary);
+    padding: 0 24px 6px; line-height: 1.6;
+  }
+
+  /* Étiquettes d'UAA posées sur le SVG */
+  .uaaChip { font-size: 12px; font-weight: 700; fill: #fff; }
+  .uaaLib { font-size: 11px; fill: var(--c-text-secondary); }
+  .centreTexte { font-family: var(--c-font-title); font-size: 15px; fill: #fff; font-weight: 600; }
+  .centreChiffre { font-size: 26px; font-weight: 700; fill: #fff; }
+
+  @media (max-width: 900px) {
+    .blocs { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="note">
+    <strong>Maquette — page « Accueil » de l’élève.</strong> Données inventées.
+    <strong>Référence VIVANTE</strong> : tenue à jour avec <code>CeinturesRoue.tsx</code>.
+    En cas d’écart, <strong>c’est le composant qui fait foi</strong> — cette page sert à
+    régler le tracé, pas à décrire l’application.
+    Les images sont lues sur <code>http://localhost:3003</code> : le serveur de développement
+    doit tourner. Reste à trancher : le <strong>centre</strong> — j’y ai mis le nombre d’UAA
+    acquises plutôt que le seul mot « Progression », qui ne dit rien.
+  </div>
+
+  <h1 class="hello">Bonjour Marie</h1>
+  <p class="helloSub">4A · Français — 4<sup>e</sup> générale</p>
+
+  <!-- ─── Ligne de blocs ─── -->
+  <div class="blocs">
+
+    <div class="bloc blocRetard">
+      <div class="blocHead">
+        <h2 class="blocTitre">Travaux et lectures en retard</h2>
+        <span class="blocCount">2</span>
+      </div>
+      <div class="ligne">
+        <span class="ligneTitre">Contraction de texte — Zola</span>
+        <span class="ligneMeta ligneRetard">3 jours</span>
+      </div>
+      <div class="ligne">
+        <span class="ligneTitre">Le Malade imaginaire — acte II</span>
+        <span class="ligneMeta ligneRetard">hier</span>
+      </div>
+      <a class="blocLien" href="#">Voir mes activités →</a>
+    </div>
+
+    <div class="bloc">
+      <div class="blocHead">
+        <h2 class="blocTitre">Échéances à venir</h2>
+        <span class="blocCount">3</span>
+      </div>
+      <div class="ligne">
+        <span class="ligneTitre">Recherche guidée — le romantisme</span>
+        <span class="ligneMeta">lun. 24</span>
+      </div>
+      <div class="ligne">
+        <span class="ligneTitre">Vocabulaire — série 4</span>
+        <span class="ligneMeta">jeu. 27</span>
+      </div>
+      <div class="ligne">
+        <span class="ligneTitre">Défense d’une opinion écrite</span>
+        <span class="ligneMeta">mar. 2 sept.</span>
+      </div>
+      <a class="blocLien" href="#">Voir mes activités →</a>
+    </div>
+
+    <div class="bloc">
+      <div class="blocHead">
+        <h2 class="blocTitre">Derniers résultats</h2>
+        <span class="blocCount">4</span>
+      </div>
+      <div class="ligne">
+        <span class="ligneTitre">Questionnaire — Le Malade imaginaire</span>
+        <span class="pastille pcOk">84 %</span>
+      </div>
+      <div class="ligne">
+        <span class="ligneTitre">Dossier de recherche</span>
+        <span class="pastille pcOk">72 %</span>
+      </div>
+      <div class="ligne">
+        <span class="ligneTitre">Contraction de texte</span>
+        <span class="pastille pcKo">48 %</span>
+      </div>
+      <a class="blocLien" href="#">Voir mon profil →</a>
+    </div>
+
+  </div>
+
+  <!-- ─── La roue des ceintures ─── -->
+  <section class="roue">
+    <div class="roueHead">
+      <h2 class="roueTitre">Mes ceintures par UAA</h2>
+      <p class="roueSub">Chaque certification réussie à 60 % fait avancer d’une ceinture. La noire vaut réussite de l’UAA.</p>
+    </div>
+    <div class="roueBody">
+      <svg id="roue" viewBox="0 0 1240 900" role="img"
+           aria-label="Roue de progression : une branche par UAA, une couronne par ceinture"></svg>
+    </div>
+
+    <div class="legende">
+      <span class="legFleche">Départ</span>
+      <span class="legItem"><span class="legDot" style="background:#f4f1ea"></span>blanche</span>
+      <span class="legItem"><span class="legDot" style="background:#e8b33c"></span>jaune</span>
+      <span class="legItem"><span class="legDot" style="background:#3d8f5f"></span>verte</span>
+      <span class="legItem"><span class="legDot" style="background:#3d6fa6"></span>bleue</span>
+      <span class="legItem"><span class="legDot" style="background:#2b2926"></span>noire</span>
+      <span class="legItem"><span class="legDot" style="background:#b8362f"></span>rouge</span>
+      <span class="legFleche">Dépassement</span>
+    </div>
+    <p class="legNote">
+      Chaque branche porte <strong>sa dernière ceinture obtenue</strong>, posée au milieu de la
+      couronne de sa couleur. La <strong>blanche est acquise d’emblée</strong> : elle dit qu’on
+      entre dans le parcours, aucune certification ne l’accorde. Le <strong>bouclier</strong> de
+      l’UAA attend au bout de la branche, en gris et en transparence, et s’allume quand la
+      ceinture noire est atteinte.
+    </p>
+  </section>
+
+</div>
+
+<script>
+// ─── Les données que l'API fournira (ici inventées) ───
+
+const CEINTURES = [
+  { id: 'blanche', rang: 1, couleur: '#f4f1ea', contour: '#c9c2b4', img: 'ceinture-blanche' },
+  { id: 'jaune',   rang: 2, couleur: '#e8b33c', img: 'ceinture-jaune' },
+  { id: 'verte',   rang: 3, couleur: '#3d8f5f', img: 'ceinture-verte' },
+  { id: 'bleue',   rang: 4, couleur: '#3d6fa6', img: 'ceinture-bleue' },
+  { id: 'noire',   rang: 5, couleur: '#2b2926', img: 'ceinture-noire' },
+  { id: 'rouge',   rang: 6, couleur: '#b8362f', img: 'ceinture-rouge' },
+];
+
+// Libellés courts, comme sur ton tableau de bord
+const UAA = [
+  { uaa: '0', court: 'Je prends du recul',              ceinture: 'noire'   },
+  { uaa: '1', court: 'J’organise ma recherche',         ceinture: 'bleue'   },
+  { uaa: '2', court: 'Je résume les informations',      ceinture: 'jaune'   },
+  { uaa: '3', court: 'Je défends une opinion à l’écrit', ceinture: 'verte'  },
+  { uaa: '4', court: 'Je défends une opinion à l’oral',  ceinture: 'blanche'},
+  { uaa: '5', court: 'Je m’approprie une œuvre',         ceinture: 'rouge'  },
+  { uaa: '6', court: 'Je relate des expériences',        ceinture: 'blanche'},
+];
+
+// Les images sont servies par le serveur de développement : Safari refuse les
+// sous-ressources file:// hors du dossier du document, et une maquette rangée
+// dans harnais/plans/ ne peut donc pas lire public/ en chemin relatif.
+const IMG = 'http://localhost:3003/ceintures/';
+const NS = 'http://www.w3.org/2000/svg';
+
+// ─── Géométrie ───
+// 7 branches réparties sur 240°, UAA 0 droit en haut. C'est l'ouverture de ta
+// capture : les UAA 3 et 4 descendent sous l'horizontale.
+const OUVERTURE = 240;
+const CX = 620, CY = 560;
+const R_INT = 110;          // bord du disque central
+const R_EXT = 300;          // bord extérieur de la dernière couronne
+const R_ETIQUETTE = R_EXT + 38;
+const R_BADGE = R_EXT + 122;   // le bouclier ferme la branche
+const EPAISSEUR = (R_EXT - R_INT) / CEINTURES.length;
+
+// La BLANCHE est acquise dès l'entrée dans le parcours : c'est le plancher,
+// jamais un vide. Aucune certification ne l'accorde.
+const rang = (id) => CEINTURES.find((c) => c.id === id)?.rang ?? 1;
+const pas = OUVERTURE / (UAA.length - 1);
+// UAA 0 à 90° (haut), puis on s'écarte symétriquement
+const angleDe = (i) => 90 - (i <= 3 ? i : i - UAA.length) * pas;
+
+const pt = (a, r) => [
+  CX + r * Math.cos((a * Math.PI) / 180),
+  CY - r * Math.sin((a * Math.PI) / 180),
+];
+
+function el(nom, attrs, texte) {
+  const n = document.createElementNS(NS, nom);
+  Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+  if (texte !== undefined) n.textContent = texte;
+  return n;
+}
+
+// Un arc de couronne, d'un angle à l'autre.
+//
+// ⚠ `pt()` travaille en angles mathématiques (y vers le haut) : un angle qui
+// CROÎT tourne donc dans le sens antihoraire à l'écran. Le drapeau de balayage
+// SVG vaut 1 pour le sens horaire — il faut donc 0 ici, sinon on trace l'arc
+// complémentaire, c'est-à-dire tout le reste du cercle.
+function arc(a1, a2, r) {
+  const [x1, y1] = pt(a1, r);
+  const [x2, y2] = pt(a2, r);
+  const grand = Math.abs(a2 - a1) > 180 ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${grand} 0 ${x2} ${y2}`;
+}
+
+const svg = document.getElementById('roue');
+const aDebut = angleDe(3) - pas / 2;   // extrémité basse droite
+const aFin = angleDe(4) + pas / 2;     // extrémité basse gauche
+
+// 1. Les six couronnes de ceinture, du centre vers l'extérieur
+CEINTURES.forEach((c, i) => {
+  const r = R_INT + EPAISSEUR * (i + 0.5);
+  svg.appendChild(el('path', {
+    d: arc(aDebut, aFin, r),
+    fill: 'none',
+    stroke: c.couleur,
+    'stroke-width': EPAISSEUR - 5,
+    'stroke-linecap': 'butt',
+    opacity: 0.85,
+  }));
+  if (c.contour) {
+    svg.appendChild(el('path', {
+      d: arc(aDebut, aFin, r),
+      fill: 'none',
+      stroke: c.contour,
+      'stroke-width': 1,
+      opacity: 0.6,
+    }));
+  }
+});
+
+// 2. Les séparateurs entre branches — ils disent que chaque UAA a son couloir
+for (let i = 0; i < UAA.length; i++) {
+  [angleDe(i) - pas / 2, angleDe(i) + pas / 2].forEach((a) => {
+    const [x1, y1] = pt(a, R_INT);
+    const [x2, y2] = pt(a, R_EXT);
+    svg.appendChild(el('line', {
+      x1, y1, x2, y2, stroke: '#ffffff', 'stroke-width': 2.5, opacity: 0.9,
+    }));
+  });
+}
+
+// 3. Par branche : LES SIX karatékas, le bouclier, l'étiquette d'UAA.
+//
+// Tous les karatékas sont posés, un par couronne : ceux qui restent à gagner en
+// transparence et en gris, ceux qui sont acquis en pleine couleur. La branche
+// devient une échelle qu'on lit d'un coup — « j'en suis là, il me reste ça » —
+// au lieu d'un seul jeton dont on ne sait pas ce qu'il y a devant.
+// Même règle pour le bouclier : toujours présent, en attente.
+UAA.forEach((u, i) => {
+  const a = angleDe(i);
+  const r = rang(u.ceinture);
+
+  // UN SEUL karatéka : la dernière ceinture obtenue. Les six empilés
+  // racontaient un parcours que les couronnes disent déjà — et forçaient une
+  // taille de 44 px où l'on ne distinguait plus la couleur du tissu. Grand et
+  // posé au MILIEU de la couronne de sa couleur, il la traverse : on lit d'un
+  // coup où en est l'élève.
+  const cAtteinte = CEINTURES[r - 1];
+  const rk = R_INT + EPAISSEUR * (r - 0.5);
+  const [kx, ky] = pt(a, rk);
+  const T = 83;   // −10 % : à 92 px le judoka écrasait sa couronne
+  svg.appendChild(el('image', {
+    href: IMG + cAtteinte.img + '.png',
+    x: kx - T / 2, y: ky - T / 2, width: T, height: T,
+    preserveAspectRatio: 'xMidYMid meet',
+    style: 'filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))',
+  }));
+
+  // Le bouclier de l'UAA — toujours là, en pleine couleur dès la noire.
+  // Il passe à 86 px et s'écarte des couronnes : à 62 px collé au bord, il
+  // mordait sur l'étiquette et son libellé.
+  const acquise = r >= rang('noire');
+  const B = 86;
+  const [bx, by] = pt(a, R_EXT + 58);
+  svg.appendChild(el('image', {
+    href: IMG + 'badge-uaa-' + u.uaa + '.png',
+    x: bx - B / 2, y: by - B / 2, width: B, height: B,
+    // Transparent, mais EN COULEUR : le gris les rendait blafards, or c'est
+    // ce que l'élève vise.
+    opacity: acquise ? 1 : 0.22,
+    style: acquise ? 'filter:drop-shadow(0 2px 6px rgba(0,0,0,.28))' : '',
+  }));
+
+  // Étiquette « UAA n », au-delà du bouclier, puis le libellé court juste
+  // dessous — en écran, pas en radial : sur la branche du haut, un décalage
+  // radial ferait remonter le texte au-dessus de l'étiquette.
+  const [lx, ly] = pt(a, R_EXT + 128);
+  const large = 66, haut = 22;
+  svg.appendChild(el('rect', {
+    x: lx - large / 2, y: ly - haut / 2, width: large, height: haut,
+    rx: 6, fill: acquise ? '#2d6a5a' : '#8f867c',
+  }));
+  svg.appendChild(el('text', {
+    x: lx, y: ly + 4, 'text-anchor': 'middle', class: 'uaaChip',
+  }, 'UAA ' + u.uaa));
+
+  // Le BOUCLIER ferme la branche : c'est le motif le plus extérieur, au-delà
+  // de l'étiquette et de son libellé. Entre la roue et l'étiquette, il
+  // s'intercalait dans la lecture au lieu de la terminer.
+  const B = 88;
+  const [bx, by] = pt(a, R_BADGE);
+  svg.appendChild(el('image', {
+    href: IMG + 'badge-uaa-' + u.uaa + '.png',
+    x: bx - B / 2, y: by - B / 2, width: B, height: B,
+    // Transparent, mais EN COULEUR : le gris les rendait blafards, or c'est
+    // ce que l'élève vise.
+    opacity: acquise ? 1 : 0.22,
+    style: acquise ? 'filter:drop-shadow(0 2px 6px rgba(0,0,0,.28))' : '',
+  }));
+});
+
+// 4. Le disque central : combien d'UAA sont acquises
+const acquises = UAA.filter((u) => rang(u.ceinture) >= rang('noire')).length;
+svg.appendChild(el('circle', {
+  cx: CX, cy: CY, r: R_INT - 6,
+  fill: '#d4944c',
+}));
+svg.appendChild(el('text', {
+  x: CX, y: CY - 14, 'text-anchor': 'middle', class: 'centreChiffre',
+}, acquises + '/' + UAA.length));
+svg.appendChild(el('text', {
+  x: CX, y: CY + 12, 'text-anchor': 'middle', class: 'centreTexte',
+}, 'UAA acquises'));
+svg.appendChild(el('text', {
+  x: CX, y: CY + 34, 'text-anchor': 'middle', class: 'uaaLib', fill: '#fff8ec',
+}, 'ceinture noire'));
+</script>
+</body>
+</html>

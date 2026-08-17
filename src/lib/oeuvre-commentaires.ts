@@ -207,31 +207,66 @@ export function baliserContenu(
 
   let rang = 0;
   let out = '';
+  // Commentaire dont le surlignage est OUVERT, et les espaces en attente.
+  //
+  // Le surlignage enveloppe la SUITE des mots d'un même commentaire, espaces
+  // compris — un span par mot laissait un blanc entre chaque, et le passage se
+  // lisait comme une série de mots barbouillés au lieu d'un passage continu.
+  // Les espaces sont donc mis en attente : ils rejoignent le surlignage si le
+  // mot suivant appartient au même commentaire, et restent dehors sinon.
+  let ouvert: string | null = null;
+  let attente = '';
+
+  const fermer = () => {
+    if (ouvert !== null) {
+      out += '</span>';
+      ouvert = null;
+    }
+    out += attente;
+    attente = '';
+  };
 
   for (const m of morceaux(contenu || '', html)) {
     if (m.balise) {
+      // Une balise est une frontière sûre : elle pourrait être un bloc, et un
+      // surlignage à cheval produirait du HTML mal formé.
+      fermer();
       out += m.brut;
       continue;
     }
     for (const jeton of m.brut.split(SEPARATEUR)) {
+      const texte = html ? jeton : echapper(jeton);
+
       if (!jeton.trim()) {
-        // Les espaces (et les retours à la ligne) passent tels quels
-        out += html ? jeton : echapper(jeton);
+        // `baliserVers` recoupe le résultat sur les retours à la ligne : un
+        // surlignage ouvert de part et d'autre serait coupé en deux balises
+        // orphelines. On le referme avant.
+        if (jeton.includes('\n')) {
+          fermer();
+          out += texte;
+        } else {
+          attente += texte;
+        }
         continue;
       }
+
       const zone = parMot.get(rang);
-      const contenuMot = html ? jeton : echapper(jeton);
-      if (zone) {
+      if (zone?.id !== ouvert) fermer();
+      out += attente;
+      attente = '';
+
+      if (zone && ouvert === null) {
         const cls = [classes.marque, zone.orphelin ? classes.orphelin : '']
           .filter(Boolean)
           .join(' ');
-        out += `<span class="${classes.mot} ${cls}" data-mot="${rang}" data-cmt="${zone.id}" role="button" tabindex="0">${contenuMot}</span>`;
-      } else {
-        out += `<span class="${classes.mot}" data-mot="${rang}">${contenuMot}</span>`;
+        out += `<span class="${cls}" data-cmt="${zone.id}" role="button" tabindex="0">`;
+        ouvert = zone.id;
       }
+      out += `<span class="${classes.mot}" data-mot="${rang}">${texte}</span>`;
       rang++;
     }
   }
+  fermer();
   return out;
 }
 

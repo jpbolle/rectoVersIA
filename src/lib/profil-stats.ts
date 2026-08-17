@@ -98,6 +98,10 @@ export interface StudentBase {
   corrections: CorrEntry[];
   devoirs: Map<string, DevoirInfo>;
   grilles: Map<string, GrilleEntry>;
+  // Documents `eleves` de cet élève — un par classe, et il peut en avoir
+  // plusieurs (deux cours, deux années). Les notes de certification sont
+  // classées par eleveId : il faut les réunir tous.
+  eleveIds: string[];
 }
 
 // Charge tout ce qui n'appartient qu'à l'élève : travaux, corrections visibles,
@@ -108,11 +112,18 @@ export async function loadStudentBase(
   opts: { withGrilles?: boolean; withContent?: boolean } = {}
 ): Promise<StudentBase | null> {
   // 1. L'utilisateur est-il un élève enregistré ?
+  // `uid` vide = élève jamais connecté, consulté par son prof. Sans ce garde,
+  // la requête ramènerait tous les documents dont `firebaseUid` vaut la chaîne
+  // vide — c'est-à-dire les élèves des autres.
   const [byUid, byEmail] = await Promise.all([
-    adminDb.collection('eleves').where('firebaseUid', '==', uid).get(),
+    uid
+      ? adminDb.collection('eleves').where('firebaseUid', '==', uid).get()
+      : Promise.resolve({ empty: true, docs: [] as { id: string }[] }),
     queryElevesByEmail(email),
   ]);
   if (byUid.empty && byEmail.docs.length === 0) return null;
+
+  const eleveIds = [...new Set([...byUid.docs, ...byEmail.docs].map((d) => d.id))];
 
   // 2. Ses travaux
   const travauxSnapshot = await adminDb
@@ -130,7 +141,7 @@ export async function loadStudentBase(
   });
 
   const base: StudentBase = {
-    travaux, corrections: [], devoirs: new Map(), grilles: new Map(),
+    travaux, corrections: [], devoirs: new Map(), grilles: new Map(), eleveIds,
   };
   if (travaux.length === 0) return base;
 

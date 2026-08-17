@@ -25,7 +25,7 @@ amnésie en continuité.
 | `roadmap.md` | Où va le produit | Racine, à côté de la page `/roadmap` de l'app (version utilisateurs) |
 | `harnais/README.md` | **Ce document** | `harnais/` regroupe ce qui n'a pas d'emplacement imposé |
 | `harnais/memoire/` | État cross-sessions (index + rollups) | Dans le dépôt : survit aux renommages, se synchronise entre les deux Macs |
-| `harnais/plans/` | Plans validés avant les chantiers structurels | Gabarit : `_gabarit.md` |
+| `harnais/plans/` | Plans validés et **maquettes** des chantiers structurels | Gabarit : `_gabarit.md`. ⚠ Voir « Le ménage » ci-dessous : une maquette dont la fonctionnalité est livrée et validée **se supprime** |
 | `harnais/hooks/pre-push` | Bloque le push si `npx tsc --noEmit` échoue | Activé par `git config core.hooksPath harnais/hooks` |
 | `.github/workflows/ci.yml` | Re-vérification après push sur machine neutre | Emplacement imposé par GitHub |
 | `.claude/skills/` | Procédures répétables (`deploy`, `session-ritual`) | Emplacement imposé par Claude Code |
@@ -51,10 +51,34 @@ amnésie en continuité.
 - **`/session-ritual`** (début) : lire `AGENTS.md` → `init.md` → mémoire → `git status` →
   résumé court.
 - **`/session-ritual`** (fin) : vérification → mise à jour du rollup → `init.md` si
-  structurel → rappels conditionnels → proposer le déploiement.
+  structurel → **ménage** → rappels conditionnels → proposer le déploiement.
 - **`/deploy`** : les **3 surfaces de déploiement indépendantes** — app sur VPS (manuel),
   règles/index Firestore (manuel), extension Chrome NavigKid (manuel).
   En oublier une = production incohérente.
+
+## Le ménage
+
+Un harnais qui accumule devient un harnais qu'on ne lit plus. **En fin de session**,
+l'agent passe en revue ce qui a servi et propose ce qui peut partir — il ne
+supprime jamais de lui-même :
+
+| Quoi | Ça part quand | Ça reste quand |
+|---|---|---|
+| **Maquettes** (`harnais/plans/maquette-*.html`) | La fonctionnalité est **livrée ET validée** à l'écran | Elle sert de **référence tenue à jour** avec le code — dire alors lequel des deux fait foi |
+| **Scripts temporaires**, fichiers de travail | Toujours | — |
+| **Plans** (`harnais/plans/*.md`) | **Jamais** | Toujours : c'est une **trace datée** |
+| **Scripts** d'import ou de migration (`scripts/*.ts`) | **Jamais sans accord explicite** | Par défaut : c'est la trace de ce qui a été fait en base |
+
+Un **plan** dit ce qu'on a décidé et pourquoi — c'est justement l'alternative écartée
+qu'on cherche à retrouver six semaines plus tard. Il vieillit bien **à condition d'être
+lu pour ce qu'il est** : chaque plan porte donc, en tête, sa date et la mention qu'il
+décrit une intention à un moment donné, **peut-être dépassée depuis**. Ce qui existe
+réellement se lit dans `init.md` et dans la mémoire, jamais dans un plan.
+
+Une **maquette**, elle, montre un état de l'écran : elle vieillit mal, parce que l'écran
+a continué d'évoluer. À la session suivante, un agent la lit comme l'intention en vigueur,
+« corrige » le code vers elle, et défait ce qui avait été validé. **Une maquette périmée
+est pire qu'aucune maquette.**
 
 ## Les garde-fous
 

@@ -21,6 +21,19 @@ import {
   LIKERT_NIVEAUX,
   parseAutoEvalAnswers,
 } from '@/types/autoevaluation';
+
+// `MatriceField` est partagé avec le questionnaire de lecture, où une ligne
+// peut porter PLUSIEURS colonnes. L'auto-évaluation, elle, n'a jamais qu'une
+// réponse par ligne — on ramène donc la valeur à un nombre plutôt que d'élargir
+// son modèle pour un besoin qu'elle n'a pas.
+function uneParLigne(v: Record<number, number | number[]>): Record<number, number> {
+  const out: Record<number, number> = {};
+  Object.entries(v).forEach(([ligne, valeur]) => {
+    const n = Array.isArray(valeur) ? valeur[0] : valeur;
+    if (typeof n === 'number') out[Number(ligne)] = n;
+  });
+  return out;
+}
 import type {
   AutoEvalAnswer,
   AutoEvalQuestion,
@@ -136,7 +149,7 @@ export default function AutoEvalActivity({
                 items={q.matriceItems ?? []}
                 colonnes={LIKERT_COLONNES}
                 valeurs={a.matrice ?? {}}
-                onChange={(matrice) => majReponse(q.id, { matrice })}
+                onChange={(matrice) => majReponse(q.id, { matrice: uneParLigne(matrice) })}
                 disabled={readOnly}
                 nomGroupe={`ae-${q.id}`}
               />
@@ -228,7 +241,7 @@ export default function AutoEvalActivity({
             items={q.matriceItems ?? []}
             colonnes={q.choices ?? []}
             valeurs={a.matrice ?? {}}
-            onChange={(matrice) => majReponse(q.id, { matrice })}
+            onChange={(matrice) => majReponse(q.id, { matrice: uneParLigne(matrice) })}
             disabled={readOnly}
           />
         );

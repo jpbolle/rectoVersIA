@@ -34,7 +34,7 @@ import type { LectureQuestion } from './lecture';
 // ou une vidéo OÙ IL VEUT dans la scène. D'où une liste ordonnée de blocs
 // plutôt qu'un champ `contenu` + des médias en annexe.
 
-export type OeuvreBlocType = 'texte' | 'vers' | 'video' | 'image' | 'audio';
+export type OeuvreBlocType = 'texte' | 'vers' | 'video' | 'image' | 'audio' | 'integration';
 
 // ─── Recto / verso ───
 //
@@ -71,7 +71,94 @@ export interface OeuvreBloc {
   imageFileId?: string;
   audioUrl?: string;
   audioFileId?: string;
+  // integration : une page tierce embarquée — Genially, frise chronologique,
+  // exerciseur. C'est une iframe, mais posée par le PROF sur un domaine qu'il
+  // choisit : la liste blanche ci-dessous est ce qui empêche d'en faire un
+  // vecteur d'injection dans une page vue par des mineurs.
+  integrationUrl?: string;
+  // Hauteur du cadre en pixels (une frise n'a pas la proportion d'une vidéo)
+  integrationHauteur?: number;
   legende?: string;
+}
+
+// Domaines autorisés dans un bloc « intégration ».
+//
+// Une iframe exécute du code tiers DANS la page de l'élève : sans liste
+// blanche, un lien collé au hasard donnerait à n'importe quel site un pied
+// dans une application qui manipule des données de mineurs. La liste s'étend à
+// la demande — c'est une décision, pas un réglage.
+export const DOMAINES_INTEGRATION = [
+  'genially.com',
+  'view.genially.com',
+  'genial.ly',
+  'app.genial.ly',
+  // TimelineJS : l'URL d'intégration est servie par le CDN
+  // (cdn.knightlab.com/libs/timeline3/latest/embed/…)
+  'timeline.knightlab.com',
+  'cdn.knightlab.com',
+  'storymap.knightlab.com',
+  'uploads.knightlab.com',
+  // StoryMaps ArcGIS — l'ancien (arcgis.com) et le nouveau (storymaps.com)
+  'storymaps.arcgis.com',
+  'www.arcgis.com',
+  'arcgis.com',
+  'storymaps.com',
+  'storymaps.esri.com',
+  'sutori.com',
+  'www.sutori.com',
+  'learningapps.org',
+  'wordwall.net',
+  'padlet.com',
+  'fr.padlet.com',
+  'h5p.org',
+  'thinglink.com',
+  'www.thinglink.com',
+  'framindmap.org',
+  'digipad.app',
+  'la-digitale.com',
+  'docs.google.com',
+  'drive.google.com',
+];
+
+/**
+ * Ce que le prof colle, ramené à une URL.
+ *
+ * Le bouton « Partager / Intégrer » de Genially, d'ArcGIS ou de TimelineJS ne
+ * donne pas une URL : il donne un bloc `<iframe src="…" …>`. C'est ce qu'on
+ * colle naturellement — refuser ce collage obligerait à aller pêcher l'adresse
+ * à la main dans le code, ce qui n'est pas un geste de prof.
+ *
+ * On en extrait donc le `src`. Rien d'autre du bloc n'est conservé : ni ses
+ * attributs, ni son style, ni ce qui pourrait s'y cacher — c'est
+ * `integrationAutorisee` qui décide ensuite si l'adresse est admise.
+ */
+export function urlDepuisIntegration(saisie: string): string {
+  const brut = (saisie || '').trim();
+  if (!brut) return '';
+  if (!/<iframe/i.test(brut)) return brut;
+  const m = brut.match(/<iframe[^>]*\ssrc\s*=\s*["']([^"']+)["']/i);
+  if (!m) return brut;
+  // Un extrait copié depuis une page peut porter des entités HTML
+  return m[1]
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .trim();
+}
+
+/**
+ * L'URL d'intégration est-elle sur un domaine autorisé ?
+ * Sous-domaines admis (`xxx.genially.com`), HTTPS obligatoire.
+ */
+export function integrationAutorisee(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:') return false;
+    const hote = u.hostname.toLowerCase();
+    return DOMAINES_INTEGRATION.some((d) => hote === d || hote.endsWith(`.${d}`));
+  } catch {
+    return false;
+  }
 }
 
 // Les blocs d'une face. `face` absente = recto : c'est la règle qui préserve

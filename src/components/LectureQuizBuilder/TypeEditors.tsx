@@ -22,7 +22,13 @@ import type {
   LectureQuestion,
   LectureQuestionImage,
 } from '@/types/lecture';
-import { FLUO_COULEURS, FLUO_COULEUR_IDS, fluoHex, generateJetonId } from '@/types/lecture';
+import {
+  FLUO_COULEURS,
+  FLUO_COULEUR_IDS,
+  fluoHex,
+  generateJetonId,
+  matriceColonnes,
+} from '@/types/lecture';
 import { MATRICE_MODELES } from '@/types/autoevaluation';
 import { FluoExtrait } from '@/components/LectureQuizActivity/LectureQuizActivity';
 import styles from './LectureQuizBuilder.module.css';
@@ -190,20 +196,35 @@ export function EditeurMatrice({ q, update, disabled }: EditeurProps) {
   const lignes = q.matriceItems ?? [];
   const attendu = q.matriceCorrect ?? [];
 
+  const multiple = !!q.matriceMultiple;
+
   const majColonnes = (suivantes: string[]) => {
     // Retirer une colonne décale les indices : le corrigé qui la visait
-    // deviendrait faux sans qu'on le voie. On le remet à « aucune réponse ».
-    const corrige = lignes.map((_, i) =>
-      typeof attendu[i] === 'number' && attendu[i] < suivantes.length ? attendu[i] : -1
-    );
+    // deviendrait faux sans qu'on le voie. On ne garde donc que les colonnes
+    // qui existent encore, et une ligne qui n'en garde aucune redevient « pas
+    // de bonne réponse ».
+    const corrige = lignes.map((_, i) => {
+      const gardees = matriceColonnes(attendu[i]).filter((c: number) => c < suivantes.length);
+      return multiple ? gardees : (gardees[0] ?? -1);
+    });
     update({ choices: suivantes, matriceCorrect: corrige });
   };
 
   const majLignes = (suivantes: string[]) =>
     update({
       matriceItems: suivantes,
-      matriceCorrect: suivantes.map((_, i) => attendu[i] ?? -1),
+      matriceCorrect: suivantes.map((_, i) => attendu[i] ?? (multiple ? [] : -1)),
     });
+
+  // Coche ou décoche une colonne attendue sur une ligne
+  const basculer = (li: number, colonne: number) => {
+    const corrige: (number | number[])[] = lignes.map((_, i) => attendu[i] ?? (multiple ? [] : -1));
+    const deja = matriceColonnes(corrige[li]);
+    corrige[li] = deja.includes(colonne)
+      ? deja.filter((c) => c !== colonne)
+      : [...deja, colonne].sort((a, b) => a - b);
+    update({ matriceCorrect: corrige });
+  };
 
   return (
     <div className={styles.matriceEditeur}>
@@ -215,6 +236,27 @@ export function EditeurMatrice({ q, update, disabled }: EditeurProps) {
         >
           i
         </span>
+        {/* Comme le `multiple` du QCM classique. Le basculement CONVERTIT le
+            corrigé déjà saisi au lieu de le jeter : le prof ne recommence pas
+            son encodage parce qu'il a changé d'avis. */}
+        <label className={styles.matriceMultiple}>
+          <input
+            type="checkbox"
+            checked={multiple}
+            disabled={disabled}
+            onChange={(e) => {
+              const vers = e.target.checked;
+              update({
+                matriceMultiple: vers,
+                matriceCorrect: lignes.map((_, i) => {
+                  const cols = matriceColonnes(attendu[i]);
+                  return vers ? cols : (cols[0] ?? -1);
+                }),
+              });
+            }}
+          />
+          Plusieurs réponses par ligne
+        </label>
       </div>
 
       <div className={styles.modeleRow}>
@@ -292,23 +334,41 @@ export function EditeurMatrice({ q, update, disabled }: EditeurProps) {
             placeholder={`Affirmation ${li + 1}`}
             disabled={disabled}
           />
-          <select
-            value={attendu[li] ?? -1}
-            onChange={(e) => {
-              const corrige = lignes.map((_, i) => attendu[i] ?? -1);
-              corrige[li] = Number(e.target.value);
-              update({ matriceCorrect: corrige });
-            }}
-            disabled={disabled}
-            title="Colonne attendue"
-          >
-            <option value={-1}>— pas de bonne réponse</option>
-            {colonnes.map((c, ci) => (
-              <option key={ci} value={ci}>
-                {c || `Colonne ${ci + 1}`}
-              </option>
-            ))}
-          </select>
+          {/* Réponse simple : un menu suffit. Réponses multiples : des cases,
+              parce qu'un menu ne sait pas en porter deux. */}
+          {multiple ? (
+            <span className={styles.matriceCases}>
+              {colonnes.map((c, ci) => (
+                <label key={ci} className={styles.matriceCase} title={c || `Colonne ${ci + 1}`}>
+                  <input
+                    type="checkbox"
+                    checked={matriceColonnes(attendu[li]).includes(ci)}
+                    onChange={() => basculer(li, ci)}
+                    disabled={disabled}
+                  />
+                  {c || `C${ci + 1}`}
+                </label>
+              ))}
+            </span>
+          ) : (
+            <select
+              value={matriceColonnes(attendu[li])[0] ?? -1}
+              onChange={(e) => {
+                const corrige: (number | number[])[] = lignes.map((_, i) => attendu[i] ?? -1);
+                corrige[li] = Number(e.target.value);
+                update({ matriceCorrect: corrige });
+              }}
+              disabled={disabled}
+              title="Colonne attendue"
+            >
+              <option value={-1}>— pas de bonne réponse</option>
+              {colonnes.map((c, ci) => (
+                <option key={ci} value={ci}>
+                  {c || `Colonne ${ci + 1}`}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             type="button"
             className={styles.choiceDel}

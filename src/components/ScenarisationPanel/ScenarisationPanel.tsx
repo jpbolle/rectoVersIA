@@ -30,16 +30,21 @@
 
 import { Fragment, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { useClasses } from '@/hooks/useClasses';
+import { calculateSchoolYear } from '@/lib/auth-utils';
 import { useDidactique } from '@/hooks/useDidactique';
 import { useScenarisations } from '@/hooks/useScenarisations';
 import { TYPES_COGNITIFS, TYPES_SAVOIR_ETRE, gestesDeTypes } from '@/types/didactique';
+import { ceintureParId } from '@/types/ceintures';
 import {
   GENRES,
   GENRES_AJOUTABLES,
   PERIODES_ANNEE,
+  anneesVoisines,
   capacitePeriode,
   couleurDeChapitre,
   comptePourLAnnee,
+  estCotee,
   formatDuree,
   genreDe,
   moduleGestes,
@@ -52,7 +57,10 @@ import {
   objectifsDe,
   periodesChapitre,
   periodesPlanifiees,
+  ponderationDe,
+  ponderationUaa,
   semainesDe,
+  uaaCertifiees,
 } from '@/types/scenarisation';
 import type {
   ChapitreDidactique,
@@ -67,6 +75,13 @@ import ListField from './ListField';
 import AutoTextarea from './AutoTextarea';
 import ModuleActivitesModal from './ModuleActivitesModal';
 import ModuleFicheModal from './ModuleFicheModal';
+import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
+import ScenarisationCard from '@/components/ScenarisationCard/ScenarisationCard';
+import CreateScenarisationCard from '@/components/ScenarisationCard/CreateScenarisationCard';
+import ScenarisationFormModal from '@/components/ScenarisationCard/ScenarisationFormModal';
+import CertificationNotesModal, {
+  CeinturePicker,
+} from '@/components/CertificationNotesModal/CertificationNotesModal';
 import styles from './ScenarisationPanel.module.css';
 
 
@@ -84,9 +99,12 @@ function deplacer<T>(liste: T[], i: number, sens: -1 | 1): T[] {
 }
 
 export default function ScenarisationPanel() {
-  const { scenarisations, isLoading, isSaving, dirty, error, modifier, creer, supprimer, vider } =
-    useScenarisations();
+  const {
+    scenarisations, isLoading, isSaving, dirty, error,
+    modifier, creer, dupliquer, supprimer, vider,
+  } = useScenarisations();
   const { config } = useDidactique();
+  const { classes } = useClasses();
 
   const [courantId, setCourantId] = useState<string | null>(null);
   const [vue, setVue] = useState<Vue>('encodage');
@@ -100,9 +118,24 @@ export default function ScenarisationPanel() {
   // Fiche descriptive ouverte — { chapitre, module }
   const [fiche, setFiche] = useState<{ ch: string; mod: string } | null>(null);
   const [cibleActivite, setCibleActivite] = useState<{ ch: string; mod: string } | null>(null);
+  // Certification dont on saisit les notes — l'id du module suffit, la popup
+  // retrouve seule tout ce qu'elle a besoin de savoir.
+  const [notesCertif, setNotesCertif] = useState<string | null>(null);
+  // Popup de création / duplication. `source` non nulle = duplication.
+  const [formulaire, setFormulaire] = useState<{
+    mode: 'creation' | 'duplication';
+    source: Scenarisation | null;
+    nom: string;
+    annee: string;
+  } | null>(null);
 
+  // Aucun repli sur la première scénarisation : tant que le prof n'a pas
+  // ouvert un parcours, l'onglet montre MES PARCOURS : une carte par cours,
+  // au gabarit des grilles et des œuvres. (« Bibliothèque » reste le mot des
+  // œuvres — deux écrans du même nom se confondraient.) Ouvrir un cours est
+  // un geste, pas un état par défaut.
   const scen = useMemo(
-    () => scenarisations.find((s) => s.id === courantId) ?? scenarisations[0] ?? null,
+    () => scenarisations.find((s) => s.id === courantId) ?? null,
     [scenarisations, courantId]
   );
 
@@ -123,6 +156,21 @@ export default function ScenarisationPanel() {
   );
 
   const ADMIN_NOTE = 'Liste gérée dans Administration du site → Gestion didactique';
+
+  // Année scolaire par défaut d'un parcours neuf : celle du parcours le plus
+  // récent, sinon celle du calendrier. Le prof encode plusieurs cours d'affilée
+  // pour la même année — la lui redemander à chaque fois serait du bruit.
+  const anneeCourante =
+    scenarisations[0]?.anneeScolaire || calculateSchoolYear();
+
+  const classeNames = useMemo(
+    () =>
+      classes
+        .filter((c) => !c.archive)
+        .map((c) => c.nom)
+        .sort((a, b) => a.localeCompare(b)),
+    [classes]
+  );
 
   // ─── Mutations ───
 
@@ -220,6 +268,7 @@ export default function ScenarisationPanel() {
     // Un module emporte ses activités : la confirmation n'est pas du confort.
     // (La suppression de chapitre en demandait une, pas celle-ci — incohérence
     // relevée à l'audit du 2026-08-15.)
+    if (!scen) return;
     const mod = scen.chapitres.find((c) => c.id === chId)?.modules.find((m) => m.id === modId);
     const nb = mod?.activites.length ?? 0;
     const ok = window.confirm(
@@ -227,7 +276,6 @@ export default function ScenarisationPanel() {
         (nb > 0 ? `\n\nSes ${nb} activité${nb > 1 ? 's' : ''} seront supprimées avec lui.` : '')
     );
     if (!ok) return;
-    if (!scen) return;
     const ch = scen.chapitres.find((c) => c.id === chId);
     majChapitre(chId, { modules: (ch?.modules ?? []).filter((m) => m.id !== modId) }, true);
   };
@@ -259,33 +307,79 @@ export default function ScenarisationPanel() {
     setter(next);
   };
 
+  // ─── Gestes de l'écran « Mes parcours » ───
+
+  // Création et duplication passent par la MÊME popup : deux champs (nom et
+  // année scolaire), ce qu'un `prompt()` du navigateur ne sait pas faire.
+  const ouvrirFormulaire = (source: Scenarisation | null) =>
+    setFormulaire({
+      mode: source ? 'duplication' : 'creation',
+      source,
+      // La copie garde le NOM du cours et prend l'année SUIVANTE : c'est à
+      // cela que sert une duplication. Le nom reste modifiable dans la popup.
+      nom: source ? source.nom : '',
+      annee: source
+        ? anneesVoisines(source.anneeScolaire)[0]
+        : anneeCourante,
+    });
+
+  const validerFormulaire = async (nom: string, anneeScolaire: string) => {
+    if (!formulaire) return;
+    const { source } = formulaire;
+    const resultat = source
+      ? await dupliquer(source, nom, anneeScolaire)
+      : await creer(nom, anneeScolaire);
+    setFormulaire(null);
+    if (resultat) setCourantId(resultat.id);
+  };
+
+  const supprimerParcours = (s: Scenarisation) => {
+    if (!confirm(`Supprimer le parcours « ${s.nom} » ? Les activités sont conservées.`)) return;
+    supprimer(s.id);
+    if (courantId === s.id) setCourantId(null);
+  };
+
   // ─── États d'attente ───
 
   if (isLoading) {
     return <p className={styles.info}>Chargement des scénarisations…</p>;
   }
 
+  // ─── Mes parcours : une carte par cours ───
+  //
+  // Même gabarit que les grilles et les œuvres. Le prof y retrouve tous ses
+  // cours d'un coup d'œil au lieu de les chercher dans un menu déroulant.
   if (!scen) {
     return (
-      <div className={styles.empty}>
-        <h3 className={styles.emptyTitle}>Aucune scénarisation</h3>
-        <p className={styles.emptyText}>
-          Une scénarisation décrit un cours : ses chapitres, ses modules, leurs objectifs et le
-          temps qu’ils prennent. Les activités Recto-versIA viennent s’y accrocher.
-        </p>
-        <button
-          type="button"
-          className={`${styles.btn} ${styles.btnPrimary}`}
-          onClick={async () => {
-            const nom = prompt('Nom du cours (ex. « Français — 4e générale ») :');
-            if (nom?.trim()) {
-              const nouvelle = await creer(nom.trim());
-              if (nouvelle) setCourantId(nouvelle.id);
-            }
-          }}
-        >
-          ＋ Créer une scénarisation
-        </button>
+      <div className={styles.panel}>
+        {scenarisations.length === 0 && (
+          <p className={styles.libIntro}>
+            Un parcours décrit un cours : ses chapitres, ses modules, leurs objectifs et le
+            temps qu’ils prennent. Les activités Recto-versIA viennent s’y accrocher.
+          </p>
+        )}
+        <div className={styles.libGrid}>
+          <CreateScenarisationCard onClick={() => ouvrirFormulaire(null)} />
+          {scenarisations.map((s) => (
+            <ScenarisationCard
+              key={s.id}
+              scenarisation={s}
+              onOpen={(x) => setCourantId(x.id)}
+              onDuplicate={(x) => ouvrirFormulaire(x)}
+              onDelete={supprimerParcours}
+            />
+          ))}
+        </div>
+
+        {formulaire && (
+          <ScenarisationFormModal
+            mode={formulaire.mode}
+            nomInitial={formulaire.nom}
+            anneeInitiale={formulaire.annee}
+            onValider={validerFormulaire}
+            onClose={() => setFormulaire(null)}
+          />
+        )}
       </div>
     );
   }
@@ -339,35 +433,23 @@ export default function ScenarisationPanel() {
   return (
     /* onBlur : quitter un champ enregistre — on ne compte pas sur le seul délai */
     <div className={styles.panel} onBlur={() => vider()}>
-      {/* ── Barre : choix du cours, réglages, bascule de vue ── */}
+      {/* ── Barre : retour à Mes parcours, réglages, bascule de vue ──
+          `vider()` avant de sortir : ce qui est en file part maintenant, pas
+          au prochain rendu (incident de perte de données du 2026-08-14). */}
       <div className={styles.scenBar}>
-        <select
-          className={styles.scenSelect}
-          value={scen.id}
-          onChange={(e) => {
-            vider();
-            setCourantId(e.target.value);
-          }}
-        >
-          {scenarisations.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nom}
-            </option>
-          ))}
-        </select>
-
         <button
           type="button"
-          className={styles.btn}
-          onClick={async () => {
-            const nom = prompt('Nom du cours :');
-            if (nom?.trim()) {
-              const nouvelle = await creer(nom.trim());
-              if (nouvelle) setCourantId(nouvelle.id);
-            }
+          className={styles.btnRetour}
+          onClick={() => {
+            vider();
+            setCourantId(null);
           }}
+          title="Revenir à tous mes parcours"
         >
-          ＋ Nouvelle scénarisation
+          <span className={styles.btnRetourFleche} aria-hidden="true">
+            ←
+          </span>
+          Mes parcours
         </button>
 
         <button
@@ -447,7 +529,10 @@ export default function ScenarisationPanel() {
         </div>
       )}
 
-      {/* ── Bandeau du parcours : le nom, rien d'autre ── */}
+      {/* ── Bandeau du parcours : le nom et les classes qui le suivent ──
+          Les classes ne servent PAS à distribuer des activités (chaque devoir
+          garde les siennes) : elles disent qui sera noté aux certifications
+          du parcours. Sans elles, la saisie des notes n'a personne à lister. */}
       <div className={styles.parcoursHead}>
         <AutoTextarea
           className={styles.phTitle}
@@ -455,6 +540,32 @@ export default function ScenarisationPanel() {
           onChange={(nom) => maj({ nom })}
           placeholder="Nom du cours"
         />
+        <div className={styles.phClasses}>
+          {/* L'année scolaire se modifie ici, sur place, comme le nom : elle
+              fait partie de l'identité du parcours, pas de ses réglages. */}
+          <span className={styles.phClassesLabel}>Année scolaire</span>
+          <select
+            className={styles.phAnnee}
+            value={scen.anneeScolaire}
+            onChange={(e) => maj({ anneeScolaire: e.target.value }, true)}
+          >
+            {anneesVoisines(scen.anneeScolaire).map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.phClasses}>
+          <span className={styles.phClassesLabel}>Classes qui suivent ce cours</span>
+          <ClassesDropdown
+            options={classeNames}
+            selected={scen.classes ?? []}
+            onChange={(c) => maj({ classes: c }, true)}
+            placeholder="Aucune classe"
+          />
+        </div>
         <span className={styles.phHint}>
           {scen.chapitres.length} chapitre{scen.chapitres.length > 1 ? 's' : ''} ·{' '}
           {totalPlanifie} période{totalPlanifie > 1 ? 's' : ''} planifiée
@@ -998,7 +1109,266 @@ export default function ScenarisationPanel() {
                                           déroulant reste celui des ACTIVITÉS,
                                           là où la didactique se pose vraiment. */}
 
-                                      {/* ── Les activités : c'est ici que se saisit la didactique ── */}
+                                      {/* ── Ce qu'une CERTIFICATION déclare ──
+                                          Ces trois champs n'existent que sur ce
+                                          genre : un module ordinaire n'accorde
+                                          pas de ceinture. Les UAA sont saisies
+                                          ICI et non déduites des activités —
+                                          une certification hors application n'en
+                                          a aucune, et c'est le cas le plus
+                                          fréquent. */}
+                                      {genre === 'certification' && (
+                                        <div className={styles.certBox}>
+                                          <span className={styles.detailLabel}>
+                                            Ce que cette certification certifie
+                                          </span>
+                                          <div className={styles.certFields}>
+                                            <label className={styles.certField}>
+                                              <span className={styles.certLabel}>UAA certifiées</span>
+                                              <TagField
+                                                value={m.uaaCertifiees ?? []}
+                                                options={uaaOptions}
+                                                labelCourt={(id) => `UAA ${id}`}
+                                                placeholder="choisir…"
+                                                onChange={(v) =>
+                                                  majModule(ch.id, m.id, { uaaCertifiees: v }, true)
+                                                }
+                                              />
+                                            </label>
+
+                                            <label className={styles.certField}>
+                                              <span className={styles.certLabel}>
+                                                Ceinture accordée
+                                              </span>
+                                              <span className={styles.certBelt}>
+                                                {ceintureParId(m.ceinture) && (
+                                                  <span
+                                                    className={styles.certBeltDot}
+                                                    style={{
+                                                      background: ceintureParId(m.ceinture)!.couleur,
+                                                      borderColor:
+                                                        ceintureParId(m.ceinture)!.contour ??
+                                                        ceintureParId(m.ceinture)!.couleur,
+                                                    }}
+                                                  />
+                                                )}
+                                                <CeinturePicker
+                                                  className={styles.inlineSelect}
+                                                  value={m.ceinture ?? ''}
+                                                  onChange={(ceinture) =>
+                                                    majModule(ch.id, m.id, { ceinture }, true)
+                                                  }
+                                                />
+                                              </span>
+                                            </label>
+
+                                            {/* Toutes les certifications ne se
+                                                notent pas : un carnet de lecture
+                                                tenu, un exposé présenté valent
+                                                leur ceinture au seul fait d'avoir
+                                                été FAITS. */}
+                                            <label className={styles.certField}>
+                                              <span className={styles.certLabel}>Cotation</span>
+                                              <select
+                                                className={styles.inlineSelect}
+                                                value={estCotee(m) ? 'note' : 'fait'}
+                                                onChange={(e) =>
+                                                  majModule(
+                                                    ch.id,
+                                                    m.id,
+                                                    { cotation: e.target.value as 'note' | 'fait' },
+                                                    true
+                                                  )
+                                                }
+                                              >
+                                                <option value="note">Notée (%)</option>
+                                                <option value="fait">Non cotée — à faire</option>
+                                              </select>
+                                            </label>
+
+                                            {/* Une certification non cotée ne pèse
+                                                rien dans le pourcentage de l'UAA :
+                                                le champ n'aurait aucun effet. */}
+                                            {estCotee(m) && (
+                                              <label className={styles.certField}>
+                                                <span className={styles.certLabel}>
+                                                  Poids dans l’UAA
+                                                </span>
+                                                <span className={styles.certWeight}>
+                                                  <input
+                                                    type="number"
+                                                    min={1}
+                                                    max={100}
+                                                    className={`${styles.cellInput} ${styles.numInput}`}
+                                                    value={ponderationDe(m)}
+                                                    onChange={(e) =>
+                                                      majModule(ch.id, m.id, {
+                                                        ponderation: Math.max(
+                                                          1,
+                                                          Math.min(100, Number(e.target.value) || 100)
+                                                        ),
+                                                      })
+                                                    }
+                                                  />
+                                                  %
+                                                </span>
+                                              </label>
+                                            )}
+
+                                            <button
+                                              type="button"
+                                              className={styles.certNotesBtn}
+                                              onClick={() => setNotesCertif(m.id)}
+                                            >
+                                              📊 Notes des élèves
+                                            </button>
+                                          </div>
+
+                                          {/* La somme des poids d'une UAA se lit
+                                              d'un coup d'œil : c'est le seul
+                                              endroit où une erreur d'encodage se
+                                              voit avant que l'élève n'ait un
+                                              pourcentage faux. Jamais un blocage
+                                              — l'année s'encode au fil des mois. */}
+                                          {estCotee(m) && uaaCertifiees(m).length > 0 && (
+                                            <div className={styles.certSums}>
+                                              {uaaCertifiees(m).map((u) => {
+                                                const somme = ponderationUaa(scen, u);
+                                                return (
+                                                  <span
+                                                    key={u}
+                                                    className={`${styles.certSum} ${
+                                                      somme === 100 ? styles.certSumOk : styles.certSumWarn
+                                                    }`}
+                                                  >
+                                                    UAA {u} : {somme} %{somme === 100 ? ' ✓' : ' ⚠'}
+                                                  </span>
+                                                );
+                                              })}
+                                              <span className={styles.dim}>
+                                                somme des poids de toutes les certifications de
+                                                cette UAA, dans ce parcours
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {/* ── L'ÉPREUVE d'une certification ──
+                                          Une certification n'a pas « des
+                                          activités » : elle est UNE épreuve. Le
+                                          tableau des activités n'a donc pas sa
+                                          place ici — il demandait méthode,
+                                          gestes et concepts pour quelque chose
+                                          qui ne s'enseigne pas, il s'évalue.
+                                          Restent les deux seules choses à dire :
+                                          combien de temps elle prend, et si elle
+                                          passe par une activité de l'app. */}
+                                      {genre === 'certification' ? (
+                                        <div className={styles.actList}>
+                                          <span className={styles.detailLabel}>L’épreuve</span>
+                                          <div className={styles.certEpreuve}>
+                                            <label className={styles.certField}>
+                                              <span className={styles.certLabel}>
+                                                Durée (périodes)
+                                              </span>
+                                              <input
+                                                type="number"
+                                                min={0}
+                                                step={0.5}
+                                                className={`${styles.cellInput} ${styles.numInput}`}
+                                                value={modulePeriodes(m)}
+                                                onChange={(e) => {
+                                                  const periodes = Math.max(
+                                                    0,
+                                                    Number(e.target.value) || 0
+                                                  );
+                                                  // Quand une activité est rattachée, c'est ELLE
+                                                  // qui porte la durée (sanitizeModule remet
+                                                  // `m.periodes` à 0 dès qu'il y en a une) :
+                                                  // écrire au mauvais endroit perdrait la valeur
+                                                  // au premier enregistrement.
+                                                  if (m.activites.length) {
+                                                    majActivite(
+                                                      ch.id,
+                                                      m.id,
+                                                      m.activites[0].id,
+                                                      { periodes }
+                                                    );
+                                                  } else {
+                                                    majModule(ch.id, m.id, { periodes });
+                                                  }
+                                                }}
+                                              />
+                                            </label>
+
+                                            <div className={styles.certField}>
+                                              <span className={styles.certLabel}>
+                                                Activité Recto-versIA rattachée
+                                              </span>
+                                              {m.activites.length === 0 ? (
+                                                <button
+                                                  type="button"
+                                                  className={`${styles.btn} ${styles.btnAccent}`}
+                                                  onClick={() =>
+                                                    setCibleActivite({ ch: ch.id, mod: m.id })
+                                                  }
+                                                >
+                                                  🔗 Rattacher une activité
+                                                </button>
+                                              ) : (
+                                                <span className={styles.certEpreuveLien}>
+                                                  {m.activites[0].devoirId ? (
+                                                    <a
+                                                      className={styles.actLink}
+                                                      href={`/dashboard/travaux/${m.activites[0].devoirId}`}
+                                                    >
+                                                      🔗 {m.activites[0].titre || 'Activité'}
+                                                    </a>
+                                                  ) : (
+                                                    <span className={styles.dim}>
+                                                      🗣 {m.activites[0].titre || 'Épreuve'} — hors
+                                                      application
+                                                    </span>
+                                                  )}
+                                                  <button
+                                                    type="button"
+                                                    className={styles.iconBtn}
+                                                    title="Détacher"
+                                                    onClick={() =>
+                                                      majModule(ch.id, m.id, { activites: [] }, true)
+                                                    }
+                                                  >
+                                                    ✕
+                                                  </button>
+                                                </span>
+                                              )}
+                                              <span className={styles.dim}>
+                                                Rattachée : les notes des élèves sont reprises de sa
+                                                correction. Sinon, elles se saisissent à la main.
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          <div className={styles.actBtns}>
+                                            <button
+                                              type="button"
+                                              className={styles.btn}
+                                              onClick={() => dupliquerModule(ch.id, m.id)}
+                                            >
+                                              ⧉ Dupliquer la certification
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className={`${styles.btn} ${styles.btnDanger}`}
+                                              onClick={() => supprimerModule(ch.id, m.id)}
+                                            >
+                                              🗑 Supprimer la certification
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                      /* ── Les activités : c'est ici que se saisit la didactique ── */
                                       <div className={styles.actList}>
                                         <span className={styles.detailLabel}>
                                           Activités du module — méthode, UAA, gestes et durée se
@@ -1216,6 +1586,7 @@ export default function ScenarisationPanel() {
                                           </button>
                                         </div>
                                       </div>
+                                      )}
                                     </div>
                                   </td>
                                 </tr>
@@ -1257,6 +1628,14 @@ export default function ScenarisationPanel() {
             ＋ Chapitre
           </button>
         </>
+      )}
+
+      {/* ── Popup : notes d'une certification ── */}
+      {notesCertif && (
+        <CertificationNotesModal
+          moduleId={notesCertif}
+          onClose={() => setNotesCertif(null)}
+        />
       )}
 
       {/* ── Popup : fiche descriptive du module ── */}
