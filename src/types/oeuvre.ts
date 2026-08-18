@@ -76,8 +76,19 @@ export interface OeuvreBloc {
   // choisit : la liste blanche ci-dessous est ce qui empêche d'en faire un
   // vecteur d'injection dans une page vue par des mineurs.
   integrationUrl?: string;
-  // Hauteur du cadre en pixels (une frise n'a pas la proportion d'une vidéo)
+  // Hauteur du cadre en pixels (une frise n'a pas la proportion d'une vidéo).
+  // Ignorée tant que `integrationProportions` tient — voir ci-dessous.
   integrationHauteur?: number;
+  // Largeur MAXIMALE du cadre en pixels. Absente = toute la colonne. C'est un
+  // plafond, jamais une largeur imposée : sur un Chromebook, la colonne est
+  // plus étroite que ça et c'est elle qui gagne.
+  integrationLargeur?: number;
+  // Proportions d'origine (largeur / hauteur), lues dans le code <iframe>
+  // collé par le prof. Quand `integrationProportions` est vrai, la hauteur du
+  // cadre en découle : le contenu se réduit alors PROPORTIONNELLEMENT sur un
+  // écran étroit, au lieu d'être rogné ou cerné de bandes vides.
+  integrationRatio?: number;
+  integrationProportions?: boolean;
   legende?: string;
 }
 
@@ -143,6 +154,30 @@ export function urlDepuisIntegration(saisie: string): string {
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .trim();
+}
+
+/**
+ * Les proportions annoncées par le code `<iframe>` collé.
+ *
+ * Genially, les frises et la plupart des exerciseurs livrent un `width` et un
+ * `height` — parfois en pixels, parfois en pourcentage (`width="100%"`), qui
+ * ne dit alors rien des proportions. On ne retient donc que les deux nombres
+ * exploitables, et on renvoie `null` dès qu'il en manque un.
+ */
+export function proportionsDepuisIntegration(
+  saisie: string
+): { largeur: number; ratio: number } | null {
+  const brut = (saisie || '').trim();
+  if (!/<iframe/i.test(brut)) return null;
+  const nombre = (attribut: string): number | null => {
+    const m = brut.match(new RegExp(`\\s${attribut}\\s*=\\s*["']?\\s*(\\d+(?:\\.\\d+)?)\\s*(?:px)?\\s*["']`, 'i'));
+    const v = m ? Number(m[1]) : NaN;
+    return Number.isFinite(v) && v > 0 ? v : null;
+  };
+  const largeur = nombre('width');
+  const hauteur = nombre('height');
+  if (!largeur || !hauteur) return null;
+  return { largeur: Math.round(largeur), ratio: largeur / hauteur };
 }
 
 /**

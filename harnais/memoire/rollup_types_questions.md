@@ -175,3 +175,44 @@ comportement de tout ce qui est déjà encodé.
       **items d'un ensemble** : même mécanique, proposé à JP, pas tranché.
 - [ ] Faut-il pardonner un point final dans une réponse courte ? Proposé,
       pas tranché.
+
+---
+
+## 2026-08-18 — MATRICE MULTIPLE : le 500 à l'enregistrement
+
+**Symptôme rapporté par JP** : une matrice à réponse unique s'enregistre ;
+la même à **plusieurs réponses par ligne** échoue. `PUT /api/oeuvres/…` répond
+500, rien n'est écrit. (Les erreurs `script.js` / `jquery.js` de la console
+venaient d'une extension de navigateur — fausse piste.)
+
+**Cause** : `matriceCorrect` vaut `(number | number[])[]`. Dès qu'une ligne
+accepte plusieurs colonnes, c'est un **tableau dans un tableau** — et Firestore
+**refuse** cette valeur, faisant échouer l'écriture ENTIÈRE du document.
+
+**Correction** — conversion au passage en base, décidée avec JP :
+
+```
+en base    : matriceCorrect: [ 0, {cols:[1,2]}, -1 ]
+dans l'app : matriceCorrect: [ 0, [1,2],        -1 ]
+```
+
+Deux fonctions appariées dans `src/lib/lecture-server.ts` —
+`questionsPourFirestore` / `questionsDepuisFirestore`, plus leurs jumelles à
+l'échelle du questionnaire (`lectureQuizPourFirestore` / `…DepuisFirestore`).
+
+⚠️ **Elles vont par paire.** Toute nouvelle route qui écrit des questions passe
+par l'une, toute route qui les relit par l'autre — sinon le corrigé d'une
+matrice multiple revient vide et la question sort du barème **sans rien dire**.
+
+Points de passage (7) : écriture → `oeuvres/[id]/sections/[sectionId]` (PUT),
+`devoirs` (POST), `devoirs/[id]` (PATCH) ; lecture → `docToSection`
+(`oeuvre-server.ts`, point unique pour les œuvres), `devoirs` (GET liste),
+`devoirs/[id]` (GET), `profil-stats.ts`.
+
+**Aucune migration** : une matrice à réponse unique reste des nombres, les
+questionnaires existants sont relus tels quels.
+
+> Le bug ne touchait pas que les œuvres : un **questionnaire de lecture** avec
+> matrice multiple plantait pareil. Les deux chemins sont corrigés.
+
+**Pas encore vu à l'écran** — JP teste de son côté.

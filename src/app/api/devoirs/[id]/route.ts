@@ -4,6 +4,8 @@ import { verifyAuth } from '@/lib/api-auth';
 import {
   sanitizeLectureQuiz,
   lectureQuizForEleve,
+  lectureQuizPourFirestore,
+  lectureQuizDepuisFirestore,
   computeLectureResume,
 } from '@/lib/lecture-server';
 import { parseLectureAnswers, type LectureResume } from '@/types/lecture';
@@ -71,8 +73,13 @@ export async function GET(
     // corrigé pour autant : celui-ci suit `corrigeDisponible` (voir
     // `showCorrection` dans /activites/[id]). Même règle que les QCM d'une
     // recherche dans /api/navigkid/questionnaire.
+    // Le corrigé d'une matrice à réponses multiples est stocké EMBALLÉ
+    // (cf. lecture-server.ts) : on le déballe une seule fois ici, tout ce qui
+    // suit repart de cette variable et jamais de `data.lectureQuiz`.
+    const lectureQuiz = lectureQuizDepuisFirestore(data.lectureQuiz);
+
     let quizComplet = corrigeAccessible;
-    if (auth.role === 'eleve' && !quizComplet && data.lectureQuiz) {
+    if (auth.role === 'eleve' && !quizComplet && lectureQuiz) {
       const correctionSnap = await adminDb
         .collection('corrections')
         .doc(`CORR-${generateTravailId(data.id || docSnap.id, auth.uid)}`)
@@ -85,7 +92,7 @@ export async function GET(
     // qu'ici — le quiz envoyé au navigateur en est expurgé. Sans intérêt une
     // fois la correction rendue (l'onglet Évaluation dit alors mieux).
     let lectureResume: LectureResume | null = null;
-    if (auth.role === 'eleve' && !quizComplet && data.lectureQuiz) {
+    if (auth.role === 'eleve' && !quizComplet && lectureQuiz) {
       const travailSnap = await adminDb
         .collection('travaux')
         .doc(generateTravailId(data.id || docSnap.id, auth.uid))
@@ -93,7 +100,7 @@ export async function GET(
       const travail = travailSnap.exists ? travailSnap.data()! : null;
       if (travail?.status === 'submitted') {
         lectureResume = computeLectureResume(
-          data.lectureQuiz,
+          lectureQuiz,
           parseLectureAnswers(travail.content)?.answers ?? null
         );
       }
@@ -142,8 +149,8 @@ export async function GET(
       // `quizComplet` plus haut)
       lectureQuiz:
         auth.role === 'eleve' && !quizComplet
-          ? lectureQuizForEleve(data.lectureQuiz)
-          : data.lectureQuiz || null,
+          ? lectureQuizForEleve(lectureQuiz)
+          : lectureQuiz,
       // Auto-évaluation : servie telle quelle, il n'y a rien à cacher
       autoEvalQuiz: data.autoEvalQuiz || null,
       // Lecture d'une œuvre : un renvoi vers la bibliothèque, le contenu vit
@@ -277,7 +284,10 @@ export async function PATCH(
       updateData.ressourcesToIA = body.ressourcesToIA;
     }
     if (body.lectureQuiz !== undefined) {
-      updateData.lectureQuiz = body.lectureQuiz === null ? null : sanitizeLectureQuiz(body.lectureQuiz);
+      updateData.lectureQuiz =
+        body.lectureQuiz === null
+          ? null
+          : lectureQuizPourFirestore(sanitizeLectureQuiz(body.lectureQuiz));
     }
 
     if (body.oeuvreId !== undefined) {

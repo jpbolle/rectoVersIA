@@ -24,7 +24,7 @@ import type {
   OeuvreSectionRef,
 } from '@/types/oeuvre';
 import type { LectureQuestion } from '@/types/lecture';
-import { preparerPresentation } from '@/lib/lecture-server';
+import { preparerPresentation, questionsDepuisFirestore } from '@/lib/lecture-server';
 
 type Doc = FirebaseFirestore.DocumentSnapshot;
 
@@ -139,6 +139,19 @@ function normaliserBloc(raw: unknown): OeuvreBloc | null {
       typeof b.integrationHauteur === 'number' && b.integrationHauteur > 0
         ? Math.min(1200, Math.round(b.integrationHauteur))
         : undefined,
+    integrationLargeur:
+      typeof b.integrationLargeur === 'number' && b.integrationLargeur > 0
+        ? Math.min(2000, Math.max(200, Math.round(b.integrationLargeur)))
+        : undefined,
+    // Proportions plausibles seulement : un ratio aberrant produirait un cadre
+    // d'un pixel de haut ou d'une page entière.
+    integrationRatio:
+      typeof b.integrationRatio === 'number' &&
+      b.integrationRatio >= 0.2 &&
+      b.integrationRatio <= 5
+        ? b.integrationRatio
+        : undefined,
+    integrationProportions: b.integrationProportions === true ? true : undefined,
     legende: typeof b.legende === 'string' && b.legende ? b.legende : undefined,
   };
 }
@@ -164,6 +177,9 @@ export function blocsPourFirestore(blocs: unknown): OeuvreBloc[] {
       if (b.imageFileId) net.imageFileId = b.imageFileId;
       if (b.integrationUrl) net.integrationUrl = b.integrationUrl;
       if (b.integrationHauteur) net.integrationHauteur = b.integrationHauteur;
+      if (b.integrationLargeur) net.integrationLargeur = b.integrationLargeur;
+      if (b.integrationRatio) net.integrationRatio = b.integrationRatio;
+      if (b.integrationProportions) net.integrationProportions = true;
       if (b.audioUrl) net.audioUrl = b.audioUrl;
       if (b.audioFileId) net.audioFileId = b.audioFileId;
       if (b.legende) net.legende = b.legende;
@@ -219,9 +235,9 @@ export function docToSection(doc: Doc): OeuvreSection {
     // remise en ordre et la réserve d'une image annotée. Ce n'est pas un
     // filtrage — rien n'est caché, le corrigé reste ouvert. C'est qu'un
     // exercice servi déjà résolu n'est plus un exercice.
-    questions: Array.isArray(d.questions)
-      ? (d.questions as LectureQuestion[]).map(preparerPresentation)
-      : [],
+    // `questionsDepuisFirestore` déballe au passage les corrigés de matrice
+    // multiple, stockés emballés (cf. lecture-server.ts).
+    questions: questionsDepuisFirestore(d.questions).map(preparerPresentation),
   };
 }
 

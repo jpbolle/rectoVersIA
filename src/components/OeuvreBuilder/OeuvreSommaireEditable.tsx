@@ -99,9 +99,9 @@ export default function OeuvreSommaireEditable({
   onSupprimerSection,
 }: Props) {
   const [filtre, setFiltre] = useState('');
-  // Chapitres explicitement repliés par l'utilisateur. On mémorise les FERMÉS
-  // et non les ouverts : à l'arrivée, tout est fermé sauf le chapitre courant,
-  // et un chapitre créé ensuite doit s'ouvrir sans qu'on ait à le prévoir.
+  // Chapitres repliés. On mémorise les FERMÉS et non les ouverts : c'est ce qui
+  // permet à un chapitre créé plus tard de s'ouvrir sans qu'on ait à le
+  // prévoir. Le repli d'arrivée est posé plus bas (`replieAuDepart`).
   const [replies, setReplies] = useState<Set<string>>(new Set());
 
   const chapitreCourant =
@@ -119,6 +119,22 @@ export default function OeuvreSommaireEditable({
       next.delete(chapitreCourant);
       return next;
     });
+  }
+
+  // ── LE REPLI D'ARRIVÉE ──
+  // Un livre s'ouvre sur son sommaire, pas sur ses 67 scènes déroulées. On
+  // replie donc tout, sauf le chapitre où l'on travaille.
+  //
+  // Ce repli ne peut pas se poser à la construction du composant : selon le
+  // chemin d'ouverture, la liste des chapitres arrive APRÈS le premier rendu,
+  // et on replierait alors une liste vide — c'est-à-dire rien. On le pose donc
+  // à la première liste non vide, UNE SEULE FOIS : les chapitres créés ensuite
+  // n'y figurent pas et s'ouvrent, comme il se doit quand on vient de les
+  // créer pour y ranger des scènes.
+  const [replieAuDepart, setReplieAuDepart] = useState(false);
+  if (!replieAuDepart && chapitres.length > 0) {
+    setReplieAuDepart(true);
+    setReplies(new Set(chapitres.filter((c) => c.id !== chapitreCourant).map((c) => c.id)));
   }
 
   const recherche = filtre.trim().toLowerCase();

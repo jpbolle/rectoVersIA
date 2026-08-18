@@ -754,6 +754,18 @@ questionnaire, lui, compte chaque question **une seule fois**.
 **Ne jamais additionner les lignes par habileté pour en tirer un total.**
 La règle est écrite dans `lecture-scoring.ts` et rappelée à l'élève sous le tableau.
 
+### Firestore refuse un TABLEAU DANS UN TABLEAU
+Après `undefined`, c'est le second refus silencieux de Firestore : une valeur
+`[[0, 2], [1]]` fait échouer l'écriture **entière** du document — 500 côté
+serveur, rien en base, et un message qui ne nomme pas le champ fautif.
+**Symptôme vécu (2026-08-18)** : une matrice de questionnaire s'enregistrait à
+réponse unique et plantait à réponses multiples (`matriceCorrect`).
+**Remède** : convertir au passage en base, jamais changer le type de l'app —
+`questionsPourFirestore` / `questionsDepuisFirestore` dans `lecture-server.ts`
+emballent chaque liste dans `{ cols: [...] }`. **Les deux fonctions vont par
+paire** : toute route qui écrit des questions passe par l'une, toute route qui
+les relit par l'autre.
+
 ### QCM d'un questionnaire de lecture : jamais stockés
 Les points des QCM sont **recalculés à chaque lecture** (`correctIndex`), pour
 rester justes si le prof corrige le quiz après coup. Seules les questions

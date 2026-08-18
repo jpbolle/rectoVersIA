@@ -41,6 +41,7 @@ import {
   generateChapitreId,
   generateCommentaireId,
   integrationAutorisee,
+  proportionsDepuisIntegration,
   urlDepuisIntegration,
   type Oeuvre,
   type OeuvreBloc,
@@ -363,6 +364,30 @@ const LIBELLE_BLOC: Record<OeuvreBloc['type'], string> = {
   integration: 'Contenu interactif',
 };
 
+/**
+ * De quoi RECONNAÎTRE un bloc en une ligne, pour le mode ménage.
+ *
+ * On ne réutilise pas le rendu normal : cocher suppose de balayer la scène du
+ * regard, et trente répliques affichées en entier ne se balaient pas. Une
+ * ligne par bloc, tronquée, suffit à savoir ce qu'on jette.
+ */
+function apercuBloc(bloc: OeuvreBloc): string {
+  const texte = (bloc.contenu || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const brut =
+    [bloc.locuteur, texte].filter(Boolean).join(' — ') ||
+    bloc.legende ||
+    bloc.integrationUrl ||
+    bloc.videoUrl ||
+    bloc.videoId ||
+    '';
+  if (!brut) return 'bloc vide';
+  return brut.length > 110 ? `${brut.slice(0, 110)}…` : brut;
+}
+
 const TexteEditor = dynamic(() => import('@/components/RessourcesInput/DocumentEditor'), {
   ssr: false,
   loading: () => <div className={styles.aide}>Chargement de l’éditeur…</div>,
@@ -397,6 +422,14 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
   // Le passage ouvert en édition — un seul à la fois : deux champs ouverts
   // dans un même flux, et on ne sait plus lequel on modifie.
   const [blocOuvert, setBlocOuvert] = useState<string | null>(null);
+  // ── LE MÉNAGE ──
+  // Supprimer les blocs un par un, c'est un aller-retour par bloc : ouvrir,
+  // supprimer, refermer. D'où un mode où l'on coche puis on jette d'un coup.
+  //
+  // `null` = mode éteint (l'état normal, où l'on lit et compose) ; un Set = on
+  // est en sélection, et il porte les blocs cochés. Un booléen séparé du Set
+  // se serait désynchronisé au premier oubli.
+  const [selection, setSelection] = useState<Set<string> | null>(null);
   // Texte collé dans une section vide, avant d'être posé dans la scène
   const [collage, setCollage] = useState('');
   // Des mots sélectionnés, en attente : le bouton « Commenter » flotte au-
@@ -586,6 +619,9 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
       // avec un passage resté ouvert de la scène précédente.
       setOnglet('recto');
       setBlocOuvert(null);
+      // La sélection ne survit pas au changement de scène : les blocs cochés
+      // n'existent plus à l'écran, et on les supprimerait à l'aveugle.
+      setSelection(null);
       setCollage('');
       try {
         const res = await fetch(`/api/oeuvres/${initiale.id}/sections/${id}`, {
@@ -840,17 +876,46 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
     [section, majSection]
   );
 
-  const supprimerBloc = useCallback(
-    (id: string) => {
-      if (!section) return;
-      majSection({ blocs: section.blocs.filter((b) => b.id !== id) });
+  /**
+   * Supprimer un lot de blocs — le geste unitaire n'en est qu'un cas
+   * particulier, d'où le passage par ici : deux chemins de suppression
+   * auraient divergé sur les commentaires.
+   *
+   * Les commentaires ancrés sur un bloc supprimé partent avec lui : leurs mots
+   * n'existent plus, ils ne feraient qu'encombrer la scène en orphelins.
+   */
+  const supprimerBlocs = useCallback(
+    (ids: Set<string>) => {
+      if (!section || ids.size === 0) return;
+      majSection({
+        blocs: section.blocs.filter((b) => !ids.has(b.id)),
+        commentaires: (section.commentaires ?? []).filter((c) => !ids.has(c.blocId)),
+      });
     },
     [section, majSection]
   );
 
-  /** Un bloc sans contenu d'aucune sorte — donc supprimable sans rien perdre. */
+  const supprimerBloc = useCallback(
+    (id: string) => supprimerBlocs(new Set([id])),
+    [supprimerBlocs]
+  );
+
+  /**
+   * Un bloc sans contenu d'aucune sorte — donc supprimable sans rien perdre.
+   *
+   * ⚠️ Tout nouveau type de bloc doit s'ajouter ICI : un porteur de contenu
+   * oublié est déclaré vide, et le prof lit « bloc vide — clique pour le
+   * remplir » sur un bloc qu'il vient de remplir. C'est arrivé à
+   * `integrationUrl`.
+   */
   const blocEstVide = (b: OeuvreBloc) =>
-    !b.contenu?.trim() && !b.imageUrl && !b.audioUrl && !b.videoId && !b.videoUrl && !b.locuteur?.trim();
+    !b.contenu?.trim() &&
+    !b.imageUrl &&
+    !b.audioUrl &&
+    !b.videoId &&
+    !b.videoUrl &&
+    !b.integrationUrl &&
+    !b.locuteur?.trim();
 
   /**
    * ── OUTIL D'ÉDITION ──
@@ -1273,6 +1338,7 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                 onChange={(inverse) => {
                   majSection({ facesInversees: inverse });
                   setOnglet(inverse ? 'verso' : 'recto');
+                  setSelection(null);
                 }}
                 hint="Le recto est la face affichée à l’ouverture de la scène par l’élève."
                 disabled={occupe}
@@ -1311,6 +1377,9 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                         onClick={() => {
                           setOnglet(o.id);
                           setBlocOuvert(null);
+                          // Même raison qu'au changement de scène : les blocs
+                          // cochés appartiennent à la face qu'on quitte.
+                          setSelection(null);
                         }}
                       >
                         {o.label}
@@ -1319,6 +1388,76 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                     );
                   })}
                 </div>
+
+                {/* ── LE MÉNAGE ──
+                    Dans la barre collante, donc à portée au bas d'une scène
+                    de trente répliques. Éteint, il ne coûte qu'un bouton :
+                    des cases en permanence sur chaque bloc rendraient le flux
+                    illisible, alors qu'on lit cent fois pour supprimer une. */}
+                {onglet !== 'eval' &&
+                  (selection ? (
+                    <div className={styles.barreMenage}>
+                      <span className={styles.menageCompte}>
+                        {selection.size === 0
+                          ? 'Coche les blocs à supprimer'
+                          : `${selection.size} bloc${selection.size > 1 ? 's' : ''} coché${
+                              selection.size > 1 ? 's' : ''
+                            }`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelection(
+                            selection.size === blocsFace.length
+                              ? new Set()
+                              : new Set(blocsFace.map((b) => b.id))
+                          )
+                        }
+                      >
+                        {selection.size === blocsFace.length ? 'Aucun' : 'Tout'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.outilDanger}
+                        disabled={selection.size === 0 || occupe}
+                        onClick={() => {
+                          // Il n'y a pas d'annulation dans cet éditeur : on
+                          // demande, et on dit COMBIEN.
+                          if (
+                            !confirm(
+                              `Supprimer ${selection.size} bloc${
+                                selection.size > 1 ? 's' : ''
+                              } de cette scène ?`
+                            )
+                          ) {
+                            return;
+                          }
+                          supprimerBlocs(selection);
+                          setSelection(null);
+                        }}
+                      >
+                        🗑 Supprimer
+                      </button>
+                      <button type="button" onClick={() => setSelection(null)}>
+                        Annuler
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.btnMenage}
+                      disabled={blocsFace.length === 0}
+                      onClick={() => {
+                        setSelection(new Set());
+                        // Un passage resté ouvert en édition n'aurait pas de
+                        // case : on referme avant de passer en sélection.
+                        setBlocOuvert(null);
+                      }}
+                      title="Cocher plusieurs blocs pour les supprimer d’un coup"
+                    >
+                      ☑ Sélectionner
+                    </button>
+                  ))}
               </div>
 
               <p className={styles.aide}>{ONGLETS.find((o) => o.id === onglet)?.aide}</p>
@@ -1397,7 +1536,40 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                           />
                         )}
 
-                        {blocOuvert === bloc.id ? (
+                        {/* En sélection, le bloc n'est plus cliquable pour
+                            édition : c'est la ligne ENTIÈRE qui coche, cible
+                            bien plus large qu'une case de 16 px sur un
+                            Chromebook. */}
+                        {selection ? (
+                          <div
+                            className={`${styles.ligneMenage} ${
+                              selection.has(bloc.id) ? styles.ligneMenageCochee : ''
+                            }`}
+                            onClick={() =>
+                              setSelection((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(bloc.id)) next.delete(bloc.id);
+                                else next.add(bloc.id);
+                                return next;
+                              })
+                            }
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selection.has(bloc.id)}
+                              onChange={() => {}}
+                              aria-label={`Sélectionner ce bloc — ${LIBELLE_BLOC[bloc.type]}`}
+                            />
+                            <div className={styles.ligneMenageApercu}>
+                              <span className={styles.ligneMenageType}>
+                                {LIBELLE_BLOC[bloc.type]}
+                              </span>
+                              <span className={styles.ligneMenageTexte}>
+                                {apercuBloc(bloc)}
+                              </span>
+                            </div>
+                          </div>
+                        ) : blocOuvert === bloc.id ? (
                           /* ══ LE PASSAGE OUVERT ══
                              Le champ prend la place exacte du texte : le prof
                              écrit là où il lisait. */
@@ -1528,11 +1700,23 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                                   type="text"
                                   placeholder="Colle l’adresse ou le code &lt;iframe&gt; de l’outil"
                                   value={bloc.integrationUrl || ''}
-                                  onChange={(e) =>
+                                  onChange={(e) => {
+                                    // Le code <iframe> porte presque toujours
+                                    // ses proportions : on les retient AU
+                                    // COLLAGE, seul moment où on les a encore
+                                    // (on n'en garde ensuite que l'adresse).
+                                    const p = proportionsDepuisIntegration(e.target.value);
                                     majBloc(bloc.id, {
                                       integrationUrl: urlDepuisIntegration(e.target.value),
-                                    })
-                                  }
+                                      ...(p
+                                        ? {
+                                            integrationRatio: p.ratio,
+                                            integrationLargeur: p.largeur,
+                                            integrationProportions: true,
+                                          }
+                                        : {}),
+                                    });
+                                  }}
                                 />
                                 {bloc.integrationUrl &&
                                   !integrationAutorisee(bloc.integrationUrl) && (
@@ -1542,24 +1726,74 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
                                     </p>
                                   )}
                                 <label className={styles.champHauteur}>
-                                  Hauteur du cadre
+                                  Largeur maximale
                                   <input
                                     type="number"
                                     min={200}
-                                    max={1200}
+                                    max={2000}
                                     step={20}
-                                    value={bloc.integrationHauteur || 520}
+                                    value={bloc.integrationLargeur || 900}
                                     onChange={(e) =>
                                       majBloc(bloc.id, {
-                                        integrationHauteur: Math.max(
+                                        integrationLargeur: Math.max(
                                           200,
-                                          Math.min(1200, Number(e.target.value) || 520)
+                                          Math.min(2000, Number(e.target.value) || 900)
                                         ),
                                       })
                                     }
                                   />
                                   px
                                 </label>
+                                <p className={styles.aideChamp}>
+                                  Un plafond : sur un écran plus étroit, le cadre se réduit
+                                  à la largeur disponible.
+                                </p>
+
+                                {/* Les proportions ne se proposent que si on
+                                    les connaît : une case à cocher sans effet
+                                    est pire qu'une case absente. */}
+                                {bloc.integrationRatio ? (
+                                  <label className={styles.champCase}>
+                                    <input
+                                      type="checkbox"
+                                      checked={bloc.integrationProportions === true}
+                                      onChange={(e) =>
+                                        majBloc(bloc.id, {
+                                          integrationProportions: e.target.checked,
+                                        })
+                                      }
+                                    />
+                                    Conserver les proportions d’origine (
+                                    {bloc.integrationRatio.toFixed(2).replace(/\.?0+$/, '')} : 1)
+                                  </label>
+                                ) : null}
+
+                                {bloc.integrationProportions && bloc.integrationRatio ? (
+                                  <p className={styles.aideChamp}>
+                                    Hauteur déduite de la largeur — le cadre se réduit
+                                    proportionnellement, sans déformation ni bandes vides.
+                                  </p>
+                                ) : (
+                                  <label className={styles.champHauteur}>
+                                    Hauteur du cadre
+                                    <input
+                                      type="number"
+                                      min={200}
+                                      max={1200}
+                                      step={20}
+                                      value={bloc.integrationHauteur || 520}
+                                      onChange={(e) =>
+                                        majBloc(bloc.id, {
+                                          integrationHauteur: Math.max(
+                                            200,
+                                            Math.min(1200, Number(e.target.value) || 520)
+                                          ),
+                                        })
+                                      }
+                                    />
+                                    px
+                                  </label>
+                                )}
                                 <input
                                   type="text"
                                   placeholder="Légende (facultatif)"

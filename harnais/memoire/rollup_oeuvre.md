@@ -634,3 +634,79 @@ faux « ça ne marche toujours pas ».
 
 Deux gotchas consignés dans `init.md` §7 : la marge automatique dans un flex,
 et le bruit permanent du lecteur Drive dans la console.
+
+---
+
+## 2026-08-18 — Outil d'édition : trois demandes de JP
+
+Session courte, entièrement sur le **constructeur d'œuvre**
+(`/mes-ressources` → une œuvre → éditer). Rien n'a été ouvert à l'écran :
+JP teste de son côté.
+
+### 1. Le contenu interactif se disait « vide »
+
+Un bloc iframe rempli affichait **« Contenu interactif vide — clique pour le
+remplir »** côté prof, alors que l'élève, lui, voyait bien le contenu.
+
+**Cause** : `blocEstVide` (`OeuvreBuilder.tsx`) testait le texte, l'image,
+l'audio, la vidéo, le locuteur — mais **pas `integrationUrl`**.
+
+**Effet de la correction** : le bloc n'étant plus « vide », il emprunte le
+chemin des médias, qui rend le bloc **tel que l'élève le verra** avec une barre
+« ✏️ Modifier » — exactement ce que JP demandait comme « vignette ».
+
+> ⚠️ Consigné dans le code : **tout nouveau type de bloc doit s'ajouter à
+> `blocEstVide`**, sinon il est déclaré vide.
+
+### 2. Largeur du cadre + 3. proportions respectées
+
+Trois champs nouveaux sur le bloc `integration` (`src/types/oeuvre.ts`) :
+
+| Champ | Rôle |
+|---|---|
+| `integrationLargeur` | Largeur **maximale** en px. Un plafond, jamais une largeur imposée : sur un Chromebook la colonne est plus étroite et c'est elle qui gagne |
+| `integrationRatio` | Proportions lues **au collage** dans le `width`/`height` du code `<iframe>` (`proportionsDepuisIntegration`) |
+| `integrationProportions` | Case « Conserver les proportions d'origine », cochée d'office quand un ratio est détecté |
+
+Choix arbitré avec JP : **proportions gardées mais décrochables** (une case en
+plus, jamais de blocage) plutôt que hauteur verrouillée.
+
+La hauteur passe par `aspect-ratio` et non par un calcul en pixels : elle suit
+donc la largeur **réelle** du cadre après réduction — un calcul côté React
+ignorerait la largeur de la colonne.
+
+Rien à migrer : une intégration existante garde sa hauteur fixe tant que son
+code n'est pas recollé.
+
+### Chapitres repliés à l'ouverture (demandé par JP)
+
+Le commentaire de `OeuvreSommaireEditable.tsx` annonçait déjà « à l'arrivée,
+tout est fermé sauf le chapitre courant » — mais `replies` (l'ensemble des
+chapitres **repliés**) démarrait vide : tout était donc déplié.
+
+Le repli est posé à la **première liste de chapitres non vide**, une seule fois
+(`replieAuDepart`) — et non à la construction du composant : selon le chemin
+d'ouverture le sommaire arrive après le premier rendu, et on replierait une
+liste vide. Un chapitre créé ensuite s'ouvre, lui, comme avant.
+
+### Suppression de plusieurs blocs d'un coup (demandé par JP)
+
+Arbitré avec lui : **une case sur chaque bloc** (et non par type), **sur la
+scène ouverte seulement** (et non tout le chapitre).
+
+- Bouton **☑ Sélectionner** à droite de la barre d'onglets — qui est collante,
+  donc atteignable au bas d'une scène de trente répliques.
+- Le flux devient une liste : une ligne par bloc (type + début du contenu,
+  `apercuBloc`). **Toute la ligne coche** — une case de 16 px au trackpad d'un
+  Chromebook est un geste de précision inutile.
+- Tout / Aucun, puis « 🗑 Supprimer » avec confirmation **chiffrée** (il n'y a
+  pas d'annulation dans cet éditeur).
+- État : `selection: Set<string> | null` — `null` = mode éteint. Un booléen
+  séparé du Set se serait désynchronisé.
+
+⚠️ **La sélection s'efface au changement de face ET de scène** : les blocs
+cochés n'y sont plus, on les supprimerait à l'aveugle.
+
+Au passage : `supprimerBloc` délègue désormais à `supprimerBlocs`, qui jette
+**les commentaires ancrés** sur les blocs supprimés. La suppression unitaire
+les laissait orphelins.

@@ -94,6 +94,75 @@ function nettoyerIndices(input: unknown, nbMots: number): number[] {
   ].sort((a, b) => a - b);
 }
 
+// ─── Le passage en base : Firestore refuse un TABLEAU DANS UN TABLEAU ───
+//
+// Une matrice à réponses multiples décrit chaque ligne par la LISTE de ses
+// colonnes attendues : `matriceCorrect` vaut alors `[[0, 2], [1]]` — un
+// tableau de tableaux, que Firestore rejette en bloc. L'écriture entière
+// échoue (symptôme : 500 à l'enregistrement, UNIQUEMENT quand une ligne
+// accepte plusieurs réponses ; avec une seule, ce sont des nombres et tout
+// passe).
+//
+// On emballe donc chaque liste dans un objet au moment d'écrire, on la
+// déballe à la lecture. Les matrices à réponse unique restent des nombres :
+// aucune migration, les questionnaires existants sont relus tels quels.
+//
+// ⚠️ Ces deux fonctions vont par paire. Toute nouvelle route qui ÉCRIT des
+// questions doit passer par `...PourFirestore`, toute route qui les RELIT par
+// `...DepuisFirestore` — sans quoi le corrigé d'une matrice multiple revient
+// vide et la question sort du barème sans rien signaler.
+
+/** La forme stockée : identique à la question, matrice mise à part. */
+type QuestionStockee = Omit<LectureQuestion, 'matriceCorrect'> & {
+  matriceCorrect?: (number | { cols: number[] })[];
+};
+
+/** App → Firestore. */
+export function questionsPourFirestore(questions: LectureQuestion[]): QuestionStockee[] {
+  return questions.map((q) => {
+    if (!Array.isArray(q.matriceCorrect)) return q as QuestionStockee;
+    return {
+      ...q,
+      matriceCorrect: q.matriceCorrect.map((v) => (Array.isArray(v) ? { cols: v } : v)),
+    };
+  });
+}
+
+/** Firestore → app. */
+export function questionsDepuisFirestore(input: unknown): LectureQuestion[] {
+  if (!Array.isArray(input)) return [];
+  return input.map((raw) => {
+    const q = raw as QuestionStockee;
+    if (!Array.isArray(q.matriceCorrect)) return q as LectureQuestion;
+    return {
+      ...q,
+      matriceCorrect: q.matriceCorrect.map((v) => {
+        if (typeof v === 'number') return v;
+        const cols = v && Array.isArray(v.cols) ? v.cols : [];
+        return cols.filter((c): c is number => typeof c === 'number');
+      }),
+    } as LectureQuestion;
+  });
+}
+
+/** Idem, à l'échelle du questionnaire (`devoirs.lectureQuiz`). */
+export function lectureQuizPourFirestore(
+  quiz: LectureQuiz | null | undefined
+): { mode: LectureQuiz['mode']; questions: QuestionStockee[] } | null {
+  if (!quiz) return null;
+  return { mode: quiz.mode, questions: questionsPourFirestore(quiz.questions) };
+}
+
+/** Idem. Renvoie `null` pour une activité qui n'a pas de questionnaire. */
+export function lectureQuizDepuisFirestore(input: unknown): LectureQuiz | null {
+  if (!input || typeof input !== 'object') return null;
+  const raw = input as { mode?: unknown; questions?: unknown };
+  return {
+    mode: raw.mode === 'quiz' ? 'quiz' : 'worksheet',
+    questions: questionsDepuisFirestore(raw.questions),
+  };
+}
+
 // Nettoie un lectureQuiz reçu du client — renvoie null si vide/invalide
 export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
   if (!input || typeof input !== 'object') return null;

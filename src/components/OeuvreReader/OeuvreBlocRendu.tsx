@@ -105,12 +105,24 @@ export default function OeuvreBlocRendu({ bloc, commentaires, onCommentaire }: P
         </figure>
       );
     }
+    // ── LA TAILLE DU CADRE ──
+    // `integrationLargeur` est un PLAFOND (`maxWidth`), jamais une largeur
+    // imposée : sur un Chromebook la colonne est plus étroite, et c'est elle
+    // qui doit gagner — sinon le cadre déborde de la page.
+    //
+    // Quand les proportions d'origine sont conservées, la hauteur n'est pas
+    // calculée en pixels mais confiée à `aspect-ratio` : elle suit donc la
+    // largeur RÉELLE du cadre après réduction, ce qu'un calcul fait ici ne
+    // saurait pas faire (il ignore la largeur de la colonne).
+    const proportionnel = bloc.integrationProportions === true && !!bloc.integrationRatio;
+    const cadre: React.CSSProperties = proportionnel
+      ? { aspectRatio: String(bloc.integrationRatio) }
+      : { height: `${bloc.integrationHauteur || 520}px` };
+    if (bloc.integrationLargeur) cadre.maxWidth = `${bloc.integrationLargeur}px`;
+
     return (
       <figure className={styles.media}>
-        <div
-          className={styles.cadreIntegration}
-          style={{ height: `${bloc.integrationHauteur || 520}px` }}
-        >
+        <div className={styles.cadreIntegration} style={cadre}>
           <iframe
             src={bloc.integrationUrl}
             title={bloc.legende || 'Contenu interactif'}

@@ -18,7 +18,7 @@ import {
   docToOeuvre,
   docToSection,
 } from '@/lib/oeuvre-server';
-import { sanitizeLectureQuiz } from '@/lib/lecture-server';
+import { questionsPourFirestore, sanitizeLectureQuiz } from '@/lib/lecture-server';
 import { peutEditerOeuvre } from '@/types/oeuvre';
 
 export async function GET(
@@ -98,7 +98,9 @@ export async function PUT(
       // Le fluorage commenté — recalé côté client avant l'envoi
       // (recalerCommentaires) : ici on ne fait que nettoyer.
       commentaires: commentairesPourFirestore(body.commentaires),
-      questions: quiz?.questions || [],
+      // Emballage des corrigés de matrice multiple — Firestore refuse le
+      // tableau imbriqué (cf. lecture-server.ts).
+      questions: questionsPourFirestore(quiz?.questions || []),
     };
 
     await sectionRef.set(section);

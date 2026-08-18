@@ -4,7 +4,12 @@ import { verifyAuth } from '@/lib/api-auth';
 import { calculateSchoolYear } from '@/lib/auth-utils';
 import { generateDevoirId } from '@/lib/devoir-utils';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
-import { sanitizeLectureQuiz, lectureQuizForEleve } from '@/lib/lecture-server';
+import {
+  sanitizeLectureQuiz,
+  lectureQuizForEleve,
+  lectureQuizPourFirestore,
+  lectureQuizDepuisFirestore,
+} from '@/lib/lecture-server';
 import { sanitizeAutoEvalQuiz } from '@/lib/autoevaluation-server';
 import { atelierParDispositif, findAtelier, isTypeModal } from '@/types/didactique';
 
@@ -70,7 +75,9 @@ export async function GET(request: NextRequest) {
         hiddenCriteria: data.hiddenCriteria || undefined,
         corrigeReference: data.corrigeReference || null,
         ressourcesToIA: data.ressourcesToIA ?? false,
-        lectureQuiz: data.lectureQuiz || null,
+        // Déballage des corrigés de matrice multiple (cf. lecture-server.ts) —
+        // point de lecture unique : le filtrage élève plus bas repart d'ici.
+        lectureQuiz: lectureQuizDepuisFirestore(data.lectureQuiz),
         autoEvalQuiz: data.autoEvalQuiz || null,
         // Lecture d'une œuvre : l'activité ne porte qu'un renvoi vers la
         // bibliothèque, jamais le contenu
@@ -313,7 +320,7 @@ export async function POST(request: NextRequest) {
     // Si type "lire", questionnaire de lecture (nettoyé côté serveur)
     if (typeTravail === 'lire' && lectureQuiz) {
       const cleaned = sanitizeLectureQuiz(lectureQuiz);
-      if (cleaned) devoirData.lectureQuiz = cleaned;
+      if (cleaned) devoirData.lectureQuiz = lectureQuizPourFirestore(cleaned);
     }
 
     // Lecture d'une œuvre : renvoi vers la bibliothèque + rythme attendu.

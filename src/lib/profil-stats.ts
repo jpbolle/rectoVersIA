@@ -4,6 +4,7 @@
 
 import { adminDb } from '@/lib/firebase/admin';
 import { scoreLectureQuiz } from '@/lib/lecture-scoring';
+import { lectureQuizDepuisFirestore } from '@/lib/lecture-server';
 import { scoreRecherche } from '@/lib/recherche-scoring';
 import { parseLectureAnswers } from '@/types/lecture';
 import type { LectureQuiz } from '@/types/lecture';
@@ -191,7 +192,9 @@ export async function loadStudentBase(
         questionnaireId: data.questionnaireId || undefined,
         vocabulaireThemes: data.vocabulaireThemes || undefined,
         hiddenCriteria: data.hiddenCriteria || undefined,
-        lectureQuiz: data.lectureQuiz || null,
+        // Déballage des corrigés de matrice multiple (cf. lecture-server.ts) :
+        // sans lui, ces questions sortent silencieusement du score.
+        lectureQuiz: lectureQuizDepuisFirestore(data.lectureQuiz),
         autoEvalQuiz: data.autoEvalQuiz || null,
       });
     }
