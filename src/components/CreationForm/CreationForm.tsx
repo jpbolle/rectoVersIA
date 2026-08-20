@@ -33,7 +33,7 @@ type FormFace = 'recto' | 'verso';
 // Libellés du bloc ressources au verso, selon le type d'activité
 const RESSOURCE_LABELS: Record<TypeTravail, string> = {
   ecrire: '📄 Ressource.s',
-  lire: '📄 Texte à lire',
+  lire: '📄 Documents à utiliser',
   rechercher: '📄 Documents d’appui (facultatif)',
   vocabulaire: '📄 Documents (facultatif)',
   autoevaluation: '📄 Travail à commenter (facultatif)',

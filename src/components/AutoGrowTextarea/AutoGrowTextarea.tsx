@@ -61,12 +61,24 @@ export default function AutoGrowTextarea({
   useEffect(resize, [resize, value]);
 
   // La largeur du champ change avec celle du panneau (rail redimensionnable) :
-  // la hauteur juste hier ne l'est plus aujourd'hui
+  // la hauteur juste hier ne l'est plus aujourd'hui.
+  //
+  // ⚠️ On observe le PARENT, et on ne réagit qu'à un changement de LARGEUR.
+  // Observer le champ lui-même revenait à observer ce qu'on modifie : chaque
+  // mesure repasse par `height: auto`, le champ se recroqueville le temps d'une
+  // image, et l'observateur se rappelle sur son propre effet. C'est de là que
+  // venaient les sursauts pendant qu'on sélectionne du texte.
   useEffect(() => {
     const el = ref.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(resize);
-    observer.observe(el);
+    const parent = el?.parentElement;
+    if (!el || !parent || typeof ResizeObserver === 'undefined') return;
+    let derniereLargeur = parent.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (parent.clientWidth === derniereLargeur) return;
+      derniereLargeur = parent.clientWidth;
+      resize();
+    });
+    observer.observe(parent);
     return () => observer.disconnect();
   }, [resize]);
 

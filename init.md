@@ -88,6 +88,8 @@ npm run build      # build complet
 | Nouvelle carte dans **Mes Ressources** | Gabarit de `GrilleCard` : dégradé vert, relief au survol, barre d'actions en bas à droite (dupliquer · ✏️ ouvrir · 🗑️). Les onglets Grilles, Œuvres et Parcours forment une famille — un gabarit divergent se voit | `GrilleCard`, `OeuvreCard`, `ScenarisationCard` |
 | Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
 | Activité où **rien ne se remet** (recherche, questionnaire de lecture, auto-évaluation, lecture d'une œuvre) | `hideSubmit` sur `WorkTopBar` ; la remise, quand elle existe, vit **au bas de la colonne de gauche**, dans la ligne d'actions | `hideSubmit` dans `/activites/[id]` |
+| Nouvelle façon d'afficher des propositions à l'élève (QCM, matrice, appariement, tri) | **Mélangées par élève**, jamais dans l'ordre du prof — `ordreAffichage(taille, graine, melanger)`, graine = `uid + id de question`. ⚠️ **C'est un ORDRE D'AFFICHAGE** : la réponse reste enregistrée dans l'ordre du PROF, sinon tous les corrigés déjà en base désignent la mauvaise case. Case `pasDeMelange` pour une chronologie ou une gradation | `ordreAffichage` dans `src/types/lecture.ts` ; `LectureQuizActivity`, `OeuvreReader`, `QuestionInteractions/` |
+| Ajouter un élément au milieu d'une liste qu'on compose (question, bloc de scène) | **Trait d'insertion** : un trait discret entre deux éléments, qui s'éclaire au survol avec un `+` ; le clic déplie les types **à cet endroit**. Hauteur RÉSERVÉE en permanence, sinon la liste saute sous la souris. Pas de ligne de boutons en bas de page | `TraitInsertion` dans `LectureQuizBuilder`, `Trait` dans `OeuvreBuilder` |
 | Panneau latéral élève | `WorkspaceRail` (rail icônes droite + panneau redimensionnable) — côté prof on garde `ResizableSplit` + onglets. **Ne pas uniformiser** | `/activites/[id]` vs `/dashboard/travaux/[devoirId]/[travailId]` |
 
 ---
@@ -166,6 +168,11 @@ interface Devoir {
   // (lecture, recherche). ABSENT = ACTIVÉ — les activités antérieures gardent
   // leur comportement. Sans objet en vocabulaire et en auto-évaluation.
   autoEvaluation?: boolean;
+  // ressources.interactifs[] : contenus embarqués (onglet Interactif).
+  // DEUX natures, deux bacs à sable — `kind: 'url'` (page tierce, liste
+  // blanche `src/lib/integration.ts`) et `kind: 'code'` (animation HTML du
+  // prof, ADMIN SEUL, 100 Ko max). Nettoyage serveur obligatoire :
+  // `sanitizeRessources` (src/lib/ressources-server.ts).
 }
 ```
 
@@ -433,6 +440,7 @@ interface Questionnaire {
 | `/api/accueil` | GET | **Élève** : retards, échéances, derniers résultats et progression en ceintures — tout calculé **à la lecture**, rien n'est stocké. Un prof reçoit une page vide, pas une erreur |
 | `/api/certifications/notes` | GET, PUT | **Prof** : notes d'une certification, élève par élève (`?moduleId=`, `?classeId=` pour restreindre à une classe). PUT par lot (`writeBatch`) ; vérifie que la scénarisation est bien la sienne |
 | `/api/certifications/classe` | GET | **Prof** : les certifications qui visent une classe + l'avancement de la saisie (bloc « Certifications » du détail d'une classe) |
+| `/api/ressources/interactif/[devoirId]/[id]` | GET | Sert **en grand** une animation HTML des ressources. **Route publique par lien secret** (un onglet n'envoie pas d'en-tête d'auth, comme une `<img>`). En-tête `Content-Security-Policy: sandbox allow-scripts` : origine **opaque** bien que servie par notre domaine — ne JAMAIS y ajouter `allow-same-origin` |
 | `/api/notifications` | GET, PUT | Notifications calculées à la lecture (aucune collection) ; PUT : `lastSeen` / `enabled` |
 | `/api/travaux/status` | GET | Élève : statut `{ status, nonRendu }` de ses travaux par devoir (classement page /activites) |
 | `/api/classes/[id]/archive` | GET | Archive ZIP de la classe avant suppression : HTML par élève (nommé + évaluation) + notes.csv par activité + récapitulatif — ZIP maison `src/lib/zip.ts`, zéro dépendance |
@@ -554,6 +562,14 @@ interface Questionnaire {
   (« Ressources pour l'élève » / « Contenus de l'activité ») dans `CreationForm` **et**
   `EditDevoirModal` (refondu recto/verso) ; bouton « 👁 Prévisualiser l'espace élève »
   (enregistre `disponible: false` puis ouvre `/activites/[id]` — un prof y est en aperçu)
+- **Ressources — onglet Interactif** : `RessourcesInput` (saisie : adresse d'une
+  page tierce **ou** code HTML de l'admin, réglages de taille repris de l'œuvre,
+  aperçu, ligne vierge toujours prête) et `RessourcesTab` (élève : cadre, zoom
+  − / % / +, « ↗ Ouvrir en grand »). ⚠️ **DEUX bacs à sable, jamais uniformisés** :
+  une page tierce garde `allow-same-origin` (il désigne SON origine, et la
+  plupart des exerciseurs n'en démordent pas) ; une animation en `srcdoc` ne
+  l'a JAMAIS — là, l'origine serait la nôtre, et le code lirait la session
+  Firebase de l'élève.
 - Panels : `AssistancePanel` (onglets Consignes/Ressources/Évaluation/Remarques/Aide
   IA/Recherche — prop `hideTabs` quand un parent gère la navigation), `GrilleTab`
   (3 évaluations : élève, IA, prof)
@@ -628,6 +644,45 @@ interface Questionnaire {
 
 > Les gotchas **critiques** (boucles de hooks, redirections, ContentLock, échelle des
 > grilles) sont dans `AGENTS.md`. Ici : les pièges opérationnels.
+
+### « Rôle pas encore résolu » n'est pas « rôle qui n'est pas prof »
+`role` vaut `null` le temps que Firebase rende son verdict. Une garde de page
+qui écrit `if (role !== 'prof') router.replace('/accueil')` éjecte donc le
+professeur pendant cet instant — et `/accueil` **renvoie un prof sur
+`/dashboard`**. Résultat : retour inexpliqué à « Mes Activités » au milieu d'un
+travail, sans que rien ne soit perdu en base.
+**Règle** : attendre que le rôle soit résolu (`if (!role) return;`) AVANT de
+conclure au refus, et poser le state `redirecting` (règle AGENTS.md).
+*(2026-08-20, `/grilles` — la garde y était incomplète depuis l'origine.)*
+
+### Le mélange d'un exercice ne s'applique qu'à un LECTEUR
+`preparerPresentation` (`lecture-server.ts`) mélange les jetons d'une remise en
+ordre, la réserve d'une image annotée, les réponses d'un appariement, les
+étiquettes d'un tri. C'est une **présentation**, pas une donnée.
+Appliquée à tout le monde par `docToSection`, elle rendait au professeur son
+propre corrigé en désordre — et sa saisie EST le corrigé d'une remise en ordre :
+rouvrir la scène puis l'enregistrer écrivait le désordre en base. Elle faussait
+de la même façon la **duplication** d'une œuvre et le **bilan de lecture**, qui
+comparent la réponse de l'élève à `ordreItems`.
+**Règle** : `docToSection(doc, pourLecteur)` — faux partout sauf pour servir
+l'élève. *(2026-08-20)*
+
+### Une pastille écrite en blanc doit recevoir son fond
+`.qType` (constructeur de questionnaire) porte `color: #fff` et compte sur une
+classe `.type_<type>` pour le fond. Un type ajouté sans sa couleur donne du
+**blanc sur blanc** — et CSS ignore silencieusement une classe absente : ni
+erreur, ni avertissement. *(cinq types muets pendant quatre jours, 2026-08-20)*
+
+### Un champ d'une seule ligne rend le texte long insélectionnable
+Un `<input>` fait défiler HORIZONTALEMENT ce qui dépasse ; un `<textarea>` de
+trois lignes le fait verticalement. Dans les deux cas, tirer une sélection fait
+filer le texte sous le curseur : on ne peut plus y couper un passage.
+**Règle** : tout champ où l'on colle un pavé prend la hauteur de son contenu
+(`AutoGrowTextarea`, `maxRows` généreux), et jamais de poignée de
+redimensionnement — elle se bat avec la hauteur calculée.
+Corollaire : un `AutoGrowTextarea` **ne s'observe pas lui-même**. Chaque mesure
+repasse par `height: auto` ; observer ce qu'on modifie fait sursauter le champ.
+Il observe son parent, et ne réagit qu'à un changement de LARGEUR. *(2026-08-20)*
 
 ### Firestore refuse les champs `undefined`
 Écrire un objet dont une clé vaut `undefined` fait échouer la requête entière
@@ -939,6 +994,14 @@ prof.
   principal. N'ajoute jamais un 2ᵉ atelier, n'en retire aucun.
 
 ### Fichiers clés
+- `src/lib/integration.ts` — contenus interactifs embarqués : `DOMAINES_INTEGRATION`
+  (liste blanche), `urlDepuisIntegration` (extrait le `src` d'un bloc `<iframe>`
+  collé), `proportionsDepuisIntegration`, `integrationAutorisee`, `TAILLE_MAX_CODE`.
+  **Partagé client/serveur** — sorti de `types/oeuvre.ts`, qui le réexporte.
+  Sert l'atelier « Lecture d'une œuvre » ET les ressources d'une activité.
+- `src/lib/ressources-server.ts` — `sanitizeRessources` : **le seul contrôle qui
+  compte** sur l'onglet Interactif (liste blanche, plafond de taille, code
+  réservé à l'admin). Toute route qui écrit `devoirs.ressources` y passe.
 - `src/lib/crypto.ts` — chiffrement AES-256-GCM des identités élèves + `hashEmail`
   (HMAC) — **serveur uniquement**, jamais d'import côté client. Champs chiffrés :
   `eleves.nom/prenom/email` (+`emailHash`), `travaux.studentName/studentEmail`

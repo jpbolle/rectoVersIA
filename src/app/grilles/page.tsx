@@ -40,6 +40,9 @@ export default function GrillesPage() {
   const [activeTab, setActiveTab] = useState<Tab>('grilles');
 
   const [isReady, setIsReady] = useState(false);
+  // Garde de redirection — motif imposé par le projet (AGENTS.md) : sans ce
+  // state, l'effet ci-dessous peut repartir et la page clignote.
+  const [redirecting, setRedirecting] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -71,13 +74,23 @@ export default function GrillesPage() {
   }, []);
 
   useEffect(() => {
-    if (authLoading && !isAuthenticated) return;
+    if ((authLoading && !isAuthenticated) || redirecting) return;
     if (!isAuthenticated) {
+      setRedirecting(true);
       router.replace('/login');
-    } else if (role !== 'prof') {
+      return;
+    }
+    // ⚠️ RÔLE PAS ENCORE RÉSOLU ≠ RÔLE QUI N'EST PAS PROF.
+    // `role` vaut null le temps qu'Firebase rende son verdict. Traité comme un
+    // refus, cet instant éjectait le professeur vers `/accueil` — qui renvoie
+    // un prof sur `/dashboard`. D'où le retour inexpliqué à « Mes Activités »
+    // au beau milieu d'un travail, sans que rien ne soit perdu en base.
+    if (!role) return;
+    if (role !== 'prof') {
+      setRedirecting(true);
       router.replace('/accueil');
     }
-  }, [isAuthenticated, authLoading, role, router]);
+  }, [isAuthenticated, authLoading, role, router, redirecting]);
 
   // --- Grilles callbacks ---
   const handleCreateClick = useCallback(() => {
@@ -246,7 +259,7 @@ export default function GrillesPage() {
     [duplicateTheme]
   );
 
-  if (authLoading && !isAuthenticated) return null;
+  if ((authLoading && !isAuthenticated) || redirecting) return null;
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>

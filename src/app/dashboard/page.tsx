@@ -243,18 +243,29 @@ export default function DashboardPage() {
     [createDevoir, getAuthHeaders]
   );
 
+  /**
+   * Enregistre une activité modifiée. Ne ferme PAS la popup : c'est elle qui
+   * décide, puisqu'elle s'enregistre aussi toute seule pendant la composition.
+   *
+   * `silencieux` : enregistrement automatique. Pas de message — il s'afficherait
+   * derrière la fenêtre ouverte, et rien ne justifie d'annoncer toutes les
+   * deux secondes ce que le pied de la popup dit déjà.
+   */
   const handleSaveEdit = useCallback(
-    async (id: string, data: Partial<Devoir>) => {
+    async (id: string, data: Partial<Devoir>, silencieux = false): Promise<boolean> => {
       setIsSaving(true);
       try {
         await updateDevoir(id, data);
-        setMessage({ text: 'Devoir modifié avec succès !', type: 'success' });
-        setEditingDevoir(null);
+        if (!silencieux) {
+          setMessage({ text: 'Devoir modifié avec succès !', type: 'success' });
+        }
+        return true;
       } catch (err) {
         setMessage({
           text: err instanceof Error ? err.message : 'Erreur lors de la modification',
           type: 'error',
         });
+        return false;
       } finally {
         setIsSaving(false);
       }

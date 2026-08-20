@@ -147,6 +147,23 @@ export interface LectureQuestion {
   enonce: string;
   points: number;
   competences: string[];   // ids de gestes de lecture (config didactique)
+  /**
+   * MÉLANGE DES PROPOSITIONS — désactivé question par question.
+   *
+   * Par défaut (champ absent), les propositions d'un QCM et les affirmations
+   * d'une matrice s'affichent dans un ORDRE PROPRE À CHAQUE ÉLÈVE : deux
+   * voisins ne lisent pas la même liste, et le « c'est la troisième » ne
+   * circule plus. Voir `ordreAffichage`.
+   *
+   * Le prof coupe le mélange quand ses propositions ont un ordre à elles :
+   * une chronologie, une gradation, un « toutes les réponses ci-dessus » qui
+   * n'a de sens qu'en dernier.
+   *
+   * ⚠️ Ce n'est QU'UN ORDRE D'AFFICHAGE. La réponse de l'élève reste
+   * enregistrée dans l'ordre du professeur — sans quoi tous les corrigés,
+   * barèmes et statistiques déjà en base désigneraient la mauvaise case.
+   */
+  pasDeMelange?: boolean;
   // Toute question peut porter une image : vignette + agrandissement,
   // et atelier de tracé complet côté élève (tracés enregistrés avec la réponse)
   image?: LectureQuestionImage | null;
@@ -336,6 +353,30 @@ export function melangeStable<T>(items: T[], graine: string): T[] {
     [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
+}
+
+/**
+ * L'ORDRE D'AFFICHAGE des propositions pour un élève donné.
+ *
+ * Renvoie des index D'ORIGINE : `ordreAffichage(...)[position]` donne le rang
+ * qu'occupe cette proposition chez le professeur. Les écrans itèrent donc sur
+ * le résultat, et continuent d'enregistrer l'index d'origine — la réponse ne
+ * change jamais de référentiel, et rien en aval (correction, barème, profil,
+ * base de données) n'a à connaître le mélange.
+ *
+ * La graine porte l'identifiant de l'élève ET celui de la question : deux
+ * élèves voient deux ordres, et le même élève retrouve le sien en revenant
+ * sur sa copie. Sans graine (aperçu, correction du prof), l'ordre de saisie
+ * est rendu tel quel.
+ */
+export function ordreAffichage(
+  taille: number,
+  graine: string | null | undefined,
+  melanger: boolean
+): number[] {
+  const rangs = Array.from({ length: taille }, (_, i) => i);
+  if (!melanger || !graine || taille < 2) return rangs;
+  return melangeStable(rangs, graine);
 }
 
 /**

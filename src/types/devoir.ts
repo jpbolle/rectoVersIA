@@ -31,6 +31,32 @@ export interface RessourceFile {
   mimeType?: string;
 }
 
+/**
+ * Un contenu interactif joint aux ressources (onglet Interactif).
+ *
+ * DEUX natures, et la distinction n'est pas cosmétique :
+ *  · `url`  — une page tierce (Genially, frise, exerciseur) sur un domaine de
+ *    la LISTE BLANCHE (`src/lib/integration.ts`), vérifiée côté serveur ;
+ *  · `code` — une animation HTML/CSS/JS écrite par le professeur, exécutée en
+ *    BAC À SABLE FERMÉ (`srcdoc` + `sandbox="allow-scripts"`, sans
+ *    `allow-same-origin`). Réservée à l'administrateur : c'est du code qui
+ *    s'exécute dans une page ouverte par des mineurs.
+ */
+export interface RessourceInteractif {
+  id: string;
+  kind: 'url' | 'code';
+  url?: string;
+  code?: string;
+  legende?: string;
+  /** Hauteur du cadre en pixels — défaut 520 */
+  hauteur?: number;
+  /** Plafond de largeur en pixels (jamais une largeur imposée) */
+  largeur?: number;
+  /** Proportions d'origine conservées (largeur/hauteur du code collé) */
+  proportions?: boolean;
+  ratio?: number;
+}
+
 export interface DevoirRessource {
   type: 'text';
   content: string;
@@ -38,6 +64,7 @@ export interface DevoirRessource {
   document?: string;    // Rich HTML content from Tiptap editor (onglet Texte)
   files?: RessourceFile[]; // Fichiers Drive (onglet Fichier)
   videos?: string[];    // URLs YouTube (onglet Vidéo) — lecteur intégré côté élève
+  interactifs?: RessourceInteractif[]; // Contenus embarqués (onglet Interactif)
 }
 
 export interface Devoir {

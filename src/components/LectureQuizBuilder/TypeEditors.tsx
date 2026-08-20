@@ -30,6 +30,7 @@ import {
   matriceColonnes,
 } from '@/types/lecture';
 import { MATRICE_MODELES } from '@/types/autoevaluation';
+import { focaliserChamp, insererLigneMatrice } from '@/lib/choix-liste';
 import { FluoExtrait } from '@/components/LectureQuizActivity/LectureQuizActivity';
 import styles from './LectureQuizBuilder.module.css';
 
@@ -319,6 +320,18 @@ export function EditeurMatrice({ q, update, disabled }: EditeurProps) {
         >
           i
         </span>
+        {/* Les LIGNES se mélangent pour chaque élève ; les colonnes jamais —
+            elles forment une échelle (Vrai/Faux, Toujours→Jamais) qu'un
+            désordre rendrait illisible. */}
+        <label className={styles.matriceMultiple}>
+          <input
+            type="checkbox"
+            checked={q.pasDeMelange === true}
+            disabled={disabled}
+            onChange={(e) => update({ pasDeMelange: e.target.checked })}
+          />
+          Garder cet ordre (ne pas mélanger)
+        </label>
       </div>
 
       {lignes.map((item, li) => (
@@ -326,10 +339,19 @@ export function EditeurMatrice({ q, update, disabled }: EditeurProps) {
           <input
             type="text"
             value={item}
+            data-champ={`${q.id}-ligne-${li}`}
             onChange={(e) => {
               const suivantes = [...lignes];
               suivantes[li] = e.target.value;
               update({ matriceItems: suivantes });
+            }}
+            // Entrée ouvre l'affirmation suivante et y va : on saisit ses dix
+            // items d'affilée sans viser « + Ajouter une affirmation ».
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return;
+              e.preventDefault();
+              update(insererLigneMatrice(lignes, li, attendu, multiple));
+              focaliserChamp(`${q.id}-ligne-${li + 1}`);
             }}
             placeholder={`Affirmation ${li + 1}`}
             disabled={disabled}
@@ -538,78 +560,217 @@ export function EditeurAppariement({ q, update, disabled, choisirMedia }: Editeu
   const droite = q.appariementDroite ?? [];
   const paires = q.appariementPaires ?? {};
 
-  /** Retirer un jeton nettoie les paires qui le visaient — sinon le corrigé
-      pointe vers un élément disparu, et la question devient insoluble. */
-  const nettoyer = (g: LectureJeton[], d: LectureJeton[]) => {
-    const idsG = new Set(g.map((j) => j.id));
-    const idsD = new Set(d.map((j) => j.id));
-    const suivant: Record<string, string> = {};
-    Object.entries(paires).forEach(([k, v]) => {
-      if (idsG.has(k) && idsD.has(v)) suivant[k] = v;
+  // ── Ce que le prof voit : DES PAIRES ──
+  // Le modèle, lui, ne change pas : deux colonnes et un corrigé. On le lit
+  // ligne à ligne à l'ouverture, on le recompose à chaque frappe. Les
+  // appariements encodés avec l'ancienne forme (deux colonnes saisies
+  // séparément) se rouvrent donc tels quels.
+  const vises = new Set(Object.values(paires));
+  const intrus = droite.filter((d) => !vises.has(d.id));
+  const lignes = gauche.map((g) => ({
+    g,
+    reponse: droite.find((d) => d.id === paires[g.id])?.texte ?? '',
+  }));
+
+  const cle = (t: string) => t.trim().toLowerCase();
+
+  /**
+   * Paires + intrus → les trois champs du modèle.
+   *
+   * Deux lignes qui portent LA MÊME réponse partagent le même jeton de droite
+   * (« deux répliques du même personnage ») : une seule pastille s'affiche à
+   * l'élève, et les deux traits y arrivent. Le jeton déjà en base est réutilisé
+   * quand son texte n'a pas changé — son identifiant voyage dans les réponses
+   * déjà remises.
+   */
+  const recomposer = (
+    suivantes: { g: LectureJeton; reponse: string }[],
+    suivantsIntrus: LectureJeton[]
+  ) => {
+    const idsIntrus = new Set(suivantsIntrus.map((j) => j.id));
+    const parCle = new Map<string, LectureJeton>();
+    const droiteOut: LectureJeton[] = [];
+    const pairesOut: Record<string, string> = {};
+
+    for (const l of suivantes) {
+      const texte = l.reponse.trim();
+      if (!texte) continue;              // ligne sans réponse : pas de lien
+      const k = cle(texte);
+      let jd = parCle.get(k);
+      if (!jd) {
+        const ancien = droite.find((d) => !idsIntrus.has(d.id) && cle(d.texte ?? '') === k);
+        jd = ancien
+          ? { ...ancien, texte }
+          : { id: generateJetonId(), kind: 'texte' as const, texte };
+        parCle.set(k, jd);
+        droiteOut.push(jd);
+      }
+      pairesOut[l.g.id] = jd.id;
+    }
+
+    update({
+      appariementGauche: suivantes.map((l) => l.g),
+      appariementDroite: [...droiteOut, ...suivantsIntrus],
+      appariementPaires: pairesOut,
     });
-    return suivant;
+  };
+
+  const majLigne = (i: number, partial: Partial<{ g: LectureJeton; reponse: string }>) =>
+    recomposer(
+      lignes.map((l, k) => (k === i ? { ...l, ...partial } : l)),
+      intrus
+    );
+
+  const ajouter = (kind: LectureJeton['kind']) => {
+    const nouveau: LectureJeton = { id: generateJetonId(), kind, texte: '' };
+    if (kind === 'texte') {
+      recomposer([...lignes, { g: nouveau, reponse: '' }], intrus);
+      focaliserChamp(`${q.id}-apparG-${lignes.length}`);
+      return;
+    }
+    // Image et audio : le jeton n'existe qu'une fois le fichier déposé.
+    choisirMedia?.(kind, (media) =>
+      recomposer([...lignes, { g: { ...nouveau, media }, reponse: '' }], intrus)
+    );
+  };
+
+  const deplacer = (i: number, sens: -1 | 1) => {
+    const cible = i + sens;
+    if (cible < 0 || cible >= lignes.length) return;
+    const copie = [...lignes];
+    [copie[i], copie[cible]] = [copie[cible], copie[i]];
+    recomposer(copie, intrus);
   };
 
   return (
     <div className={styles.apparEditeur}>
-      <ListeJetons
-        titre="Colonne de gauche"
-        aide="Texte, image ou enregistrement : c'est ce que l'élève devra relier."
-        jetons={gauche}
-        disabled={disabled}
-        choisirMedia={choisirMedia}
-        onChange={(g) =>
-          update({ appariementGauche: g, appariementPaires: nettoyer(g, droite) })
-        }
-      />
-
-      <ListeJetons
-        titre="Colonne de droite"
-        aide="Les réponses. Vous pouvez en mettre plus qu'à gauche : les éléments en trop font des intrus."
-        jetons={droite}
-        disabled={disabled}
-        onChange={(d) =>
-          update({ appariementDroite: d, appariementPaires: nettoyer(gauche, d) })
-        }
-      />
-
       <div className={styles.fieldLabel}>
-        Corrigé — que relie-t-on à quoi&nbsp;?
+        Les paires — l’élément, puis sa réponse
         <span
           className={styles.info}
-          title="Deux éléments de gauche peuvent viser la même réponse : deux répliques peuvent être du même personnage."
+          title="Une ligne = un lien. L'élève, lui, reçoit les réponses MÉLANGÉES, dans un ordre propre à chacun — l'ordre de saisie ne lui donne donc rien. Deux lignes qui portent la même réponse partagent la même pastille : deux répliques peuvent être du même personnage."
         >
           i
         </span>
       </div>
 
-      {gauche.length === 0 || droite.length === 0 ? (
-        <p className={styles.hint}>Remplissez d&apos;abord les deux colonnes.</p>
-      ) : (
-        gauche.map((g, i) => (
-          <div key={g.id} className={styles.apparPaire}>
-            <span className={styles.apparNom}>{nomJeton(g, i)}</span>
-            <span className={styles.apparFleche}>→</span>
-            <select
-              value={paires[g.id] ?? ''}
-              onChange={(e) => {
-                const suivant = { ...paires };
-                if (e.target.value) suivant[g.id] = e.target.value;
-                else delete suivant[g.id];
-                update({ appariementPaires: suivant });
-              }}
-              disabled={disabled}
-            >
-              <option value="">— aucune</option>
-              {droite.map((d, j) => (
-                <option key={d.id} value={d.id}>
-                  {nomJeton(d, j)}
-                </option>
-              ))}
-            </select>
-          </div>
-        ))
+      {lignes.length === 0 && (
+        <p className={styles.hint}>Aucune paire pour l&apos;instant.</p>
       )}
+
+      {lignes.map((l, i) => (
+        <div key={l.g.id} className={styles.apparLigne}>
+          <span className={styles.jetonRang}>{i + 1}</span>
+
+          {l.g.kind === 'texte' ? (
+            <input
+              type="text"
+              value={l.g.texte ?? ''}
+              data-champ={`${q.id}-apparG-${i}`}
+              onChange={(e) => majLigne(i, { g: { ...l.g, texte: e.target.value } })}
+              // Entrée passe au champ de la réponse : on écrit une paire d'un
+              // trait, sans lâcher le clavier.
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                focaliserChamp(`${q.id}-apparD-${i}`);
+              }}
+              placeholder="Ce que l’élève doit relier"
+              disabled={disabled}
+            />
+          ) : (
+            <div className={styles.jetonMedia}>
+              {l.g.kind === 'image' && l.g.media ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={l.g.media.url} alt="" />
+              ) : l.g.media ? (
+                <audio controls preload="none" src={l.g.media.url} />
+              ) : null}
+              <input
+                type="text"
+                value={l.g.texte ?? ''}
+                data-champ={`${q.id}-apparG-${i}`}
+                onChange={(e) => majLigne(i, { g: { ...l.g, texte: e.target.value } })}
+                placeholder="Légende (facultative)"
+                disabled={disabled}
+              />
+            </div>
+          )}
+
+          <span className={styles.apparFleche}>→</span>
+
+          <input
+            type="text"
+            value={l.reponse}
+            data-champ={`${q.id}-apparD-${i}`}
+            onChange={(e) => majLigne(i, { reponse: e.target.value })}
+            // Entrée ouvre la paire suivante et va sur son premier champ.
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return;
+              e.preventDefault();
+              const suivantes = [...lignes];
+              suivantes.splice(i + 1, 0, {
+                g: { id: generateJetonId(), kind: 'texte', texte: '' },
+                reponse: '',
+              });
+              recomposer(suivantes, intrus);
+              focaliserChamp(`${q.id}-apparG-${i + 1}`);
+            }}
+            placeholder="Sa réponse"
+            disabled={disabled}
+          />
+
+          <div className={styles.jetonOutils}>
+            <button type="button" onClick={() => deplacer(i, -1)} disabled={disabled || i === 0} title="Monter">
+              ↑
+            </button>
+            <button
+              type="button"
+              onClick={() => deplacer(i, 1)}
+              disabled={disabled || i === lignes.length - 1}
+              title="Descendre"
+            >
+              ↓
+            </button>
+            <button
+              type="button"
+              onClick={() => recomposer(lignes.filter((_, k) => k !== i), intrus)}
+              disabled={disabled}
+              title="Supprimer cette paire"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <div className={styles.jetonAjout}>
+        <button type="button" className={styles.addChoice} onClick={() => ajouter('texte')} disabled={disabled}>
+          + Paire
+        </button>
+        {choisirMedia && (
+          <>
+            <button type="button" className={styles.addChoice} onClick={() => ajouter('image')} disabled={disabled}>
+              + Paire avec image
+            </button>
+            <button type="button" className={styles.addChoice} onClick={() => ajouter('audio')} disabled={disabled}>
+              + Paire avec audio
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* ── LES INTRUS ──
+          Des réponses qui ne vont avec rien. Sans elles, le dernier lien se
+          trouve par élimination : autant de réponses que de questions, il ne
+          reste qu'une pastille libre. */}
+      <ListeJetons
+        titre="Réponses en trop (intrus)"
+        aide="Elles s'affichent avec les autres, mélangées, mais ne sont la réponse de rien. Facultatif."
+        jetons={intrus}
+        disabled={disabled}
+        onChange={(suivantsIntrus) => recomposer(lignes, suivantsIntrus)}
+      />
 
       <p className={styles.hint}>
         Barème partiel&nbsp;: 4 liens justes sur 6 rapportent deux tiers des points.
@@ -776,48 +937,88 @@ export function EditeurEnsembles({ q, update, disabled, choisirMedia }: EditeurP
   const items = q.ensembleItems ?? [];
   const affectations = q.ensembleAffectations ?? {};
 
-  const majBoites = (suivantes: LectureEnsemble[]) => {
-    // Une boîte supprimée laisse ses étiquettes sans destination : on les
-    // remet « non affectées » plutôt que de garder un corrigé fantôme.
-    const ids = new Set(suivantes.map((b) => b.id));
+  // ── Chaque ensemble porte SES étiquettes ──
+  // Le modèle ne change pas : une liste d'étiquettes à plat et un corrigé qui
+  // dit où va chacune. Mais le prof n'a plus trois étapes à enchaîner (nommer
+  // les boîtes, taper les étiquettes, les apparier) : il remplit une boîte,
+  // puis l'autre, et le corrigé s'écrit tout seul.
+  const itemsDe = (bid: string) => items.filter((j) => affectations[j.id] === bid);
+  const orphelines = items.filter((j) => !affectations[j.id]);
+
+  const majBoite = (bid: string, suivants: LectureJeton[]) => {
+    const restants = new Set(suivants.map((j) => j.id));
     const aff: Record<string, string> = {};
     Object.entries(affectations).forEach(([k, v]) => {
-      if (ids.has(v)) aff[k] = v;
+      // Une étiquette retirée de sa boîte perd son affectation
+      if (v === bid && !restants.has(k)) return;
+      aff[k] = v;
     });
-    update({ ensembles: suivantes, ensembleAffectations: aff });
+    suivants.forEach((j) => {
+      aff[j.id] = bid;
+    });
+    update({
+      ensembleItems: [...items.filter((j) => affectations[j.id] !== bid), ...suivants],
+      ensembleAffectations: aff,
+    });
+  };
+
+  /** Supprimer une boîte emporte ses étiquettes : à l'écran elles sont DEDANS. */
+  const supprimerBoite = (bid: string) => {
+    const aff: Record<string, string> = {};
+    Object.entries(affectations).forEach(([k, v]) => {
+      if (v !== bid) aff[k] = v;
+    });
+    update({
+      ensembles: boites.filter((b) => b.id !== bid),
+      ensembleItems: items.filter((j) => affectations[j.id] !== bid),
+      ensembleAffectations: aff,
+    });
   };
 
   return (
     <div className={styles.ensEditeur}>
       <div className={styles.fieldLabel}>
         Les ensembles
-        <span className={styles.info} title="Au moins deux : trier dans une seule boîte n'est pas un tri.">
+        <span
+          className={styles.info}
+          title="Au moins deux : trier dans une seule boîte n'est pas un tri. Remplissez chaque ensemble avec ce qui lui appartient — l'élève, lui, reçoit toutes les étiquettes MÉLANGÉES, dans un ordre propre à chacun."
+        >
           i
         </span>
       </div>
 
-      {boites.map((b) => (
-        <div key={b.id} className={styles.choice}>
-          <input
-            type="text"
-            value={b.titre}
-            onChange={(e) =>
-              update({
-                ensembles: boites.map((x) => (x.id === b.id ? { ...x, titre: e.target.value } : x)),
-              })
-            }
-            placeholder="Nom de l'ensemble"
+      {boites.map((b, bi) => (
+        <div key={b.id} className={styles.ensBoite}>
+          <div className={styles.ensBoiteEntete}>
+            <input
+              type="text"
+              value={b.titre}
+              onChange={(e) =>
+                update({
+                  ensembles: boites.map((x) => (x.id === b.id ? { ...x, titre: e.target.value } : x)),
+                })
+              }
+              placeholder={`Nom de l’ensemble ${bi + 1}`}
+              disabled={disabled}
+            />
+            <button
+              type="button"
+              className={styles.choiceDel}
+              onClick={() => supprimerBoite(b.id)}
+              disabled={disabled}
+              title="Supprimer cet ensemble et ses étiquettes"
+            >
+              ✕
+            </button>
+          </div>
+
+          <ListeJetons
+            titre="Ce qui appartient à cet ensemble"
+            jetons={itemsDe(b.id)}
             disabled={disabled}
+            choisirMedia={choisirMedia}
+            onChange={(suivants) => majBoite(b.id, suivants)}
           />
-          <button
-            type="button"
-            className={styles.choiceDel}
-            onClick={() => majBoites(boites.filter((x) => x.id !== b.id))}
-            disabled={disabled}
-            title="Supprimer cet ensemble"
-          >
-            ✕
-          </button>
         </div>
       ))}
 
@@ -825,57 +1026,63 @@ export function EditeurEnsembles({ q, update, disabled, choisirMedia }: EditeurP
         type="button"
         className={styles.addChoice}
         onClick={() =>
-          majBoites([...boites, { id: `e-${Date.now()}-${boites.length}`, titre: '' }])
+          update({
+            ensembles: [...boites, { id: `e-${Date.now()}-${boites.length}`, titre: '' }],
+          })
         }
         disabled={disabled}
       >
         + Ajouter un ensemble
       </button>
 
-      <ListeJetons
-        titre="Les étiquettes à ranger"
-        jetons={items}
-        disabled={disabled}
-        choisirMedia={choisirMedia}
-        onChange={(suivants) => {
-          const ids = new Set(suivants.map((j) => j.id));
-          const aff: Record<string, string> = {};
-          Object.entries(affectations).forEach(([k, v]) => {
-            if (ids.has(k)) aff[k] = v;
-          });
-          update({ ensembleItems: suivants, ensembleAffectations: aff });
-        }}
-      />
-
-      <div className={styles.fieldLabel}>Corrigé — dans quel ensemble va chaque étiquette&nbsp;?</div>
-
-      {items.length === 0 || boites.length === 0 ? (
-        <p className={styles.hint}>Créez d&apos;abord les ensembles et les étiquettes.</p>
-      ) : (
-        items.map((j, i) => (
-          <div key={j.id} className={styles.apparPaire}>
-            <span className={styles.apparNom}>{nomJeton(j, i)}</span>
-            <span className={styles.apparFleche}>→</span>
-            <select
-              value={affectations[j.id] ?? ''}
-              onChange={(e) => {
-                const suivant = { ...affectations };
-                if (e.target.value) suivant[j.id] = e.target.value;
-                else delete suivant[j.id];
-                update({ ensembleAffectations: suivant });
-              }}
-              disabled={disabled}
-            >
-              <option value="">— aucun</option>
-              {boites.map((b, bi) => (
-                <option key={b.id} value={b.id}>
-                  {b.titre || `Ensemble ${bi + 1}`}
-                </option>
-              ))}
-            </select>
+      {/* ── Rattrapage ──
+          Les questions encodées avant ce jour pouvaient laisser une étiquette
+          sans ensemble : elle n'appartient à aucune boîte, donc à aucun bloc
+          ci-dessus. Sans ce rappel elle disparaîtrait de l'écran tout en
+          restant en base. Le bloc n'apparaît que s'il y en a. */}
+      {orphelines.length > 0 && (
+        <>
+          <div className={styles.fieldLabel} style={{ marginTop: 12 }}>
+            Étiquettes sans ensemble — à ranger
           </div>
-        ))
+          {orphelines.map((j, i) => (
+            <div key={j.id} className={styles.apparPaire}>
+              <span className={styles.apparNom}>{nomJeton(j, i)}</span>
+              <span className={styles.apparFleche}>→</span>
+              <select
+                value=""
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  update({
+                    ensembleAffectations: { ...affectations, [j.id]: e.target.value },
+                  });
+                }}
+                disabled={disabled}
+              >
+                <option value="">— choisir un ensemble</option>
+                {boites.map((b, bi) => (
+                  <option key={b.id} value={b.id}>
+                    {b.titre || `Ensemble ${bi + 1}`}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className={styles.choiceDel}
+                onClick={() => update({ ensembleItems: items.filter((x) => x.id !== j.id) })}
+                disabled={disabled}
+                title="Supprimer cette étiquette"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </>
       )}
+
+      <p className={styles.hint}>
+        Barème partiel&nbsp;: on compte les étiquettes tombées dans le bon ensemble.
+      </p>
     </div>
   );
 }

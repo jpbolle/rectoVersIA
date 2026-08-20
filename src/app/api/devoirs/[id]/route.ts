@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { sanitizeRessources } from '@/lib/ressources-server';
 import {
   sanitizeLectureQuiz,
   lectureQuizForEleve,
@@ -238,7 +239,10 @@ export async function PATCH(
       updateData.consignes = body.consignes;
     }
     if (body.ressources !== undefined) {
-      updateData.ressources = body.ressources;
+      // Même garde-fou qu'à la création (voir ressources-server.ts).
+      updateData.ressources = sanitizeRessources(body.ressources, {
+        codeAutorise: auth.isAdmin,
+      });
     }
     if (body.evaluation !== undefined) {
       updateData.evaluation = body.evaluation === 'certificatif' ? 'certificatif' : 'formatif';

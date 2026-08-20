@@ -6,7 +6,7 @@
 // souligner du texte), image et audio par question (limite d'écoutes),
 // gestes de lecture par question (menu déroulant dans l'entête).
 
-import { useRef, useState } from 'react';
+import { useRef, useState, Fragment } from 'react';
 import dynamic from 'next/dynamic';
 import { compressImage } from '@/lib/image-compress';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
@@ -110,6 +110,99 @@ interface LectureQuizBuilderProps {
   allowedHabiletes?: string[] | null;
 }
 
+/**
+ * Les types proposés par un trait, dans l'ordre où on les cherche.
+ * Même liste que l'ancienne ligne de boutons du bas — elle n'a pas disparu,
+ * elle a rejoint l'endroit où l'on décide d'ajouter quelque chose.
+ */
+const TYPES_AJOUTABLES: { type: LectureQuestionType; label: string }[] = [
+  { type: 'qcm', label: 'QCM' },
+  { type: 'texte-court', label: 'Texte court' },
+  { type: 'texte-long', label: 'Texte long' },
+  { type: 'fluorage', label: 'Souligner du texte' },
+  { type: 'matrice', label: 'Matrice' },
+  { type: 'appariement', label: 'Appariement' },
+  { type: 'ordre', label: 'Remise en ordre' },
+  { type: 'image-annotee', label: 'Image à annoter' },
+  { type: 'ensembles', label: 'Ensembles' },
+  { type: 'info', label: 'Bloc informatif' },
+];
+
+/**
+ * LE TRAIT D'INSERTION — repris de l'outil d'édition d'une œuvre, où il a fait
+ * ses preuves : on ajoute une question LÀ OÙ on la veut, pas au bas d'une liste
+ * de vingt blocs qu'il faut ensuite remonter.
+ *
+ * Sa hauteur est RÉSERVÉE en permanence, même invisible : s'il n'apparaissait
+ * qu'au survol, toute la liste sauterait sous la souris.
+ *
+ * Deux temps : le survol montre un `+`, le clic déplie les types. Dix pastilles
+ * affichées d'emblée entre chaque question rendraient le questionnaire
+ * illisible — c'est précisément ce que la ligne permanente du bas faisait.
+ */
+function TraitInsertion({
+  ouvert,
+  toujoursVisible,
+  onOuvrir,
+  onFermer,
+  onChoisir,
+  disabled,
+}: {
+  ouvert: boolean;
+  /** Questionnaire vide : il n'y a rien à survoler, le trait se montre seul. */
+  toujoursVisible?: boolean;
+  onOuvrir: () => void;
+  onFermer: () => void;
+  onChoisir: (type: LectureQuestionType) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      className={`${styles.trait} ${ouvert ? styles.traitOuvert : ''} ${
+        toujoursVisible ? styles.traitToujours : ''
+      }`}
+    >
+      <span className={styles.traitBarre} />
+      {ouvert ? (
+        <span className={styles.traitTypes}>
+          {TYPES_AJOUTABLES.map((t) => (
+            <button
+              key={t.type}
+              type="button"
+              onClick={() => onChoisir(t.type)}
+              disabled={disabled}
+              title={`Insérer ici : ${t.label}`}
+            >
+              {t.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={styles.traitAnnuler}
+            onClick={onFermer}
+            title="Annuler"
+            aria-label="Annuler"
+          >
+            ✕
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          className={styles.traitPlus}
+          onClick={onOuvrir}
+          disabled={disabled}
+          title="Insérer une question ici"
+          aria-label="Insérer une question ici"
+        >
+          +
+        </button>
+      )}
+      <span className={styles.traitBarre} />
+    </div>
+  );
+}
+
 export default function LectureQuizBuilder({
   value,
   onChange,
@@ -152,6 +245,9 @@ export default function LectureQuizBuilder({
 
   // ── Accordéon : questions dépliées (une nouvelle question replie les autres) ──
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  // Quel trait a été ouvert (index d'insertion) ? `null` = aucun. Un seul à la
+  // fois : deux listes de types ouvertes ne diraient plus où l'on insère.
+  const [traitOuvert, setTraitOuvert] = useState<number | null>(null);
   const toggleOpen = (id: string) => {
     setOpenIds((prev) => {
       const next = new Set(prev);
@@ -172,11 +268,15 @@ export default function LectureQuizBuilder({
     });
   };
 
-  const addQuestion = (type: LectureQuestionType) => {
+  /** Insère une question À UNE POSITION donnée (défaut : à la fin). */
+  const addQuestion = (type: LectureQuestionType, position?: number) => {
     const nq = emptyQuestion(type);
-    update({ questions: [...quiz.questions, nq] });
+    const next = [...quiz.questions];
+    next.splice(position ?? next.length, 0, nq);
+    update({ questions: next });
     // La nouvelle question se déplie, les autres se replient
     setOpenIds(new Set([nq.id]));
+    setTraitOuvert(null);
   };
 
   const removeQuestion = (id: string) => {
@@ -456,8 +556,17 @@ export default function LectureQuizBuilder({
         {quiz.questions.map((q, index) => {
           const isOpen = openIds.has(q.id);
           return (
+          <Fragment key={q.id}>
+          {/* Un trait AVANT chaque question — et un dernier après la liste :
+              on insère où l'on regarde. */}
+          <TraitInsertion
+            ouvert={traitOuvert === index}
+            onOuvrir={() => setTraitOuvert(index)}
+            onFermer={() => setTraitOuvert(null)}
+            onChoisir={(type) => addQuestion(type, index)}
+            disabled={disabled}
+          />
           <div
-            key={q.id}
             className={`${styles.qBlock} ${dragIndex === index ? styles.qBlockDragging : ''} ${overIndex === index && dragIndex !== null && dragIndex !== index ? styles.qBlockOver : ''}`}
             draggable={!disabled}
             onDragStart={() => setDragIndex(index)}
@@ -654,12 +763,20 @@ export default function LectureQuizBuilder({
                         📖 Prendre un extrait dans une œuvre
                       </button>
                     </div>
-                    <textarea
+                    {/* Le champ prend la HAUTEUR de son texte : un pavé collé
+                        dans cinq lignes défilait à l'intérieur du champ, et
+                        sélectionner un passage en tirant vers le bas faisait
+                        filer le texte sous le curseur. Tout visible, c'est la
+                        page qui défile — un geste que le navigateur tient. */}
+                    <AutoGrowTextarea
                       className={styles.docTextarea}
                       value={q.document}
                       onChange={(e) => updateQuestion(q.id, { document: e.target.value })}
                       placeholder="Texte que l'élève lira sous l'énoncé, avant de répondre…"
-                      rows={5}
+                      minRows={5}
+                      // Volontairement très haut : dès que le champ défile
+                      // par lui-même, sélectionner redevient impossible.
+                      maxRows={200}
                       disabled={disabled}
                     />
                   </div>
@@ -734,29 +851,53 @@ export default function LectureQuizBuilder({
                 {/* QCM : choix + bonne(s) réponse(s) */}
                 {q.type === 'qcm' && (
                   <div className={styles.choices}>
-                    {/* Réponse unique ou multiple — la case change la FORME du
-                        contrôle côté élève (ronds → cases à cocher), pas
-                        seulement la correction. */}
-                    <label className={styles.multipleToggle}>
-                      <input
-                        type="checkbox"
-                        checked={q.multiple === true}
-                        onChange={(e) => {
-                          const multiple = e.target.checked;
-                          updateQuestion(
-                            q.id,
-                            multiple
-                              ? // On reprend la bonne réponse déjà cochée comme
-                                // première bonne réponse : le prof ne perd pas
-                                // ce qu'il avait saisi en basculant.
-                                { multiple: true, correctIndexes: [q.correctIndex ?? 0] }
-                              : { multiple: false, correctIndex: q.correctIndexes?.[0] ?? 0 }
-                          );
-                        }}
-                        disabled={disabled}
-                      />
-                      Plusieurs bonnes réponses
-                    </label>
+                    <div className={styles.togglesRow}>
+                      {/* Réponse unique ou multiple — la case change la FORME du
+                          contrôle côté élève (ronds → cases à cocher), pas
+                          seulement la correction. */}
+                      <label className={styles.multipleToggle}>
+                        <input
+                          type="checkbox"
+                          checked={q.multiple === true}
+                          onChange={(e) => {
+                            const multiple = e.target.checked;
+                            updateQuestion(
+                              q.id,
+                              multiple
+                                ? // On reprend la bonne réponse déjà cochée comme
+                                  // première bonne réponse : le prof ne perd pas
+                                  // ce qu'il avait saisi en basculant.
+                                  { multiple: true, correctIndexes: [q.correctIndex ?? 0] }
+                                : { multiple: false, correctIndex: q.correctIndexes?.[0] ?? 0 }
+                            );
+                          }}
+                          disabled={disabled}
+                        />
+                        Plusieurs bonnes réponses
+                      </label>
+
+                      {/* Les propositions sont mélangées POUR CHAQUE ÉLÈVE par
+                          défaut. Le prof coupe le mélange quand ses propositions
+                          ont un ordre à elles — une chronologie, une gradation,
+                          un « toutes les réponses ci-dessus ». */}
+                      <label className={styles.multipleToggle}>
+                        <input
+                          type="checkbox"
+                          checked={q.pasDeMelange === true}
+                          onChange={(e) =>
+                            updateQuestion(q.id, { pasDeMelange: e.target.checked })
+                          }
+                          disabled={disabled}
+                        />
+                        Garder cet ordre (ne pas mélanger)
+                        <span
+                          className={styles.info}
+                          title="Par défaut, chaque élève voit les propositions dans un ordre différent — le « c'est la C » ne circule plus. Cochez si vos propositions ont un ordre propre : une chronologie, une gradation, un « toutes les réponses ci-dessus »."
+                        >
+                          i
+                        </span>
+                      </label>
+                    </div>
 
                     {(q.choices ?? []).map((choice, ci) => {
                       const juste = q.multiple
@@ -954,9 +1095,12 @@ export default function LectureQuizBuilder({
                         >
                           📖 Prendre un extrait dans une œuvre
                         </button>
-                        <textarea
+                        {/* Même raison que le texte joint : un extrait tient
+                            rarement en trois lignes, et on vient y couper. */}
+                        <AutoGrowTextarea
                           className={styles.fluoTextarea}
-                          rows={3}
+                          minRows={3}
+                          maxRows={200}
                           value={q.fluoTexte ?? ''}
                           onChange={(e) =>
                             // Le texte change → les indices de mots bougent :
@@ -1055,8 +1199,15 @@ export default function LectureQuizBuilder({
                           {(q.reponsesAcceptees ?? []).map((r, ri) => (
                             <div key={ri} className={styles.choice}>
                               <span className={styles.choiceLabel}>≡</span>
-                              <input
-                                type="text"
+                              {/* Pas un `<input>` : une seule ligne fait défiler
+                                  le texte horizontalement dès qu'il dépasse, et
+                                  on ne peut plus rien y sélectionner. Entrée
+                                  ouvre toujours la formulation suivante — elle
+                                  n'insère donc pas de retour à la ligne. */}
+                              <AutoGrowTextarea
+                                className={styles.repInput}
+                                minRows={1}
+                                maxRows={12}
                                 value={r}
                                 data-champ={`${q.id}-rep-${ri}`}
                                 onChange={(e) => {
@@ -1119,26 +1270,26 @@ export default function LectureQuizBuilder({
             </div>
             )}
           </div>
+          </Fragment>
           );
         })}
+
+        {/* Le dernier trait : ajouter à la suite. Quand le questionnaire est
+            vide, c'est le seul, et il se montre sans qu'on ait à le survoler —
+            il n'y aurait rien d'autre à l'écran. */}
+        <TraitInsertion
+          ouvert={traitOuvert === quiz.questions.length || quiz.questions.length === 0}
+          toujoursVisible={quiz.questions.length === 0}
+          onOuvrir={() => setTraitOuvert(quiz.questions.length)}
+          onFermer={() => setTraitOuvert(null)}
+          onChoisir={(type) => addQuestion(type, quiz.questions.length)}
+          disabled={disabled}
+        />
       </div>
 
       {uploadError && <p className={styles.uploadError}>{uploadError}</p>}
       {recorderError && <p className={styles.uploadError}>{recorderError}</p>}
 
-      {/* Ajouter une question */}
-      <div className={styles.addRow}>
-        <button type="button" className={styles.addQ} onClick={() => addQuestion('qcm')} disabled={disabled}>+ QCM</button>
-        <button type="button" className={styles.addQ} onClick={() => addQuestion('texte-court')} disabled={disabled}>+ Texte court</button>
-        <button type="button" className={styles.addQ} onClick={() => addQuestion('texte-long')} disabled={disabled}>+ Texte long</button>
-        <button type="button" className={styles.addQ} onClick={() => addQuestion('fluorage')} disabled={disabled}>+ Souligner du texte</button>
-        <button type="button" className={styles.addQ} onClick={() => addQuestion('matrice')} disabled={disabled}>+ Matrice</button>
-        <button type="button" className={styles.addQ} onClick={() => addQuestion('appariement')} disabled={disabled}>+ Appariement</button>
-        <button type="button" className={styles.addQ} onClick={() => addQuestion('ordre')} disabled={disabled}>+ Remise en ordre</button>
-        <button type="button" className={styles.addQ} onClick={() => addQuestion('image-annotee')} disabled={disabled}>+ Image à annoter</button>
-        <button type="button" className={styles.addQ} onClick={() => addQuestion('ensembles')} disabled={disabled}>+ Ensembles</button>
-        <button type="button" className={styles.addQ} onClick={() => addQuestion('info')} disabled={disabled}>+ Bloc informatif</button>
-      </div>
 
       {/* Prendre un extrait dans une œuvre de la bibliothèque */}
       {extraitCible && getAuthHeaders && (

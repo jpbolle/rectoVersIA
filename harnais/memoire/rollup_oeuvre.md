@@ -1,5 +1,28 @@
 # Rollup — Atelier « Lecture d'une œuvre »
 
+## Session du 2026-08-20 — un bug de corrigé, trouvé au passage
+
+`docToSection` appliquait **`preparerPresentation` à tout le monde**, professeur
+compris. Or ce mélange sert à ne pas livrer un exercice déjà résolu à l'élève.
+Trois conséquences, toutes silencieuses :
+
+1. une question **« remise en ordre »** dans une œuvre revenait mélangée dans
+   l'éditeur du prof — et sa saisie EST le corrigé : rouvrir la scène puis
+   l'enregistrer écrivait le désordre en base ;
+2. la **duplication** d'une œuvre recopiait ce corrigé faussé ;
+3. `/api/oeuvres/bilan` et `/api/oeuvres/suivi` comparaient la réponse de
+   l'élève à un `ordreItems` mélangé — score faux.
+
+**Corrigé** : `docToSection(doc, pourLecteur = false)`. Seul le GET d'une
+section, et seulement pour un non-prof, demande la présentation.
+
+⚠️ **À vérifier** : une « remise en ordre » encodée dans une œuvre puis
+rouverte et enregistrée avant le 2026-08-20 peut avoir un ordre attendu faux.
+
+`preparerPresentation` mélange désormais aussi `appariementDroite` et
+`ensembleItems` (voir `rollup_types_questions`).
+
+
 > Session du 2026-08-15 (soir) : réflexion **puis** mise en œuvre.
 > Le module est codé et l'anthologie est en base — mais **la liseuse élève
 > n'a jamais été ouverte**. Les décisions de JP sont consignées telles quelles

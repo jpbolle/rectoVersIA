@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { LectureAnswer, LectureJeton, LectureQuestion } from '@/types/lecture';
+import { ordreAffichage } from '@/types/lecture';
 import { dragProps, cibleSous, type DragHandlers } from './pointerDrag';
 import JetonContenu from './Jeton';
 import styles from './QuestionInteractions.module.css';
@@ -23,6 +24,11 @@ interface Props {
   disabled?: boolean;
   /** Le corrigé est-il visible ? (jamais transmis à l'élève avant l'heure) */
   showCorrection?: boolean;
+  /**
+   * Identifiant de l'élève — il donne son ordre de RÉPONSES (colonne de
+   * droite). Absent côté prof : la colonne reste dans l'ordre de saisie.
+   */
+  graine?: string | null;
 }
 
 type Point = { x: number; y: number };
@@ -58,6 +64,7 @@ export default function AppariementField({
   onChange,
   disabled,
   showCorrection,
+  graine,
 }: Props) {
   // Mémoïsés : ces `?? []` créent un nouvel objet à chaque rendu, ce qui
   // relancerait la mesure en boucle (même famille de piège que `user` et
@@ -65,6 +72,22 @@ export default function AppariementField({
   const gauche = useMemo(() => question.appariementGauche ?? [], [question.appariementGauche]);
   const droite = useMemo(() => question.appariementDroite ?? [], [question.appariementDroite]);
   const paires = useMemo(() => answer.paires ?? {}, [answer.paires]);
+
+  // ── LES RÉPONSES SONT MÉLANGÉES ──
+  // Le prof saisit désormais chaque réponse À CÔTÉ de ce qu'elle répond : sans
+  // ce mélange, la première pastille de droite serait la réponse du premier
+  // élément de gauche, et l'exercice serait donné.
+  // Les liens sont ancrés par IDENTIFIANT de jeton, jamais par rang : changer
+  // l'ordre d'affichage ne touche donc ni la réponse de l'élève, ni le corrigé.
+  const droiteAffichee = useMemo(
+    () =>
+      ordreAffichage(
+        droite.length,
+        graine ? `${graine}-${question.id}-d` : null,
+        !question.pasDeMelange
+      ).map((i) => droite[i]),
+    [droite, graine, question.id, question.pasDeMelange]
+  );
   const corrige = showCorrection ? question.appariementPaires : undefined;
 
   const zoneRef = useRef<HTMLDivElement | null>(null);
@@ -221,11 +244,11 @@ export default function AppariementField({
         {/* La grille alterne : item de gauche · gouttière · item de droite.
             Les deux colonnes peuvent être de longueur différente (intrus),
             d'où le remplissage par rangées jusqu'au plus long des deux. */}
-        {Array.from({ length: Math.max(gauche.length, droite.length) }).map((_, i) => (
+        {Array.from({ length: Math.max(gauche.length, droiteAffichee.length) }).map((_, i) => (
           <Rangee
             key={i}
             g={gauche[i]}
-            d={droite[i]}
+            d={droiteAffichee[i]}
             classeDot={classeDot}
             handlersDe={handlersDe}
             enabled={!disabled}

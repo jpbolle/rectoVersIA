@@ -6,6 +6,72 @@
 > d'œuvre — « pas de bug a priori ».** Le reste (matrice, appariement, remise
 > en ordre, image annotée, ensembles) n'a pas encore été ouvert.
 
+## Session du 2026-08-20 — mélange, constructeurs, lisibilité
+
+**Livré, `tsc` / `eslint` / `build` passent. Rien testé à l'écran.**
+
+### Le mélange des propositions, PAR ÉLÈVE
+
+`ordreAffichage()` (`src/types/lecture.ts`) — s'appuie sur `melangeStable`, qui
+existait déjà. Graine : `uid de l'élève + id de la question`. Deux élèves ne
+voient pas la même liste ; le même élève retrouve la sienne en revenant.
+
+⚠️ **C'est un ORDRE D'AFFICHAGE, rien d'autre.** La réponse reste enregistrée
+dans l'ordre du professeur — sinon tous les corrigés, barèmes et statistiques
+déjà en base désigneraient la mauvaise case. Les écrans bouclent sur des index
+D'ORIGINE ; seule la place à l'écran bouge (et la lettre A/B/C, qui suit
+l'écran).
+
+| Type | Ce qui se mélange | Où |
+|---|---|---|
+| QCM | les propositions | `LectureQuizActivity`, `OeuvreReader` |
+| Matrice | les **lignes** seulement — les colonnes sont une échelle | `MatriceField` (prop `ordre`) |
+| Appariement | la colonne des **réponses** | `AppariementField` |
+| Ensembles | la réserve d'étiquettes | `EnsemblesField` |
+
+Case **`pasDeMelange`** par question (QCM et matrice) : pour une chronologie,
+une gradation, un « toutes les réponses ci-dessus ».
+
+Pour l'appariement et les ensembles, le mélange est fait **deux fois** : une
+fois côté serveur dans `preparerPresentation` (l'ordre de la réponse réseau
+trahirait le corrigé, même corrigé retiré), une fois par élève à l'écran.
+
+### Deux constructeurs refondus
+
+- **Appariement** : une ligne = une paire (l'élément, flèche, sa réponse).
+  L'étape d'appariement a disparu. Modèle inchangé — les questions déjà
+  encodées se rouvrent dans la nouvelle forme. Deux paires de même réponse
+  partagent la même pastille (dédoublonnage par texte). Bloc « intrus » à part.
+- **Ensembles** : chaque ensemble est un bloc encadré, on y dépose directement
+  ce qui lui appartient. Bloc de rattrapage « Étiquettes sans ensemble » pour
+  les questions encodées avant.
+
+### Le trait d'insertion
+
+Repris de l'outil d'édition d'œuvre : entre deux blocs de question, un trait
+qui s'éclaire au survol avec un `+` ; le clic déplie les dix types **à cet
+endroit**. La ligne permanente de boutons du bas a été **supprimée**.
+Hauteur réservée en permanence, sinon la liste saute sous la souris.
+
+### Entrée
+
+- Matrice : Entrée ouvre l'affirmation suivante (`insererLigneMatrice` —
+  pendant de `insererChoix`, mais sur l'autre axe : ce qui se décale est le
+  RANG dans `matriceCorrect`, pas la colonne visée).
+- Auto-évaluation : idem, matrice et échelle 1-5 à plusieurs items.
+- Appariement : Entrée passe de l'élément à sa réponse, puis ouvre la paire
+  suivante.
+
+### Pastilles de type illisibles — corrigé
+
+`.qType` écrit en **blanc** et compte sur `.type_<type>` pour fournir le fond.
+Les cinq types manipulés ajoutés le 16 août n'en avaient jamais reçu : blanc sur
+blanc. CSS ignore silencieusement une classe absente — rien ne le signalait.
+Couleurs ajoutées (contraste ≥ 4,5) : matrice terre cuite, appariement
+bleu-vert, ordre olive, image annotée framboise, ensembles indigo.
+
+---
+
 ## Ce qui a été ajouté
 
 | Type | Dispositifs | Corrigé |

@@ -158,6 +158,15 @@
   border-radius: 0 0 var(--c-radius-lg) var(--c-radius-lg);
 }
 
+/* En enregistrement automatique, « Annuler » ne peut plus rien annuler : on
+   dit à sa place où en est l'écriture. */
+.autoEtat {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  margin-right: auto;
+}
+
 .cancelButton,
 .saveButton {
   padding: 12px 24px;

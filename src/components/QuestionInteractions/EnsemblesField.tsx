@@ -11,6 +11,7 @@
 
 import { useRef, useState } from 'react';
 import type { LectureAnswer, LectureQuestion } from '@/types/lecture';
+import { ordreAffichage } from '@/types/lecture';
 import { dragProps, cibleSous, creerFantome, type DragHandlers, type Fantome } from './pointerDrag';
 import JetonContenu from './Jeton';
 import styles from './QuestionInteractions.module.css';
@@ -21,6 +22,11 @@ interface Props {
   onChange: (partial: Partial<LectureAnswer>) => void;
   disabled?: boolean;
   showCorrection?: boolean;
+  /**
+   * Identifiant de l'élève — il donne son ordre d'étiquettes. Absent côté
+   * prof : la réserve garde l'ordre de saisie.
+   */
+  graine?: string | null;
 }
 
 const RESERVE = '__reserve__';
@@ -51,9 +57,20 @@ export default function EnsemblesField({
   onChange,
   disabled,
   showCorrection,
+  graine,
 }: Props) {
   const boites = question.ensembles ?? [];
-  const items = question.ensembleItems ?? [];
+  // ── LA RÉSERVE EST MÉLANGÉE ──
+  // Le prof saisit ses étiquettes ensemble par ensemble : servies dans cet
+  // ordre, elles arriveraient déjà triées. L'appartenance se lit par
+  // IDENTIFIANT, jamais par rang — changer l'ordre ne touche donc ni la
+  // réponse de l'élève ni le corrigé.
+  const brutes = question.ensembleItems ?? [];
+  const items = ordreAffichage(
+    brutes.length,
+    graine ? `${graine}-${question.id}-e` : null,
+    !question.pasDeMelange
+  ).map((i) => brutes[i]);
   const affectations = answer.ensembles ?? {};
   const corrige = showCorrection ? question.ensembleAffectations : undefined;
 

@@ -15,6 +15,7 @@
 // signature. Une seule règle d'affichage à tenir pour les trois surfaces.
 
 import type { LectureAnswer, LectureQuestion } from '@/types/lecture';
+import { ordreAffichage } from '@/types/lecture';
 import AppariementField from './AppariementField';
 import OrdreField from './OrdreField';
 import AnnotationField from './AnnotationField';
@@ -48,6 +49,12 @@ interface Props {
   disabled?: boolean;
   /** Le corrigé est-il là ? (il est filtré côté serveur tant qu'il ne l'est pas) */
   showCorrection?: boolean;
+  /**
+   * Graine du mélange des propositions — l'identifiant de l'élève qui répond.
+   * Absente côté prof (aperçu, correction) : il voit alors ses questions dans
+   * l'ordre où il les a saisies. Voir `ordreAffichage`.
+   */
+  graine?: string | null;
 }
 
 export default function ChampManipule({
@@ -56,18 +63,23 @@ export default function ChampManipule({
   onAnswerChange,
   disabled,
   showCorrection,
+  graine,
 }: Props) {
   const commun = { question, answer, onChange: onAnswerChange, disabled, showCorrection };
 
   switch (question.type) {
     case 'appariement':
-      return <AppariementField {...commun} />;
+      // La colonne des réponses est mélangée par élève : le prof saisit
+      // chaque réponse à côté de ce qu'elle répond.
+      return <AppariementField {...commun} graine={graine} />;
     case 'ordre':
       return <OrdreField {...commun} />;
     case 'image-annotee':
       return <AnnotationField {...commun} />;
     case 'ensembles':
-      return <EnsemblesField {...commun} />;
+      // La réserve d'étiquettes est mélangée par élève : le prof les saisit
+      // rangées dans leur ensemble.
+      return <EnsemblesField {...commun} graine={graine} />;
     case 'matrice':
       return (
         <MatriceField
@@ -79,6 +91,12 @@ export default function ChampManipule({
           onChange={(matrice) => onAnswerChange({ matrice })}
           disabled={disabled}
           attendu={showCorrection ? question.matriceCorrect : null}
+          // Les affirmations seulement : les colonnes sont une échelle.
+          ordre={ordreAffichage(
+            (question.matriceItems ?? []).length,
+            graine ? `${graine}-${question.id}` : null,
+            !question.pasDeMelange
+          )}
         />
       );
     case 'fluorage':

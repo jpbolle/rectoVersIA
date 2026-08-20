@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import DictionaryPanel from '@/components/DictionaryPanel';
 import { DrawToolbar, DrawCanvas } from '@/components/DrawTools/DrawTools';
 import { parseYoutubeId, youtubeEmbedUrl } from '@/lib/youtube';
+import { integrationAutorisee } from '@/lib/integration';
 import type { DrawTool, DrawShape } from '@/types/draw';
 import type { Devoir } from '@/types/devoir';
 import styles from './RessourcesTab.module.css';
@@ -205,6 +206,9 @@ function AnnotatedReadOnly({
   );
 }
 
+/** Les crans de zoom d'une animation. 1 (taille réelle) est le 4ᵉ. */
+const PALIERS_ZOOM = [0.5, 0.67, 0.8, 1, 1.25, 1.5, 2];
+
 export default function RessourcesTab({
   devoir,
   ressourceAnnotations,
@@ -219,6 +223,26 @@ export default function RessourcesTab({
   dictionaryEnabled = false,
   onDictionaryEnabledChange,
 }: RessourcesTabProps) {
+  // ── LE ZOOM D'UNE ANIMATION ──
+  // On ne peut RIEN piloter à l'intérieur du cadre : le bac à sable coupe tout
+  // accès au document, et c'est bien ce qu'on veut. Mais le cadre, lui, est à
+  // nous : on agrandit la fenêtre interne (`100 / z` %) puis on la remet à la
+  // taille du cadre (`scale(z)`). À 70 %, l'animation dispose d'une fenêtre
+  // plus large et tient donc en entier ; à 150 %, d'une plus étroite, et le
+  // détail devient lisible.
+  //
+  // Rien n'est enregistré : c'est un réglage de confort, pas une donnée.
+  const [zooms, setZooms] = useState<Record<string, number>>({});
+  const zoomer = useCallback((id: string, sens: -1 | 1) => {
+    setZooms((z) => {
+      const courant = z[id] ?? 1;
+      const rang = PALIERS_ZOOM.indexOf(courant);
+      const suivant =
+        PALIERS_ZOOM[Math.min(PALIERS_ZOOM.length - 1, Math.max(0, (rang < 0 ? 3 : rang) + sens))];
+      return { ...z, [id]: suivant };
+    });
+  }, []);
+
   // Aide permanente : bloc dictionnaire au-dessus des ressources du prof
   const dictionaryBlock = onDictionaryEnabledChange ? (
     <DictionaryPanel enabled={dictionaryEnabled} onEnabledChange={onDictionaryEnabledChange} />
@@ -247,6 +271,14 @@ export default function RessourcesTab({
   const hasLegacy = !hasOutils && !hasDocument && legacyContent.trim().length > 0;
   const hasFiles = ressourceFiles.length > 0;
   const hasVideos = ressourceVideos.length > 0;
+  // Contenus interactifs : une page tierce (liste blanche) ou une animation
+  // écrite par le professeur. Les adresses refusées sont écartées ICI aussi —
+  // le serveur les a déjà filtrées à l'écriture, mais un document antérieur au
+  // filtre pourrait en porter une.
+  const ressourceInteractifs = (devoir.ressources.interactifs ?? []).filter((it) =>
+    it.kind === 'code' ? !!it.code?.trim() : integrationAutorisee(it.url)
+  );
+  const hasInteractifs = ressourceInteractifs.length > 0;
 
   // Vidéos YouTube du prof — lecteurs intégrés (variante nocookie)
   const videosBlock = hasVideos ? (
@@ -267,6 +299,103 @@ export default function RessourcesTab({
           );
         })}
       </div>
+    </div>
+  ) : null;
+
+  // ── Contenus interactifs ──
+  // ⚠️ Le bac à sable n'est pas décoratif. Une animation du professeur tourne
+  // en `srcdoc` avec `allow-scripts` SEUL : y ajouter `allow-same-origin`
+  // donnerait au code l'origine de l'application — il pourrait alors lire la
+  // session Firebase de l'élève et appeler nos routes en son nom. Une page
+  // TIERCE, elle, garde `allow-same-origin` : il désigne SA propre origine,
+  // pas la nôtre, et sans lui la plupart des exerciseurs ne fonctionnent pas.
+  const interactifsBlock = hasInteractifs ? (
+    <div className={styles.interactifsSection}>
+      <h4 className={styles.interactifsTitle}>🧩 Contenus interactifs</h4>
+      {ressourceInteractifs.map((it) => {
+        const cadre: React.CSSProperties =
+          it.kind === 'url' && it.proportions && it.ratio
+            ? { aspectRatio: String(it.ratio) }
+            : { height: `${it.hauteur || 520}px` };
+        // Plafond de largeur — pour une page tierce comme pour une animation.
+        if (it.largeur) cadre.maxWidth = `${it.largeur}px`;
+        return (
+          <figure key={it.id} className={styles.interactifFigure}>
+            <div className={styles.interactifCadre} style={cadre}>
+              {it.kind === 'code' ? (
+                <iframe
+                  srcDoc={it.code}
+                  title={it.legende || 'Animation'}
+                  sandbox="allow-scripts"
+                  referrerPolicy="no-referrer"
+                  style={{
+                    width: `${100 / (zooms[it.id] ?? 1)}%`,
+                    height: `${100 / (zooms[it.id] ?? 1)}%`,
+                    // La largeur et la hauteur posées ici priment sur `inset: 0` :
+                    // on neutralise les deux bords opposés pour que le cadre ne
+                    // soit pas contraint des deux côtés à la fois.
+                    right: 'auto',
+                    bottom: 'auto',
+                    transform: `scale(${zooms[it.id] ?? 1})`,
+                    transformOrigin: 'top left',
+                  }}
+                />
+              ) : (
+                <iframe
+                  src={it.url}
+                  title={it.legende || 'Contenu interactif'}
+                  allow="fullscreen; encrypted-media"
+                  allowFullScreen
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+                  referrerPolicy="no-referrer"
+                />
+              )}
+            </div>
+            <figcaption className={styles.interactifPied}>
+              {it.legende && <span className={styles.interactifLegende}>{it.legende}</span>}
+              {/* Ouvrir EN GRAND, dans un onglet à part : une infographie se lit
+                  mal dans un cadre, et l'élève garde ainsi la page à côté de son
+                  travail. La page est servie en origine opaque — voir
+                  /api/ressources/interactif. */}
+              {it.kind === 'code' && (
+                <span className={styles.interactifZoom}>
+                  <button
+                    type="button"
+                    onClick={() => zoomer(it.id, -1)}
+                    disabled={(zooms[it.id] ?? 1) === PALIERS_ZOOM[0]}
+                    title="Voir l’ensemble"
+                    aria-label="Dézoomer"
+                  >
+                    −
+                  </button>
+                  <span className={styles.interactifZoomValeur}>
+                    {Math.round((zooms[it.id] ?? 1) * 100)}&nbsp;%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => zoomer(it.id, 1)}
+                    disabled={(zooms[it.id] ?? 1) === PALIERS_ZOOM[PALIERS_ZOOM.length - 1]}
+                    title="Voir le détail"
+                    aria-label="Zoomer"
+                  >
+                    +
+                  </button>
+                </span>
+              )}
+              {it.kind === 'code' && (
+                <a
+                  className={styles.interactifAgrandir}
+                  href={`/api/ressources/interactif/${devoir.id}/${it.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  ↗ Ouvrir en grand
+                </a>
+              )}
+            </figcaption>
+          </figure>
+        );
+      })}
     </div>
   ) : null;
 
@@ -309,7 +438,7 @@ export default function RessourcesTab({
     </div>
   ) : null;
 
-  if (!hasOutils && !hasDocument && !hasLegacy && !hasFiles && !hasVideos) {
+  if (!hasOutils && !hasDocument && !hasLegacy && !hasFiles && !hasVideos && !hasInteractifs) {
     return (
       <div className={styles.container}>
         {dictionaryBlock}
@@ -331,6 +460,7 @@ export default function RessourcesTab({
         {dictionaryBlock}
         {filesBlock}
         {videosBlock}
+        {interactifsBlock}
         {/* Outils section (read-only links) above editor */}
         {hasOutils && (
           <div className={styles.outilsSection}>
@@ -360,6 +490,7 @@ export default function RessourcesTab({
       {dictionaryBlock}
       {filesBlock}
       {videosBlock}
+      {interactifsBlock}
       {hasOutils && (
         <div className={styles.outilsSection}>
           <h4 className={styles.outilsTitle}>🔧 Outils</h4>

@@ -29,7 +29,7 @@ type FormFace = 'recto' | 'verso';
 // Libellés du bloc ressources au verso, selon le type d'activité
 const RESSOURCE_LABELS: Record<TypeTravail, string> = {
   ecrire: '📄 Ressource.s',
-  lire: '📄 Texte à lire',
+  lire: '📄 Documents à utiliser',
   rechercher: '📄 Documents d’appui (facultatif)',
   vocabulaire: '📄 Documents (facultatif)',
   autoevaluation: '📄 Travail à commenter (facultatif)',
@@ -55,7 +55,12 @@ interface EditDevoirModalProps {
   grilles?: { name: string; ateliers: string[] }[];
   isOpen: boolean;
   onClose: () => void;
-  onSave: (id: string, data: Partial<Devoir>) => Promise<void>;
+  /**
+   * Enregistre et dit si ça a marché — la popup en a besoin pour savoir si
+   * elle peut se fermer. `silencieux` : enregistrement automatique, pas de
+   * message de confirmation (il s'afficherait derrière la fenêtre).
+   */
+  onSave: (id: string, data: Partial<Devoir>, silencieux?: boolean) => Promise<boolean>;
   isSaving: boolean;
   getAuthHeaders: () => Promise<Record<string, string> | null>;
 }
@@ -235,8 +240,8 @@ export default function EditDevoirModal({
     if (face !== target) flip();
   }, [face, flip]);
 
-  const handleSave = async () => {
-    if (!devoir || !isValid) return;
+  const enregistrer = async (fermer: boolean, silencieux = false): Promise<boolean> => {
+    if (!devoir || !isValid) return false;
 
     // Sauvegarder le questionnaire si type rechercher
     if (devoir.typeTravail === 'rechercher' && devoir.questionnaireId) {
@@ -303,8 +308,63 @@ export default function EditDevoirModal({
       data.autoEvaluation = autoEvaluation;
     }
 
-    await onSave(devoir.id, data);
+    const ok = await onSave(devoir.id, data, silencieux);
+    if (ok && fermer) onClose();
+    return ok;
   };
+
+  // ═══ ENREGISTREMENT AUTOMATIQUE ═══
+  //
+  // Tant que l'activité N'EST PAS DISPONIBLE. Une activité déjà ouverte aux
+  // élèves verrait sinon ses questions leur arriver à mesure qu'on les écrit :
+  // un énoncé à moitié rédigé, un barème pas encore ajusté. On prépare avant
+  // d'ouvrir — c'est la règle de travail, la mécanique la suit.
+  //
+  // Le professeur composait jusqu'ici tout un questionnaire en mémoire, et un
+  // clic sur ✕ emportait le tout.
+  const autoEnregistre = !disponible;
+
+  // Ce qui serait écrit, ramené à une empreinte : c'est elle qui dit s'il y a
+  // quelque chose de neuf. Comparer les états un à un obligerait à tenir une
+  // seconde liste, qui divergerait de `data` au premier champ ajouté.
+  const signature = JSON.stringify([
+    selectedClasses, dateRemise, grille, hiddenCriteria, intitule, consignes,
+    accesIA, disponible, ressources, evaluation, modePrincipal, habiletes,
+    flipInverted, ressourcesToIA, profTheme, profDraft, planToIA,
+    profProduction, productionToIA, lectureQuiz, autoEvalQuiz, autoEvaluation,
+    nkQuestions, nkThemes,
+  ]);
+
+  // `enregistrer` est recréée à chaque rendu : passée en dépendance, elle
+  // relancerait le minuteur en boucle (le piège des objets instables, cf.
+  // AGENTS.md). D'où la référence, posée dans un effet et non pendant le rendu.
+  const enregistrerRef = useRef(enregistrer);
+  useEffect(() => {
+    enregistrerRef.current = enregistrer;
+  });
+
+  // La PREMIÈRE empreinte est celle de l'activité telle qu'elle est en base :
+  // elle sert de point de comparaison, pas de déclencheur. Sans cette remise à
+  // zéro, ouvrir une activité sans y toucher l'aurait réécrite.
+  const signatureRef = useRef<string | null>(null);
+  useEffect(() => {
+    signatureRef.current = null;
+  }, [devoir?.id, isOpen]);
+
+  useEffect(() => {
+    if (!autoEnregistre || !isOpen || !isValid) return;
+    if (signatureRef.current === null) {
+      signatureRef.current = signature;
+      return;
+    }
+    if (signatureRef.current === signature) return;
+    // 2,5 s après la dernière frappe — même cadence que l'espace de l'élève.
+    const minuteur = setTimeout(() => {
+      signatureRef.current = signature;
+      enregistrerRef.current(false, true);
+    }, 2500);
+    return () => clearTimeout(minuteur);
+  }, [signature, autoEnregistre, isOpen, isValid]);
 
   if (!isOpen || !devoir) return null;
 
@@ -734,19 +794,31 @@ export default function EditDevoirModal({
         </div>
 
         <div className={styles.footer}>
-          <button
-            className={styles.cancelButton}
-            onClick={onClose}
-            disabled={isSaving}
-          >
-            Annuler
-          </button>
+          {autoEnregistre ? (
+            /* « Annuler » ne peut plus rien annuler : c'est déjà en base. On
+               dit à la place où en est l'enregistrement. */
+            <span className={styles.autoEtat}>
+              {isSaving ? 'Enregistrement…' : 'Enregistrement automatique'}
+            </span>
+          ) : (
+            <button
+              className={styles.cancelButton}
+              onClick={onClose}
+              disabled={isSaving}
+            >
+              Annuler
+            </button>
+          )}
           <button
             className={styles.saveButton}
-            onClick={handleSave}
+            onClick={() => enregistrer(true)}
             disabled={isSaving || !isValid}
           >
-            {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+            {isSaving
+              ? 'Enregistrement...'
+              : autoEnregistre
+                ? 'Fermer la fenêtre'
+                : 'Enregistrer'}
           </button>
         </div>
       </div>

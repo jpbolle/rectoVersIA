@@ -486,3 +486,116 @@
   border: none;
   display: block;
 }
+
+/* ═══ Contenus interactifs ═══
+   Un Genially, une frise, un exerciseur — ou une animation écrite par le
+   professeur. Le cadre est identique dans les deux cas ; ce qui change est
+   invisible ici et vital : le bac à sable (voir RessourcesTab.tsx). */
+.interactifsSection {
+  margin-bottom: 18px;
+}
+
+.interactifsTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+  margin: 0 0 8px;
+}
+
+.interactifFigure {
+  margin: 0 0 14px;
+}
+
+/* Largeur EXPLICITE et non `margin: auto` : une marge automatique annule
+   l'étirement dans un conteneur flex en colonne, et le cadre tombe à zéro —
+   le piège déjà rencontré sur les vidéos de la liseuse d'œuvre. */
+.interactifCadre {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.interactifCadre iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.interactifPied {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-top: 5px;
+}
+
+.interactifLegende {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--c-text-muted);
+  font-style: italic;
+}
+
+/* Le zoom d'une animation — deux crans et la valeur, groupés comme un seul
+   objet pour qu'on ne les prenne pas pour deux boutons sans rapport. */
+.interactifZoom {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.interactifZoom button {
+  border: none;
+  background: none;
+  color: var(--c-text-secondary);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1;
+  /* 30 px de haut : une cible atteignable au doigt sur un Chromebook tactile */
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.interactifZoom button:hover:not(:disabled) {
+  background: var(--c-bg-element);
+  color: var(--c-text);
+}
+.interactifZoom button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.interactifZoomValeur {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  min-width: 46px;
+  text-align: center;
+  border-left: 1px solid var(--c-border);
+  border-right: 1px solid var(--c-border);
+  padding: 0 2px;
+}
+
+/* Amber : la convention du projet pour ce qui AFFICHE ou NAVIGUE (le vert est
+   réservé à ce qui génère du contenu). */
+.interactifAgrandir {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-accent);
+  text-decoration: none;
+  border: 1px solid var(--c-accent);
+  border-radius: 8px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+.interactifAgrandir:hover {
+  background: rgba(212, 148, 76, 0.12);
+}

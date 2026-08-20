@@ -36,6 +36,17 @@ interface Props {
   attendu?: (number | number[])[] | null;
   /** Préfixe des groupes de boutons radio — doit être unique dans la page. */
   nomGroupe: string;
+  /**
+   * L'ordre dans lequel les LIGNES s'affichent — des index d'origine
+   * (`ordre[position] = ligne chez le prof`). Absent = l'ordre de saisie.
+   *
+   * Les colonnes, elles, ne se mélangent jamais : elles forment une échelle
+   * partagée (Vrai/Faux, Toujours→Jamais) qu'un désordre rendrait illisible.
+   *
+   * ⚠️ `ligne` reste partout l'index D'ORIGINE : réponses, corrigé et nom de
+   * groupe s'y réfèrent. Ce champ ne change que l'ordre de la boucle.
+   */
+  ordre?: number[] | null;
 }
 
 export default function MatriceField({
@@ -47,7 +58,9 @@ export default function MatriceField({
   multiple,
   attendu,
   nomGroupe,
+  ordre,
 }: Props) {
+  const rangs = ordre && ordre.length === items.length ? ordre : items.map((_, i) => i);
   const choisir = (ligne: number, colonne: number) => {
     if (disabled) return;
     if (!multiple) {
@@ -75,7 +88,8 @@ export default function MatriceField({
           </tr>
         </thead>
         <tbody>
-          {items.map((item, ligne) => {
+          {rangs.map((ligne) => {
+            const item = items[ligne];
             const attenduLigne = matriceColonnes(attendu?.[ligne]);
             const notee = attenduLigne.length > 0;
             const cochees = matriceColonnes(valeurs[ligne]);

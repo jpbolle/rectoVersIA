@@ -210,7 +210,13 @@ export function commentairesPourFirestore(brut: unknown): OeuvreCommentaire[] {
     .filter((c) => c.id && c.blocId && c.texte.trim() && c.debut >= 0 && c.fin >= c.debut);
 }
 
-export function docToSection(doc: Doc): OeuvreSection {
+/**
+ * @param pourLecteur  Sert-on quelqu'un qui va LIRE la scène (l'élève dans la
+ *   liseuse) ? Alors seulement les exercices sont mélangés. Faux partout
+ *   ailleurs — l'éditeur du professeur, la duplication d'une œuvre, le suivi
+ *   et le bilan travaillent sur le corrigé, pas sur une présentation.
+ */
+export function docToSection(doc: Doc, pourLecteur = false): OeuvreSection {
   const d = doc.data() || {};
   const colonnes = d.colonnes === 2 ? 2 : 1;
   return {
@@ -231,13 +237,20 @@ export function docToSection(doc: Doc): OeuvreSection {
     // Les questions partent TELLES QUELLES vers l'élève — corrigé compris.
     // Voir l'avertissement en tête de fichier.
     //
-    // Seule retouche : `preparerPresentation`, qui MÉLANGE les jetons d'une
-    // remise en ordre et la réserve d'une image annotée. Ce n'est pas un
-    // filtrage — rien n'est caché, le corrigé reste ouvert. C'est qu'un
-    // exercice servi déjà résolu n'est plus un exercice.
     // `questionsDepuisFirestore` déballe au passage les corrigés de matrice
     // multiple, stockés emballés (cf. lecture-server.ts).
-    questions: questionsDepuisFirestore(d.questions).map(preparerPresentation),
+    //
+    // ⚠️ `preparerPresentation` (le MÉLANGE des jetons d'une remise en ordre,
+    // de la réserve d'une image annotée, des réponses d'un appariement) ne
+    // s'applique QUE si l'on sert un lecteur. Appliqué à tout le monde, il
+    // rendait au professeur son propre corrigé en désordre — et sa saisie EST
+    // le corrigé d'une remise en ordre : rouvrir la scène puis l'enregistrer
+    // écrivait le désordre en base. Il faussait de la même façon la
+    // DUPLICATION d'une œuvre et le calcul du bilan de lecture, qui comparent
+    // la réponse de l'élève à `ordreItems`.
+    questions: pourLecteur
+      ? questionsDepuisFirestore(d.questions).map(preparerPresentation)
+      : questionsDepuisFirestore(d.questions),
   };
 }
 

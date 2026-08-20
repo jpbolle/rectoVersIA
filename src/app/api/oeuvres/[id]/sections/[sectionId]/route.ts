@@ -41,7 +41,12 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'Section introuvable' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: docToSection(snap) });
+    // Le mélange des exercices n'est fait que pour un LECTEUR : le professeur
+    // reçoit ses questions dans l'ordre où il les a saisies — c'est son corrigé.
+    return NextResponse.json({
+      success: true,
+      data: docToSection(snap, auth.role !== 'prof'),
+    });
   } catch (error) {
     console.error('Erreur GET section:', error);
     return NextResponse.json({ success: false, message: 'Erreur serveur' }, { status: 500 });

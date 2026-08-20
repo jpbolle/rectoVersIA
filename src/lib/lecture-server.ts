@@ -205,6 +205,11 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
         : [],
     };
 
+    // Ordre d'affichage figé par le prof (QCM chronologique, gradation…).
+    // Posé seulement quand il vaut `true` : Firestore refuse `undefined`, et
+    // un `false` écrit partout alourdirait tous les documents pour rien.
+    if (question.pasDeMelange === true) cleaned.pasDeMelange = true;
+
     // Image jointe (référence ressourceImages)
     const img = question.image as { url?: unknown; fileId?: unknown } | null | undefined;
     if (img && typeof img.url === 'string' && typeof img.fileId === 'string') {
@@ -486,10 +491,23 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
  * effacerait son travail sous ses yeux.
  */
 export function preparerPresentation(q: LectureQuestion): LectureQuestion {
-  if (!q.ordreItems && !q.annotations) return q;
+  if (!q.ordreItems && !q.annotations && !q.appariementDroite && !q.ensembleItems) return q;
   const out: LectureQuestion = { ...q };
   if (q.ordreItems) {
     out.ordreItems = melangeStable(q.ordreItems, q.id);
+  }
+  // Appariement : le prof saisit désormais chaque réponse À CÔTÉ de ce qu'elle
+  // répond. L'ORDRE de la colonne de droite dirait donc le corrigé à qui lit la
+  // réponse du serveur — même le corrigé retiré. On le brouille ici, et l'écran
+  // le rebrouille une seconde fois avec l'identifiant de l'élève, pour que deux
+  // voisins ne voient pas la même liste (`ordreAffichage`).
+  if (q.appariementDroite) {
+    out.appariementDroite = melangeStable(q.appariementDroite, `${q.id}-d`);
+  }
+  // Ensembles : le prof remplit une boîte, puis l'autre. La réserve d'étiquettes
+  // arriverait donc DÉJÀ TRIÉE, dans l'ordre même du corrigé.
+  if (q.ensembleItems) {
+    out.ensembleItems = melangeStable(q.ensembleItems, `${q.id}-e`);
   }
   if (q.annotations) {
     out.annotationsEtiquettes = melangeStable(

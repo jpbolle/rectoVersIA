@@ -78,3 +78,38 @@ export function focaliserChamp(cle: string): void {
     champ?.focus();
   });
 }
+
+/** Le nouvel état des lignes d'une matrice après insertion à la touche Entrée. */
+export interface InsertionLigne {
+  matriceItems: string[];
+  matriceCorrect: (number | number[])[];
+}
+
+/**
+ * Insère une AFFIRMATION vide juste après `index`, dans une matrice.
+ *
+ * Pendant de `insererChoix`, mais sur l'autre axe : ici on ajoute une LIGNE,
+ * pas une colonne. Les valeurs de `matriceCorrect` désignent des colonnes —
+ * elles ne se décalent donc pas. Ce qui se décale, c'est leur RANG dans le
+ * tableau : sans l'insertion parallèle ci-dessous, la ligne ajoutée hériterait
+ * du corrigé de sa voisine et toutes les suivantes glisseraient d'un cran,
+ * silencieusement (le piège déjà rencontré sur les choix vides).
+ */
+export function insererLigneMatrice(
+  items: string[],
+  index: number,
+  matriceCorrect: (number | number[])[] | undefined,
+  multiple: boolean
+): InsertionLigne {
+  const suivant = index + 1;
+  const lignes = [...items];
+  lignes.splice(suivant, 0, '');
+
+  // Repartir d'un corrigé de la longueur des lignes d'origine : un tableau
+  // plus court (question à peine commencée) décalerait tout à l'insertion.
+  const vide = () => (multiple ? [] : -1);
+  const corrige: (number | number[])[] = items.map((_, i) => matriceCorrect?.[i] ?? vide());
+  corrige.splice(suivant, 0, vide());
+
+  return { matriceItems: lignes, matriceCorrect: corrige };
+}

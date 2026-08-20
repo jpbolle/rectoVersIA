@@ -440,6 +440,18 @@
   font-weight: 600;
 }
 
+/* ── Une étiquette QUI CONTIENT quelque chose reste verte ──
+   Elle ne l'était que tant qu'on était dessus : en changeant d'onglet, un
+   contenu déjà déposé retombait au gris, comme les onglets vides. La pastille
+   ambre seule ne suffit pas à le dire d'un coup d'œil.
+   Vert plein = l'onglet ouvert ; vert clair = un onglet rempli qu'on a quitté. */
+.tabRempli {
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.08);
+  color: var(--c-primary);
+  font-weight: 600;
+}
+
 .tabDot {
   width: 7px;
   height: 7px;
@@ -682,5 +694,172 @@
   width: 100%;
   height: 100%;
   border: none;
+  display: block;
+}
+
+/* ═══ Onglet Interactif ═══
+   Une page tierce embarquée, ou une animation HTML écrite par le professeur.
+   Les deux s'affichent dans un cadre en bac à sable — l'aperçu ci-dessous est
+   exactement celui que verra l'élève. */
+.interactifItem {
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: var(--c-bg-card);
+}
+
+.interactifHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.interactifRang {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.interactifKind {
+  display: inline-flex;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.interactifKind button {
+  border: none;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.kindOn {
+  background: var(--c-primary);
+  color: #fff;
+}
+.kindOff {
+  background: none;
+  color: var(--c-text-secondary);
+}
+
+.interactifLegende {
+  flex: 1;
+  min-width: 140px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--c-text);
+}
+
+/* La ligne des réglages de taille — largeur, proportions, hauteur. Elle passe
+   à la ligne d'elle-même sur un écran étroit. */
+.interactifTaille {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+
+.interactifCase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.interactifHauteur {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  flex-shrink: 0;
+}
+.interactifHauteur input {
+  width: 74px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--c-text);
+}
+
+.interactifDel {
+  border: none;
+  background: none;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.interactifDel:hover:not(:disabled) {
+  background: var(--c-bg-element);
+  color: var(--c-text);
+}
+
+.interactifUrl,
+.interactifCode {
+  width: 100%;
+  display: block;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 13px;
+  color: var(--c-text);
+  resize: vertical;
+}
+.interactifUrl {
+  font-family: inherit;
+}
+/* Le code se lit en chasse fixe : une accolade mal placée doit se voir. */
+.interactifCode {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.interactifNote {
+  font-size: 11.5px;
+  color: var(--c-text-muted);
+  margin: 6px 0 0;
+}
+.interactifKo {
+  font-size: 11.5px;
+  color: #b3261e;
+  font-weight: 600;
+  margin: 6px 0 0;
+}
+
+.interactifApercu {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: #fff;
   display: block;
 }

@@ -16,7 +16,8 @@ import type {
   LectureAnswer,
   LectureAnswersState,
 } from '@/types/lecture';
-import { LECTURE_TYPE_LABELS, partReussite } from '@/types/lecture';
+import { LECTURE_TYPE_LABELS, ordreAffichage, partReussite } from '@/types/lecture';
+import { useAuth } from '@/hooks/useAuth';
 import ChampManipule, { estTypeManipule } from '@/components/QuestionInteractions';
 import ConfiancePicker from '@/components/ConfiancePicker';
 import styles from './LectureQuizActivity.module.css';
@@ -103,6 +104,13 @@ export default function LectureQuizActivity({
 
   const [popupImage, setPopupImage] = useState<string | null>(null);
 
+  // ── Graine du mélange des propositions ──
+  // `user` est un objet INSTABLE (règle AGENTS.md) : on n'en garde que l'UID,
+  // une chaîne. Il suffit — c'est lui qui donne à chaque élève son propre
+  // ordre de propositions, stable d'une ouverture à l'autre.
+  const { user } = useAuth();
+  const graine = user?.uid || null;
+
   return (
     <div className={styles.activity}>
       {isQuizMode && (
@@ -133,6 +141,7 @@ export default function LectureQuizActivity({
           onZoomImage={setPopupImage}
           showCorrection={showCorrection}
           autoEvaluation={autoEvaluation}
+          graine={graine}
         />
         </Fragment>
       ))}
@@ -196,6 +205,7 @@ function QuestionCard({
   onZoomImage,
   showCorrection,
   autoEvaluation,
+  graine,
 }: {
   question: LectureQuestion;
   number: number;
@@ -206,6 +216,8 @@ function QuestionCard({
   onZoomImage: (url: string) => void;
   showCorrection: boolean;
   autoEvaluation: boolean;
+  /** Identifiant de l'élève — donne son ordre de propositions (ordreAffichage) */
+  graine?: string | null;
 }) {
   // Bloc informatif : texte du prof, pas de réponse attendue
   if (question.type === 'info') {
@@ -320,7 +332,17 @@ function QuestionCard({
           {question.multiple && (
             <p className={styles.hintMultiple}>Plusieurs réponses possibles.</p>
           )}
-          {(question.choices ?? []).map((choice, ci) => {
+          {/* ── L'ORDRE D'AFFICHAGE, propre à cet élève ──
+              On boucle sur des index D'ORIGINE : `ci` reste le rang du choix
+              chez le prof, donc la réponse enregistrée, le corrigé et le
+              barème ne changent pas de référentiel. Seule la place à l'écran
+              bouge. Voir `ordreAffichage`. */}
+          {ordreAffichage(
+            (question.choices ?? []).length,
+            graine ? `${graine}-${question.id}` : null,
+            !question.pasDeMelange
+          ).map((ci) => {
+            const choice = (question.choices ?? [])[ci];
             // Vue corrigée : la bonne réponse en vert, le mauvais choix de
             // l'élève en rouge (le corrigé n'est envoyé qu'avec la correction)
             const revealed =
@@ -378,6 +400,7 @@ function QuestionCard({
             onAnswerChange={onAnswerChange}
             disabled={disabled}
             showCorrection={showCorrection}
+            graine={graine}
           />
         </div>
       )}
@@ -429,6 +452,7 @@ function QuestionCard({
               onAnswerChange={onAnswerChange}
               disabled={disabled}
               showCorrection={showCorrection}
+              graine={graine}
             />
           </div>
         )}

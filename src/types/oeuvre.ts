@@ -98,103 +98,15 @@ export interface OeuvreBloc {
 // blanche, un lien collé au hasard donnerait à n'importe quel site un pied
 // dans une application qui manipule des données de mineurs. La liste s'étend à
 // la demande — c'est une décision, pas un réglage.
-export const DOMAINES_INTEGRATION = [
-  'genially.com',
-  'view.genially.com',
-  'genial.ly',
-  'app.genial.ly',
-  // TimelineJS : l'URL d'intégration est servie par le CDN
-  // (cdn.knightlab.com/libs/timeline3/latest/embed/…)
-  'timeline.knightlab.com',
-  'cdn.knightlab.com',
-  'storymap.knightlab.com',
-  'uploads.knightlab.com',
-  // StoryMaps ArcGIS — l'ancien (arcgis.com) et le nouveau (storymaps.com)
-  'storymaps.arcgis.com',
-  'www.arcgis.com',
-  'arcgis.com',
-  'storymaps.com',
-  'storymaps.esri.com',
-  'sutori.com',
-  'www.sutori.com',
-  'learningapps.org',
-  'wordwall.net',
-  'padlet.com',
-  'fr.padlet.com',
-  'h5p.org',
-  'thinglink.com',
-  'www.thinglink.com',
-  'framindmap.org',
-  'digipad.app',
-  'la-digitale.com',
-  'docs.google.com',
-  'drive.google.com',
-];
-
-/**
- * Ce que le prof colle, ramené à une URL.
- *
- * Le bouton « Partager / Intégrer » de Genially, d'ArcGIS ou de TimelineJS ne
- * donne pas une URL : il donne un bloc `<iframe src="…" …>`. C'est ce qu'on
- * colle naturellement — refuser ce collage obligerait à aller pêcher l'adresse
- * à la main dans le code, ce qui n'est pas un geste de prof.
- *
- * On en extrait donc le `src`. Rien d'autre du bloc n'est conservé : ni ses
- * attributs, ni son style, ni ce qui pourrait s'y cacher — c'est
- * `integrationAutorisee` qui décide ensuite si l'adresse est admise.
- */
-export function urlDepuisIntegration(saisie: string): string {
-  const brut = (saisie || '').trim();
-  if (!brut) return '';
-  if (!/<iframe/i.test(brut)) return brut;
-  const m = brut.match(/<iframe[^>]*\ssrc\s*=\s*["']([^"']+)["']/i);
-  if (!m) return brut;
-  // Un extrait copié depuis une page peut porter des entités HTML
-  return m[1]
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .trim();
-}
-
-/**
- * Les proportions annoncées par le code `<iframe>` collé.
- *
- * Genially, les frises et la plupart des exerciseurs livrent un `width` et un
- * `height` — parfois en pixels, parfois en pourcentage (`width="100%"`), qui
- * ne dit alors rien des proportions. On ne retient donc que les deux nombres
- * exploitables, et on renvoie `null` dès qu'il en manque un.
- */
-export function proportionsDepuisIntegration(
-  saisie: string
-): { largeur: number; ratio: number } | null {
-  const brut = (saisie || '').trim();
-  if (!/<iframe/i.test(brut)) return null;
-  const nombre = (attribut: string): number | null => {
-    const m = brut.match(new RegExp(`\\s${attribut}\\s*=\\s*["']?\\s*(\\d+(?:\\.\\d+)?)\\s*(?:px)?\\s*["']`, 'i'));
-    const v = m ? Number(m[1]) : NaN;
-    return Number.isFinite(v) && v > 0 ? v : null;
-  };
-  const largeur = nombre('width');
-  const hauteur = nombre('height');
-  if (!largeur || !hauteur) return null;
-  return { largeur: Math.round(largeur), ratio: largeur / hauteur };
-}
-
-/**
- * L'URL d'intégration est-elle sur un domaine autorisé ?
- * Sous-domaines admis (`xxx.genially.com`), HTTPS obligatoire.
- */
-export function integrationAutorisee(url: string | undefined): boolean {
-  if (!url) return false;
-  try {
-    const u = new URL(url);
-    if (u.protocol !== 'https:') return false;
-    const hote = u.hostname.toLowerCase();
-    return DOMAINES_INTEGRATION.some((d) => hote === d || hote.endsWith(`.${d}`));
-  } catch {
-    return false;
-  }
-}
+// Les intégrations (Genially, frises, exerciseurs) ont quitté ce fichier :
+// elles servent aussi aux ressources d'une activité. Réexportées ici pour que
+// tout ce qui les importait depuis `types/oeuvre` continue de fonctionner.
+export {
+  DOMAINES_INTEGRATION,
+  urlDepuisIntegration,
+  proportionsDepuisIntegration,
+  integrationAutorisee,
+} from '@/lib/integration';
 
 // Les blocs d'une face. `face` absente = recto : c'est la règle qui préserve
 // les œuvres encodées avant l'existence du verso.

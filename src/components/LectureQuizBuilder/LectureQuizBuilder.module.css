@@ -109,6 +109,17 @@
 .type_fluorage { background: #b7950b; }
 .type_info { background: var(--c-text-secondary, #7a6f5e); }
 
+/* Les cinq types manipulés, ajoutés le 2026-08-16, n'avaient jamais reçu leur
+   fond : `.qType` écrit en BLANC et compte sur la classe du type pour le
+   fournir. Sans elle, la pastille était blanche sur blanc — illisible, et
+   d'autant plus qu'aucune erreur ne le signale.
+   Chaque teinte est assez sombre pour porter du blanc (contraste ≥ 4,5). */
+.type_matrice { background: #96522f; }
+.type_appariement { background: #26788c; }
+.type_ordre { background: #5f7226; }
+.type_image_annotee { background: #9c3f66; }
+.type_ensembles { background: #54579c; }
+
 .qDelRight {
   margin-left: auto;
 }
@@ -196,8 +207,11 @@
   line-height: 1.45;
 }
 
+/* Hauteur mesurée sur le contenu (AutoGrowTextarea) : pas de poignée, elle
+   entrerait en conflit avec la hauteur calculée. */
 .fluoTextarea {
-  resize: vertical;
+  resize: none;
+  display: block;
   margin-top: 4px;
 }
 
@@ -376,27 +390,8 @@
 }
 
 /* Ajouter une question */
-.addRow {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 
-.addQ {
-  border: 1px dashed var(--c-primary);
-  background: none;
-  color: var(--c-primary);
-  border-radius: 9px;
-  padding: 9px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-}
 
-.addQ:hover:not(:disabled) {
-  background: rgba(45, 106, 90, 0.06);
-}
 
 /* Popup agrandissement */
 .popup {
@@ -776,7 +771,9 @@
   line-height: 1.55;
   font-family: inherit;
   color: var(--c-text);
-  resize: vertical;
+  /* Hauteur mesurée sur le contenu (AutoGrowTextarea) — pas de poignée. */
+  resize: none;
+  display: block;
   background: var(--c-bg-card);
 }
 
@@ -851,6 +848,17 @@
 }
 .multipleToggle input { accent-color: var(--c-primary); }
 
+/* Les deux réglages d'un QCM — combien de bonnes réponses, et faut-il
+   mélanger — tiennent sur UNE ligne : ce sont deux options du même objet, et
+   empilées elles se lisaient comme deux étapes. Elles passent à la ligne
+   d'elles-mêmes sur un écran étroit (Chromebook). */
+.togglesRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 20px;
+}
+
 /* ── Listes de jetons (appariement, remise en ordre, ensembles) ── */
 .jetonBloc {
   border-left: 2px solid var(--c-border);
@@ -916,6 +924,56 @@
 }
 .jetonOutils button:disabled { opacity: 0.3; cursor: default; }
 .jetonAjout { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+/* ── Appariement : UNE LIGNE = UNE PAIRE ──
+   La réponse s'écrit à côté de ce qu'elle répond, plutôt que dans une seconde
+   colonne à apparier ensuite. C'est le mélange à l'affichage (propre à chaque
+   élève) qui fait l'exercice : sans lui, la première réponse de droite serait
+   celle du premier élément de gauche. */
+.apparLigne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.apparLigne input[type='text'] {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--c-text);
+}
+.apparLigne .jetonMedia { flex: 1; }
+
+/* ── Un ensemble et son contenu ──
+   Les étiquettes se saisissent DANS leur boîte : le prof remplit un ensemble,
+   puis l'autre, au lieu de tout taper à plat puis de tout apparier. */
+.ensBoite {
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: var(--c-bg-card);
+}
+.ensBoiteEntete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ensBoiteEntete input[type='text'] {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--c-text);
+}
 
 /* ── Corrigé « ceci → cela » (appariement, ensembles) ── */
 .apparPaire {
@@ -1082,6 +1140,24 @@
    Détachée de la réponse idéale par un filet : l'une est un modèle qu'on
    montre, l'autre un corrigé que la machine applique. Les confondre, c'est
    croire qu'une belle phrase rédigée sera comparée mot à mot. */
+/* ── Une formulation acceptée ──
+   Un `<input>` d'une seule ligne fait DÉFILER HORIZONTALEMENT le texte qui
+   dépasse : impossible d'y sélectionner un passage, il file sous le curseur.
+   Un champ qui s'enroule et grandit (AutoGrowTextarea) montre tout. */
+.repInput {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  resize: none;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  font-family: inherit;
+  color: var(--c-text);
+}
+
 .reponsesAcceptees {
   margin-top: 14px;
   padding-top: 12px;
@@ -1115,4 +1191,104 @@
   color: var(--c-text-secondary);
   cursor: pointer;
   white-space: nowrap;
+}
+
+/* ═══ LE TRAIT D'INSERTION ═══
+   Repris de l'outil d'édition d'une œuvre : on ajoute une question LÀ OÙ on la
+   veut, au lieu de la créer au bas d'une liste de vingt blocs et de la remonter.
+
+   Sa hauteur est RÉSERVÉE en permanence, même quand rien ne s'y voit : sans
+   ça, la liste sauterait sous la souris et viser un interstice deviendrait
+   impossible. */
+.trait {
+  position: relative;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.traitBarre {
+  flex: 1;
+  height: 1px;
+  border-radius: 2px;
+  background-color: var(--c-border);
+  opacity: 0.55;
+  transition: background-color 0.12s, opacity 0.12s, height 0.12s;
+}
+.trait:hover .traitBarre,
+.traitOuvert .traitBarre,
+.traitToujours .traitBarre {
+  background-color: var(--c-accent);
+  opacity: 1;
+  height: 2px;
+}
+
+/* Le « + » ne se montre qu'au survol : dix pastilles de types entre chaque
+   question rendraient le questionnaire illisible — c'est justement ce que
+   faisait l'ancienne ligne permanente du bas. */
+.traitPlus {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--c-accent-dark);
+  background: var(--c-bg-card);
+  color: var(--c-accent-dark);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+  box-shadow: var(--c-shadow-card);
+}
+.trait:hover .traitPlus,
+.traitToujours .traitPlus {
+  opacity: 1;
+}
+.traitPlus:hover:not(:disabled) {
+  background: var(--c-accent);
+  color: #fff;
+}
+.traitPlus:disabled {
+  opacity: 0;
+  cursor: default;
+}
+
+.traitTypes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.traitTypes button {
+  border: 1px solid var(--c-accent-dark);
+  background: var(--c-bg-card);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--c-accent-dark);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: var(--c-shadow-card);
+}
+.traitTypes button:hover:not(:disabled) {
+  background: var(--c-accent);
+  color: #fff;
+}
+.traitAnnuler {
+  border-color: var(--c-border) !important;
+  color: var(--c-text-muted) !important;
+}
+
+/* Dix pastilles ne tiennent pas sur une ligne dans une colonne étroite
+   (Chromebook) : on les empile plutôt que de les tronquer. */
+@media (max-width: 900px) {
+  .trait { height: auto; min-height: 26px; flex-wrap: wrap; }
+  .traitTypes { flex-wrap: wrap; }
 }

@@ -1,5 +1,50 @@
 # Rollup — Création/édition d'activités (prof)
 
+## Session du 2026-08-20 — enregistrement automatique + onglet Interactif
+
+**Livré, `tsc` / `eslint` / `build` passent. Rien testé à l'écran.**
+
+### La popup « Modifier l'activité » s'enregistre toute seule
+
+Symptôme rapporté par JP : « à l'enregistrement du questionnaire, on est
+renvoyé à Mes Activités ». Diagnostic : la popup **se fermait** à
+l'enregistrement (comportement voulu à l'origine) et le tableau de bord
+réapparaissait derrière. Rien de cassé — mais tout un questionnaire composé en
+mémoire, qu'un clic sur ✕ emportait.
+
+**Décision de JP** : enregistrement automatique, **tant que l'activité n'est
+pas disponible**. Une activité déjà ouverte verrait sinon ses questions arriver
+chez les élèves à mesure qu'on les écrit.
+
+- non disponible → écriture 2,5 s après la dernière frappe (même cadence que
+  l'espace élève) ; pied « Enregistrement automatique » ; bouton
+  **« Fermer la fenêtre »** (qui enregistre une dernière fois avant de fermer) ;
+  plus de « Annuler », qui ne pourrait plus rien annuler ;
+- disponible → inchangé : « Annuler » · « Enregistrer », rien n'est écrit avant.
+
+Mécanique : une **empreinte JSON de tout ce qui serait enregistré** déclenche
+l'écriture — pas une liste de champs à tenir à jour. La première empreinte sert
+de point de comparaison, pas de déclencheur (ouvrir sans toucher ne réécrit
+rien). `onSave` renvoie désormais un booléen et **ne ferme plus la popup** :
+c'est elle qui décide. `silencieux` supprime le message, qui s'afficherait
+derrière la fenêtre.
+
+**Pas fait** : le formulaire de **création** n'a rien de tout ça — il faudrait
+créer l'activité au premier caractère, ce qui n'est pas anodin.
+
+### Divers
+
+- Nouvel **onglet Interactif** dans les ressources — voir
+  `rollup_ressources_interactives.md`.
+- Les **étiquettes** d'onglet restent vertes quand elles contiennent quelque
+  chose (vert plein = ouvert, vert clair = rempli, gris = vide). Elles
+  retombaient au gris dès qu'on changeait d'onglet.
+- « 📄 Texte à lire » → « 📄 **Documents à utiliser** » (création et édition).
+- Champs longs (texte joint, extrait à souligner, réponse acceptée) : ils
+  prennent la hauteur de leur contenu au lieu de défiler à l'intérieur —
+  sélectionner un passage y était impossible, le texte filait sous le curseur.
+
+
 ## État actuel (session du 2026-08-10 — soir)
 
 **Livré, non testé, non déployé** — refonte du formulaire de création en **recto/verso** :

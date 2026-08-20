@@ -71,6 +71,7 @@ function EditeurItems({
   minimum,
   onChange,
   disabled,
+  cle,
   styles: s,
 }: {
   items: string[];
@@ -78,6 +79,8 @@ function EditeurItems({
   minimum: number;
   onChange: (items: string[]) => void;
   disabled?: boolean;
+  /** Préfixe des champs — doit être unique dans la page (l'id de la question) */
+  cle: string;
   styles: Record<string, string>;
 }) {
   return (
@@ -91,10 +94,20 @@ function EditeurItems({
           <input
             type="text"
             value={item}
+            data-champ={`${cle}-item-${j}`}
             onChange={(e) => {
               const next = [...items];
               next[j] = e.target.value;
               onChange(next);
+            }}
+            // Entrée ouvre l'affirmation suivante et y va — même geste que
+            // dans le questionnaire de lecture. Ici rien à décaler : une
+            // auto-évaluation n'a pas de bonne réponse.
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return;
+              e.preventDefault();
+              onChange(insererChoix(items, j).choix);
+              focaliserChamp(`${cle}-item-${j + 1}`);
             }}
             placeholder={`Affirmation ${j + 1}`}
             disabled={disabled}
@@ -462,6 +475,7 @@ export default function AutoEvalBuilder({
                             minimum={2}
                             onChange={(matriceItems) => majQuestion(q.id, { matriceItems })}
                             disabled={disabled}
+                            cle={q.id}
                             styles={styles}
                           />
                         </div>
@@ -567,6 +581,7 @@ export default function AutoEvalBuilder({
                           minimum={2}
                           onChange={(matriceItems) => majQuestion(q.id, { matriceItems })}
                           disabled={disabled}
+                          cle={q.id}
                           styles={styles}
                         />
                       )}

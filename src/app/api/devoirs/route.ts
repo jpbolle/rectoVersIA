@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { sanitizeRessources } from '@/lib/ressources-server';
 import { calculateSchoolYear } from '@/lib/auth-utils';
 import { generateDevoirId } from '@/lib/devoir-utils';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
@@ -262,7 +263,9 @@ export async function POST(request: NextRequest) {
       grille,
       intitule,
       consignes: consignes || '',
-      ressources: ressources || null,
+      // Les ressources passent par le garde-fou : l'onglet Interactif y met du
+      // code à exécuter, et le contrôle du navigateur ne contrôle rien.
+      ressources: sanitizeRessources(ressources, { codeAutorise: auth.isAdmin }),
       accesIA: accesIA ?? false,
       disponible: disponible ?? true,
       archive: false,

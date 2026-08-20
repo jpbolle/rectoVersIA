@@ -5,7 +5,13 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/useAuth';
 import { compressImage } from '@/lib/image-compress';
 import { parseYoutubeId, youtubeEmbedUrl } from '@/lib/youtube';
-import type { DevoirRessource, RessourceFile } from '@/types/devoir';
+import type { DevoirRessource, RessourceFile, RessourceInteractif } from '@/types/devoir';
+import {
+  integrationAutorisee,
+  proportionsDepuisIntegration,
+  TAILLE_MAX_CODE,
+  urlDepuisIntegration,
+} from '@/lib/integration';
 import styles from './RessourcesInput.module.css';
 
 interface EditorProps {
@@ -19,7 +25,7 @@ const DocumentEditor = dynamic<EditorProps>(
   { ssr: false, loading: () => <div className={styles.editorLoading}>Chargement...</div> }
 );
 
-type RessourceTab = 'fichier' | 'lien' | 'texte' | 'video';
+type RessourceTab = 'fichier' | 'lien' | 'texte' | 'video' | 'interactif';
 
 const ACCEPTED_EXTENSIONS = '.jpg,.jpeg,.png,.gif,.webp';
 
@@ -78,16 +84,39 @@ function linesToHtml(text: string): string {
   return `<ul>${items.join('')}</ul>`;
 }
 
-// Reconstruit l'objet ressources — null si les quatre onglets sont vides
+/** Une ligne d'interactif est-elle alimentée ? (adresse ou code saisi) */
+function interactifRempli(it: RessourceInteractif): boolean {
+  return it.kind === 'code' ? !!it.code?.trim() : !!(it.url ?? '').trim();
+}
+
+function nouvelInteractif(): RessourceInteractif {
+  return {
+    id: `INT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    kind: 'url',
+    url: '',
+    hauteur: 520,
+  };
+}
+
+// Reconstruit l'objet ressources — null si tous les onglets sont vides
 function buildRessource(
   outils: string,
   document: string,
   files: RessourceFile[],
   videos: string[],
+  interactifs: RessourceInteractif[] = [],
 ): DevoirRessource | null {
   const outilsEmpty = isEmptyHtml(outils);
   const docEmpty = isEmptyHtml(document);
-  if (outilsEmpty && docEmpty && files.length === 0 && videos.length === 0) return null;
+  if (
+    outilsEmpty &&
+    docEmpty &&
+    files.length === 0 &&
+    videos.length === 0 &&
+    interactifs.length === 0
+  ) {
+    return null;
+  }
   return {
     type: 'text',
     content: outilsEmpty ? '' : outils,
@@ -95,6 +124,7 @@ function buildRessource(
     document: docEmpty ? '' : document,
     files,
     videos,
+    interactifs,
   };
 }
 
@@ -103,7 +133,7 @@ export default function RessourcesInput({
   onRessourcesChange,
   disabled = false,
 }: RessourcesInputProps) {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, isAdmin } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<RessourceTab>('fichier');
@@ -117,11 +147,13 @@ export default function RessourcesInput({
   const documentValue = ressources?.document ?? '';
   const filesValue = ressources?.files ?? [];
   const videosValue = ressources?.videos ?? [];
+  const interactifsValue = ressources?.interactifs ?? [];
 
   const hasFichier = filesValue.length > 0;
   const hasLien = !isEmptyHtml(outilsValue);
   const hasTexte = !isEmptyHtml(documentValue);
   const hasVideo = videosValue.length > 0;
+  const hasInteractif = interactifsValue.length > 0;
 
   // Champ Lien : texte brut du textarea (une URL par ligne), resynchronisé
   // quand la valeur externe change (réinitialisation, ouverture du modal)
@@ -140,16 +172,88 @@ export default function RessourcesInput({
   const handleLienChange = useCallback(
     (text: string) => {
       setLienText(text);
-      onRessourcesChange(buildRessource(linesToHtml(text), documentValue, filesValue, videosValue));
+      onRessourcesChange(buildRessource(linesToHtml(text), documentValue, filesValue, videosValue, interactifsValue));
     },
-    [onRessourcesChange, documentValue, filesValue, videosValue]
+    [onRessourcesChange, documentValue, filesValue, videosValue, interactifsValue]
   );
 
   const handleDocumentChange = useCallback(
     (html: string) => {
-      onRessourcesChange(buildRessource(outilsValue, html, filesValue, videosValue));
+      onRessourcesChange(buildRessource(outilsValue, html, filesValue, videosValue, interactifsValue));
     },
-    [onRessourcesChange, outilsValue, filesValue, videosValue]
+    [onRessourcesChange, outilsValue, filesValue, videosValue, interactifsValue]
+  );
+
+  // ── Contenus interactifs ──
+  // Ce que le prof colle est TRANSFORMÉ à la volée : le bouton « Intégrer » de
+  // Genially ou d'une frise donne un bloc `<iframe …>`, pas une adresse. On en
+  // garde le `src` et, s'il les annonce, les proportions d'origine — aller
+  // pêcher l'adresse à la main dans le code n'est pas un geste de prof.
+  const majInteractifs = useCallback(
+    (suivants: RessourceInteractif[]) => {
+      onRessourcesChange(
+        buildRessource(outilsValue, documentValue, filesValue, videosValue, suivants)
+      );
+    },
+    [onRessourcesChange, outilsValue, documentValue, filesValue, videosValue]
+  );
+
+  // ── LA LIGNE VIERGE ──
+  // Elle est toujours là, en bas de la liste, prête à recevoir une adresse ou
+  // du code : cliquer sur « Ajouter » pour faire apparaître un formulaire vide
+  // était une étape pour rien.
+  //
+  // Mais elle est tenue LOCALEMENT tant qu'elle est vide. Rangée dans
+  // l'activité, elle allumerait la pastille « ressource présente » pour un
+  // formulaire jamais rempli — et le serveur, qui écarte les entrées vides,
+  // la ferait disparaître sous les doigts du professeur au premier
+  // enregistrement.
+  const [brouillon, setBrouillon] = useState<RessourceInteractif>(nouvelInteractif);
+
+  const majInteractif = useCallback(
+    (id: string, partial: Partial<RessourceInteractif>) => {
+      if (id === brouillon.id) {
+        const suivant = { ...brouillon, ...partial };
+        // Remplie, la ligne rejoint l'activité — et une nouvelle vierge la
+        // remplace. Sa clé React ne change pas : le curseur reste dans le champ.
+        if (interactifRempli(suivant)) {
+          majInteractifs([...interactifsValue, suivant]);
+          setBrouillon(nouvelInteractif());
+        } else {
+          setBrouillon(suivant);
+        }
+        return;
+      }
+      majInteractifs(interactifsValue.map((it) => (it.id === id ? { ...it, ...partial } : it)));
+    },
+    [majInteractifs, interactifsValue, brouillon]
+  );
+
+  const retirerInteractif = useCallback(
+    (id: string) => {
+      if (id === brouillon.id) {
+        setBrouillon(nouvelInteractif());
+        return;
+      }
+      majInteractifs(interactifsValue.filter((x) => x.id !== id));
+    },
+    [majInteractifs, interactifsValue, brouillon.id]
+  );
+
+  // Ce que l'onglet affiche : ce qui est rangé, puis la ligne vierge.
+  const lignesInteractif = [...interactifsValue, brouillon];
+
+  const collerIntegration = useCallback(
+    (id: string, saisie: string) => {
+      const prop = proportionsDepuisIntegration(saisie);
+      majInteractif(id, {
+        url: urlDepuisIntegration(saisie),
+        ...(prop
+          ? { largeur: prop.largeur, ratio: prop.ratio, proportions: true }
+          : { proportions: false, ratio: undefined }),
+      });
+    },
+    [majInteractif]
   );
 
   // ── Champ Vidéo : une URL YouTube par ligne, resynchronisé comme le champ Lien ──
@@ -173,9 +277,9 @@ export default function RessourcesInput({
     (text: string) => {
       setVideoText(text);
       const videos = text.split('\n').map((l) => l.trim()).filter(Boolean);
-      onRessourcesChange(buildRessource(outilsValue, documentValue, filesValue, videos));
+      onRessourcesChange(buildRessource(outilsValue, documentValue, filesValue, videos, interactifsValue));
     },
-    [onRessourcesChange, outilsValue, documentValue, filesValue]
+    [onRessourcesChange, outilsValue, documentValue, filesValue, interactifsValue]
   );
 
   // Aperçus des vidéos reconnues (les lignes invalides sont signalées)
@@ -228,7 +332,7 @@ export default function RessourcesInput({
 
         if (json.success && json.data?.files) {
           onRessourcesChange(
-            buildRessource(outilsValue, documentValue, [...filesValue, ...json.data.files], videosValue)
+            buildRessource(outilsValue, documentValue, [...filesValue, ...json.data.files], videosValue, interactifsValue)
           );
         } else {
           setUploadError(json.message || "Erreur lors de l'upload");
@@ -247,7 +351,7 @@ export default function RessourcesInput({
   const handleRemoveFile = useCallback(
     async (file: RessourceFile) => {
       onRessourcesChange(
-        buildRessource(outilsValue, documentValue, filesValue.filter((f) => f !== file), videosValue)
+        buildRessource(outilsValue, documentValue, filesValue.filter((f) => f !== file), videosValue, interactifsValue)
       );
 
       // Suppression de l'image stockée (silencieuse en cas d'échec)
@@ -278,31 +382,38 @@ export default function RessourcesInput({
       <div className={styles.tabs}>
         <button
           type="button"
-          className={`${styles.tab} ${activeTab === 'fichier' ? styles.tabActive : ''}`}
+          className={`${styles.tab} ${activeTab === 'fichier' ? styles.tabActive : hasFichier ? styles.tabRempli : ''}`}
           onClick={() => setActiveTab('fichier')}
         >
           Image {hasFichier && <span className={styles.tabDot} />}
         </button>
         <button
           type="button"
-          className={`${styles.tab} ${activeTab === 'lien' ? styles.tabActive : ''}`}
+          className={`${styles.tab} ${activeTab === 'lien' ? styles.tabActive : hasLien ? styles.tabRempli : ''}`}
           onClick={() => setActiveTab('lien')}
         >
           Lien {hasLien && <span className={styles.tabDot} />}
         </button>
         <button
           type="button"
-          className={`${styles.tab} ${activeTab === 'texte' ? styles.tabActive : ''}`}
+          className={`${styles.tab} ${activeTab === 'texte' ? styles.tabActive : hasTexte ? styles.tabRempli : ''}`}
           onClick={() => setActiveTab('texte')}
         >
           Texte {hasTexte && <span className={styles.tabDot} />}
         </button>
         <button
           type="button"
-          className={`${styles.tab} ${activeTab === 'video' ? styles.tabActive : ''}`}
+          className={`${styles.tab} ${activeTab === 'video' ? styles.tabActive : hasVideo ? styles.tabRempli : ''}`}
           onClick={() => setActiveTab('video')}
         >
           Vidéo {hasVideo && <span className={styles.tabDot} />}
+        </button>
+        <button
+          type="button"
+          className={`${styles.tab} ${activeTab === 'interactif' ? styles.tabActive : hasInteractif ? styles.tabRempli : ''}`}
+          onClick={() => setActiveTab('interactif')}
+        >
+          Interactif {hasInteractif && <span className={styles.tabDot} />}
         </button>
       </div>
 
@@ -449,6 +560,211 @@ export default function RessourcesInput({
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Onglet Interactif : une page tierce, ou une animation maison ──
+          Deux natures dans un seul onglet : c'est le même geste pour le prof
+          — « je pose quelque chose qui bouge » — et la barre en compte déjà
+          quatre. Voir `src/types/devoir.ts` pour ce qui les sépare. */}
+      {activeTab === 'interactif' && (
+        <div className={styles.tabPanel}>
+          <p className={styles.tabHint}>
+            Une page à intégrer&nbsp;: Genially, une frise, un exerciseur, un carnet
+            LearningApps…{' '}
+            {isAdmin && 'Ou votre propre animation HTML/CSS/JS. '}
+            Le contenu s’affiche dans l’onglet Ressources de l’élève.
+          </p>
+
+          {lignesInteractif.map((it, index) => {
+            const trop = (it.code ?? '').length > TAILLE_MAX_CODE;
+            const urlKo = it.kind === 'url' && !!it.url && !integrationAutorisee(it.url);
+            return (
+              <div key={it.id} className={styles.interactifItem}>
+                <div className={styles.interactifHead}>
+                  <span className={styles.interactifRang}>{index + 1}</span>
+
+                  {/* Le choix de la nature n'apparaît qu'à l'administrateur :
+                      déposer du code exécutable est une porte à part. */}
+                  {isAdmin && (
+                    <span className={styles.interactifKind}>
+                      <button
+                        type="button"
+                        className={it.kind === 'url' ? styles.kindOn : styles.kindOff}
+                        onClick={() => majInteractif(it.id, { kind: 'url' })}
+                        disabled={disabled}
+                      >
+                        Adresse
+                      </button>
+                      <button
+                        type="button"
+                        className={it.kind === 'code' ? styles.kindOn : styles.kindOff}
+                        onClick={() => majInteractif(it.id, { kind: 'code' })}
+                        disabled={disabled}
+                      >
+                        Code
+                      </button>
+                    </span>
+                  )}
+
+                  <input
+                    type="text"
+                    className={styles.interactifLegende}
+                    value={it.legende ?? ''}
+                    onChange={(e) => majInteractif(it.id, { legende: e.target.value })}
+                    placeholder="Légende (facultative)"
+                    disabled={disabled}
+                  />
+
+                  <button
+                    type="button"
+                    className={styles.interactifDel}
+                    onClick={() => retirerInteractif(it.id)}
+                    disabled={disabled || (it.id === brouillon.id && !interactifRempli(it))}
+                    title="Retirer ce contenu"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {it.kind === 'code' ? (
+                  <>
+                    <textarea
+                      className={styles.interactifCode}
+                      rows={10}
+                      value={it.code ?? ''}
+                      onChange={(e) => majInteractif(it.id, { code: e.target.value })}
+                      placeholder="Collez ici la page complète : <style>…</style>, le HTML, <script>…</script>"
+                      disabled={disabled}
+                      spellCheck={false}
+                    />
+                    <p className={trop ? styles.interactifKo : styles.interactifNote}>
+                      {trop
+                        ? `Trop long : ${Math.round((it.code ?? '').length / 1000)} Ko pour ${Math.round(TAILLE_MAX_CODE / 1000)} Ko permis. Sortez les images de votre code et déposez-les dans l’onglet Image.`
+                        : `${Math.round((it.code ?? '').length / 1000)} Ko sur ${Math.round(TAILLE_MAX_CODE / 1000)} — l’animation tourne isolée : elle n’a accès ni à la page, ni au compte de l’élève.`}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <textarea
+                      className={styles.interactifUrl}
+                      rows={2}
+                      value={it.url ?? ''}
+                      onChange={(e) => collerIntegration(it.id, e.target.value)}
+                      placeholder="Collez l’adresse, ou le code « Intégrer » du site — on en extrait l’adresse"
+                      disabled={disabled}
+                      spellCheck={false}
+                    />
+                    {urlKo && (
+                      <p className={styles.interactifKo}>
+                        Ce site n’est pas dans la liste des domaines autorisés — le contenu
+                        ne s’affichera pas. Signalez-le-moi pour l’ajouter.
+                      </p>
+                    )}
+                  </>
+                )}
+
+                {/* ── LA TAILLE DU CADRE ──
+                    Mêmes réglages que dans l'atelier « Lecture d'une œuvre » :
+                    c'est le même objet, il doit se régler pareil.
+                    La largeur est un PLAFOND, jamais une largeur imposée : sur
+                    le Chromebook d'un élève, la colonne est plus étroite et
+                    c'est elle qui gagne. */}
+                <div className={styles.interactifTaille}>
+                  <label className={styles.interactifHauteur}>
+                    Largeur maximale
+                    <input
+                      type="number"
+                      min={200}
+                      max={2000}
+                      step={20}
+                      value={it.largeur ?? 900}
+                      onChange={(e) =>
+                        majInteractif(it.id, {
+                          largeur: Math.max(200, Math.min(2000, Number(e.target.value) || 900)),
+                        })
+                      }
+                      disabled={disabled}
+                    />
+                    px
+                  </label>
+
+                  {/* La case ne se propose que si les proportions sont
+                      CONNUES — le code collé les annonçait. Une case sans
+                      effet est pire qu'une case absente. */}
+                  {it.kind === 'url' && it.ratio ? (
+                    <label className={styles.interactifCase}>
+                      <input
+                        type="checkbox"
+                        checked={it.proportions === true}
+                        onChange={(e) => majInteractif(it.id, { proportions: e.target.checked })}
+                        disabled={disabled}
+                      />
+                      Conserver les proportions d’origine (
+                      {it.ratio.toFixed(2).replace(/\.?0+$/, '')} : 1)
+                    </label>
+                  ) : null}
+
+                  {it.kind === 'url' && it.proportions && it.ratio ? (
+                    <span className={styles.interactifNote}>
+                      Hauteur déduite de la largeur — le cadre se réduit
+                      proportionnellement, sans déformation ni bandes vides.
+                    </span>
+                  ) : (
+                    <label className={styles.interactifHauteur}>
+                      Hauteur du cadre
+                      <input
+                        type="number"
+                        min={200}
+                        max={1200}
+                        step={20}
+                        value={it.hauteur ?? 520}
+                        onChange={(e) =>
+                          majInteractif(it.id, {
+                            hauteur: Math.max(200, Math.min(1200, Number(e.target.value) || 520)),
+                          })
+                        }
+                        disabled={disabled}
+                      />
+                      px
+                    </label>
+                  )}
+                </div>
+
+                {/* Aperçu : c'est le seul moyen de savoir si ça marche avant
+                    de le donner aux élèves. Le cadre est le MÊME qu'à
+                    l'écran de l'élève, bac à sable compris. */}
+                {it.kind === 'code' && (it.code ?? '').trim() && !trop && (
+                  <iframe
+                    className={styles.interactifApercu}
+                    style={{ height: `${it.hauteur ?? 520}px`, maxWidth: `${it.largeur ?? 900}px` }}
+                    srcDoc={it.code}
+                    title={it.legende || 'Aperçu de l’animation'}
+                    sandbox="allow-scripts"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                {it.kind === 'url' && integrationAutorisee(it.url) && (
+                  <iframe
+                    className={styles.interactifApercu}
+                    style={{
+                      ...(it.proportions && it.ratio
+                        ? { aspectRatio: String(it.ratio) }
+                        : { height: `${it.hauteur ?? 520}px` }),
+                      maxWidth: `${it.largeur ?? 900}px`,
+                    }}
+                    src={it.url}
+                    title={it.legende || 'Aperçu du contenu'}
+                    allow="fullscreen; encrypted-media"
+                    allowFullScreen
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+              </div>
+            );
+          })}
+
         </div>
       )}
 

@@ -23,6 +23,7 @@ import {
   reponseLiseuseVersAnswer,
 } from '@/types/lecture';
 import type { LectureAnswer, LectureQuestion } from '@/types/lecture';
+import { ordreAffichage } from '@/types/lecture';
 import ChampManipule, { estTypeManipule } from '@/components/QuestionInteractions';
 import OeuvreBlocRendu from './OeuvreBlocRendu';
 import styles from './OeuvreReader.module.css';
@@ -105,9 +106,12 @@ export default function OeuvreReader({
   // getAuthHeaders vient d'AuthContext et n'est PAS stable : le mettre dans
   // les dépendances d'un effet relance la requête en boucle (gotcha connu du
   // projet). D'où la référence.
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, user } = useAuth();
   const headersRef = useRef(getAuthHeaders);
   headersRef.current = getAuthHeaders;
+  // De `user`, objet instable, on ne retient que l'UID : c'est la graine qui
+  // donne à chaque élève son propre ordre de propositions (ordreAffichage).
+  const graine = user?.uid || null;
 
   // ── Chargement paresseux de la section ──
   useEffect(() => {
@@ -416,6 +420,7 @@ export default function OeuvreReader({
           onRepondre={repondre}
           onFermer={() => setQuestionnaireOuvert(false)}
           onTerminer={terminer}
+          graine={graine}
         />
       )}
     </div>
@@ -437,6 +442,8 @@ interface PopupProps {
   onRepondre: (questionId: string, valeur: unknown) => void;
   onFermer: () => void;
   onTerminer: () => void;
+  /** Identifiant de l'élève — son ordre de propositions (ordreAffichage) */
+  graine?: string | null;
 }
 
 function QuestionnairePopup({
@@ -448,6 +455,7 @@ function QuestionnairePopup({
   onRepondre,
   onFermer,
   onTerminer,
+  graine,
 }: PopupProps) {
   return (
     <div
@@ -489,7 +497,17 @@ function QuestionnairePopup({
                   {question.multiple && (
                     <p className={styles.popupSurtitre}>Plusieurs réponses possibles.</p>
                   )}
-                  {(question.choices || []).map((choix, i) => {
+                  {/* ── L'ORDRE D'AFFICHAGE, propre à cet élève ──
+                      `i` reste l'index D'ORIGINE (celui du prof) : réponse
+                      enregistrée et corrigé ne changent pas de référentiel.
+                      Seule la LETTRE suit la place à l'écran — « B » doit
+                      désigner la deuxième proposition affichée. */}
+                  {ordreAffichage(
+                    (question.choices || []).length,
+                    graine ? `${graine}-${question.id}` : null,
+                    !question.pasDeMelange
+                  ).map((i, place) => {
+                    const choix = (question.choices || [])[i];
                     // Réponses multiples : la valeur stockée est un tableau
                     // d'index au lieu d'un index. Le reste ne change pas.
                     const dejaCoches = Array.isArray(reponses[question.id])
@@ -519,7 +537,7 @@ function QuestionnairePopup({
                           onRepondre(question.id, [...set].sort((a, b) => a - b));
                         }}
                       >
-                        <span className={styles.choixLettre}>{String.fromCharCode(65 + i)}.</span>
+                        <span className={styles.choixLettre}>{String.fromCharCode(65 + place)}.</span>
                         <span>{choix}</span>
                         {devoile && (juste || choisi) && (
                           <span className={styles.choixMarque}>{juste ? '✓' : '✕'}</span>
@@ -552,6 +570,7 @@ function QuestionnairePopup({
                   }
                   disabled={lectureSeule || corrigeOuvert}
                   showCorrection={corrigeOuvert}
+                  graine={graine}
                 />
               )}
 
