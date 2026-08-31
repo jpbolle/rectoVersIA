@@ -74,6 +74,11 @@ export async function GET(request: NextRequest) {
         vocabulaireThemes: data.vocabulaireThemes || undefined,
         vocabulaireDiagnostic: data.vocabulaireDiagnostic ?? undefined,
         hiddenCriteria: data.hiddenCriteria || undefined,
+        // Écrits à la création mais jusqu'ici absents de la liste : la
+        // duplication les perdait faute de les recevoir.
+        evaluation: data.evaluation === 'certificatif' ? 'certificatif' : 'formatif',
+        flipInverted: data.flipInverted ?? false,
+        autoEvaluation: data.autoEvaluation !== false,
         corrigeReference: data.corrigeReference || null,
         ressourcesToIA: data.ressourcesToIA ?? false,
         // Déballage des corrigés de matrice multiple (cf. lecture-server.ts) —

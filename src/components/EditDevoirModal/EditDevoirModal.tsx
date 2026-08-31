@@ -351,6 +351,18 @@ export default function EditDevoirModal({
     signatureRef.current = null;
   }, [devoir?.id, isOpen]);
 
+  // Tant que la fenêtre est ouverte, la page derrière ne défile plus. Sans ce
+  // blocage, une fenêtre dont le contenu tient dans la hauteur n'a rien à faire
+  // défiler : la molette « traverse » et fait défiler le tableau de bord.
+  useEffect(() => {
+    if (!isOpen) return;
+    const overflowPrecedent = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = overflowPrecedent;
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (!autoEnregistre || !isOpen || !isValid) return;
     if (signatureRef.current === null) {

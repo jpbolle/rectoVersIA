@@ -1,9 +1,16 @@
 {
   "manifest_version": 3,
   "name": "NavigKid!",
-  "version": "1.3",
+  "version": "1.4",
   "description": "Extension de recherche guidée par IA pour les élèves",
-  "permissions": ["storage", "activeTab", "scripting", "sidePanel", "identity"],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3SLLoAJGUAToxAQGK9OO0mv3DqsdELTYkUwW9Xx8zJQTf/JDmyruoAvW5HXyAS0xa6ZMCf4iHZZi3UyGgWNZoqeaXbxbDl5AD5fVyps8QQhPemGiiTks8pSZTvYUHMwNY9EZDN1FUvq+lHUMh7gpjYnoAluTqfB3KxnqSPyMtlj49YHs7dpFoao4C9GJHWDTDZyXo9dl5tM0b/Rzqo39TW37djeW2D2deWTjmFNHxyTcxfnfhN8o3cs6wUhRMZ5cl2YEBtHhhqUR2jJsGinR8KrhwJcT/d4F1yF3obUbx9nVZAXBuwUjxm6btRbSHiBJF/EbYYYG3UDaC09LXlUZSwIDAQAB",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "sidePanel",
+    "identity"
+  ],
   "host_permissions": [
     "https://*/*",
     "http://*/*"
@@ -16,9 +23,16 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*/*", "http://*/*"],
-      "js": ["content/index.js"],
-      "css": ["content/style.css"]
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "js": [
+        "content/index.js"
+      ],
+      "css": [
+        "content/style.css"
+      ]
     }
   ],
   "icons": {
@@ -28,8 +42,14 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["pdfviewer/index.html", "assets/icon48.png"],
-      "matches": ["https://*/*", "http://*/*"]
+      "resources": [
+        "pdfviewer/index.html",
+        "assets/icon48.png"
+      ],
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ]
     }
   ],
   "action": {

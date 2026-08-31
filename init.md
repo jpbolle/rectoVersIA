@@ -852,18 +852,46 @@ Le parseur CSS de Turbopack rejette `::highlight(...)` (API CSS Custom Highlight
 les fichiers CSS → **build cassé**. **Remède** : injecter la règle en JavaScript
 (`document.createElement('style')`) — voir `DictionaryClickLayer.tsx`.
 
-### Extension NavigKid : un identifiant par machine (connexion Google cassée)
-L'extension chargée « non empaquetée » n'a pas d'identifiant fixe : Chrome le calcule
-depuis le **chemin du dossier**. Or `chrome.identity.getRedirectURL()` construit
-l'adresse de retour OAuth à partir de cet identifiant.
-**Symptôme** : `Erreur 400 : redirect_uri_mismatch` à la connexion Google dans le
-panneau, sur un poste où ça marchait avant (typiquement l'autre Mac).
-**Remède immédiat** : relever l'ID dans `chrome://extensions` et ajouter
-`https://<ID>.chromiumapp.org/` aux « URI de redirection autorisés » du client OAuth
-`380560298164-d78g8d3e…` — console Google Cloud, **projet `recto-versia`** (attention,
-le sélecteur de projet retombe facilement sur `essai-27712`).
-**Remède durable, non fait** : champ `key` dans le manifeste (à arbitrer avec la
-publication Chrome Web Store, qui attribue son propre identifiant).
+### Extension NavigKid : identifiant figé par `key` — et ce que ça impose en dév
+**Réglé le 2026-08-31.** L'extension chargée « non empaquetée » n'avait pas
+d'identifiant fixe : Chrome le calculait depuis le **chemin du dossier**, donc un ID par
+Mac. Or `chrome.identity.getRedirectURL()` construit l'adresse de retour OAuth à partir
+de cet identifiant → `Erreur 400 : redirect_uri_mismatch` en changeant de poste.
+
+Le manifeste porte désormais le champ **`key`** (clé publique relevée dans le tableau de
+bord Chrome Web Store, *Build → Package → Afficher la clé publique*). L'identifiant est
+donc le même partout, et c'est celui de l'extension publiée :
+
+```
+dphhepaohinbdkogogbaldkmbipjfipj
+```
+
+Une seule URI de redirection à déclarer, `https://dphhepaohinbdkogogbaldkmbipjfipj.chromiumapp.org/`,
+dans les « URI de redirection autorisés » du client OAuth `380560298164-d78g8d3e…` —
+console Google Cloud, **projet `recto-versia`** (attention, le sélecteur de projet
+retombe facilement sur `essai-27712`).
+
+**Conséquence — le piège du profil Chrome.** L'extension est **installée d'office et
+épinglée** par la console d'administration Google sur l'unité racine `cnddinant.be` (et
+sur l'OU `eleves`). Une extension gérée par politique ne peut pas cohabiter avec une
+version non empaquetée portant le même identifiant.
+**Symptôme** : « L'administrateur a bloqué l'extension NavigKid! » au chargement non
+empaqueté. Ce n'est **pas** un blocage — c'est un conflit d'identifiant.
+**Remède** : développer dans un **profil Chrome séparé, non connecté à un compte
+Google**. La politique ne s'y applique pas. L'extension utilise `launchWebAuthFlow`, qui
+laisse choisir le compte au moment de la connexion : on se connecte donc quand même avec
+le compte scolaire *dans* l'extension. Ne jamais résoudre ce conflit en modifiant la
+politique du domaine — elle sert les élèves.
+
+### Extension NavigKid : construire le paquet du Store
+Toujours par `rechercheNavigChrome/build-zip.sh`, jamais à la main. Le script travaille
+sur une copie temporaire et **retire le champ `key`** du manifeste envoyé au Store (il
+n'existe que pour le développement local), exclut `assets/icon-source.png` et les
+`.DS_Store`. Le manifeste du dossier de travail n'est pas touché.
+
+Un zip fait à la main a déjà été livré amputé du popup et de la visionneuse PDF, avec
+trois icônes de 1024×1024 pesant 3,4 Mo. Le numéro de version, lui, reste **géré à la
+main par JP** — le Store refuse un dépôt qui ne monte pas le numéro.
 
 ### Extension NavigKid : `sidePanel.open()` et le geste utilisateur
 Chrome n'autorise `chrome.sidePanel.open()` que pendant un geste utilisateur. Le

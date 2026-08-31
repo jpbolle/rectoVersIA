@@ -4,10 +4,10 @@
 NavigKid!
 
 ## Version
-1.3
+1.4
 
-## Resume (132 caracteres max)
-Extension de recherche guidee pour les eleves. Questionnaires, surlignage de sources et aide IA integres a Recto-versIA.
+## Résumé (132 caractères max)
+Recherche guidée pour les élèves : questionnaire, surlignage des sources, dictionnaire et aide IA, intégrés à Recto-versIA.
 
 ## Description detaillee
 
@@ -17,17 +17,21 @@ NavigKid! est une extension Chrome conçue pour accompagner les élèves dans le
 
 • Connexion sécurisée avec n'importe quel compte Google
 • Liste des activités de recherche assignées par le professeur
+• Lancement d'une activité directement depuis Recto-versIA : l'élève clique dans l'application, le panneau latéral s'ouvre sur la bonne recherche
 • Questionnaire interactif avec questions ouvertes et QCM
 • Surlignage et sélection de passages sur les pages web visitées
 • Enregistrement automatique des sources consultées
+• Aides de lecture activables d'un clic dans la fenêtre de l'extension : dictionnaire (définition du mot cliqué) ou traducteur (dans la langue choisie)
+• Visionneuse PDF intégrée, avec le dictionnaire actif par défaut : les documents PDF rencontrés pendant la recherche se lisent et s'annotent comme une page web
 • Aide IA conditionnelle (activable par le professeur) : vérification de sources, suggestions de mots-clés, aide à la reformulation
+• Retour vers Recto-versIA depuis le panneau, une fois la recherche envoyée
 • Sauvegarde automatique de la progression
 
 **Comment ça fonctionne :**
 1. L'élève se connecte avec son compte Google
-2. Il sélectionne une activité de recherche assignée par son professeur
+2. Il choisit une activité assignée par son professeur — depuis le panneau, ou d'un clic dans Recto-versIA
 3. Il navigue sur le web pour répondre aux questions
-4. Il surligne les passages pertinents directement sur les pages web
+4. Il surligne les passages pertinents directement sur les pages web, et s'appuie au besoin sur le dictionnaire ou le traducteur
 5. Ses réponses et sources sont envoyées au professeur via Recto-versIA
 
 **À noter :**
@@ -70,10 +74,28 @@ Afficher le questionnaire de recherche dans un panneau latéral de Chrome, perme
 Authentifier l'utilisateur via Google OAuth avec n'importe quel compte Google, pour identifier ses réponses et les transmettre au professeur.
 
 ### Autorisation d'acces a l'hote
-L'extension communique avec l'API de la plateforme pédagogique Recto-versIA (rectoversia.edukids.pedagokit.be) pour récupérer les questionnaires assignés, envoyer les réponses de l'élève et accéder à l'aide IA. Le content script s'exécute sur toutes les pages pour permettre le surlignage de passages sur n'importe quel site web visité lors de la recherche.
+> Champ limité à **1000 caractères**, sans formatage. Texte ci-dessous = 995
+> caractères, à coller tel quel. Toute réécriture doit être remesurée.
+
+L'extension communique avec l'API de Recto-versIA (rectoversia.edukids.pedagokit.be) pour récupérer les questionnaires, envoyer les réponses et accéder à l'aide IA.
+
+Le script de contenu s'exécute sur toutes les pages parce que l'objet de l'extension est la recherche documentaire : on ne peut pas savoir à l'avance sur quels sites l'élève cherchera.
+
+Sur geste de l'élève : surligner des passages comme sources ; afficher la définition ou la traduction du mot cliqué ; sur les pages de Recto-versIA uniquement, ouvrir le panneau sur la bonne activité.
+
+Automatiquement, et uniquement pendant qu'une activité est ouverte dans le panneau : consigner la démarche de recherche (requête Google, adresse et titre des pages ouvertes depuis les résultats, temps passé), que le professeur évalue.
+
+Le dictionnaire interroge fr.wiktionary.org et le traducteur translate.googleapis.com, avec le seul mot cliqué : aucun identifiant ni donnée d'élève ne les accompagne.
+
+Hors activité, rien n'est consigné.
 
 ## Code distant
-Oui — L'extension charge les bibliothèques Firebase (firebase-app-compat.js, firebase-auth-compat.js, firebase-firestore-compat.js) depuis les CDN Google (gstatic.com) pour l'authentification et la communication avec la base de données Firestore.
+Non — Tout le code exécuté est contenu dans le paquet. Les deux bibliothèques Firebase
+utilisées (firebase-app-compat.js, firebase-auth-compat.js, uniquement pour
+l'authentification Google) sont embarquées dans `sidebar/lib/`, de même que la
+visionneuse PDF (`lib/pdf.min.mjs`). Rien n'est chargé depuis un CDN, aucun script
+n'est évalué à la volée. L'extension n'échange que des **données** avec l'API de
+Recto-versIA.
 
 ---
 
@@ -85,7 +107,8 @@ Oui — L'extension charge les bibliothèques Firebase (firebase-app-compat.js, 
 - [ ] Communications personnelles
 - [ ] Localisation
 - [x] Historique Web (URLs des pages visitees pendant la recherche)
-- [ ] Activite de l'utilisateur
+- [x] Activite de l'utilisateur — clics sur les liens de resultats Google, interceptes
+      dans content/index.js pour noter quelle source l'eleve a ouverte
 - [x] Contenu du site Web (passages surlignes par l'eleve)
 
 ### Certifications
@@ -94,17 +117,47 @@ Oui — L'extension charge les bibliothèques Firebase (firebase-app-compat.js, 
 - [x] Je n'utilise ni ne transfere les donnees pour determiner la solvabilite ou a des fins de pret
 
 ## URL regles de confidentialite
-https://sparkling-boursin-db6.notion.site/Politique-de-confidentialit-NavigKid-324bfbee5a19800bbb6cc0540e2c87c8
+https://www.pedagokit.be/politiques-de-confidentialité-extensions-et-apps/navigkid
+
+> L'ancienne adresse Notion est abandonnée. Le texte à publier sur cette page vit dans
+> `politique-confidentialite-navigkid.md`, à côté de ce fichier — les deux doivent dire
+> la même chose que les déclarations ci-dessus.
 
 ---
 
-## Politique de confidentialite (contenu complet)
+## Politique de confidentialite (résumé — texte complet dans le fichier voisin)
 
-NavigKid! collecte uniquement les données nécessaires au fonctionnement pédagogique :
+> Le texte publié fait foi : `politique-confidentialite-navigkid.md`.
+> Ce qui suit en est le résumé, gardé ici pour que la fiche se lise d'un bloc.
+
+NavigKid! collecte uniquement les données nécessaires au fonctionnement pédagogique, et
+**uniquement pendant qu'une activité de recherche est ouverte dans le panneau latéral** :
 - Adresse email Google (authentification)
 - Réponses aux questionnaires de recherche
-- URL et passages surlignés sur les pages visitées (uniquement pendant une activité active)
+- Passages surlignés par l'élève sur les pages visitées
+- Démarche de recherche : requêtes tapées dans Google, adresse et titre des pages
+  ouvertes depuis les résultats, temps passé sur chacune — c'est ce que le professeur
+  évalue sous le nom de « démarche », à côté des réponses elles-mêmes
+- Mots cliqués lorsque l'élève active le dictionnaire ou le traducteur
 
-Les données sont stockées dans Firebase (Google Cloud) et accessibles uniquement par l'élève et son professeur. Aucune donnée n'est vendue ni partagée avec des tiers. Les données sont conservées pour la durée de l'année scolaire.
+Hors activité, ou panneau fermé, rien n'est collecté.
+
+Les données sont stockées dans Firebase (Google Cloud) et accessibles uniquement par
+l'élève et son professeur. Elles ne sont ni vendues, ni cédées, ni exploitées à des fins
+publicitaires, et sont conservées pour la durée de l'année scolaire.
+
+**Services tiers interrogés.** Deux aides facultatives, que l'élève active lui-même,
+consultent un service extérieur :
+- le **dictionnaire** interroge le Wiktionnaire francophone (fr.wiktionary.org,
+  Fondation Wikimedia) ;
+- le **traducteur** interroge Google Traduction (translate.googleapis.com).
+
+Seul le mot cliqué leur est transmis — ou, pour le traducteur, le petit groupe de mots
+cliqués côte à côte. Aucun identifiant, aucun nom, aucune adresse email, aucune réponse
+d'élève ne les accompagne : ces services reçoivent un mot, et rien qui permette de savoir
+qui l'a cliqué. Les aides sont désactivées par défaut.
 
 Contact : jeanphilippe.bolle@cnddinant.be
+
+> ⚠️ Ce texte doit être **recopié dans la page Notion** citée plus haut : c'est elle que
+> Google lit, pas ce fichier. Les deux doivent dire la même chose.

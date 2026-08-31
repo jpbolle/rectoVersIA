@@ -231,6 +231,27 @@ export default function DashboardPage() {
           typeTravail: devoir.typeTravail || 'ecrire',
           evaluation: devoir.evaluation ?? 'formatif',
           questionnaire,
+          // Le verso doit suivre le recto. Sans ces champs, dupliquer une
+          // activité de lecture rendait une coquille vide : le questionnaire,
+          // les habiletés et le corrigé restaient sur l'original.
+          modePrincipal: devoir.modePrincipal,
+          atelier: devoir.atelier,
+          habiletes: devoir.habiletes ?? null,
+          hiddenCriteria: devoir.hiddenCriteria,
+          autoEvaluation: devoir.autoEvaluation,
+          flipInverted: devoir.flipInverted,
+          corrigeReference: devoir.corrigeReference ?? null,
+          ressourcesToIA: devoir.ressourcesToIA,
+          lectureQuiz: devoir.lectureQuiz ?? null,
+          autoEvalQuiz: devoir.autoEvalQuiz ?? null,
+          // L'œuvre n'est pas recopiée : elle vit dans la bibliothèque et la
+          // copie y renvoie, comme l'original.
+          oeuvreId: devoir.oeuvreId ?? null,
+          oeuvreChapitres: devoir.oeuvreChapitres ?? null,
+          oeuvreMinimum: devoir.oeuvreMinimum ?? null,
+          vocabulaireConfig: devoir.vocabulaireThemes
+            ? { themes: devoir.vocabulaireThemes, diagnostic: devoir.vocabulaireDiagnostic }
+            : undefined,
         });
         setMessage({ text: 'Devoir dupliqué avec succès !', type: 'success' });
       } catch (err) {

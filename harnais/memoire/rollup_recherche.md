@@ -127,20 +127,56 @@ un seul clic.
        refondu, champs facultatifs, habiletés qui se replient.
 2. [ ] **Terminer les tests de la boucle d'envoi** (reste du 2026-08-12) :
        envoi depuis l'extension → voile levé → onglet Évaluation → corrigé QCM.
-3. [ ] **Publier l'extension NavigKid!** sur le Chrome Web Store (diffusion
-       interne `cnddinant.be`) : bump de version du `manifest.json` (numéro géré
-       **à la main** par JP), zip, envoi. ⚠️ Pendant cette étape, régler le
-       champ `key` (voir le gotcha `init.md`) : le Store expose la clé publique
-       dans le tableau de bord, la recopier aligne les deux Macs. Fait après
-       coup, ce travail est à refaire.
-4. [ ] **Retravailler la description** du Store —
-       `rechercheNavigChrome/chrome-web-store.md` porte le texte v1.3, qui ne
-       mentionne ni le lancement depuis l'app, ni les aides
-       dictionnaire/traducteur, ni la visionneuse PDF, ni le retour à l'app.
+3. [x] **Publier l'extension NavigKid!** — fait le 2026-08-31. Version **1.4**
+       envoyée pour examen, visibilité **non répertoriée**. Champ `key` réglé
+       dans la foulée : l'identifiant est figé (voir le gotcha `init.md`).
+       ⚠️ **Examen en cours** — vérifier le verdict de Google. Un refus arrive
+       par courriel et se rattrape en corrigeant la fiche, pas le code.
+4. [x] **Retravailler la description** du Store — fait le 2026-08-31.
+       `chrome-web-store.md` est à jour et sert de source unique ; la politique
+       de confidentialité a migré de Notion vers
+       `politique-confidentialite-navigkid.md`, publiée sur
+       `pedagokit.be/politiques-de-confidentialité-extensions-et-apps/navigkid`.
+       Les deux doivent rester d'accord entre elles **et** avec les déclarations
+       du tableau de bord.
+4b. [ ] **Rafraîchir les captures d'écran** du Store : celles en ligne datent de
+       la 1.3 et ne montrent ni le dictionnaire, ni le traducteur, ni la
+       visionneuse PDF — que la description annonce désormais. Format imposé :
+       1280×800 exactement. Vérifier au passage qu'aucun nom d'élève réel n'y
+       figure.
 5. [ ] Afficher `question.document` dans l'extension (rien ne le rend
        aujourd'hui côté panneau).
 6. [ ] Image et audio par question dans le constructeur de recherche — même
        traitement qu'en lecture, mais suppose aussi l'extension.
+
+---
+
+## Session du 2026-08-31 — publication au Chrome Web Store
+
+**Envoyé pour examen.** Version 1.4, visibilité non répertoriée.
+
+Ce que la préparation a mis au jour — à savoir avant de retoucher l'extension :
+
+- **L'extension interroge deux services tiers**, ce qu'aucune déclaration ne
+  disait : le dictionnaire appelle `fr.wiktionary.org`, le traducteur appelle
+  `translate.googleapis.com`. Requêtes en `fetch` nu — seul le mot cliqué part,
+  sans en-tête ni identifiant. Arbitré avec JP : données de mineurs, mais un mot
+  isolé sans identifiant n'est pas une donnée personnelle → **déclarer**, ne pas
+  proxifier. Les faire transiter un jour par `/api/navigkid/*` serait une
+  amélioration, pas une correction.
+- **La collecte de la démarche est automatique, pas gestuelle** : requête tapée
+  dans Google, URL et titre des pages ouvertes depuis les résultats, temps passé,
+  clics sur les liens de résultats. Le garde-fou est `if (!qData) return` dans
+  `sidebar/app.js` — rien n'est consigné hors d'une question ouverte. La case
+  « Activité de l'utilisateur » du formulaire Google a donc été **cochée** : ce
+  sont bien des clics interceptés.
+- **`firebase-firestore-compat.js` était embarqué mais jamais chargé** (341 Ko) —
+  vestige de l'architecture d'avant `/api/navigkid/*`. Supprimé.
+- **Le zip livré à la main était faux** : 18 fichiers au lieu de 28, sans le popup
+  ni la visionneuse PDF, avec trois icônes de 1024×1024 pesant 3,4 Mo. D'où
+  `build-zip.sh`.
+
+Fiche et politique de confidentialité : voir le TODO 4 ci-dessus.
 
 ---
 
