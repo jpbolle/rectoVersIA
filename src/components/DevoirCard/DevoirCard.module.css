@@ -109,6 +109,26 @@
   padding-top: 12px;
 }
 
+/* Lien discret sous les bascules : on ne dissocie les classes qu'à l'occasion,
+   le geste courant (toute l'activité) reste celui des bascules au-dessus. */
+.sessionsLink {
+  align-self: flex-start;
+  margin-top: 2px;
+  border: none;
+  background: none;
+  padding: 2px 0;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-accent);
+  cursor: pointer;
+  text-align: left;
+}
+
+.sessionsLink:hover {
+  text-decoration: underline;
+}
+
 .togglesSection {
   margin-top: auto;
   padding-top: 12px;

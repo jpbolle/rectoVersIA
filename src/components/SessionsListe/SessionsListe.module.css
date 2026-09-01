@@ -1,0 +1,135 @@
+/* Les mises en œuvre d'une activité, avant les copies.
+   Une ligne = une classe. Design system Classica. */
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.bloc {
+  display: flex;
+  flex-direction: column;
+}
+
+.blocTitre {
+  font-family: var(--c-font-title);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0 0 10px;
+}
+
+.vide {
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+  font-style: italic;
+  margin: 0;
+}
+
+/* La ligne entière est cliquable : la cible est large, ce qui compte sur un
+   Chromebook où l'on vise au trackpad. */
+.ligne {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg-card);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.ligne + .ligne {
+  margin-top: 8px;
+}
+
+.ligne:hover {
+  border-color: var(--c-primary);
+  box-shadow: var(--c-shadow-card);
+  transform: translateY(-1px);
+}
+
+.classe {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-text);
+  min-width: 200px;
+  flex: 1;
+}
+
+.compte {
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+.etats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pastille {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+.ouverte {
+  background: rgba(45, 106, 90, 0.1);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.corrige {
+  background: rgba(212, 148, 76, 0.14);
+  border-color: var(--c-accent);
+  color: var(--c-accent-dark, #a8702f);
+}
+
+.chevron {
+  font-size: 20px;
+  line-height: 1;
+  color: var(--c-text-dim);
+}
+
+/* Années antérieures : repliées par défaut */
+.replie {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: none;
+  padding: 4px 0 10px;
+  font-family: var(--c-font-title);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.replie:hover {
+  color: var(--c-primary);
+}
+
+@media (max-width: 720px) {
+  .classe {
+    min-width: 100%;
+  }
+  .chevron {
+    margin-left: auto;
+  }
+}

@@ -135,6 +135,10 @@ export interface Devoir {
   // remise et la correction du prof : c'est le calcul que son navigateur ne
   // peut pas faire, faute d'avoir les bonnes réponses.
   lectureResume?: LectureResume | null;
+  // Renvoi vers la BIBLIOTHÈQUE de questionnaires (Mes Ressources). Quand il
+  // est posé, c'est ce questionnaire-là qui sert — celui que porte encore
+  // l'activité ne reste qu'en filet. Voir `quizDuDevoir`.
+  lectureQuizId?: string | null;
   // Questionnaire d'auto-évaluation (type autoevaluation). Rien n'y est filtré
   // pour l'élève : il n'y a ni bonne réponse ni corrigé à protéger.
   autoEvalQuiz?: AutoEvalQuestionnaire | null;
@@ -183,7 +187,10 @@ export interface CreateDevoirData {
   corrigeReference?: CorrigeReference | null;
   // Envoyer les ressources à l'IA (type ecrire uniquement)
   ressourcesToIA?: boolean;
-  // Questionnaire de lecture (type lire uniquement)
+  // Questionnaire de lecture (type lire uniquement) — l'un OU l'autre :
+  // une référence à la bibliothèque, ou un contenu écrit pour cette activité
+  // (que le serveur versera ensuite dans la bibliothèque).
+  lectureQuizId?: string | null;
   lectureQuiz?: LectureQuiz | null;
   // Questionnaire d'auto-évaluation (type autoevaluation uniquement)
   autoEvalQuiz?: AutoEvalQuestionnaire | null;

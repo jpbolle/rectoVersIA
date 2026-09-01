@@ -10,6 +10,9 @@ import type { Correction } from '@/types/correction';
 import type { Grille } from '@/types/grille';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
 import type { NavigKidQuestion } from '@/types/navigkid';
+import type { Session } from '@/types/session';
+import { calculateSchoolYear } from '@/lib/auth-utils';
+import SessionsListe from '@/components/SessionsListe/SessionsListe';
 import Link from 'next/link';
 import Footer from '@/components/Footer/Footer';
 import OeuvreSuivi from '@/components/OeuvreSuivi/OeuvreSuivi';
@@ -25,7 +28,14 @@ export default function TravauxPage() {
   // dépendances d'effet (règle AGENTS.md)
   const uid = user?.uid;
   const [devoir, setDevoir] = useState<Devoir | null>(null);
-  const [travaux, setTravaux] = useState<Travail[]>([]);
+  const [travauxBruts, setTravaux] = useState<Travail[]>([]);
+  // ── LES SESSIONS D'ABORD, LES ÉLÈVES ENSUITE ──
+  // Une activité peut viser plusieurs classes et resservir d'une année sur
+  // l'autre : ouvrir la page sur la liste des copies mélangeait la 4C de cette
+  // année avec la 4B de l'an dernier. On choisit donc une session, et tout ce
+  // qui suit (statistiques comprises) ne parle que d'elle.
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionActive, setSessionActive] = useState<string | null>(null);
   const [corrections, setCorrections] = useState<Map<string, Correction>>(new Map());
   const [grille, setGrille] = useState<Grille | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +43,25 @@ export default function TravauxPage() {
   const [showEcritureStats, setShowEcritureStats] = useState(false);
   const [questionnaire, setQuestionnaire] = useState<NavigKidQuestion[] | null>(null);
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+
+  // Une seule session (ou aucune) : rien à choisir, on va droit aux copies.
+  // Un écran intermédiaire d'une seule ligne serait un clic pour rien.
+  const choixNecessaire = sessions.length > 1 && !sessionActive;
+
+  // Copies qu'aucune session ne réclame : élève supprimé, classe effacée, ou
+  // travail antérieur aux sessions. Sans ce panier, elles disparaîtraient de
+  // l'écran du prof sans que rien ne le dise — le pire des silences.
+  const SANS_CLASSE = '__sans_classe__';
+  const orphelines = useMemo(
+    () => travauxBruts.filter((t) => !t.sessionId),
+    [travauxBruts]
+  );
+
+  const travaux = useMemo(() => {
+    if (!sessionActive) return travauxBruts;
+    if (sessionActive === SANS_CLASSE) return orphelines;
+    return travauxBruts.filter((t) => t.sessionId === sessionActive);
+  }, [travauxBruts, sessionActive, orphelines]);
 
   useEffect(() => {
     if (role && role !== 'prof') {
@@ -77,10 +106,19 @@ export default function TravauxPage() {
           return;
         }
 
-        const [travauxRes, correctionsRes] = await Promise.all([
+        const [travauxRes, correctionsRes, sessionsRes] = await Promise.all([
           fetch(`/api/travaux?devoirId=${devoirId}`, { headers }),
           fetch(`/api/corrections?devoirId=${devoirId}`, { headers }),
+          fetch(`/api/sessions?devoirId=${devoirId}`, { headers }),
         ]);
+
+        const sessionsJson = await sessionsRes.json();
+        if (sessionsJson.success) {
+          const liste = sessionsJson.data as Session[];
+          setSessions(liste);
+          // Une seule classe : on l'ouvre d'office
+          if (liste.length === 1) setSessionActive(liste[0].id);
+        }
 
         const travauxJson = await travauxRes.json();
         if (travauxJson.success) setTravaux(travauxJson.data);
@@ -348,7 +386,17 @@ export default function TravauxPage() {
           <div className={styles.headerContent}>
             <h1 className={styles.title}>{devoir?.intitule || 'Travaux'}</h1>
             <p className={styles.subtitle}>
-              {isOeuvre ? 'Suivi de lecture' : 'Travaux des élèves'}
+              {choixNecessaire
+                ? 'Choisissez une classe'
+                : isOeuvre
+                  ? 'Suivi de lecture'
+                  : sessionActive && sessions.length > 1
+                    ? `Travaux des élèves — ${
+                        sessionActive === SANS_CLASSE
+                          ? 'sans classe'
+                          : (sessions.find((s) => s.id === sessionActive)?.classeNom ?? '')
+                      }`
+                    : 'Travaux des élèves'}
             </p>
           </div>
         </div>
@@ -385,7 +433,36 @@ export default function TravauxPage() {
       )}
 
       <main className={styles.main}>
-        {isOeuvre ? (
+        {/* Retour à la liste des classes — seulement quand il y a un choix à
+            refaire, sinon le bouton renverrait sur un écran d'une seule ligne */}
+        {sessionActive && sessions.length > 1 && (
+          <button
+            type="button"
+            className={styles.retourSessions}
+            onClick={() => setSessionActive(null)}
+          >
+            ← Toutes les classes
+          </button>
+        )}
+
+        {choixNecessaire ? (
+          <section className={styles.section}>
+            <SessionsListe
+              sessions={sessions}
+              anneeCourante={calculateSchoolYear()}
+              compte={(id) => {
+                const copies = travauxBruts.filter((t) => t.sessionId === id);
+                return {
+                  remises: copies.filter((t) => t.status === 'submitted' && !t.nonRendu).length,
+                  total: copies.length,
+                };
+              }}
+              onOuvrir={(s) => setSessionActive(s.id)}
+              orphelines={orphelines.length}
+              onOuvrirOrphelines={() => setSessionActive(SANS_CLASSE)}
+            />
+          </section>
+        ) : isOeuvre ? (
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Où en est chacun</h2>
             <OeuvreSuivi devoirId={devoirId} titreActivite={devoir?.intitule} />

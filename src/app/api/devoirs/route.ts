@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+import { lireQuestionnaire } from '@/lib/questionnaire-lecture-server';
+import { generateQuestionnaireLectureId } from '@/types/questionnaire-lecture';
+import type { LectureQuiz } from '@/types/lecture';
+import {
+  classesDeLEleve,
+  etatEffectif,
+  sessionsParDevoir,
+  syncSessions,
+} from '@/lib/session-server';
 import { verifyAuth } from '@/lib/api-auth';
 import { sanitizeRessources } from '@/lib/ressources-server';
 import { calculateSchoolYear } from '@/lib/auth-utils';
@@ -83,6 +92,10 @@ export async function GET(request: NextRequest) {
         ressourcesToIA: data.ressourcesToIA ?? false,
         // Déballage des corrigés de matrice multiple (cf. lecture-server.ts) —
         // point de lecture unique : le filtrage élève plus bas repart d'ici.
+        // Résolu plus bas (`quizDuDevoir`) : la liste peut compter des
+        // dizaines d'activités, on ne lit la bibliothèque que pour celles qui
+        // y renvoient vraiment.
+        lectureQuizId: data.lectureQuizId ?? null,
         lectureQuiz: lectureQuizDepuisFirestore(data.lectureQuiz),
         autoEvalQuiz: data.autoEvalQuiz || null,
         // Lecture d'une œuvre : l'activité ne porte qu'un renvoi vers la
@@ -93,6 +106,26 @@ export async function GET(request: NextRequest) {
         submittedCount: undefined as number | undefined,
       };
     });
+
+    // ── Les questionnaires de la BIBLIOTHÈQUE ──
+    // Une activité qui y renvoie doit servir le questionnaire de la
+    // bibliothèque, pas la copie qu'elle porte encore. On ne lit que les
+    // références réellement présentes, et chacune une seule fois.
+    const refs = [...new Set(devoirs.map((d) => d.lectureQuizId).filter(Boolean))] as string[];
+    if (refs.length > 0) {
+      const bibliotheque = new Map<string, LectureQuiz | null>();
+      await Promise.all(
+        refs.map(async (id) => {
+          const q = await lireQuestionnaire(id);
+          if (q) bibliotheque.set(id, q.quiz);
+        })
+      );
+      devoirs = devoirs.map((d) =>
+        d.lectureQuizId && bibliotheque.has(d.lectureQuizId)
+          ? { ...d, lectureQuiz: bibliotheque.get(d.lectureQuizId)! }
+          : d
+      );
+    }
 
     // Côté prof : nombre de copies remises par devoir.
     // Requêtes d'agrégation count() — pas de lecture de documents.
@@ -129,6 +162,23 @@ export async function GET(request: NextRequest) {
     // Côté élève, le corrigé de référence n'expose que la production du prof,
     // et uniquement quand la correction est disponible (jamais le plan)
     if (auth.role === 'eleve') {
+      // ── L'ÉTAT DÉPEND DE SA CLASSE ──
+      // `disponible` et `corrigeDisponible` vivent désormais sur la SESSION :
+      // une même activité peut être ouverte pour la 4C et fermée pour la 4D.
+      // Une activité sans session retombe sur ses propres drapeaux — c'est ce
+      // repli qui laisse fonctionner tout ce qui date d'avant les sessions.
+      const mesClasses = await classesDeLEleve(auth.uid, auth.email);
+      const sessions = await sessionsParDevoir(mesClasses);
+      devoirs = devoirs.map((d) => {
+        const etat = etatEffectif(d, sessions.get(d.id) ?? []);
+        return {
+          ...d,
+          disponible: etat.disponible,
+          corrigeDisponible: etat.corrigeDisponible,
+          dateRemise: etat.dateRemise ?? d.dateRemise,
+        };
+      });
+
       devoirs = devoirs.map((d) => ({
         ...d,
         corrigeReference:
@@ -326,9 +376,39 @@ export async function POST(request: NextRequest) {
     }
 
     // Si type "lire", questionnaire de lecture (nettoyé côté serveur)
-    if (typeTravail === 'lire' && lectureQuiz) {
+    // Renvoi vers la bibliothèque : c'est lui qui prime à la lecture.
+    if (typeof body.lectureQuizId === 'string' && body.lectureQuizId) {
+      devoirData.lectureQuizId = body.lectureQuizId;
+    }
+    if (typeTravail === 'lire' && lectureQuiz && !devoirData.lectureQuizId) {
       const cleaned = sanitizeLectureQuiz(lectureQuiz);
-      if (cleaned) devoirData.lectureQuiz = lectureQuizPourFirestore(cleaned);
+      if (cleaned) {
+        devoirData.lectureQuiz = lectureQuizPourFirestore(cleaned);
+        // ── TOUT QUESTIONNAIRE REJOINT LA BIBLIOTHÈQUE ──
+        // Écrit dans l'activité, il y resterait prisonnier : le redonner
+        // l'année suivante obligerait à dupliquer l'activité entière. On le
+        // verse donc dans la bibliothèque sous le nom de l'activité, et
+        // l'activité y renvoie. La copie embarquée reste en filet.
+        try {
+          const qId = generateQuestionnaireLectureId();
+          await adminDb.collection('questionnairesLecture').doc(qId).set({
+            id: qId,
+            nom: intitule,
+            description: '',
+            profId: auth.uid,
+            anneeScolaire,
+            archive: false,
+            quiz: devoirData.lectureQuiz,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+          devoirData.lectureQuizId = qId;
+        } catch (err) {
+          // Échouer ici ne doit pas faire rater la création : l'activité garde
+          // son questionnaire embarqué et fonctionne comme avant.
+          console.error('Erreur versement du questionnaire en bibliothèque:', err);
+        }
+      }
     }
 
     // Lecture d'une œuvre : renvoi vers la bibliothèque + rythme attendu.
@@ -378,6 +458,17 @@ export async function POST(request: NextRequest) {
     }
 
     await adminDb.collection('devoirs').doc(id).set(devoirData);
+
+    // Une session par classe visée. Elle hérite des drapeaux de l'activité :
+    // à la création, toutes les classes sont donc dans le même état, et c'est
+    // ensuite que le prof les dissocie (ouvrir le corrigé pour l'une seulement).
+    // Un échec ici ne doit pas faire rater la création : l'activité existe, les
+    // sessions se rattraperont au prochain enregistrement ou par le script.
+    try {
+      await syncSessions(id);
+    } catch (err) {
+      console.error('Erreur syncSessions (création):', err);
+    }
 
     return NextResponse.json({
       success: true,

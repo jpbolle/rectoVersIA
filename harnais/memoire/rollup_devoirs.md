@@ -127,3 +127,20 @@ telles quelles).
   index sur le même tableau), scores élève. Critère masqué mais évalué avant : reste
   visible et compté (pas de score rétroactivement faussé).
 - TODO : test + déploiement.
+
+
+---
+
+## 2026-09-01 — l'activité n'est plus seule à décider
+
+- **Mes Activités filtre par année scolaire** (ouverture sur l'année en cours).
+  `anneeScolaire` était stocké depuis toujours et lu par aucune requête.
+- **`disponible`, `corrigeDisponible`, `dateRemise` et `archive` descendent sur
+  les SESSIONS** (une par classe). Les bascules de la carte agissent toujours
+  sur toute l'activité — et descendent sur chaque session ; un lien
+  « 🎓 Régler classe par classe » sert à les dissocier.
+- **Cliquer une carte ouvre ses sessions**, plus directement ses élèves.
+- Recto de la **popup d'édition** réagencé : Évaluation · Auto-évaluation, puis
+  Intitulé · Échéance. Pastille ⓘ sur l'auto-évaluation (les deux formulaires).
+
+Voir `rollup_sessions.md` pour le chantier complet.

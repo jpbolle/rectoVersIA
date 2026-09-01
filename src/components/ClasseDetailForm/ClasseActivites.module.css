@@ -1,0 +1,136 @@
+/* Bloc « Activités » du détail d'une classe.
+   Même contenant que « Certifications » et « Liste des élèves » : trois blocs
+   de même rang dans la page doivent avoir le même sol et le même titre, sinon
+   l'un passe pour l'appendice du précédent. */
+
+.section {
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.title {
+  color: var(--c-primary);
+  font-size: 18px;
+  font-weight: 600;
+  font-family: var(--c-font-title);
+  margin: 0 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compteur {
+  font-family: var(--c-font-body, inherit);
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--c-primary);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.dim {
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Les lignes reposent sur le blanc, comme les cartes d'élèves : sur le sol du
+   bloc elles s'y fondraient. */
+.ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+  text-align: left;
+  padding: 12px 15px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ligne + .ligne {
+  margin-top: 8px;
+}
+
+.ligne:hover {
+  border-color: var(--c-primary);
+  box-shadow: var(--c-shadow-card);
+}
+
+/* Archivée : présente, mais qui ne réclame plus l'attention */
+.archivee {
+  opacity: 0.65;
+}
+
+.icone {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.intitule {
+  flex: 1;
+  min-width: 160px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.compte {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+.etats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pastille {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+.ouverte {
+  background: rgba(45, 106, 90, 0.1);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.corrige {
+  background: rgba(212, 148, 76, 0.14);
+  border-color: var(--c-accent);
+  color: var(--c-accent-dark, #a8702f);
+}
+
+.chevron {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--c-text-dim);
+}
+
+@media (max-width: 720px) {
+  .intitule {
+    min-width: 100%;
+  }
+  .chevron {
+    margin-left: auto;
+  }
+}

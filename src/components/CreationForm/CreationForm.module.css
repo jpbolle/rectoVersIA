@@ -777,6 +777,38 @@
   }
 }
 
+/* Pastille « i » : le survol explique ce que le réglage ajoute réellement.
+   Même forme que celle du constructeur de questionnaire et de la popup
+   d'édition. */
+.info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  margin-left: 7px;
+  border-radius: 50%;
+  /* Pastille PLEINE : une bordure fine se perdait dans le libellé. */
+  background: var(--c-primary);
+  color: #fff;
+  /* Le libellé parent est en capitales espacées : sans ces trois remises à
+     zéro, le « i » sortait décalé et méconnaissable. */
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: help;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.info:hover {
+  background: var(--c-accent);
+}
+
 .autoEvalToggle {
   display: flex;
   align-items: center;

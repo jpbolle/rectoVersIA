@@ -49,6 +49,10 @@ export interface DraftContent {
 export interface Travail {
   id: string;                    // TRV-{devoirId}-{studentId}
   devoirId: string;
+  // SES-{devoirId}-{classeId} — la mise en œuvre à laquelle cette copie
+  // appartient. Absent sur les travaux antérieurs aux sessions, et sur ceux
+  // dont l'élève n'a plus de classe : l'appelant retombe alors sur l'activité.
+  sessionId?: string | null;
   studentId: string;             // Firebase UID
   studentEmail: string;
   studentEmailHash?: string;     // Empreinte HMAC de l'email (requêtes d'identification — RGPD)

@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateTravailId } from '@/lib/travail-utils';
 import { ensureTravaux } from '@/lib/precreate-travaux';
+import { syncSessions } from '@/lib/session-server';
 import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
 import type { Travail, CreateTravailData } from '@/types/travail';
 
@@ -111,9 +112,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const devoirId = searchParams.get('devoirId');
 
-    // Pre-creer les travaux manquants pour les eleves des classes du devoir
+    // Pre-creer les travaux manquants pour les eleves des classes du devoir.
+    // Les sessions d'abord : c'est à l'une d'elles que chaque travail créé
+    // s'attachera (une activité, une classe).
     if (devoirId) {
       try {
+        await syncSessions(devoirId);
         await ensureTravaux(devoirId, auth.uid);
       } catch (err) {
         console.error('Erreur ensureTravaux:', err);
@@ -136,6 +140,9 @@ export async function GET(request: NextRequest) {
       travaux.push({
         id: data.id || doc.id,
         devoirId: data.devoirId,
+        // La classe qui a rendu cette copie — c'est par là que la page des
+        // travaux sépare les sessions les unes des autres.
+        sessionId: data.sessionId ?? null,
         studentId: data.studentId,
         studentEmail: decrypt(data.studentEmail),
         studentName: decrypt(data.studentName),

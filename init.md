@@ -69,6 +69,31 @@ npm run build      # build complet
   toujours une remise (activité préparée d'avance, lecture d'une œuvre où rien ne se
   remet). Décision confirmée le 2026-08-16 : le champ **reste facultatif**.
 
+### L'année scolaire
+
+Une année scolaire **porte sur deux années civiles** et s'écrit `2026-2027`.
+Elle commence **vers le 20 août** de la première et se termine **vers le
+10 juillet** de la seconde (Fédération Wallonie-Bruxelles ; les dates exactes
+bougent d'une année à l'autre, d'où le « vers »).
+
+⚠️ **Une seule fonction la calcule** : `calculateSchoolYear()`
+(`src/lib/auth-utils.ts`). Ses seuils : **25 août** (bascule vers la nouvelle
+année) et **5 juillet** (fin de l'ancienne), la période du 6 juillet au 24 août
+comptant pour la **nouvelle** année.
+*(Ces seuils sont un peu plus tardifs que le « vers le 20 août » ci-dessus : la
+différence ne joue que du 20 au 24 août. À trancher le jour où ça compte.)*
+
+**Ne jamais en écrire une deuxième.** `getCurrentAnneeScolaire()`
+(`src/lib/classe-utils.ts`) avait la sienne, qui faisait commencer l'année au
+1er septembre : les classes créées le 31 août 2026 se sont retrouvées
+étiquetées `2025-2026` pendant que les activités du même jour portaient
+`2026-2027`, et plus rien ne se regroupait. Elle délègue désormais.
+*(Incident du 2026-09-01 — 2 classes et 11 sessions à réétiqueter.)*
+
+Corollaire : une **session** prend son année **au moment où elle s'ouvre**, pas
+celle de sa classe ni celle de son activité — une activité pouvant resservir
+d'une année sur l'autre.
+
 ### Palette / design
 - CSS Modules uniquement (zéro framework CSS)
 - Design system **Classica**, tokens `--c-*` dans `globals.css`
@@ -160,7 +185,12 @@ interface Devoir {
   codeAcces?: string;             // code 6 chars extension Chrome (type rechercher)
   autoEvalQuiz?: AutoEvalQuestionnaire | null; // questionnaire d'auto-évaluation
                                   // (type autoevaluation) — RIEN n'y est filtré
-                                  // pour l'élève : ni bonne réponse, ni corrigé
+                                  // pour l'élève : ni bonne réponse, ni corrigé.
+                                  // ⚠ Reste DÉLIBÉRÉMENT dans l'activité : ce
+                                  // sont toujours les mêmes questions, il n'y a
+                                  // rien à réutiliser. NE PAS en faire une
+                                  // ressource comme le questionnaire de lecture
+                                  // (décision de JP, 2026-09-01).
   vocabulaireThemes?: string[];   // serie lexicale imposee (type vocabulaire)
   vocabulaireDiagnostic?: boolean;
   flipInverted?: boolean;         // recto = planification au lieu de redaction

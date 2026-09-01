@@ -10,6 +10,9 @@ import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import PlanDraft from '@/components/DraftEditor/PlanDraft';
 import VocabListEditor from '@/components/VocabListEditor/VocabListEditor';
 import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
+import QuestionnaireLecturePicker, {
+  QUESTIONNAIRE_SUR_MESURE,
+} from '@/components/QuestionnaireLecturePicker/QuestionnaireLecturePicker';
 import AutoEvalBuilder from '@/components/AutoEvalBuilder/AutoEvalBuilder';
 import MessageBox from '@/components/MessageBox/MessageBox';
 import { getTodayString } from '@/lib/devoir-utils';
@@ -192,6 +195,8 @@ export default function CreationForm({
   // Auto-évaluation intégrée — activée par défaut : c'est le geste qu'on
   // veut voir posé, le prof la retire quand elle n'a pas lieu d'être.
   const [autoEvaluation, setAutoEvaluation] = useState(true);
+  // Questionnaire choisi dans la bibliothèque, ou « sur mesure » (écrit ici)
+  const [lectureQuizId, setLectureQuizId] = useState<string>(QUESTIONNAIRE_SUR_MESURE);
 
   // Aperçu du questionnaire de recherche (popup)
   const [showQuestionnairePreview, setShowQuestionnairePreview] = useState(false);
@@ -346,7 +351,12 @@ export default function CreationForm({
       };
     }
 
-    if (typeTravail === 'lire' && lectureQuiz && lectureQuiz.questions.length > 0) {
+    // Questionnaire pris dans la bibliothèque : on n'envoie que la référence.
+    // Écrit sur mesure : on envoie le contenu, et le serveur le versera dans la
+    // bibliothèque sous le nom de l'activité (voir POST /api/devoirs).
+    if (typeTravail === 'lire' && lectureQuizId !== QUESTIONNAIRE_SUR_MESURE) {
+      data.lectureQuizId = lectureQuizId;
+    } else if (typeTravail === 'lire' && lectureQuiz && lectureQuiz.questions.length > 0) {
       data.lectureQuiz = lectureQuiz;
     }
 
@@ -688,7 +698,22 @@ export default function CreationForm({
 
         {supporteAutoEval && (
           <div className={styles.formGroup}>
-            <label className={styles.label}>Auto-évaluation</label>
+            <label className={styles.label}>
+              Auto-évaluation
+              {/* Ce que l'interrupteur AJOUTE au questionnaire ordinaire —
+                  l'infobulle du toggle lui-même ne dit que l'état courant.
+                  Même texte que la popup d'édition. */}
+              <span
+                className={styles.info}
+                title={
+                  usesGrille
+                    ? 'Ce que ça ajoute : avant de remettre, l’élève évalue lui-même son travail sur VOTRE grille, critère par critère.\nRien n’est compté dans sa note. L’écart entre son évaluation et la vôtre mesure sa lucidité et remonte dans son profil, onglet « 🪞 Me connaître ».'
+                    : 'Ce que ça ajoute : sous chaque réponse, trois smileys — 😀 « je suis sûr de ma réponse », 😐 « j’ai un doute », 😟 « je sais que c’est faux ».\nL’élève se prononce avant de connaître son résultat, et rien n’est compté dans sa note. L’écart entre son assurance et sa réussite mesure sa lucidité et remonte dans son profil, onglet « 🪞 Me connaître ».'
+                }
+              >
+                i
+              </span>
+            </label>
             {/* L'explication vit dans l'infobulle : la ligne porte déjà deux
                 sélecteurs, une phrase de plus l'alourdirait pour rien. */}
             <label
@@ -876,13 +901,24 @@ export default function CreationForm({
       {/* Questionnaire de lecture (type lire) — sauf lecture d'une œuvre, dont
           les vérifications se construisent section par section dans l'œuvre */}
       {typeTravail === 'lire' && atelier !== 'lecture-oeuvre' && (
-        <LectureQuizBuilder
-          value={lectureQuiz}
-          onChange={setLectureQuiz}
-          disabled={isSubmitting}
-          getAuthHeaders={getAuthHeaders}
-          allowedHabiletes={habiletes}
-        />
+        <>
+          <QuestionnaireLecturePicker
+            value={lectureQuizId}
+            onChange={setLectureQuizId}
+            disabled={isSubmitting}
+          />
+          {/* Le constructeur ne s'ouvre que si le prof écrit son questionnaire
+              ici : en piochant dans la bibliothèque, il n'a rien à rédiger. */}
+          {lectureQuizId === QUESTIONNAIRE_SUR_MESURE && (
+            <LectureQuizBuilder
+              value={lectureQuiz}
+              onChange={setLectureQuiz}
+              disabled={isSubmitting}
+              getAuthHeaders={getAuthHeaders}
+              allowedHabiletes={habiletes}
+            />
+          )}
+        </>
       )}
 
       {/* Corrigé de référence (type ecrire uniquement) */}

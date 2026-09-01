@@ -379,6 +379,12 @@ export default function ClassesPage() {
           </section>
         )}
 
+        {/* ── UNE CLASSE OUVERTE PREND TOUTE LA PAGE ──
+            « Mes Classes » et « Mes Élèves » parlent de TOUT le monde. Les
+            laisser sous le détail d'une classe donnait deux listes d'élèves
+            l'une au-dessus de l'autre, dont une seule concernait la classe
+            regardée. On ferme le détail pour revenir au général. */}
+        {!selectedClasse && (
         <section className={styles.classesSection}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Mes Classes</h2>
@@ -420,13 +426,16 @@ export default function ClassesPage() {
             )}
           </div>
         </section>
+        )}
 
         {/* Tous les élèves du prof, filtre actifs / archivés, clic = fiche */}
-        <MesElevesSection
-          classes={classes}
-          refreshKey={elevesRefreshKey}
-          onOpenFiche={setFicheEleve}
-        />
+        {!selectedClasse && (
+          <MesElevesSection
+            classes={classes}
+            refreshKey={elevesRefreshKey}
+            onOpenFiche={setFicheEleve}
+          />
+        )}
 
       </main>
 

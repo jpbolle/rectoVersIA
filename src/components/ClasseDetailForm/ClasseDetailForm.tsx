@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useEleves } from '@/hooks/useClasses';
 import ClasseCertifications from './ClasseCertifications';
+import ClasseActivites from './ClasseActivites';
 import type { Classe, Eleve } from '@/types/classe';
 import styles from './ClasseDetailForm.module.css';
 
@@ -40,6 +41,14 @@ export default function ClasseDetailForm({
 
   return (
     <div className={`${styles.form} ${isVisible ? styles.formVisible : ''}`}>
+      {/* Le détail d'une classe occupe désormais toute la page : « Mes Classes »
+          et « Mes Élèves » s'effacent derrière lui. Le retour doit donc être
+          NOMMÉ — une croix seule laisserait chercher où sont passées les
+          autres classes. */}
+      <button type="button" className={styles.retour} onClick={onClose}>
+        ← Toutes mes classes
+      </button>
+
       <div className={styles.formHeader}>
         <div className={styles.titleSection}>
           <h2 className={styles.formTitle}>{classe.nom}</h2>
@@ -73,6 +82,10 @@ export default function ClasseDetailForm({
           </div>
         </div>
       </div>
+
+      {/* Les activités avant les certifications : le quotidien passe devant
+          l'épreuve. Les deux sont des VUES sur ce qui se pilote ailleurs. */}
+      {isVisible && <ClasseActivites classeId={classe.id} />}
 
       {isVisible && <ClasseCertifications classeId={classe.id} />}
 

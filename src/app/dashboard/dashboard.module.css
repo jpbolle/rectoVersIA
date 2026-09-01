@@ -58,6 +58,26 @@
   margin: 0;
 }
 
+/* Sélecteur d'année scolaire, à gauche des onglets. Discret par défaut : ce
+   n'est pas une action, c'est le cadre dans lequel on lit la page. */
+.anneeSelect {
+  padding: 9px 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card, #fff);
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.anneeSelect:hover,
+.anneeSelect:focus {
+  border-color: var(--c-primary);
+  outline: none;
+}
+
 .tabs {
   display: flex;
   background: var(--c-bg-element);

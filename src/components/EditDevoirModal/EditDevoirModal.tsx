@@ -439,21 +439,9 @@ export default function EditDevoirModal({
         )}
       </div>
 
-      {/* Date et Grille */}
-      <div className={supporteAutoEval ? styles.formRowAutoEval : styles.formRow}>
-        <div className={styles.formGroup}>
-          <DatePicker
-            /* « Échéance » et non « date de remise » : la date est facultative
-               et ne signifie pas toujours une remise (lecture d'une œuvre,
-               activité préparée d'avance). */
-            label="Échéance"
-            value={dateRemise}
-            onChange={setDateRemise}
-            min={getTodayString()}
-          />
-        </div>
-
-        {usesGrille && (
+      {/* La grille reste seule sur sa ligne : l'échéance a rejoint l'intitulé,
+          l'auto-évaluation a rejoint le type d'évaluation. */}
+      {usesGrille && (
           <div className={styles.formGroup}>
             <label className={styles.label}>
               Type de grille <span className={styles.required}>*</span>
@@ -487,13 +475,44 @@ export default function EditDevoirModal({
               </button>
             )}
           </div>
-        )}
+      )}
+
+      {/* Évaluation, et à sa droite l'auto-évaluation : les deux disent comment
+          le travail sera jugé — l'un par le prof, l'autre par l'élève. */}
+      <div className={styles.formRowEval}>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>
+            Évaluation <span className={styles.required}>*</span>
+          </label>
+          <select
+            className={styles.select}
+            value={evaluation}
+            onChange={(e) => setEvaluation(e.target.value as EvaluationType)}
+          >
+            <option value="formatif">Formative (entraînement)</option>
+            <option value="certificatif">Certificative (notée)</option>
+          </select>
+        </div>
 
         {supporteAutoEval && (
           <div className={styles.formGroup}>
-            <label className={styles.label}>Auto-évaluation</label>
+            <label className={styles.label}>
+              Auto-évaluation
+              {/* Ce que l'interrupteur AJOUTE au questionnaire ordinaire —
+                  l'infobulle du toggle lui-même ne dit que l'état courant. */}
+              <span
+                className={styles.info}
+                title={
+                  usesGrille
+                    ? 'Ce que ça ajoute : avant de remettre, l’élève évalue lui-même son travail sur VOTRE grille, critère par critère.\nRien n’est compté dans sa note. L’écart entre son évaluation et la vôtre mesure sa lucidité et remonte dans son profil, onglet « 🪞 Me connaître ».'
+                    : 'Ce que ça ajoute : sous chaque réponse, trois smileys — 😀 « je suis sûr de ma réponse », 😐 « j’ai un doute », 😟 « je sais que c’est faux ».\nL’élève se prononce avant de connaître son résultat, et rien n’est compté dans sa note. L’écart entre son assurance et sa réussite mesure sa lucidité et remonte dans son profil, onglet « 🪞 Me connaître ».'
+                }
+              >
+                i
+              </span>
+            </label>
             {/* L'explication vit dans l'infobulle : la ligne porte déjà deux
-                sélecteurs, une phrase de plus l'alourdirait pour rien. */}
+                champs, une phrase de plus l'alourdirait pour rien. */}
             <label
               className={styles.autoEvalToggle}
               title={
@@ -518,33 +537,33 @@ export default function EditDevoirModal({
         )}
       </div>
 
-      {/* Évaluation */}
-      <div className={styles.formGroup}>
-        <label className={styles.label}>
-          Évaluation <span className={styles.required}>*</span>
-        </label>
-        <select
-          className={styles.select}
-          value={evaluation}
-          onChange={(e) => setEvaluation(e.target.value as EvaluationType)}
-        >
-          <option value="formatif">Formative (entraînement)</option>
-          <option value="certificatif">Certificative (notée)</option>
-        </select>
-      </div>
+      {/* Intitulé, et à sa droite l'échéance : c'est le couple que le prof
+          relit en premier. */}
+      <div className={styles.formRowIntitule}>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>
+            Intitulé de l’activité <span className={styles.required}>*</span>
+          </label>
+          <input
+            className={styles.input}
+            type="text"
+            value={intitule}
+            onChange={(e) => setIntitule(e.target.value)}
+            placeholder="Ex : Dissertation sur Molière"
+          />
+        </div>
 
-      {/* Intitule */}
-      <div className={styles.formGroup}>
-        <label className={styles.label}>
-          Intitulé de l’activité <span className={styles.required}>*</span>
-        </label>
-        <input
-          className={styles.input}
-          type="text"
-          value={intitule}
-          onChange={(e) => setIntitule(e.target.value)}
-          placeholder="Ex : Dissertation sur Molière"
-        />
+        <div className={styles.formGroup}>
+          <DatePicker
+            /* « Échéance » et non « date de remise » : la date est facultative
+               et ne signifie pas toujours une remise (lecture d'une œuvre,
+               activité préparée d'avance). */
+            label="Échéance"
+            value={dateRemise}
+            onChange={setDateRemise}
+            min={getTodayString()}
+          />
+        </div>
       </div>
 
       {/* Recto / Verso de l'espace élève (uniquement pour type ecrire) */}

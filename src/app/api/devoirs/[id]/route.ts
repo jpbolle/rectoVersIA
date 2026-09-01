@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+import { quizDuDevoir } from '@/lib/questionnaire-lecture-server';
+import {
+  classesDeLEleve,
+  figerQuizDeLaSession,
+  etatEffectif,
+  sessionsDeLEleve,
+  sessionsDuDevoir,
+  syncSessions,
+} from '@/lib/session-server';
 import { verifyAuth } from '@/lib/api-auth';
 import { sanitizeRessources } from '@/lib/ressources-server';
 import {
@@ -45,8 +54,32 @@ export async function GET(
       );
     }
 
+    // ── L'ÉTAT DÉPEND DE SA CLASSE ──
+    // Ouverture et corrigé vivent sur la SESSION (une activité, une classe) :
+    // la 4C peut avoir son corrigé quand la 4D passe encore l'épreuve.
+    // Aucune session pour cet élève ⇒ on lit les drapeaux de l'activité, comme
+    // avant. C'est ce repli qui rend la migration indolore.
+    let etat = {
+      disponible: data.disponible ?? true,
+      corrigeDisponible: data.corrigeDisponible === true,
+      dateRemise: null as string | null,
+      parSession: false,
+    };
+    // La copie FIGÉE du questionnaire de sa session, s'il y en a une : c'est
+    // elle qui fait foi, pas la version courante de la bibliothèque.
+    let quizFige: unknown = null;
+    if (auth.role === 'eleve') {
+      const mesClasses = await classesDeLEleve(auth.uid, auth.email);
+      const mes = await sessionsDeLEleve(data.id || docSnap.id, mesClasses);
+      quizFige = mes.quizFige;
+      etat = etatEffectif(
+        { disponible: data.disponible, corrigeDisponible: data.corrigeDisponible },
+        mes.sessions
+      );
+    }
+
     // Les eleves ne peuvent voir que les devoirs disponibles
-    if (auth.role === 'eleve' && !data.disponible) {
+    if (auth.role === 'eleve' && !etat.disponible) {
       return NextResponse.json(
         { success: false, message: 'Devoir non disponible' },
         { status: 403 }
@@ -55,7 +88,7 @@ export async function GET(
 
     // Corrigé réservé à ceux qui ont rendu : une copie marquée « non rendu »
     // n'y a pas accès, même si le prof l'a ouvert pour toute la classe
-    let corrigeAccessible = data.corrigeDisponible ?? false;
+    let corrigeAccessible = auth.role === 'eleve' ? etat.corrigeDisponible : (data.corrigeDisponible ?? false);
     if (auth.role === 'eleve' && corrigeAccessible) {
       const travailSnap = await adminDb
         .collection('travaux')
@@ -77,7 +110,10 @@ export async function GET(
     // Le corrigé d'une matrice à réponses multiples est stocké EMBALLÉ
     // (cf. lecture-server.ts) : on le déballe une seule fois ici, tout ce qui
     // suit repart de cette variable et jamais de `data.lectureQuiz`.
-    const lectureQuiz = lectureQuizDepuisFirestore(data.lectureQuiz);
+    // Le questionnaire peut venir de trois endroits (copie figée de la
+    // session, bibliothèque, ou embarqué dans l'activité). `quizDuDevoir`
+    // tranche l'ordre une fois pour toutes — voir questionnaire-lecture-server.
+    const lectureQuiz = await quizDuDevoir(data, quizFige ? { quizFige } : null);
 
     let quizComplet = corrigeAccessible;
     if (auth.role === 'eleve' && !quizComplet && lectureQuiz) {
@@ -117,7 +153,9 @@ export async function GET(
       ressources: data.ressources || null,
       scenarisationRef: data.scenarisationRef || null,
       accesIA: data.accesIA ?? false,
-      disponible: data.disponible ?? true,
+      // L'ouverture telle que CET utilisateur la voit : la session de sa
+      // classe pour un élève, le drapeau de l'activité pour le prof.
+      disponible: etat.disponible,
       archive: data.archive ?? false,
       corrige: data.corrige ?? false,
       corrigeDisponible: corrigeAccessible,
@@ -287,6 +325,12 @@ export async function PATCH(
     if (body.ressourcesToIA !== undefined) {
       updateData.ressourcesToIA = body.ressourcesToIA;
     }
+    // Renvoi vers la bibliothèque. `null` le rompt : l'activité retombe alors
+    // sur le questionnaire qu'elle porte en propre.
+    if (body.lectureQuizId !== undefined) {
+      updateData.lectureQuizId =
+        typeof body.lectureQuizId === 'string' && body.lectureQuizId ? body.lectureQuizId : null;
+    }
     if (body.lectureQuiz !== undefined) {
       updateData.lectureQuiz =
         body.lectureQuiz === null
@@ -320,6 +364,59 @@ export async function PATCH(
     }
 
     await docRef.update(updateData);
+
+    // Les classes ont changé : créer les sessions manquantes. Une classe
+    // retirée garde la sienne — ses élèves ont des copies (cf. syncSessions).
+    if (body.classes !== undefined) {
+      try {
+        await syncSessions(id);
+      } catch (err) {
+        console.error('Erreur syncSessions (édition):', err);
+      }
+    }
+
+    // ── UN GESTE AU NIVEAU DE L'ACTIVITÉ VAUT POUR TOUTES SES CLASSES ──
+    // C'est ce qui donne « ouvrir pour toutes les classes » sans bouton
+    // supplémentaire : basculer l'activité descend sur chacune de ses sessions.
+    // Sans cette descente, les deux niveaux se contrediraient et l'élève
+    // continuerait de lire l'état de sa session, resté en arrière.
+    const versSessions: Record<string, unknown> = {};
+    if (body.disponible !== undefined) {
+      versSessions.disponible = body.disponible === true;
+      if (body.disponible === true) versSessions.disponibleAt = new Date();
+    }
+    if (body.corrigeDisponible !== undefined) {
+      versSessions.corrigeDisponible = body.corrigeDisponible === true;
+      if (body.corrigeDisponible === true) versSessions.corrigeDisponibleAt = new Date();
+    }
+    if (body.archive !== undefined) versSessions.archive = body.archive === true;
+    if (body.dateRemise !== undefined) {
+      versSessions.dateRemise = body.dateRemise ? new Date(body.dateRemise) : null;
+    }
+    if (Object.keys(versSessions).length > 0) {
+      try {
+        const sessions = await sessionsDuDevoir(id);
+        if (sessions.length > 0) {
+          const batch = adminDb.batch();
+          sessions.forEach((s) =>
+            batch.update(adminDb.collection('sessions').doc(s.id), {
+              ...versSessions,
+              updatedAt: new Date(),
+            })
+          );
+          await batch.commit();
+
+          // Ouvrir depuis l'activité, c'est ouvrir chaque classe : chacune
+          // fige donc sa copie du questionnaire, comme si on les avait
+          // ouvertes une à une.
+          if (versSessions.disponible === true) {
+            await Promise.all(sessions.map((s) => figerQuizDeLaSession(s.id, id)));
+          }
+        }
+      } catch (err) {
+        console.error('Erreur propagation aux sessions:', err);
+      }
+    }
 
     // Si corrigeDisponible change, bulk-set visibleParEleve sur toutes les corrections du devoir
     if (body.corrigeDisponible !== undefined) {

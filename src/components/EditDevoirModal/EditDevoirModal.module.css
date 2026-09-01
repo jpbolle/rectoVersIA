@@ -558,19 +558,62 @@
   cursor: not-allowed;
 }
 
-/* Ligne « Date / Grille / Auto-évaluation » — même forme que la création.
-   Le troisième encadré ne porte qu'un interrupteur. */
-.formRowAutoEval {
+/* Intitulé + échéance : l'intitulé prend le double, la date n'a besoin que
+   de sa largeur de champ. */
+.formRowIntitule {
   display: grid;
-  grid-template-columns: 1fr 1fr 0.7fr;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* Type d'évaluation + interrupteur d'auto-évaluation. `auto` sur la seconde
+   colonne : l'interrupteur ne prend que sa largeur — et quand il n'y a pas
+   d'auto-évaluation (lecture d'une œuvre), le menu garde TOUTE la ligne au
+   lieu d'être rétréci par une colonne vide. */
+.formRowEval {
+  display: grid;
+  grid-template-columns: 1fr auto;
   gap: 20px;
   align-items: start;
 }
 
 @media (max-width: 900px) {
-  .formRowAutoEval {
+  .formRowIntitule,
+  .formRowEval {
     grid-template-columns: 1fr;
   }
+}
+
+/* Pastille « i » : le survol explique ce que le réglage ajoute réellement.
+   Même forme que celle du constructeur de questionnaire. */
+.info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  margin-left: 7px;
+  border-radius: 50%;
+  /* Pastille PLEINE : une bordure fine se perdait dans le libellé. */
+  background: var(--c-primary);
+  color: #fff;
+  /* Le libellé parent est en capitales espacées : sans ces trois remises à
+     zéro, le « i » sortait décalé et méconnaissable. */
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: help;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.info:hover {
+  background: var(--c-accent);
 }
 
 .autoEvalToggle {

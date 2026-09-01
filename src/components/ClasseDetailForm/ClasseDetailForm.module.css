@@ -41,6 +41,27 @@
   line-height: 1.5;
 }
 
+/* Retour aux listes générales, nommé plutôt que symbolique. */
+.retour {
+  display: inline-block;
+  margin-bottom: 16px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  padding: 7px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.retour:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
 .closeButton {
   background: none;
   border: none;

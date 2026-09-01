@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Toggle from '@/components/Toggle/Toggle';
+import SessionsModal from '@/components/SessionsModal/SessionsModal';
 import { formatDateShort } from '@/lib/devoir-utils';
 import type { Devoir } from '@/types/devoir';
 import styles from './DevoirCard.module.css';
@@ -30,6 +32,7 @@ export default function DevoirCard({
   onToggleCorrigeDisponible,
 }: DevoirCardProps) {
   const router = useRouter();
+  const [sessionsOuvertes, setSessionsOuvertes] = useState(false);
 
   const handleToggleDisponible = (value: boolean) => {
     onToggleDisponible?.(devoir.id, value);
@@ -151,6 +154,19 @@ export default function DevoirCard({
               labelOff="Corrigé non disponible"
             />
           </div>
+          {/* Les bascules ci-dessus valent pour TOUTES les classes — c'est le
+              geste courant, et il reste à un clic. Ce lien n'apparaît que
+              lorsqu'il y a plusieurs classes à dissocier : ouvrir le corrigé
+              de celle qui a fini sans le livrer à celle qui passe demain. */}
+          {devoir.classes.length > 1 && (
+            <button
+              type="button"
+              className={styles.sessionsLink}
+              onClick={() => setSessionsOuvertes(true)}
+            >
+              🎓 Régler classe par classe
+            </button>
+          )}
           <div className={styles.toggleRow}>
             <Toggle
               checked={devoir.archive}
@@ -183,6 +199,14 @@ export default function DevoirCard({
           <span>🤖</span>
           <span>IA active</span>
         </div>
+      )}
+
+      {sessionsOuvertes && (
+        <SessionsModal
+          devoirId={devoir.id}
+          intitule={devoir.intitule}
+          onClose={() => setSessionsOuvertes(false)}
+        />
       )}
 
       {variant === 'prof' && (

@@ -170,6 +170,27 @@
   margin: 4px 0 0;
 }
 
+/* Retour à la liste des classes, au-dessus du contenu d'une session. */
+.retourSessions {
+  display: inline-block;
+  margin-bottom: 14px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  padding: 7px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.retourSessions:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
 .main {
   padding: 24px;
   max-width: 1400px;

@@ -199,3 +199,97 @@ changeait donc d'état en plein rendu de l'enfant.
 different component (`LectureQuizActivity`) ».
 **Remède** : tenir l'état courant dans un `ref`, et prévenir le parent depuis le
 gestionnaire d'événement. À vérifier partout où un composant remonte son état.
+
+---
+
+## Session du 2026-09-01 — corriger une copie : la machine propose, le prof dispose
+
+**Testé et validé par l'utilisateur au fil de la session.**
+
+### Le défilement de la copie (bug bloquant)
+La colonne de gauche de la page de correction (`.contentSection`) est en
+`overflow: hidden` : **c'est au contenu de défiler lui-même**.
+`RechercheResponseViewer` et `VocabulaireListReadOnly` le faisaient
+(`height: 100%; overflow-y: auto`), pas `LectureQuizReview` ni
+`AutoEvalReview` — leurs copies étaient simplement coupées en bas, sans le
+moindre signe. Corrigé sur les deux (`flex: 1; min-height: 0; overflow-y: auto`).
+**Règle** : tout composant posé dans cette colonne doit porter son propre
+défilement.
+
+### La note du prof prime, sur TOUS les types
+`lecture-scoring.ts` réservait la reprise en main à la réponse courte, au motif
+qu'un QCM « n'a pas de formulation imprévue ». Faux en pratique : un intrus qui
+se défend, une bonne réponse oubliée au corrigé, une consigne ambiguë. Une note
+écrite dans `questionScores` prime désormais **quel que soit le type**, et
+effacer le champ rend la main au calcul.
+Le test passe **avant** `estAutoCorrigeable` : une note à la main vaut même
+quand la clé de correction n'est pas là (côté élève, quiz expurgé).
+Aucune migration — `questionScores` existait déjà.
+
+### La gouttière de notation
+Sur chaque question : **✔** (le maximum) · **✘** (0) · le champ · **↺**
+(rendre la main à l'automatique, seulement sur une question auto-corrigée
+reprise). Les ✔ / ✘ sont là **d'emblée**, y compris sur un QCM affichant sa
+pastille automatique — une première version les cachait derrière un bouton ✎,
+refusée : « ceux-ci peuvent directement apparaître ».
+Le champ reste maître, les boutons ne sont qu'un raccourci.
+
+### Le soulignage se confirme, il ne se compte pas
+Un fluorage sans catégories n'a toujours aucune note automatique. La
+correction affiche désormais une **suggestion** sous la comparaison
+(`trouvés ÷ attendus × points`, **sans pénalité** pour les mots en trop —
+décision de JP : souligner large ne coûte pas d'office, `FluoCompare` montre
+déjà les excédents en orange) avec un bouton « Appliquer ». Tant que rien
+n'est appliqué, la question reste « à noter » et ne pèse pas dans le total.
+
+### La note du prof est visible sur la copie de l'élève
+La pastille de barème de `LectureQuizActivity` ne connaissait que
+`partReussite` : une question ouverte notée 3/5 restait à « … / 5 », et un QCM
+invalidé par le prof affichait toujours le verdict de la machine. Elle lit
+maintenant `questionScores` en priorité (`??`, pas `||` — un 0 est une note).
+Les notes ne partent que si `correction.visibleParEleve`, **filtré à la
+source** dans `/activites/[id]` — même règle que `showScores` côté recherche.
+
+### On ne souligne pas mot à mot
+Deux défauts distincts, corrigés ensemble, **pour le prof comme pour l'élève** :
+- **le geste** : `FluoExtrait` et `FluoCategoriesField` acceptent le
+  **glissé** (appui sur un mot, glissé jusqu'au dernier, tout le passage
+  suit ; sans mouvement, un seul mot). Pointeur capturé par la zone +
+  `document.elementFromPoint` pour retrouver le mot survolé — au doigt, les
+  mots ne reçoivent plus d'événement pendant la capture. Repasser dans la
+  couleur active efface, gomme naturelle étendue au passage entier.
+  CSS : `touch-action: pan-y` — le doigt garde le défilement **vertical** de la
+  page (sans quoi le questionnaire serait impraticable sur Chromebook), le
+  mouvement **horizontal** est à nous, c'est celui qui longe une ligne.
+- **le rendu** : le fond était posé sur chaque mot, donc il sautait par-dessus
+  les espaces — un passage haché. Il est maintenant porté par le **segment**
+  (la suite de mots de même nature, espaces compris), les mots restant des
+  éléments à part entière à l'intérieur pour l'ancrage `data-mot`. Découpage
+  partagé dans **`src/lib/fluo-segments.ts`** — il ne pouvait pas vivre dans
+  un des deux composants, `LectureQuizActivity` et `QuestionInteractions`
+  s'important déjà mutuellement. Concerne `FluoExtrait`, `FluoCompare` et
+  `FluoCategoriesField` (donc aussi la liseuse d'œuvre).
+  ⚠️ C'est **le même défaut** que celui corrigé le 2026-08-17 sur le fluorage
+  commenté des œuvres (`oeuvre-commentaires.ts`) : la règle n'avait pas été
+  reprise ici.
+
+
+---
+
+## Le questionnaire a quitté l'activité (2026-09-01)
+
+Depuis ce jour, un questionnaire de lecture est une **ressource** : il vit dans
+`questionnairesLecture` (onglet de Mes Ressources) et l'activité y **renvoie**
+(`devoirs.lectureQuizId`). Une **session** en garde une copie **figée** dès son
+ouverture, pour que les réponses d'une année restent relues avec les questions
+de cette année-là.
+
+Ce qui sert le questionnaire est désormais **`quizDuDevoir()`**
+(`src/lib/questionnaire-lecture-server.ts`), et son ordre EST la règle :
+**copie figée de la session · bibliothèque · questionnaire embarqué**.
+⇒ Toute nouvelle route qui sert un questionnaire de lecture passe par elle.
+
+Le questionnaire embarqué (`devoirs.lectureQuiz`) n'est **jamais** supprimé :
+filet si la référence casse, et version figée de ce que les élèves ont eu.
+
+Détails, pièges et scripts : `rollup_sessions.md`.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useDevoirs } from '@/hooks/useDevoirs';
@@ -15,6 +15,7 @@ import EditDevoirModal from '@/components/EditDevoirModal/EditDevoirModal';
 import LoadingOverlay from '@/components/LoadingOverlay/LoadingOverlay';
 import MessageBox from '@/components/MessageBox/MessageBox';
 import EmptyState from '@/components/EmptyState/EmptyState';
+import { calculateSchoolYear } from '@/lib/auth-utils';
 import type { CreateDevoirData, Devoir } from '@/types/devoir';
 import styles from './dashboard.module.css';
 
@@ -52,10 +53,50 @@ export default function DashboardPage() {
   const [editingDevoir, setEditingDevoir] = useState<Devoir | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // ── Filtre par année scolaire ──
+  // Sans lui, une activité restait au tableau de bord indéfiniment : le tri ne
+  // portait que sur `archive` et `corrige`, jamais sur l'année — d'où des
+  // activités de l'an dernier mêlées à celles de la rentrée.
+  const SANS_ANNEE = '__sans_annee__';
+  const TOUTES = '__toutes__';
+
+  // Les années réellement présentes, la plus récente d'abord. On ne propose
+  // jamais une année vide : un menu qui montre des choix sans contenu se lit
+  // comme une panne.
+  const anneesDisponibles = useMemo(() => {
+    const vues = new Set<string>();
+    devoirs.forEach((d) => vues.add(d.anneeScolaire || SANS_ANNEE));
+    return [...vues].sort((a, b) => {
+      // « Sans année » ferme la marche : ce sont des documents anciens
+      if (a === SANS_ANNEE) return 1;
+      if (b === SANS_ANNEE) return -1;
+      return b.localeCompare(a);
+    });
+  }, [devoirs]);
+
+  // `null` = le prof n'a pas encore choisi. On calcule alors le défaut à
+  // chaque rendu plutôt que de le poser dans un useEffect : écrire un state
+  // depuis un effet qui dépend des devoirs, c'est la boucle assurée.
+  const [anneeChoisie, setAnneeChoisie] = useState<string | null>(null);
+  const anneeCourante = calculateSchoolYear();
+  const anneeFiltre =
+    anneeChoisie ??
+    (anneesDisponibles.includes(anneeCourante)
+      ? anneeCourante
+      : anneesDisponibles[0] ?? anneeCourante);
+
+  const devoirsAnnee = useMemo(
+    () =>
+      anneeFiltre === TOUTES
+        ? devoirs
+        : devoirs.filter((d) => (d.anneeScolaire || SANS_ANNEE) === anneeFiltre),
+    [devoirs, anneeFiltre]
+  );
+
   // Devoirs non archivés, séparés en "en cours" et "corrigés"
-  const devoirsActuels = devoirs.filter((d) => !d.archive && !d.corrige);
-  const devoirsCorreges = devoirs.filter((d) => !d.archive && d.corrige);
-  const devoirsArchives = devoirs.filter((d) => d.archive);
+  const devoirsActuels = devoirsAnnee.filter((d) => !d.archive && !d.corrige);
+  const devoirsCorreges = devoirsAnnee.filter((d) => !d.archive && d.corrige);
+  const devoirsArchives = devoirsAnnee.filter((d) => d.archive);
 
   // Onglet actif
   const [activeTab, setActiveTab] = useState<'actuels' | 'archives'>('actuels');
@@ -327,6 +368,23 @@ export default function DashboardPage() {
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Mes Activités</h2>
             <div className={styles.headerActions}>
+              {/* Le tableau de bord s'ouvre sur l'année en cours. Les années
+                  passées restent accessibles, mais il faut aller les chercher. */}
+              <select
+                className={styles.anneeSelect}
+                value={anneeFiltre}
+                onChange={(e) => setAnneeChoisie(e.target.value)}
+                title="Année scolaire affichée"
+              >
+                {anneesDisponibles.map((a) => (
+                  <option key={a} value={a}>
+                    {a === SANS_ANNEE ? 'Année non précisée' : a}
+                  </option>
+                ))}
+                {anneesDisponibles.length > 1 && (
+                  <option value={TOUTES}>Toutes les années</option>
+                )}
+              </select>
               <div className={styles.tabs}>
                 <button
                   type="button"

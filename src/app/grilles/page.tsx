@@ -12,6 +12,7 @@ import CreateGrilleCard from '@/components/CreateGrilleCard/CreateGrilleCard';
 import GrilleBuilder from '@/components/GrilleBuilder/GrilleBuilder';
 import ScenarisationPanel from '@/components/ScenarisationPanel/ScenarisationPanel';
 import OeuvrePanel from '@/components/OeuvrePanel/OeuvrePanel';
+import QuestionnaireLecturePanel from '@/components/QuestionnaireLecturePanel/QuestionnaireLecturePanel';
 import GrilleViewer from '@/components/GrilleViewer/GrilleViewer';
 import VocabCard from '@/components/VocabCard/VocabCard';
 import CreateVocabCard from '@/components/CreateVocabCard/CreateVocabCard';
@@ -21,7 +22,7 @@ import EmptyState from '@/components/EmptyState/EmptyState';
 import type { Grille, GrilleCriterion } from '@/types/grille';
 import styles from './grilles.module.css';
 
-type Tab = 'grilles' | 'vocabulaire' | 'oeuvres' | 'scenarisation';
+type Tab = 'grilles' | 'vocabulaire' | 'questionnaires' | 'oeuvres' | 'scenarisation';
 
 export default function GrillesPage() {
   const { isAuthenticated, isLoading: authLoading, role, isAdmin: userIsAdmin, getAuthHeaders } = useAuth();
@@ -290,6 +291,12 @@ export default function GrillesPage() {
             Listes de vocabulaire
           </button>
           <button
+            className={`${styles.tabButton} ${activeTab === 'questionnaires' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('questionnaires')}
+          >
+            Questionnaires de lecture
+          </button>
+          <button
             className={`${styles.tabButton} ${activeTab === 'oeuvres' ? styles.tabActive : ''}`}
             onClick={() => setActiveTab('oeuvres')}
           >
@@ -302,6 +309,9 @@ export default function GrillesPage() {
             Design &amp; scénarisation didactique
           </button>
         </div>
+
+        {/* ===== TAB QUESTIONNAIRES DE LECTURE ===== */}
+        {activeTab === 'questionnaires' && <QuestionnaireLecturePanel />}
 
         {/* ===== TAB BIBLIOTHÈQUE D'ŒUVRES ===== */}
         {activeTab === 'oeuvres' && <OeuvrePanel />}

@@ -1,4 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
+import { sessionId } from '@/types/session';
 import { generateTravailId } from '@/lib/travail-utils';
 import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
 
@@ -27,7 +28,15 @@ export async function ensureTravaux(devoirId: string, profId: string): Promise<n
   if (classeIds.length === 0) return 0;
 
   // 3. Recuperer tous les eleves de ces classes (chunked par 30)
-  const allEleves: Array<{ id: string; nom: string; prenom: string; email: string }> = [];
+  // `classeId` est retenu pour chaque élève : c'est lui qui désigne la SESSION
+  // à laquelle son travail appartient (une activité, une classe).
+  const allEleves: Array<{
+    id: string;
+    nom: string;
+    prenom: string;
+    email: string;
+    classeId: string;
+  }> = [];
   for (let i = 0; i < classeIds.length; i += 30) {
     const chunk = classeIds.slice(i, i + 30);
     const elevesSnap = await adminDb
@@ -41,6 +50,7 @@ export async function ensureTravaux(devoirId: string, profId: string): Promise<n
         nom: decrypt(data.nom) || '',
         prenom: decrypt(data.prenom) || '',
         email: (decrypt(data.email) || '').toLowerCase(),
+        classeId: data.classeId || '',
       });
     });
   }
@@ -77,6 +87,11 @@ export async function ensureTravaux(devoirId: string, profId: string): Promise<n
     batch.set(travailRef, {
       id: travailId,
       devoirId,
+      // Session = (activité, classe). Le porter sur le travail évite de
+      // repasser par `eleves` chaque fois qu'on veut savoir quelle classe a
+      // rendu quoi — et c'est ce qui permet d'ouvrir un corrigé classe par
+      // classe. Voir src/lib/session-server.ts.
+      sessionId: eleve.classeId ? sessionId(devoirId, eleve.classeId) : null,
       studentId: eleve.id,
       studentEmail: encrypt(eleve.email),
       studentEmailHash: hashEmail(eleve.email),

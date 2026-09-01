@@ -1,3 +1,5 @@
+import { calculateSchoolYear } from '@/lib/auth-utils';
+
 /**
  * Génère un ID unique pour une classe
  */
@@ -35,15 +37,19 @@ export function generateClasseCode(): string {
 /**
  * Obtient l'année scolaire actuelle (format: "2024-2025")
  */
+/**
+ * ⚠️ DEUX RÈGLES D'ANNÉE SCOLAIRE COEXISTAIENT, ET ELLES SE CONTREDISAIENT.
+ *
+ * Celle-ci faisait commencer l'année au 1er septembre ; `calculateSchoolYear`
+ * (auth-utils), qui sert aux activités, aux grilles, aux œuvres et aux
+ * parcours, la fait commencer le 25 août. Résultat, une classe créée le
+ * 31 août 2026 était étiquetée « 2025-2026 » pendant qu'une activité créée le
+ * même jour portait « 2026-2027 » — et rien ne regroupait plus.
+ *
+ * Il n'y a désormais qu'une règle, celle d'`auth-utils`. Cette fonction reste
+ * pour ses deux appelants, mais elle n'a plus de calcul à elle.
+ * *(constaté le 2026-09-01 sur les classes de la rentrée)*
+ */
 export function getCurrentAnneeScolaire(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1; // 0-indexed
-
-  // L'année scolaire commence en septembre
-  if (month >= 9) {
-    return `${year}-${year + 1}`;
-  } else {
-    return `${year - 1}-${year}`;
-  }
+  return calculateSchoolYear();
 }
