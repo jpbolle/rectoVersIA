@@ -50,6 +50,14 @@ export interface Session {
 // Lecture : `quizDuDevoir` (src/lib/questionnaire-lecture-server.ts), en
 // priorité sur la bibliothèque.
 
+/**
+ * Panier des copies qu'aucune session ne réclame — élève supprimé, classe
+ * effacée, travail antérieur aux sessions. Ce n'est PAS un id de session :
+ * c'est le mot de passe entre l'écran du prof et les routes serveur pour
+ * désigner « celles qui ne sont à personne ».
+ */
+export const SANS_CLASSE = '__sans_classe__';
+
 /** Ce qu'une session accepte de se voir modifier depuis l'interface. */
 export type SessionPatch = Partial<
   Pick<Session, 'dateRemise' | 'disponible' | 'corrigeDisponible' | 'archive'>

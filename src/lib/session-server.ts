@@ -292,16 +292,19 @@ export async function sessionsDeLEleve(
 export async function figerQuizDeLaSession(
   sessionIdOuDoc: string,
   devoirId: string
-): Promise<boolean> {
+): Promise<unknown> {
   try {
     const ref = adminDb.collection('sessions').doc(sessionIdOuDoc);
     const snap = await ref.get();
-    if (!snap.exists || snap.data()!.quizFige) return false;
+    if (!snap.exists) return null;
+    // Déjà figée : on rend la copie existante plutôt que rien. L'appelant qui
+    // veut SERVIR le questionnaire n'a alors pas à relire le document.
+    if (snap.data()!.quizFige) return snap.data()!.quizFige;
 
     const devoirSnap = await adminDb.collection('devoirs').doc(devoirId).get();
-    if (!devoirSnap.exists) return false;
+    if (!devoirSnap.exists) return null;
     const devoir = devoirSnap.data()!;
-    if (devoir.typeTravail !== 'lire') return false;
+    if (devoir.typeTravail !== 'lire') return null;
 
     // Import tardif : `questionnaire-lecture-server` importe déjà ce fichier,
     // et un import croisé en tête figerait le module à moitié construit.
@@ -309,16 +312,70 @@ export async function figerQuizDeLaSession(
     const { lectureQuizPourFirestore } = await import('@/lib/lecture-server');
 
     const quiz = await quizDuDevoir(devoir);
-    if (!quiz?.questions?.length) return false;
+    if (!quiz?.questions?.length) return null;
 
+    const fige = lectureQuizPourFirestore(quiz);
     await ref.update({
-      quizFige: lectureQuizPourFirestore(quiz),
+      quizFige: fige,
       quizFigeAt: new Date(),
       updatedAt: new Date(),
     });
-    return true;
+    return fige;
   } catch (err) {
     console.error('Erreur figeage du questionnaire de session:', err);
-    return false;
+    return null;
   }
+}
+
+/**
+ * ═══ LE RATTRAPAGE ═══
+ *
+ * Le figeage se déclenche au passage « fermée → ouverte ». Restaient donc
+ * dehors toutes les sessions nées OUVERTES : celles créées par la migration
+ * (`backfill-sessions.ts`, qui hérite du drapeau de l'activité), et celles
+ * d'une activité déjà ouverte à qui l'on ajoute une classe. Aucune n'avait de
+ * copie — leurs élèves lisaient donc la version courante de la bibliothèque,
+ * et une retouche du questionnaire changeait une épreuve en cours.
+ *
+ * On rattrape à la première LECTURE : la copie se prend au plus tard quand
+ * quelqu'un vient chercher le questionnaire. C'est une écriture unique, et un
+ * échec n'empêche rien — on retombe sur la bibliothèque, comme avant.
+ */
+export async function assurerFigeage(
+  devoirId: string,
+  sessions: Session[],
+  dejaFige: unknown
+): Promise<unknown> {
+  if (dejaFige) return dejaFige;
+  for (const s of sessions) {
+    if (!s.disponible) continue;
+    const fige = await figerQuizDeLaSession(s.id, devoirId);
+    if (fige) return fige;
+  }
+  return null;
+}
+
+/**
+ * La copie figée d'UNE session — la porte du professeur.
+ *
+ * Le prof ne passe pas par ses classes : il ouvre la copie d'un élève, et
+ * c'est le `sessionId` de cette copie qui dit quel questionnaire l'élève a eu
+ * sous les yeux. Sans cela il corrigeait sur la version courante de la
+ * bibliothèque, où une question a pu être ajoutée depuis l'épreuve.
+ */
+export async function quizFigeDeSession(
+  sessionIdDoc: string,
+  profId: string
+): Promise<unknown> {
+  const snap = await adminDb.collection('sessions').doc(sessionIdDoc).get();
+  if (!snap.exists) return null;
+  const data = snap.data()!;
+  if (data.profId !== profId) return null;
+  if (data.quizFige) return data.quizFige;
+  // Session ouverte jamais figée : même rattrapage que pour l'élève, sinon le
+  // prof et sa classe liraient deux questionnaires différents.
+  if (data.disponible === true) {
+    return figerQuizDeLaSession(sessionIdDoc, String(data.devoirId));
+  }
+  return null;
 }

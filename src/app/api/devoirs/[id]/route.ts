@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { quizDuDevoir } from '@/lib/questionnaire-lecture-server';
 import {
+  assurerFigeage,
   classesDeLEleve,
   figerQuizDeLaSession,
   etatEffectif,
+  quizFigeDeSession,
   sessionsDeLEleve,
   sessionsDuDevoir,
   syncSessions,
@@ -71,11 +73,29 @@ export async function GET(
     if (auth.role === 'eleve') {
       const mesClasses = await classesDeLEleve(auth.uid, auth.email);
       const mes = await sessionsDeLEleve(data.id || docSnap.id, mesClasses);
-      quizFige = mes.quizFige;
       etat = etatEffectif(
         { disponible: data.disponible, corrigeDisponible: data.corrigeDisponible },
         mes.sessions
       );
+      // Rattrapage : une session née ouverte (migration, classe ajoutée après
+      // coup) n'est jamais passée par le figeage. Elle prend sa copie ici, au
+      // plus tard — sinon une retouche du questionnaire dans la bibliothèque
+      // changerait l'épreuve sous les yeux de la classe.
+      // Réservé aux activités de lecture : ailleurs il n'y a pas de
+      // questionnaire, et le rattrapage coûterait deux lectures par ouverture.
+      quizFige =
+        data.typeTravail === 'lire'
+          ? await assurerFigeage(data.id || docSnap.id, mes.sessions, mes.quizFige)
+          : mes.quizFige;
+    } else if (auth.role === 'prof') {
+      // ── LE PROF LIT CE QUE SA CLASSE A EU ──
+      // Il n'a pas de classe à lui : c'est la copie qu'il ouvre qui porte le
+      // `sessionId`. Sans ce paramètre il corrigeait sur la version courante
+      // de la bibliothèque, où une question a pu être ajoutée depuis.
+      const sessionDemandee = request.nextUrl.searchParams.get('sessionId');
+      if (sessionDemandee) {
+        quizFige = await quizFigeDeSession(sessionDemandee, auth.uid);
+      }
     }
 
     // Les eleves ne peuvent voir que les devoirs disponibles

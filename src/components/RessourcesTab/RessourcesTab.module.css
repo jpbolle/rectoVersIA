@@ -599,3 +599,66 @@
 .interactifAgrandir:hover {
   background: rgba(212, 148, 76, 0.12);
 }
+
+/* ── Volets dépliants : une ressource, un titre ──────────────────────────
+   Reprend l'habillage des anciennes sections (`.filesSection`) pour que la
+   colonne ne change pas d'allure : c'est l'en-tête qui devient cliquable. */
+.volet {
+  margin-bottom: 10px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  overflow: hidden;
+}
+
+.voletEntete {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: var(--c-primary);
+  transition: background 0.15s ease;
+}
+
+.voletEntete:hover {
+  background: rgba(45, 106, 90, 0.06);
+}
+
+.voletChevron {
+  font-size: 11px;
+  opacity: 0.7;
+  width: 10px;
+  flex-shrink: 0;
+}
+
+.voletIcone {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* Le titre du prof peut être long : il passe à la ligne plutôt que de déborder
+   ou d'être coupé — l'élève doit pouvoir le lire en entier. */
+.voletTitre {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.voletCorps {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--c-border);
+  padding-top: 12px;
+}
+
+/* Replié SANS être démonté — l'éditeur d'annotations mesure la position de ses
+   notes, le remonter ferait sauter la gouttière. */
+.voletCorpsCache {
+  display: none;
+}

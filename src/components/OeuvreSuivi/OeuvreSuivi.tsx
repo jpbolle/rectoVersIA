@@ -96,9 +96,15 @@ interface Props {
   devoirId: string;
   /** Intitulé de l’activité, rappelé dans la popup de message */
   titreActivite?: string;
+  /**
+   * La classe qu'on regarde. Une activité donnée à plusieurs classes en a une
+   * par classe : sans elle, le tableau mêlait la 4C et la 4D.
+   * `null` = aucune session (activité d'avant, ou classe unique) ⇒ tout.
+   */
+  sessionId?: string | null;
 }
 
-export default function OeuvreSuivi({ devoirId, titreActivite }: Props) {
+export default function OeuvreSuivi({ devoirId, titreActivite, sessionId }: Props) {
   const { getAuthHeaders } = useAuth();
   const headersRef = useRef(getAuthHeaders);
   headersRef.current = getAuthHeaders;
@@ -118,9 +124,10 @@ export default function OeuvreSuivi({ devoirId, titreActivite }: Props) {
     (async () => {
       try {
         const headers = await headersRef.current();
-        const res = await fetch(`/api/oeuvres/suivi?devoirId=${devoirId}`, {
-          headers: headers || undefined,
-        });
+        const res = await fetch(
+          `/api/oeuvres/suivi?devoirId=${devoirId}${sessionId ? `&sessionId=${encodeURIComponent(sessionId)}` : ''}`,
+          { headers: headers || undefined }
+        );
         const json = await res.json();
         if (annule) return;
         if (!json.success) throw new Error(json.message || 'Suivi indisponible');
@@ -134,7 +141,7 @@ export default function OeuvreSuivi({ devoirId, titreActivite }: Props) {
     return () => {
       annule = true;
     };
-  }, [devoirId]);
+  }, [devoirId, sessionId]);
 
   const envoyer = useCallback(async () => {
     if (!envoi || !envoi.texte.trim()) return;
@@ -192,7 +199,7 @@ export default function OeuvreSuivi({ devoirId, titreActivite }: Props) {
     return (
       <EmptyState
         icon="📖"
-        message="Aucun élève dans les classes de cette activité."
+        message="Aucun élève dans cette classe."
       />
     );
   }

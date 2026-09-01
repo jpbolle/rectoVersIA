@@ -115,8 +115,30 @@ ajoutent des champs. L'annuler retrouve l'état d'avant exactement, ce qu'une
 sauvegarde de 700 documents ne ferait pas mieux et restaurerait bien moins bien.
 *(`firebase-tools` n'a pas de `firestore:export` — c'est une commande `gcloud`.)*
 
+## Reprise du 2026-09-01 (soir) — le figeage avait deux trous
+
+Le figeage marchait, mais pas là où on le regardait.
+
+| Trou | Ce qui se passait | Corrigé par |
+|---|---|---|
+| **Le prof ne lisait jamais la copie figée** | `quizFige` n'était lu que `if (auth.role === 'eleve')`. Le prof qui corrigeait une copie voyait la version COURANTE de la bibliothèque — une question ajoutée depuis l'épreuve apparaissait dans sa correction | `quizFigeDeSession()` + un paramètre `sessionId` sur `/api/devoirs/[id]`, que l'écran de correction remplit avec le `sessionId` de la copie ouverte |
+| **Aucun rattrapage côté élève** | Le rattrapage existait bien (fin de `syncSessions`), mais il ne se déclenche qu'à une action du PROF. Un élève qui ouvrait avant lui lisait la bibliothèque en direct | `assurerFigeage()`, appelé à la lecture d'une activité de type `lire` par un élève |
+
+⚠ **Le figeage est définitif et il fige la version COURANTE.** Une session
+ouverte mais jamais figée emportera dans sa copie tout ce qui a été modifié
+entre l'épreuve et le premier regard. Il n'y a rien à restaurer : retirer
+l'ajout AVANT le premier regard est la seule fenêtre.
+
+⚠ **Le figeage ne vaut que pour le questionnaire de lecture** (bibliothèque
+`questionnairesLecture`, dispositif `lire`). Pas les questions d'une œuvre, pas
+l'auto-évaluation, pas NavigKid — eux restent vivants, une retouche est vue
+tout de suite. La SESSION, elle, vaut pour **tous** les dispositifs.
+
 ## Ce qui reste
 
+- [ ] **Tester le figeage rattrapé** (2026-09-01 soir, écrit, non testé) :
+      corriger une copie de la veille et vérifier que le questionnaire est
+      celui des élèves, non celui de la bibliothèque.
 - [ ] **Tester le figeage** : ouvrir une session, modifier ensuite le
       questionnaire dans Mes Ressources, vérifier que l'élève voit l'ancienne
       version.

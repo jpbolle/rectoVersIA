@@ -25,10 +25,41 @@ export interface CorrigeReference {
 // Image déposée sur le serveur (onglet Image des ressources) —
 // stockée dans public/uploads/ressources/, servie statiquement
 export interface RessourceFile {
-  name: string;         // nom d'origine (affiché)
+  name: string;         // nom d'origine (affiché à défaut de titre)
   url: string;          // chemin public (/uploads/ressources/...)
   fileId?: string;      // nom de fichier stocké (pour la suppression)
   mimeType?: string;
+  /**
+   * Titre donné par le professeur — c'est lui qui nomme le volet dépliant
+   * côté élève. Absent : on retombe sur `name`, le nom du fichier. Une
+   * ressource d'avant les titres reste donc lisible telle quelle.
+   */
+  titre?: string;
+}
+
+/**
+ * Une vidéo jointe aux ressources, avec le titre que le professeur lui donne.
+ *
+ * ⚠ ANCIENNE FORME — `videos` a d'abord été un simple tableau d'adresses
+ * (`string[]`). Les deux cohabitent en base : on LIT les deux, on n'écrit plus
+ * que la forme objet. Aucune migration, aucune activité à reprendre.
+ * Passer par `normaliserVideos()` plutôt que de lire `videos` directement.
+ */
+export interface RessourceVideo {
+  url: string;
+  titre?: string;
+}
+
+export type RessourceVideoStockee = string | RessourceVideo;
+
+/** Les deux formes ramenées à une seule. Les entrées vides sont écartées. */
+export function normaliserVideos(
+  videos?: RessourceVideoStockee[] | null
+): RessourceVideo[] {
+  if (!Array.isArray(videos)) return [];
+  return videos
+    .map((v) => (typeof v === 'string' ? { url: v.trim() } : { url: (v?.url ?? '').trim(), titre: v?.titre }))
+    .filter((v) => v.url.length > 0);
 }
 
 /**
@@ -63,8 +94,12 @@ export interface DevoirRessource {
   outils?: string;      // HTML avec liens cliquables (onglet Lien)
   document?: string;    // Rich HTML content from Tiptap editor (onglet Texte)
   files?: RessourceFile[]; // Fichiers Drive (onglet Fichier)
-  videos?: string[];    // URLs YouTube (onglet Vidéo) — lecteur intégré côté élève
+  /** URLs YouTube — lues via `normaliserVideos` (deux formes en base) */
+  videos?: RessourceVideoStockee[];
   interactifs?: RessourceInteractif[]; // Contenus embarqués (onglet Interactif)
+  /** Titres des deux blocs uniques ; à défaut « Outils » et « Document » */
+  outilsTitre?: string;
+  documentTitre?: string;
 }
 
 export interface Devoir {

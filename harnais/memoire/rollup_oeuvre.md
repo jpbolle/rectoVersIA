@@ -1,5 +1,24 @@
 # Rollup — Atelier « Lecture d'une œuvre »
 
+## 2026-09-01 (soir) — le suivi de lecture ignorait la classe choisie
+
+Une lecture d'œuvre donnée à la 4C et à la 4D : le prof choisissait sa classe,
+et « Où en est chacun » lui rendait **les élèves des deux**. `OeuvreSuivi`
+recevait le `devoirId`, jamais la session — et `/api/oeuvres/suivi` lisait
+toutes les copies de l'activité.
+
+Corrigé : la session descend jusqu'au composant, la route filtre les copies
+**en mémoire** (un second `where` aurait demandé un index composite à déployer
+à la main pour une poignée de copies), et le panier « copies sans classe » est
+reconnu comme partout ailleurs.
+
+Effet de bord réparé au passage : le **rythme de lecture** (avance / retard)
+se jugeait sur l'échéance de l'ACTIVITÉ. Il prend maintenant celle de la
+**session** — deux classes n'ont pas la même date. Repli sur l'activité quand
+il n'y a pas de session, comme `etatEffectif`.
+
+**Écrit, non testé.**
+
 ## Session du 2026-08-20 — un bug de corrigé, trouvé au passage
 
 `docToSection` appliquait **`preparerPresentation` à tout le monde**, professeur

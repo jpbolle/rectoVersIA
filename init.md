@@ -115,6 +115,7 @@ d'une année sur l'autre.
 | Activité où **rien ne se remet** (recherche, questionnaire de lecture, auto-évaluation, lecture d'une œuvre) | `hideSubmit` sur `WorkTopBar` ; la remise, quand elle existe, vit **au bas de la colonne de gauche**, dans la ligne d'actions | `hideSubmit` dans `/activites/[id]` |
 | Nouvelle façon d'afficher des propositions à l'élève (QCM, matrice, appariement, tri) | **Mélangées par élève**, jamais dans l'ordre du prof — `ordreAffichage(taille, graine, melanger)`, graine = `uid + id de question`. ⚠️ **C'est un ORDRE D'AFFICHAGE** : la réponse reste enregistrée dans l'ordre du PROF, sinon tous les corrigés déjà en base désignent la mauvaise case. Case `pasDeMelange` pour une chronologie ou une gradation | `ordreAffichage` dans `src/types/lecture.ts` ; `LectureQuizActivity`, `OeuvreReader`, `QuestionInteractions/` |
 | Ajouter un élément au milieu d'une liste qu'on compose (question, bloc de scène) | **Trait d'insertion** : un trait discret entre deux éléments, qui s'éclaire au survol avec un `+` ; le clic déplie les types **à cet endroit**. Hauteur RÉSERVÉE en permanence, sinon la liste saute sous la souris. Pas de ligne de boutons en bas de page | `TraitInsertion` dans `LectureQuizBuilder`, `Trait` dans `OeuvreBuilder` |
+| Ressource jointe à une activité (image, vidéo, lien, document, interactif) | **Un volet dépliant par ressource**, titré par le prof, le premier ouvert. Volets INDÉPENDANTS (ouvrir une image ne referme pas le document). Un contenu qui se mesure lui-même (éditeur d'annotations) est caché en CSS, jamais démonté — d'où `garderMonte` | `Volet` dans `RessourcesTab` |
 | Panneau latéral élève | `WorkspaceRail` (rail icônes droite + panneau redimensionnable) — côté prof on garde `ResizableSplit` + onglets. **Ne pas uniformiser** | `/activites/[id]` vs `/dashboard/travaux/[devoirId]/[travailId]` |
 
 ---
@@ -198,6 +199,15 @@ interface Devoir {
   // (lecture, recherche). ABSENT = ACTIVÉ — les activités antérieures gardent
   // leur comportement. Sans objet en vocabulaire et en auto-évaluation.
   autoEvaluation?: boolean;
+  // ressources : chaque ressource porte un TITRE donné par le prof — c'est lui
+  // qui nomme son volet dépliant chez l'élève (2026-09-01). `files[].titre`,
+  // `videos[].titre`, `outilsTitre`, `documentTitre` ; le contenu interactif
+  // réutilise sa `legende`. Absent = repli sur le nom du fichier / « Vidéo 1 »
+  // / « Outils » / « Document ».
+  // ⚠ `ressources.videos` accepte DEUX formes en base — une adresse nue
+  // (avant les titres) ou `{ url, titre }`. On lit les deux, on n'écrit plus
+  // que la seconde : TOUJOURS passer par `normaliserVideos()` (types/devoir.ts),
+  // jamais lire le tableau directement. Aucune migration.
   // ressources.interactifs[] : contenus embarqués (onglet Interactif).
   // DEUX natures, deux bacs à sable — `kind: 'url'` (page tierce, liste
   // blanche `src/lib/integration.ts`) et `kind: 'code'` (animation HTML du

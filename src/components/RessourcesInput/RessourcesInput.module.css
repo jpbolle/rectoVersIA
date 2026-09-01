@@ -863,3 +863,43 @@
   background: #fff;
   display: block;
 }
+
+/* ── Titres des ressources ────────────────────────────────────────────────
+   C'est ce titre qui nomme le volet dépliant dans la colonne de l'élève.
+   Facultatif partout : le texte de substitution montre ce qui s'affichera à
+   défaut (nom du fichier, « Vidéo 1 », « Document »). */
+.titreInput {
+  width: 100%;
+  margin-top: 6px;
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--c-text);
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+}
+
+.titreBloc {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--c-text);
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+}
+
+.titreInput:focus,
+.titreBloc:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.titreInput::placeholder,
+.titreBloc::placeholder {
+  color: var(--c-text-light, #9a938a);
+  font-style: italic;
+}

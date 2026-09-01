@@ -1,11 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/useAuth';
 import { compressImage } from '@/lib/image-compress';
 import { parseYoutubeId, youtubeEmbedUrl } from '@/lib/youtube';
-import type { DevoirRessource, RessourceFile, RessourceInteractif } from '@/types/devoir';
+import { normaliserVideos } from '@/types/devoir';
+import type {
+  DevoirRessource,
+  RessourceFile,
+  RessourceInteractif,
+  RessourceVideo,
+} from '@/types/devoir';
 import {
   integrationAutorisee,
   proportionsDepuisIntegration,
@@ -103,8 +109,9 @@ function buildRessource(
   outils: string,
   document: string,
   files: RessourceFile[],
-  videos: string[],
+  videos: RessourceVideo[],
   interactifs: RessourceInteractif[] = [],
+  titres: { outils?: string; document?: string } = {},
 ): DevoirRessource | null {
   const outilsEmpty = isEmptyHtml(outils);
   const docEmpty = isEmptyHtml(document);
@@ -117,6 +124,7 @@ function buildRessource(
   ) {
     return null;
   }
+  // Firestore refuse `undefined` : un titre vide n'est tout simplement pas posé.
   return {
     type: 'text',
     content: outilsEmpty ? '' : outils,
@@ -125,6 +133,8 @@ function buildRessource(
     files,
     videos,
     interactifs,
+    ...(titres.outils?.trim() ? { outilsTitre: titres.outils.trim() } : {}),
+    ...(titres.document?.trim() ? { documentTitre: titres.document.trim() } : {}),
   };
 }
 
@@ -146,7 +156,14 @@ export default function RessourcesInput({
   const outilsValue = ressources?.outils ?? ressources?.content ?? '';
   const documentValue = ressources?.document ?? '';
   const filesValue = ressources?.files ?? [];
-  const videosValue = ressources?.videos ?? [];
+  // Normalisées à la lecture : une activité d'avant les titres porte de
+  // simples adresses (cf. `normaliserVideos`). On n'écrit plus que des objets.
+  // Mémoïsé : `normaliserVideos` rend un tableau NEUF à chaque appel, et ce
+  // tableau est dans les dépendances d'une dizaine de callbacks (cf. la règle
+  // des objets instables, AGENTS.md).
+  const videosValue = useMemo(() => normaliserVideos(ressources?.videos), [ressources?.videos]);
+  const outilsTitre = ressources?.outilsTitre ?? '';
+  const documentTitre = ressources?.documentTitre ?? '';
   const interactifsValue = ressources?.interactifs ?? [];
 
   const hasFichier = filesValue.length > 0;
@@ -172,16 +189,20 @@ export default function RessourcesInput({
   const handleLienChange = useCallback(
     (text: string) => {
       setLienText(text);
-      onRessourcesChange(buildRessource(linesToHtml(text), documentValue, filesValue, videosValue, interactifsValue));
+      onRessourcesChange(
+        buildRessource(linesToHtml(text), documentValue, filesValue, videosValue, interactifsValue, { outils: outilsTitre, document: documentTitre })
+      );
     },
-    [onRessourcesChange, documentValue, filesValue, videosValue, interactifsValue]
+    [onRessourcesChange, documentValue, filesValue, videosValue, interactifsValue, outilsTitre, documentTitre]
   );
 
   const handleDocumentChange = useCallback(
     (html: string) => {
-      onRessourcesChange(buildRessource(outilsValue, html, filesValue, videosValue, interactifsValue));
+      onRessourcesChange(
+        buildRessource(outilsValue, html, filesValue, videosValue, interactifsValue, { outils: outilsTitre, document: documentTitre })
+      );
     },
-    [onRessourcesChange, outilsValue, filesValue, videosValue, interactifsValue]
+    [onRessourcesChange, outilsValue, filesValue, videosValue, interactifsValue, outilsTitre, documentTitre]
   );
 
   // ── Contenus interactifs ──
@@ -192,10 +213,10 @@ export default function RessourcesInput({
   const majInteractifs = useCallback(
     (suivants: RessourceInteractif[]) => {
       onRessourcesChange(
-        buildRessource(outilsValue, documentValue, filesValue, videosValue, suivants)
+        buildRessource(outilsValue, documentValue, filesValue, videosValue, suivants, { outils: outilsTitre, document: documentTitre })
       );
     },
-    [onRessourcesChange, outilsValue, documentValue, filesValue, videosValue]
+    [onRessourcesChange, outilsValue, documentValue, filesValue, videosValue, outilsTitre, documentTitre]
   );
 
   // ── LA LIGNE VIERGE ──
@@ -276,10 +297,74 @@ export default function RessourcesInput({
   const handleVideoChange = useCallback(
     (text: string) => {
       setVideoText(text);
-      const videos = text.split('\n').map((l) => l.trim()).filter(Boolean);
-      onRessourcesChange(buildRessource(outilsValue, documentValue, filesValue, videos, interactifsValue));
+      // Le titre suit SON adresse : retirer une ligne du bloc ne doit pas
+      // décaler les titres des vidéos restées en place.
+      const titresParUrl = new Map(videosValue.map((v) => [v.url, v.titre]));
+      const videos: RessourceVideo[] = text
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map((url) => {
+          const titre = titresParUrl.get(url);
+          return titre ? { url, titre } : { url };
+        });
+      onRessourcesChange(
+        buildRessource(outilsValue, documentValue, filesValue, videos, interactifsValue, {
+          outils: outilsTitre,
+          document: documentTitre,
+        })
+      );
     },
-    [onRessourcesChange, outilsValue, documentValue, filesValue, interactifsValue]
+    [onRessourcesChange, outilsValue, documentValue, filesValue, videosValue, interactifsValue, outilsTitre, documentTitre]
+  );
+
+  // ── Les titres, un par ressource ──
+  // C'est le titre qui nomme le volet dépliant chez l'élève ; sans lui, on
+  // retombe sur le nom du fichier ou « Vidéo 1 ». Rien n'est obligatoire.
+  const majTitreVideo = useCallback(
+    (url: string, titre: string) => {
+      const videos: RessourceVideo[] = videosValue.map((v) =>
+        v.url === url ? (titre.trim() ? { url: v.url, titre: titre.trim() } : { url: v.url }) : v
+      );
+      onRessourcesChange(
+        buildRessource(outilsValue, documentValue, filesValue, videos, interactifsValue, {
+          outils: outilsTitre,
+          document: documentTitre,
+        })
+      );
+    },
+    [onRessourcesChange, outilsValue, documentValue, filesValue, videosValue, interactifsValue, outilsTitre, documentTitre]
+  );
+
+  const majTitreImage = useCallback(
+    (cible: RessourceFile, titre: string) => {
+      const files: RessourceFile[] = filesValue.map((f) => {
+        if (f !== cible) return f;
+        // Firestore refuse `undefined` : un titre effacé disparaît de l'objet.
+        const reste = { ...f };
+        delete reste.titre;
+        return titre.trim() ? { ...reste, titre: titre.trim() } : reste;
+      });
+      onRessourcesChange(
+        buildRessource(outilsValue, documentValue, files, videosValue, interactifsValue, {
+          outils: outilsTitre,
+          document: documentTitre,
+        })
+      );
+    },
+    [onRessourcesChange, outilsValue, documentValue, filesValue, videosValue, interactifsValue, outilsTitre, documentTitre]
+  );
+
+  const majTitreBloc = useCallback(
+    (quoi: 'outils' | 'document', titre: string) => {
+      onRessourcesChange(
+        buildRessource(outilsValue, documentValue, filesValue, videosValue, interactifsValue, {
+          outils: quoi === 'outils' ? titre : outilsTitre,
+          document: quoi === 'document' ? titre : documentTitre,
+        })
+      );
+    },
+    [onRessourcesChange, outilsValue, documentValue, filesValue, videosValue, interactifsValue, outilsTitre, documentTitre]
   );
 
   // Aperçus des vidéos reconnues (les lignes invalides sont signalées)
@@ -332,7 +417,14 @@ export default function RessourcesInput({
 
         if (json.success && json.data?.files) {
           onRessourcesChange(
-            buildRessource(outilsValue, documentValue, [...filesValue, ...json.data.files], videosValue, interactifsValue)
+            buildRessource(
+              outilsValue,
+              documentValue,
+              [...filesValue, ...json.data.files],
+              videosValue,
+              interactifsValue,
+              { outils: outilsTitre, document: documentTitre }
+            )
           );
         } else {
           setUploadError(json.message || "Erreur lors de l'upload");
@@ -345,13 +437,20 @@ export default function RessourcesInput({
         if (inputRef.current) inputRef.current.value = '';
       }
     },
-    [disabled, isUploading, getAuthHeaders, onRessourcesChange, outilsValue, documentValue, filesValue, videosValue]
+    [disabled, isUploading, getAuthHeaders, onRessourcesChange, outilsValue, documentValue, filesValue, videosValue, interactifsValue, outilsTitre, documentTitre]
   );
 
   const handleRemoveFile = useCallback(
     async (file: RessourceFile) => {
       onRessourcesChange(
-        buildRessource(outilsValue, documentValue, filesValue.filter((f) => f !== file), videosValue, interactifsValue)
+        buildRessource(
+          outilsValue,
+          documentValue,
+          filesValue.filter((f) => f !== file),
+          videosValue,
+          interactifsValue,
+          { outils: outilsTitre, document: documentTitre }
+        )
       );
 
       // Suppression de l'image stockée (silencieuse en cas d'échec)
@@ -364,7 +463,7 @@ export default function RessourcesInput({
         }).catch((err) => console.error('Erreur suppression Drive:', err));
       }
     },
-    [onRessourcesChange, outilsValue, documentValue, filesValue, videosValue, getAuthHeaders]
+    [onRessourcesChange, outilsValue, documentValue, filesValue, videosValue, interactifsValue, outilsTitre, documentTitre, getAuthHeaders]
   );
 
   const handleDrop = useCallback(
@@ -468,7 +567,17 @@ export default function RessourcesInput({
                       ✕
                     </button>
                   )}
-                  <figcaption className={styles.thumbCaption}>{file.name}</figcaption>
+                  <figcaption className={styles.thumbCaption}>
+                    <input
+                      type="text"
+                      className={styles.titreInput}
+                      value={file.titre ?? ''}
+                      onChange={(e) => majTitreImage(file, e.target.value)}
+                      placeholder="Titre de la ressource"
+                      disabled={disabled}
+                      title={`Titre affiché aux élèves — à défaut : ${file.name}`}
+                    />
+                  </figcaption>
                 </figure>
               ))}
             </div>
@@ -508,6 +617,15 @@ export default function RessourcesInput({
           <p className={styles.tabHint}>
             Une URL par ligne — chaque ligne devient une puce cliquable pour les élèves.
           </p>
+          <input
+            type="text"
+            className={styles.titreBloc}
+            value={outilsTitre}
+            onChange={(e) => majTitreBloc('outils', e.target.value)}
+            placeholder="Titre de la ressource"
+            disabled={disabled}
+            title="Titre affiché aux élèves — à défaut : Outils"
+          />
           <textarea
             className={styles.lienTextarea}
             value={lienText}
@@ -547,13 +665,23 @@ export default function RessourcesInput({
               {videoLines.map((line, index) => {
                 const id = parseYoutubeId(line);
                 if (!id) return null;
+                const titre = videosValue.find((v) => v.url === line)?.titre ?? '';
                 return (
                   <div key={`${id}-${index}`} className={styles.videoItem}>
                     <iframe
                       src={youtubeEmbedUrl(id)}
-                      title={`Vidéo ${index + 1}`}
+                      title={titre || `Vidéo ${index + 1}`}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
+                    />
+                    <input
+                      type="text"
+                      className={styles.titreInput}
+                      value={titre}
+                      onChange={(e) => majTitreVideo(line, e.target.value)}
+                      placeholder="Titre de la ressource"
+                      disabled={disabled}
+                      title={`Titre affiché aux élèves — à défaut : Vidéo ${index + 1}`}
                     />
                   </div>
                 );
@@ -612,7 +740,7 @@ export default function RessourcesInput({
                     className={styles.interactifLegende}
                     value={it.legende ?? ''}
                     onChange={(e) => majInteractif(it.id, { legende: e.target.value })}
-                    placeholder="Légende (facultative)"
+                    placeholder="Titre de la ressource"
                     disabled={disabled}
                   />
 
@@ -774,6 +902,15 @@ export default function RessourcesInput({
           <p className={styles.tabHint}>
             Rédigez un document mis en forme à destination des élèves.
           </p>
+          <input
+            type="text"
+            className={styles.titreBloc}
+            value={documentTitre}
+            onChange={(e) => majTitreBloc('document', e.target.value)}
+            placeholder="Titre de la ressource"
+            disabled={disabled}
+            title="Titre affiché aux élèves — à défaut : Document"
+          />
           <DocumentEditor
             content={documentValue}
             onChange={handleDocumentChange}

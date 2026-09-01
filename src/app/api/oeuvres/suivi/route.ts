@@ -17,6 +17,7 @@ import { verifyAuth } from '@/lib/api-auth';
 import { decrypt } from '@/lib/crypto';
 import { docToSection } from '@/lib/oeuvre-server';
 import { calculerRythme, parseOeuvreProgression } from '@/types/oeuvre';
+import { SANS_CLASSE } from '@/types/session';
 import { estAutoCorrigeable, partReussite, reponseLiseuseVersAnswer } from '@/types/lecture';
 import type { EtatLecture } from '@/types/oeuvre';
 
@@ -60,7 +61,12 @@ export async function GET(request: NextRequest) {
   if (auth.role !== 'prof') return NextResponse.json({ error: 'Acces refuse' }, { status: 403 });
 
   try {
-    const devoirId = new URL(request.url).searchParams.get('devoirId');
+    const params = new URL(request.url).searchParams;
+    const devoirId = params.get('devoirId');
+    // La classe qu'on regarde. Une activité donnée à la 4C et à la 4D a DEUX
+    // échéances et deux avancements : sans ce paramètre, le suivi mélangeait
+    // les deux classes et jugeait l'une sur la date de l'autre.
+    const sessionDemandee = params.get('sessionId');
     if (!devoirId) {
       return NextResponse.json({ success: false, message: 'devoirId manquant' }, { status: 400 });
     }
@@ -113,18 +119,38 @@ export async function GET(request: NextRequest) {
         .map((d) => [d.id, docToSection(d)])
     );
 
+    // ── La session choisie ──
+    // On lit son échéance et son ouverture : c'est sur SA date que le rythme
+    // de lecture se juge, pas sur celle de l'activité.
+    let session: { dateRemise?: unknown; disponibleAt?: unknown } | null = null;
+    if (sessionDemandee && sessionDemandee !== SANS_CLASSE) {
+      const snap = await adminDb.collection('sessions').doc(sessionDemandee).get();
+      if (snap.exists && snap.data()!.devoirId === devoirId) {
+        session = snap.data() as { dateRemise?: unknown; disponibleAt?: unknown };
+      }
+    }
+
     // ── Les travaux ──
+    // Le filtrage se fait en mémoire, et non par un second `where` : ce serait
+    // un index composite de plus à déployer à la main pour une poignée de
+    // copies (cf. AGENTS.md — les règles et index se déploient séparément).
     const travauxSnap = await adminDb
       .collection('travaux')
       .where('devoirId', '==', devoirId)
       .get();
+
+    const travauxDocs = !sessionDemandee
+      ? travauxSnap.docs
+      : sessionDemandee === SANS_CLASSE
+        ? travauxSnap.docs.filter((d) => !d.data().sessionId)
+        : travauxSnap.docs.filter((d) => d.data().sessionId === sessionDemandee);
 
     // La fiche élève s'ouvre sur l'id du document `eleves`, jamais sur l'UID
     // Firebase. On fait la correspondance ici, en une passe, plutôt qu'une
     // requête par ligne du tableau.
     const uids = [
       ...new Set(
-        travauxSnap.docs.map((d) => (d.data() as { studentId?: string }).studentId).filter(Boolean)
+        travauxDocs.map((d) => (d.data() as { studentId?: string }).studentId).filter(Boolean)
       ),
     ] as string[];
     const eleveIdParUid = new Map<string, string>();
@@ -141,13 +167,17 @@ export async function GET(request: NextRequest) {
     }
 
     const minimum = devoir.oeuvreMinimum || 0;
-    const echeance = toIso(devoir.dateRemise);
-    const debut = toIso(devoir.disponibleAt) || toIso(devoir.createdAt);
+    // La session prime, l'activité sert de repli — la règle du chantier des
+    // sessions (`etatEffectif`), appliquée ici aux deux dates du rythme.
+    const echeance = session ? toIso(session.dateRemise) : toIso(devoir.dateRemise);
+    const debut = session
+      ? toIso(session.disponibleAt) || toIso(devoir.createdAt)
+      : toIso(devoir.disponibleAt) || toIso(devoir.createdAt);
 
     // Statistiques par question — ce que la classe a raté
     const parQuestion = new Map<string, SuiviQuestion>();
 
-    const eleves: SuiviEleve[] = travauxSnap.docs.map((doc) => {
+    const eleves: SuiviEleve[] = travauxDocs.map((doc) => {
       const t = doc.data() as {
         studentId?: string;
         studentName?: string;

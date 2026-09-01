@@ -255,7 +255,14 @@ export default function TravailDetailPage() {
           return;
         }
 
-        const devoirRes = await fetch(`/api/devoirs/${devoirId}`, { headers });
+        // Le questionnaire suit la SESSION de cette copie : c'est ce que
+        // l'élève a réellement eu sous les yeux, et non la version courante
+        // du questionnaire dans Mes Ressources.
+        const sessionDeLaCopie = travailJson.data.sessionId;
+        const devoirRes = await fetch(
+          `/api/devoirs/${devoirId}${sessionDeLaCopie ? `?sessionId=${encodeURIComponent(sessionDeLaCopie)}` : ''}`,
+          { headers }
+        );
         const devoirJson = await devoirRes.json();
 
         if (devoirJson.success) {

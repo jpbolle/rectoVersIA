@@ -10,6 +10,7 @@ import type { Correction } from '@/types/correction';
 import type { Grille } from '@/types/grille';
 import { LEVEL_PERCENTAGES } from '@/types/grille';
 import type { NavigKidQuestion } from '@/types/navigkid';
+import { SANS_CLASSE } from '@/types/session';
 import type { Session } from '@/types/session';
 import { calculateSchoolYear } from '@/lib/auth-utils';
 import SessionsListe from '@/components/SessionsListe/SessionsListe';
@@ -51,7 +52,6 @@ export default function TravauxPage() {
   // Copies qu'aucune session ne réclame : élève supprimé, classe effacée, ou
   // travail antérieur aux sessions. Sans ce panier, elles disparaîtraient de
   // l'écran du prof sans que rien ne le dise — le pire des silences.
-  const SANS_CLASSE = '__sans_classe__';
   const orphelines = useMemo(
     () => travauxBruts.filter((t) => !t.sessionId),
     [travauxBruts]
@@ -465,7 +465,11 @@ export default function TravauxPage() {
         ) : isOeuvre ? (
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Où en est chacun</h2>
-            <OeuvreSuivi devoirId={devoirId} titreActivite={devoir?.intitule} />
+            <OeuvreSuivi
+              devoirId={devoirId}
+              titreActivite={devoir?.intitule}
+              sessionId={sessionActive}
+            />
           </section>
         ) : (
         <>
