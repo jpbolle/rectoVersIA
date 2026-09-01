@@ -4,6 +4,11 @@
 .review {
   display: flex;
   flex-direction: column;
+  /* La colonne de gauche (.contentSection) est en overflow:hidden :
+     c'est à la copie de défiler, sinon le prof ne voit que le haut. */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   gap: 14px;
   padding: 18px 20px 24px;
 }

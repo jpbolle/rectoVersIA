@@ -5,6 +5,10 @@
 .review {
   display: flex;
   flex-direction: column;
+  /* Défilement de la copie — la colonne parente est en overflow:hidden. */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   gap: 14px;
   padding: 4px 2px 20px;
 }
