@@ -742,6 +742,15 @@ export default function TravailPage() {
               }}
               showCorrection={!isPreviewMode && isSubmitted && devoir.corrigeDisponible === true}
               autoEvaluation={devoir.autoEvaluation !== false}
+              // Notes du professeur, question par question — même règle que les
+              // scores de recherche juste au-dessus : elles ne partent QUE si
+              // la correction a été rendue visible à cet élève. Le filtrage se
+              // fait ici, à la source : plus bas, on ne pourrait plus savoir.
+              questionScores={
+                !isPreviewMode && correction?.visibleParEleve === true
+                  ? correction.questionScores
+                  : undefined
+              }
               // La remise se fait au bas du questionnaire, jamais depuis la
               // barre du haut : « Remettre le devoir » est le geste de l'écrit
               onSubmit={isPreviewMode ? undefined : handleSubmitClick}

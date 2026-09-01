@@ -161,30 +161,8 @@ export default function LectureQuizReview({
                 const repris = typeof questionScores?.[q.id] === 'number';
                 const note = noteCourante(q);
 
-                // 1. Note automatique intacte
-                if (auto && !repris) {
-                  return (
-                    <span className={styles.autoNote}>
-                      <span className={styles.pts}>
-                        {note ?? '…'}/{q.points} pt{q.points > 1 ? 's' : ''}
-                      </span>
-                      <button
-                        type="button"
-                        className={styles.gutterBtn}
-                        title="Reprendre cette note à la main — utile quand une bonne réponse n’avait pas été prévue au corrigé."
-                        aria-label="Reprendre la note à la main"
-                        disabled={disabled}
-                        onClick={() => onQuestionScoreChange(q.id, note ?? 0)}
-                      >
-                        ✎
-                      </button>
-                    </span>
-                  );
-                }
-
-                // 2. Note à la main (question ouverte, ou automatique reprise)
-                return (
-                  <span className={styles.scoreInput}>
+                const boutons = (
+                  <>
                     <button
                       type="button"
                       className={`${styles.gutterBtn} ${styles.btnJuste} ${note === q.points ? styles.gutterBtnOn : ''}`}
@@ -205,6 +183,28 @@ export default function LectureQuizReview({
                     >
                       ✘
                     </button>
+                  </>
+                );
+
+                // 1. Note automatique intacte : la pastille, et les ✔ / ✘
+                //    juste à côté. Ils sont là D'EMBLÉE — aucun corrigé n'est
+                //    à l'abri d'être incomplet, et faire précéder la reprise
+                //    d'un bouton à découvrir ne faisait qu'ajouter un clic.
+                if (auto && !repris) {
+                  return (
+                    <span className={styles.autoNote}>
+                      <span className={styles.pts}>
+                        {note ?? '…'}/{q.points} pt{q.points > 1 ? 's' : ''}
+                      </span>
+                      {boutons}
+                    </span>
+                  );
+                }
+
+                // 2. Note à la main (question ouverte, ou automatique reprise)
+                return (
+                  <span className={styles.scoreInput}>
+                    {boutons}
                     <input
                       type="number"
                       min={0}

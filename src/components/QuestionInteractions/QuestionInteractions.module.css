@@ -441,15 +441,33 @@
   line-height: 2;
   color: var(--c-text);
 }
+/* Zone de soulignage active : le glissé est à nous. `pan-y` laisse le doigt
+   faire défiler la page verticalement — sans quoi la liseuse deviendrait
+   impossible à parcourir sur un Chromebook tactile — mais nous réserve le
+   mouvement horizontal, celui qui longe une ligne de texte. Même règle que
+   `.fluoTextActive` de LectureQuizActivity. */
+.fluoTextActive {
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Le mot : une simple cible de clic. Pas de fond, pas de marge horizontale —
+   c'est le SEGMENT qui porte la couleur, sinon un blanc réapparaîtrait entre
+   deux mots consécutifs de la même catégorie. */
 .fluoText .w {
-  padding: 2px 1px;
-  border-radius: 3px;
+  padding: 2px 0;
   cursor: pointer;
 }
 .fluoText .w:hover { outline: 1px dashed var(--c-border-strong); }
 .fluoText .w.fige { cursor: default; }
 .fluoText .w.fige:hover { outline: none; }
-/* Le mot attendu que l'élève n'a pas marqué : souligné de la couleur due
+/* Le segment : la suite de mots d'une même catégorie, espaces compris. */
+.fluoText .run {
+  padding: 2px 1px;
+  border-radius: 3px;
+}
+/* Le passage attendu que l'élève n'a pas marqué : souligné de la couleur due
    (posée en style inline, cf. FluoCategoriesField) plutôt que rempli — on
    distingue ainsi « pas marqué » de « marqué dans la mauvaise couleur ». */
-.fluoText .w.manque { padding-bottom: 1px; }
+.fluoText .run.manque { padding-bottom: 1px; }

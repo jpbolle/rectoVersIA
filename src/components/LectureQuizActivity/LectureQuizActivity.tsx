@@ -17,6 +17,7 @@ import type {
   LectureAnswersState,
 } from '@/types/lecture';
 import { LECTURE_TYPE_LABELS, ordreAffichage, partReussite } from '@/types/lecture';
+import { segmenter } from '@/lib/fluo-segments';
 import { useAuth } from '@/hooks/useAuth';
 import ChampManipule, { estTypeManipule } from '@/components/QuestionInteractions';
 import ConfiancePicker from '@/components/ConfiancePicker';
@@ -45,6 +46,15 @@ interface LectureQuizActivityProps {
   showCorrection?: boolean;
   /** Auto-évaluation désactivée sur l'activité : pas de smileys d'assurance */
   autoEvaluation?: boolean;
+  /**
+   * Notes données par le professeur, question par question — sa reprise en
+   * main quand la machine s'était trompée, ou sa note sur une question
+   * ouverte. Elles PRIMENT sur le calcul automatique, exactement comme dans
+   * `lecture-scoring.ts` : sans quoi l'élève lirait sur sa copie une note que
+   * son professeur a explicitement corrigée.
+   * L'appelant ne les passe QUE si la correction lui est visible.
+   */
+  questionScores?: Record<string, number>;
   // Remise : elle vit au BAS du questionnaire, pas dans la barre du haut. En
   // mode quiz, l'élève ne revient pas en arrière — le bouton n'apparaît donc
   // qu'une fois la dernière question atteinte.
@@ -60,6 +70,7 @@ export default function LectureQuizActivity({
   onOpenRessources,
   showCorrection = false,
   autoEvaluation = true,
+  questionScores,
   onSubmit,
   isSubmitting = false,
 }: LectureQuizActivityProps) {
@@ -141,6 +152,7 @@ export default function LectureQuizActivity({
           onZoomImage={setPopupImage}
           showCorrection={showCorrection}
           autoEvaluation={autoEvaluation}
+          noteProf={questionScores?.[q.id]}
           graine={graine}
         />
         </Fragment>
@@ -205,6 +217,7 @@ function QuestionCard({
   onZoomImage,
   showCorrection,
   autoEvaluation,
+  noteProf,
   graine,
 }: {
   question: LectureQuestion;
@@ -216,6 +229,8 @@ function QuestionCard({
   onZoomImage: (url: string) => void;
   showCorrection: boolean;
   autoEvaluation: boolean;
+  /** Note donnée par le professeur à CETTE question (prime sur l'automatique) */
+  noteProf?: number;
   /** Identifiant de l'élève — donne son ordre de propositions (ordreAffichage) */
   graine?: string | null;
 }) {
@@ -260,9 +275,16 @@ function QuestionCard({
   // BARÈME PARTIEL : `partReussite` renvoie une part entre 0 et 1 — 6 items
   // justes sur 8 valent 75 % des points, pas zéro.
   const part = showCorrection ? partReussite(question, answer) : null;
-  const ptsObtenus = part === null ? null : Math.round(part * question.points * 10) / 10;
+  const ptsAuto = part === null ? null : Math.round(part * question.points * 10) / 10;
+  // La note du professeur passe DEVANT le calcul automatique — c'est elle qui
+  // fait foi, y compris quand elle contredit la machine (un intrus qui se
+  // défendait, une bonne réponse oubliée au corrigé). `??` et non `||` : une
+  // note de 0 est une note.
+  const ptsObtenus = noteProf ?? ptsAuto;
   const ptsInfobulle =
-    ptsObtenus !== null
+    typeof noteProf === 'number'
+      ? `${noteProf} point${noteProf > 1 ? 's' : ''} sur ${question.points} — note de ton professeur`
+      : ptsObtenus !== null
       ? `${ptsObtenus} point${ptsObtenus > 1 ? 's' : ''} sur ${question.points}`
       : 'Corrigé par ton professeur — la note apparaîtra ici';
 
@@ -761,22 +783,37 @@ export function FluoCompare({
   const hits = attendu.filter((i) => eleveSet.has(i)).length;
   const extra = eleve.filter((i) => !attenduSet.has(i)).length;
 
+  // Verdict d'un mot : c'est lui qui définit les segments — deux mots justes
+  // qui se suivent ne forment qu'une seule bande verte.
+  const verdict = (i: number) => {
+    const a = attenduSet.has(i);
+    const e = eleveSet.has(i);
+    if (a && e) return 'hit';
+    if (!a && e) return 'extra';
+    if (a && !e) return 'miss';
+    return '';
+  };
+  const classeVerdict: Record<string, string> = {
+    hit: styles.fluoHit,
+    extra: styles.fluoExtra,
+    miss: styles.fluoMiss,
+  };
+
   return (
     <div>
       <p className={styles.fluoText}>
-        {words.map((word, i) => {
-          const isAttendu = attenduSet.has(i);
-          const isEleve = eleveSet.has(i);
-          const cls = [
-            styles.fluoWord,
-            styles.fluoWordStatic,
-            isAttendu && isEleve ? styles.fluoHit : '',
-            !isAttendu && isEleve ? styles.fluoExtra : '',
-            isAttendu && !isEleve ? styles.fluoMiss : '',
-          ].join(' ');
-          return (
-            <span key={i}>
-              <span className={cls}>{word}</span>{' '}
+        {segmenter(words.length, verdict).map((seg, s, tous) => {
+          const contenu = seg.mots.map((i) => words[i]).join(' ');
+          const espace = s < tous.length - 1 ? ' ' : '';
+          return seg.nature ? (
+            <span key={s}>
+              <span className={`${styles.fluoRun} ${classeVerdict[seg.nature]}`}>{contenu}</span>
+              {espace}
+            </span>
+          ) : (
+            <span key={s}>
+              {contenu}
+              {espace}
             </span>
           );
         })}
@@ -881,17 +918,38 @@ export function FluoExtrait({
       onPointerUp={finGeste}
       onPointerCancel={finGeste}
     >
-      {words.map((word, i) => (
-        <span key={i}>
-          <span
-            data-mot={i}
-            className={`${styles.fluoWord} ${set.has(i) ? styles.fluoWordOn : ''} ${lectureSeule ? styles.fluoWordStatic : ''}`}
-            onPointerDown={(e) => debutGeste(e, i)}
-          >
-            {word}
-          </span>{' '}
-        </span>
-      ))}
+      {/* Le fond est porté par le SEGMENT (la suite de mots surlignés), pas par
+          chaque mot : sinon le surlignage saute par-dessus les espaces et le
+          passage se lit haché. Les mots restent des éléments à part entière à
+          l'intérieur — c'est `data-mot` qui permet de retrouver celui qui est
+          sous le curseur pendant un glissé. */}
+      {segmenter(words.length, (i) => (set.has(i) ? 'on' : '')).map((seg, s, tous) => {
+        const mots = seg.mots.map((i, k) => (
+          <Fragment key={i}>
+            <span
+              data-mot={i}
+              className={`${styles.fluoWord} ${lectureSeule ? styles.fluoWordStatic : ''}`}
+              onPointerDown={(e) => debutGeste(e, i)}
+            >
+              {words[i]}
+            </span>
+            {/* L'espace INTERNE au segment est surligné avec lui */}
+            {k < seg.mots.length - 1 ? ' ' : ''}
+          </Fragment>
+        ));
+        const espace = s < tous.length - 1 ? ' ' : '';
+        return seg.nature ? (
+          <Fragment key={s}>
+            <span className={`${styles.fluoRun} ${styles.fluoRunOn}`}>{mots}</span>
+            {espace}
+          </Fragment>
+        ) : (
+          <Fragment key={s}>
+            {mots}
+            {espace}
+          </Fragment>
+        );
+      })}
     </p>
   );
 }
