@@ -49,8 +49,9 @@
   gap: 8px;
   margin-bottom: 8px;
   flex-wrap: wrap;
-  /* place réservée à la pastille de barème / au champ de points, en absolu */
-  padding-right: 104px;
+  /* place réservée à la gouttière de notation (pastille, ou ✔ ✘ champ ↺),
+     posée en absolu dans le coin de la carte */
+  padding-right: 172px;
 }
 
 .num {
@@ -97,6 +98,117 @@
   box-shadow: 0 1px 4px rgba(212, 148, 76, 0.45);
 }
 
+/* ── Note automatique intacte : la pastille + le ✎ qui permet de la reprendre.
+   C'est ce bloc qui est posé dans le coin ; la pastille y redevient un
+   élément ordinaire, sinon elle se positionnerait sur la carte et le ✎
+   partirait tout seul. ── */
+.autoNote {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.autoNote .pts {
+  position: static;
+}
+
+/* ── Boutons de la gouttière : ✔ juste · ✘ faux · ✎ reprendre · ↺ rendre
+   la main. Ce sont des RACCOURCIS — le champ de points reste maître, et
+   c'est pour cela qu'ils restent discrets tant qu'ils ne sont pas actifs. ── */
+.gutterBtn {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1.5px solid var(--c-border);
+  border-radius: 6px;
+  background: var(--c-bg-card, #fff);
+  color: var(--c-text-secondary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.gutterBtn:hover:not(:disabled) {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.gutterBtn:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.btnJuste:hover:not(:disabled) {
+  border-color: var(--c-success);
+  color: var(--c-success);
+}
+
+.btnFaux:hover:not(:disabled),
+.btnFaux.gutterBtnOn {
+  border-color: var(--c-danger);
+  color: #fff;
+  background: var(--c-danger);
+}
+
+.btnJuste.gutterBtnOn {
+  border-color: var(--c-success);
+  color: #fff;
+  background: var(--c-success);
+}
+
+/* ── Suggestion de note d'un soulignage : elle se lit sous la comparaison,
+   là où le prof vient de voir les mots justes, manqués et en trop. Rien ne
+   se compte tant qu'il n'a pas cliqué « Appliquer ». ── */
+.suggestion {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px dashed var(--c-accent);
+  border-radius: 8px;
+  background: rgba(212, 148, 76, 0.08);
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+.suggestionBtn {
+  border: 1.5px solid var(--c-accent);
+  border-radius: 6px;
+  background: var(--c-bg-card, #fff);
+  color: var(--c-accent);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.suggestionBtn:hover:not(:disabled) {
+  background: var(--c-accent);
+  color: #fff;
+}
+
+.suggestionBtn:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.suggestionEtat {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
 /* Saisie des points d'une question ouverte (prof) — même coin, mais elle reste
    un champ : le prof doit voir qu'il peut écrire dedans */
 .scoreInput {
@@ -112,7 +224,7 @@
 }
 
 .scoreInput input {
-  width: 52px;
+  width: 46px;
   padding: 3px 6px;
   border: 1.5px solid var(--c-border);
   border-radius: 6px;

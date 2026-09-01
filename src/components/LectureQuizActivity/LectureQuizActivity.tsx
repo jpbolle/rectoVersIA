@@ -792,7 +792,16 @@ export function FluoCompare({
   );
 }
 
-// ── Soulignage d'un extrait : clic sur les mots ──
+// ── Soulignage d'un extrait : un mot au clic, un passage au glissé ──
+//
+// Le clic mot à mot obligeait à souligner une phrase par petits bouts, et le
+// résultat sortait haché. On appuie donc sur un mot et on glisse jusqu'au
+// dernier : tout le passage suit. Sans mouvement, le geste se réduit au mot
+// cliqué — l'ancien comportement est intact.
+//
+// Composant PARTAGÉ : le professeur y pose le soulignage attendu
+// (LectureQuizBuilder), l'élève y répond, la correction l'affiche en lecture
+// seule. Un seul geste pour les trois.
 
 export function FluoExtrait({
   texte,
@@ -807,22 +816,77 @@ export function FluoExtrait({
 }) {
   const words = texte.split(/\s+/).filter(Boolean);
   const set = new Set(fluoWords);
+  const lectureSeule = disabled || !onChange;
+  const zoneRef = useRef<HTMLParagraphElement>(null);
 
-  const toggle = (index: number) => {
-    if (disabled || !onChange) return;
-    const next = new Set(set);
-    if (next.has(index)) next.delete(index);
-    else next.add(index);
-    onChange([...next].sort((a, b) => a - b));
+  // Geste en cours : le mot de départ, ce qu'il fait (allumer ou éteindre) et
+  // l'état du soulignage AVANT le geste. C'est cette photo de départ qui
+  // permet de revenir en arrière en glissant dans l'autre sens.
+  const geste = useRef<{ ancre: number; allume: boolean; base: Set<number> } | null>(null);
+
+  const appliquer = (jusqua: number) => {
+    const g = geste.current;
+    if (!g || !onChange) return;
+    const suivant = new Set(g.base);
+    const debut = Math.min(g.ancre, jusqua);
+    const fin = Math.max(g.ancre, jusqua);
+    for (let i = debut; i <= fin; i++) {
+      if (g.allume) suivant.add(i);
+      else suivant.delete(i);
+    }
+    onChange([...suivant].sort((a, b) => a - b));
+  };
+
+  // Pendant un glissé, le pointeur est CAPTURÉ par la zone : les mots
+  // survolés ne reçoivent plus d'événement. On retrouve donc le mot sous le
+  // curseur (ou sous le doigt) par sa position à l'écran.
+  const motSous = (x: number, y: number): number | null => {
+    const cible = document.elementFromPoint(x, y) as HTMLElement | null;
+    const attr = cible?.closest('[data-mot]')?.getAttribute('data-mot');
+    if (attr === null || attr === undefined) return null;
+    const i = Number(attr);
+    return Number.isNaN(i) ? null : i;
+  };
+
+  const debutGeste = (e: React.PointerEvent, i: number) => {
+    if (lectureSeule) return;
+    // Empêche la sélection de texte du navigateur de se battre avec la nôtre
+    e.preventDefault();
+    geste.current = { ancre: i, allume: !set.has(i), base: new Set(set) };
+    zoneRef.current?.setPointerCapture(e.pointerId);
+    appliquer(i);
+  };
+
+  const suiviGeste = (e: React.PointerEvent) => {
+    if (!geste.current) return;
+    const i = motSous(e.clientX, e.clientY);
+    if (i !== null) appliquer(i);
+  };
+
+  // pointercancel compris : au doigt, un défilement vertical annule le geste
+  // et le soulignage reste sur le seul mot touché.
+  const finGeste = (e: React.PointerEvent) => {
+    if (!geste.current) return;
+    geste.current = null;
+    if (zoneRef.current?.hasPointerCapture(e.pointerId)) {
+      zoneRef.current.releasePointerCapture(e.pointerId);
+    }
   };
 
   return (
-    <p className={styles.fluoText}>
+    <p
+      ref={zoneRef}
+      className={`${styles.fluoText} ${lectureSeule ? '' : styles.fluoTextActive}`}
+      onPointerMove={suiviGeste}
+      onPointerUp={finGeste}
+      onPointerCancel={finGeste}
+    >
       {words.map((word, i) => (
         <span key={i}>
           <span
-            className={`${styles.fluoWord} ${set.has(i) ? styles.fluoWordOn : ''} ${disabled || !onChange ? styles.fluoWordStatic : ''}`}
-            onClick={() => toggle(i)}
+            data-mot={i}
+            className={`${styles.fluoWord} ${set.has(i) ? styles.fluoWordOn : ''} ${lectureSeule ? styles.fluoWordStatic : ''}`}
+            onPointerDown={(e) => debutGeste(e, i)}
           >
             {word}
           </span>{' '}

@@ -52,10 +52,41 @@ export default function LectureQuizReview({
     return LECTURE_COMPETENCE_LABELS[id as LectureCompetence] ?? id;
   };
 
-  // Score complet : QCM automatiques + points saisis sur les questions ouvertes
+  // Score complet : questions auto-corrigées + points saisis par le prof
   const score = scoreLectureQuiz(quiz, answers, questionScores);
   const scoreByQuestion = new Map(score.parQuestion.map((s) => [s.questionId, s]));
+  // Le MÊME calcul sans les reprises du prof : c'est ce que la machine
+  // proposait. Il sert à préremplir le champ quand le prof reprend la main, et
+  // à lui rappeler ce qu'il écarte.
+  const scoreAuto = new Map(
+    scoreLectureQuiz(quiz, answers).parQuestion.map((s) => [s.questionId, s.points])
+  );
   const totalPoints = quiz.questions.reduce((s, q) => s + (q.points || 0), 0);
+
+  // Note effective affichée pour une question (reprise du prof ou automatique)
+  const noteCourante = (q: LectureQuestion) => scoreByQuestion.get(q.id)?.points ?? null;
+
+  // ✔ / ✘ : le maximum ou zéro, d'un geste. Le champ reste ouvert à côté —
+  // c'est un raccourci, pas un verrou.
+  const poser = (q: LectureQuestion, points: number) =>
+    onQuestionScoreChange?.(q.id, points);
+
+  /**
+   * Soulignage sans catégories : la machine ne note pas, elle SUGGÈRE.
+   * Proportion de mots attendus retrouvés (sans pénalité pour les mots en
+   * trop — décision de JP : souligner large ne coûte rien d'office, c'est au
+   * professeur d'en tenir compte, les mots excédentaires lui étant montrés en
+   * orange par FluoCompare). Rien ne se compte tant qu'il n'a pas appliqué.
+   */
+  const suggestionFluo = (q: LectureQuestion): number | null => {
+    if (q.type !== 'fluorage' || (q.fluoSource ?? 'extrait') !== 'extrait') return null;
+    if (q.fluoCategories?.length) return null;
+    const attendu = q.fluoAttendu ?? [];
+    if (attendu.length === 0 || !(q.points > 0)) return null;
+    const eleve = new Set(answers[q.id]?.fluoWords ?? []);
+    const trouves = attendu.filter((i) => eleve.has(i)).length;
+    return Math.round((trouves / attendu.length) * q.points * 10) / 10;
+  };
 
   return (
     <div className={styles.review}>
@@ -116,57 +147,102 @@ export default function LectureQuizReview({
               {/* Note automatique — toutes les questions que la machine sait
                   corriger, pas seulement les QCM. Le barème est partiel :
                   d'où un score qui peut tomber sur un demi-point. */}
-              {q.points > 0 &&
-                seCorrigeSeule(q) &&
-                (q.type !== 'texte-court' || !onQuestionScoreChange) && (
-                  <span className={styles.pts}>
-                    {scoreByQuestion.get(q.id)?.points ?? 0}/{q.points} pt{q.points > 1 ? 's' : ''}
+              {/* ── GOUTTIÈRE DE NOTATION ──
+                  Trois états, un seul principe : la machine propose, le
+                  professeur dispose.
+                  1. question auto NON reprise → la note automatique en
+                     pastille, plus un ✎ pour la reprendre (aucun corrigé
+                     n'est à l'abri d'être incomplet) ;
+                  2. question auto REPRISE, ou question à noter à la main →
+                     ✔ / ✘ / champ, et ↺ pour rendre la main à l'automatique ;
+                  3. lecture seule (correction déjà rendue) → la note nue. */}
+              {q.points > 0 && onQuestionScoreChange && (() => {
+                const auto = seCorrigeSeule(q);
+                const repris = typeof questionScores?.[q.id] === 'number';
+                const note = noteCourante(q);
+
+                // 1. Note automatique intacte
+                if (auto && !repris) {
+                  return (
+                    <span className={styles.autoNote}>
+                      <span className={styles.pts}>
+                        {note ?? '…'}/{q.points} pt{q.points > 1 ? 's' : ''}
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.gutterBtn}
+                        title="Reprendre cette note à la main — utile quand une bonne réponse n’avait pas été prévue au corrigé."
+                        aria-label="Reprendre la note à la main"
+                        disabled={disabled}
+                        onClick={() => onQuestionScoreChange(q.id, note ?? 0)}
+                      >
+                        ✎
+                      </button>
+                    </span>
+                  );
+                }
+
+                // 2. Note à la main (question ouverte, ou automatique reprise)
+                return (
+                  <span className={styles.scoreInput}>
+                    <button
+                      type="button"
+                      className={`${styles.gutterBtn} ${styles.btnJuste} ${note === q.points ? styles.gutterBtnOn : ''}`}
+                      title={`Juste — ${q.points} pt${q.points > 1 ? 's' : ''}`}
+                      aria-label="Juste"
+                      disabled={disabled}
+                      onClick={() => poser(q, q.points)}
+                    >
+                      ✔
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.gutterBtn} ${styles.btnFaux} ${note === 0 ? styles.gutterBtnOn : ''}`}
+                      title="Faux — 0"
+                      aria-label="Faux"
+                      disabled={disabled}
+                      onClick={() => poser(q, 0)}
+                    >
+                      ✘
+                    </button>
+                    <input
+                      type="number"
+                      min={0}
+                      max={q.points}
+                      step={0.5}
+                      value={questionScores?.[q.id] ?? ''}
+                      placeholder={auto ? String(scoreAuto.get(q.id) ?? 0) : '—'}
+                      title={
+                        auto
+                          ? 'Note reprise à la main. Videz le champ pour rendre la main à la correction automatique.'
+                          : 'Note de cette question — les ✔ / ✘ ne sont qu’un raccourci, vous restez libre du chiffre.'
+                      }
+                      disabled={disabled}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        onQuestionScoreChange(q.id, v === '' ? null : Number(v));
+                      }}
+                    />
+                    <span>/ {q.points}</span>
+                    {auto && (
+                      <button
+                        type="button"
+                        className={styles.gutterBtn}
+                        title={`Rendre la main à la correction automatique (elle donnait ${scoreAuto.get(q.id) ?? 0}/${q.points})`}
+                        aria-label="Rendre la main à la correction automatique"
+                        disabled={disabled}
+                        onClick={() => onQuestionScoreChange(q.id, null)}
+                      >
+                        ↺
+                      </button>
+                    )}
                   </span>
-                )}
-              {/* Réponse courte auto-corrigée : la note automatique s'affiche,
-                  ET le champ reste ouvert. Une formulation juste que le prof
-                  n'avait pas listée doit pouvoir être rattrapée — c'est la
-                  seule question dont le corrigé peut être incomplet. */}
-              {q.points > 0 && seCorrigeSeule(q) && q.type === 'texte-court' && onQuestionScoreChange && (
-                <span className={styles.scoreInput}>
-                  <input
-                    type="number"
-                    min={0}
-                    max={q.points}
-                    step={0.5}
-                    value={questionScores?.[q.id] ?? ''}
-                    placeholder={String(scoreByQuestion.get(q.id)?.points ?? 0)}
-                    title="Correction automatique. Écrivez une note pour la reprendre à la main ; videz le champ pour rendre la main à l’automatique."
-                    disabled={disabled}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      onQuestionScoreChange?.(q.id, v === '' ? null : Number(v));
-                    }}
-                  />
-                  <span>/ {q.points}</span>
-                </span>
-              )}
-              {q.points > 0 && !seCorrigeSeule(q) && onQuestionScoreChange && (
-                <span className={styles.scoreInput}>
-                  <input
-                    type="number"
-                    min={0}
-                    max={q.points}
-                    step={0.5}
-                    value={questionScores?.[q.id] ?? ''}
-                    placeholder="—"
-                    disabled={disabled}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      onQuestionScoreChange(q.id, v === '' ? null : Number(v));
-                    }}
-                  />
-                  <span>/ {q.points}</span>
-                </span>
-              )}
-              {q.points > 0 && !seCorrigeSeule(q) && !onQuestionScoreChange && (
+                );
+              })()}
+              {/* 3. Lecture seule */}
+              {q.points > 0 && !onQuestionScoreChange && (
                 <span className={styles.pts}>
-                  {scoreByQuestion.get(q.id)?.points ?? '—'}/{q.points}
+                  {noteCourante(q) ?? '—'}/{q.points} pt{q.points > 1 ? 's' : ''}
                 </span>
               )}
             </div>
@@ -296,12 +372,39 @@ export default function LectureQuizReview({
               (q.fluoSource ?? 'extrait') === 'extrait' &&
               !q.fluoCategories?.length && (
               (q.fluoAttendu?.length ?? 0) > 0 ? (
-                // Comparaison automatique avec le soulignage attendu du prof
-                <FluoCompare
-                  texte={q.fluoTexte ?? ''}
-                  attendu={q.fluoAttendu ?? []}
-                  eleve={answer?.fluoWords ?? []}
-                />
+                <>
+                  {/* Comparaison automatique avec le soulignage attendu du prof */}
+                  <FluoCompare
+                    texte={q.fluoTexte ?? ''}
+                    attendu={q.fluoAttendu ?? []}
+                    eleve={answer?.fluoWords ?? []}
+                  />
+                  {/* Un soulignage ne se note pas tout seul : la machine
+                      SUGGÈRE, le professeur confirme. Tant qu'il n'a pas
+                      appliqué (ou écrit sa note), la question reste « à
+                      noter » et ne pèse pas dans le total. */}
+                  {onQuestionScoreChange && suggestionFluo(q) !== null && (
+                    <div className={styles.suggestion}>
+                      <span>
+                        🖍 Correction automatique <b>indicative</b> — suggestion{' '}
+                        <b>{suggestionFluo(q)}/{q.points}</b>
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.suggestionBtn}
+                        disabled={disabled}
+                        onClick={() => onQuestionScoreChange(q.id, suggestionFluo(q) as number)}
+                      >
+                        Appliquer
+                      </button>
+                      {typeof questionScores?.[q.id] === 'number' && (
+                        <span className={styles.suggestionEtat}>
+                          Noté {questionScores[q.id]}/{q.points}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </>
               ) : (
                 <FluoExtrait
                   texte={q.fluoTexte ?? ''}

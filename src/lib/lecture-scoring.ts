@@ -8,6 +8,10 @@
 //  - autres questions : notées à la main par le prof, de 0 au maximum de la
 //    question, dans correction.questionScores.
 //
+// Une note écrite dans `questionScores` PRIME TOUJOURS sur l'automatique, quel
+// que soit le type : c'est la reprise en main du professeur. Effacer la note
+// rend la main au calcul. (Généralisé le 2026-09-01.)
+//
 // BARÈME PARTIEL (décision de JP, 2026-08-16) : une question à plusieurs
 // items rapporte au prorata des items réussis. 6 lignes de matrice justes sur
 // 8 valent 75 % des points. La règle de calcul vit dans `partReussite`
@@ -67,23 +71,28 @@ function scoreQuestion(
   // correction rendue) : on ne peut pas trancher, la question reste à noter.
   // C'est ce qui met « … / 3 » dans la pastille au lieu d'un faux zéro.
   if (seCorrigeSeule(q)) {
-    if (!estAutoCorrigeable(q)) {
-      return { questionId: q.id, points: null, max, auto: true };
-    }
-    // ── LA NOTE DU PROF PRIME, sur la réponse courte seulement ──
-    // C'est la seule dont le corrigé peut être incomplet : une formulation
-    // juste que le prof n'avait pas prévue est comptée fausse, et il doit
-    // pouvoir la rattraper. Un QCM, lui, n'a pas de formulation imprévue —
-    // son corrigé est complet par construction, et le prof n'a rien à y
-    // reprendre. (Même doctrine que la recherche : cf. recherche-scoring.)
+    // ── LA NOTE DU PROF PRIME, sur TOUS les types auto-corrigés ──
+    // (généralisé le 2026-09-01 ; c'était réservé à la réponse courte.)
+    // Aucun corrigé n'est à l'abri d'être incomplet : une bonne réponse que
+    // le prof n'avait pas prévue, un intrus qui se défend, une consigne
+    // ambiguë. Le professeur doit pouvoir reprendre la main sur n'importe
+    // quelle question — sinon il n'a d'autre recours que de retoucher le
+    // questionnaire pour toute la classe. (Même doctrine que la recherche :
+    // cf. recherche-scoring.)
+    // Ce test passe AVANT `estAutoCorrigeable` : une note écrite à la main
+    // vaut même quand la clé de correction n'est pas là (côté élève, quiz
+    // expurgé) — sinon sa reprise disparaîtrait de la vue de l'élève.
     const reprise = questionScores?.[q.id];
-    if (q.type === 'texte-court' && typeof reprise === 'number') {
+    if (typeof reprise === 'number') {
       return {
         questionId: q.id,
         points: Math.max(0, Math.min(max, reprise)),
         max,
         auto: false,
       };
+    }
+    if (!estAutoCorrigeable(q)) {
+      return { questionId: q.id, points: null, max, auto: true };
     }
     const part = partReussite(q, answers[q.id]) ?? 0;
     return {
