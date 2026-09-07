@@ -1,5 +1,5 @@
 import type { PlanItem } from './travail';
-import type { LectureQuiz, LectureResume } from './lecture';
+import type { LectureQuizMode, LectureQuiz, LectureResume } from './lecture';
 import type { AutoEvalQuestionnaire } from './autoevaluation';
 import type { TypeModal } from './didactique';
 
@@ -174,6 +174,39 @@ export interface Devoir {
   // est posé, c'est ce questionnaire-là qui sert — celui que porte encore
   // l'activité ne reste qu'en filet. Voir `quizDuDevoir`.
   lectureQuizId?: string | null;
+  /**
+   * COMMENT le questionnaire se joue : `worksheet`, `quiz` ou `competition`.
+   *
+   * ⚠ Le mode vit sur l'ACTIVITÉ, pas sur le questionnaire — décision de JP du
+   * 2026-09-07. Un questionnaire de la bibliothèque est une RESSOURCE, réutilisée
+   * d'une activité à l'autre : y laisser le mode obligeait le même matériel à se
+   * jouer partout de la même façon, et passer une révision en compétition aurait
+   * changé la présentation du diagnostic qui s'en sert aussi.
+   *
+   * Le mode du questionnaire subsiste comme VALEUR PAR DÉFAUT, servie quand ce
+   * champ est absent — d'où l'absence de migration : les activités écrites avant
+   * gardent exactement le comportement qu'elles avaient. Voir `quizDuDevoir`.
+   *
+   * (Le mettre plutôt sur la SESSION avait été envisagé — compétition avec la 4C,
+   * worksheet en rattrapage pour la 4D. Écarté : JP créera une seconde activité
+   * pointant vers le même questionnaire. Si le besoin revient, il se pose
+   * PAR-DESSUS ce champ, sans rien casser.)
+   */
+  lectureMode?: LectureQuizMode | null;
+  /**
+   * Les questions du questionnaire que CETTE activité ne pose pas.
+   *
+   * Même raison que `lectureMode`, et même précédent que `hiddenCriteria` (les
+   * critères de grille masqués pour un devoir) : le questionnaire est une
+   * RESSOURCE partagée. Masquer une question dedans la masquerait dans toutes
+   * les activités qui s'en servent ; ici, le masquage n'engage que celle-ci.
+   *
+   * ⚠ Une question masquée SORT de l'activité, correction comprise — c'est le
+   * même comportement que `hiddenCriteria`. En masquer une après que des élèves
+   * ont répondu retire donc leurs réponses de la copie. Les sessions déjà
+   * ouvertes sont protégées : leur questionnaire est FIGÉ.
+   */
+  hiddenQuestions?: string[] | null;
   // Questionnaire d'auto-évaluation (type autoevaluation). Rien n'y est filtré
   // pour l'élève : il n'y a ni bonne réponse ni corrigé à protéger.
   autoEvalQuiz?: AutoEvalQuestionnaire | null;
@@ -227,6 +260,10 @@ export interface CreateDevoirData {
   // (que le serveur versera ensuite dans la bibliothèque).
   lectureQuizId?: string | null;
   lectureQuiz?: LectureQuiz | null;
+  /** Comment il se joue — voir le commentaire sur `Devoir.lectureMode` */
+  lectureMode?: LectureQuizMode | null;
+  /** Questions écartées de CETTE activité — voir `Devoir.hiddenQuestions` */
+  hiddenQuestions?: string[] | null;
   // Questionnaire d'auto-évaluation (type autoevaluation uniquement)
   autoEvalQuiz?: AutoEvalQuestionnaire | null;
   // Lecture d'une œuvre (atelier lecture-oeuvre uniquement)

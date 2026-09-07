@@ -23,6 +23,12 @@ export interface InsertionChoix {
   correctIndexes?: number[];
   /** Matrice : une colonne attendue par ligne (-1 = ligne hors barème) */
   matriceCorrect?: number[];
+  /**
+   * Mode Compétition : le commentaire attaché à chaque proposition. Tableau
+   * PARALLÈLE aux choix — il ne désigne pas un rang, il en occupe un. D'où
+   * l'insertion d'une case vide plutôt qu'un décalage d'indices.
+   */
+  feedbackParChoix?: string[];
 }
 
 /**
@@ -39,6 +45,7 @@ export function insererChoix(
     correctIndex?: number;
     correctIndexes?: number[];
     matriceCorrect?: number[];
+    feedbackParChoix?: string[];
   } = {}
 ): InsertionChoix {
   const suivant = index + 1;
@@ -56,6 +63,15 @@ export function insererChoix(
   // à décaler — la décaler la ferait passer pour une exigence.
   if (corriges.matriceCorrect) {
     out.matriceCorrect = corriges.matriceCorrect.map((c) => (c < 0 ? c : decale(c)));
+  }
+  // Le feedback SUIT sa proposition : on lui insère une case vide au même
+  // endroit. Sans quoi le commentaire écrit pour la troisième proposition se
+  // retrouverait sous la quatrième, sans que rien ne le dise.
+  if (corriges.feedbackParChoix) {
+    const fb = [...corriges.feedbackParChoix];
+    while (fb.length < choix.length) fb.push('');
+    fb.splice(suivant, 0, '');
+    out.feedbackParChoix = fb;
   }
   return out;
 }

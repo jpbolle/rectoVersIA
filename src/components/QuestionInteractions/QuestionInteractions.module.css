@@ -117,6 +117,29 @@
   opacity: 0.55;
 }
 
+/* ── MODE COMPÉTITION : ce que la classe a relié ──
+   Le lien reste un lien, et son compte se pose AU MILIEU en pastille : la
+   question garde sa forme, elle n'est pas remplacée par un graphique.
+   Trait plus discret que celui d'un élève — ici la pastille est le message. */
+.relierSvg line.classe {
+  stroke: var(--c-border-strong);
+  stroke-width: 2;
+}
+
+.relierSvg circle.pastille {
+  fill: var(--c-bg-card);
+  stroke: var(--c-border-strong);
+  stroke-width: 1.5;
+}
+
+.relierSvg text.pastilleTexte {
+  fill: var(--c-text);
+  font-family: var(--c-font-title);
+  font-size: 15px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
 .dot {
   width: 20px;
   height: 20px;

@@ -29,6 +29,18 @@ interface Props {
    * droite). Absent côté prof : la colonne reste dans l'ordre de saisie.
    */
   graine?: string | null;
+  /**
+   * MODE COMPÉTITION — ce que la classe a relié, une fois la question close.
+   *
+   * Chaque paire tracée par au moins un élève apparaît, avec une PASTILLE au
+   * milieu de son lien portant le nombre. La question garde exactement sa
+   * forme : on ne la remplace pas par un graphique (décision de JP,
+   * 2026-09-07).
+   *
+   * Absent partout ailleurs — questionnaire ordinaire et correction ne
+   * changent pas d'un pixel.
+   */
+  repartition?: { gauche: string; droite: string; n: number }[] | null;
 }
 
 type Point = { x: number; y: number };
@@ -65,6 +77,7 @@ export default function AppariementField({
   disabled,
   showCorrection,
   graine,
+  repartition,
 }: Props) {
   // Mémoïsés : ces `?? []` créent un nouvel objet à chaque rendu, ce qui
   // relancerait la mesure en boucle (même famille de piège que `user` et
@@ -217,6 +230,24 @@ export default function AppariementField({
     return <line key={key} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={classe} />;
   };
 
+  /** Le lien tracé par la classe, avec son compte posé au milieu. */
+  const traitCompte = (g: string, d: string, n: number, key: string) => {
+    const a = positions[g];
+    const b = positions[d];
+    if (!a || !b) return null;
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    return (
+      <g key={key}>
+        <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="classe" />
+        <circle cx={mx} cy={my} r={13} className="pastille" />
+        <text x={mx} y={my} className="pastilleTexte">
+          {n}
+        </text>
+      </g>
+    );
+  };
+
   return (
     <div>
       <p className={styles.hint}>
@@ -225,10 +256,18 @@ export default function AppariementField({
 
       <div ref={zoneRef} className={`${styles.relierZone} ${styles.pairGrid}`}>
         <svg className={styles.relierSvg}>
-          {manquants.map(([g, d]) => trait(g, d, 'attendu', `att-${g}`))}
-          {Object.entries(paires).map(([g, d]) =>
-            trait(g, d, corrige ? (corrige[g] === d ? 'ok' : 'ko') : '', `l-${g}`)
-          )}
+          {/* Mode compétition : ce sont les liens de LA CLASSE qu'on regarde,
+              pas ceux d'un élève — on ne trace donc pas les siens. */}
+          {repartition
+            ? repartition.map((p, i) => traitCompte(p.gauche, p.droite, p.n, `r-${i}`))
+            : (
+              <>
+                {manquants.map(([g, d]) => trait(g, d, 'attendu', `att-${g}`))}
+                {Object.entries(paires).map(([g, d]) =>
+                  trait(g, d, corrige ? (corrige[g] === d ? 'ok' : 'ko') : '', `l-${g}`)
+                )}
+              </>
+            )}
           {depart && positions[depart] && (
             <line
               ref={tempRef}

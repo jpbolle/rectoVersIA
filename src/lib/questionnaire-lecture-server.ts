@@ -106,6 +106,65 @@ export function quizPourFirestore(quiz: LectureQuiz | null) {
  * d'autre n'aura à bouger.)
  */
 export async function quizDuDevoir(
+  devoir: {
+    lectureQuizId?: string | null;
+    lectureQuiz?: unknown;
+    lectureMode?: unknown;
+    hiddenQuestions?: unknown;
+  },
+  session?: { quizFige?: unknown } | null,
+  options?: {
+    /**
+     * Rendre le questionnaire ENTIER, questions écartées comprises.
+     *
+     * Réservé aux écrans où le PROF règle son activité : sans lui, l'édition
+     * n'afficherait plus les questions qu'il a fermées à l'œil, et il ne
+     * pourrait plus jamais les rouvrir.
+     *
+     * Le défaut filtre — et c'est délibéré : un appel où l'on aurait oublié
+     * d'y penser sert moins que prévu, jamais plus. L'erreur inverse enverrait
+     * à un élève une question que son professeur avait retirée.
+     */
+    complet?: boolean;
+  }
+): Promise<LectureQuiz | null> {
+  let quiz = await questionnaireDuDevoir(devoir, session);
+  if (!quiz) return null;
+
+  // ── Les questions que CETTE activité ne pose pas ──
+  // Le prof les a fermées à l'œil dans la création. Elles restent dans la
+  // ressource — c'est l'activité qui les écarte, pas le questionnaire.
+  // (Pas sur un questionnaire figé : cette copie-là dit ce que l'élève a eu.)
+  const masquees = Array.isArray(devoir.hiddenQuestions) ? devoir.hiddenQuestions : [];
+  if (masquees.length > 0 && !session?.quizFige && !options?.complet) {
+    quiz = { ...quiz, questions: quiz.questions.filter((q) => !masquees.includes(q.id)) };
+  }
+  // ── Le MODE vient de l'ACTIVITÉ, le CONTENU du questionnaire ──
+  //
+  // Un questionnaire de la bibliothèque est une ressource partagée : le mode
+  // qu'il porte n'est qu'une valeur par défaut, servie aux activités qui n'en
+  // imposent pas. Sans cette ligne, passer une révision en compétition
+  // changerait la présentation de toutes les autres activités qui réutilisent
+  // le même questionnaire (décision de JP, 2026-09-07 — voir `Devoir.lectureMode`).
+  //
+  // ⚠ Le mode s'applique AUSSI à un questionnaire figé.
+  //
+  // Le figeage protège les QUESTIONS — pour qu'une retouche dans la
+  // bibliothèque ne change pas l'épreuve sous les yeux d'une classe qui la
+  // passe. Le mode, lui, n'est pas du contenu : c'est la façon de jouer, et
+  // elle vit sur l'activité. Les figer ensemble revenait à interdire de passer
+  // en compétition une activité déjà ouverte une fois — l'élève recevait alors
+  // le questionnaire entier en worksheet, ce qui est exactement ce que le mode
+  // compétition doit empêcher.
+  const impose = devoir.lectureMode;
+  if (impose === 'worksheet' || impose === 'quiz' || impose === 'competition') {
+    return { ...quiz, mode: impose };
+  }
+  return quiz;
+}
+
+/** Le questionnaire lui-même, sans la question du mode. */
+async function questionnaireDuDevoir(
   devoir: { lectureQuizId?: string | null; lectureQuiz?: unknown },
   session?: { quizFige?: unknown } | null
 ): Promise<LectureQuiz | null> {

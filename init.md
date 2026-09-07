@@ -105,7 +105,7 @@ d'une année sur l'autre.
 
 | Situation qui revient | Forme imposée | Exemple à recopier |
 |---|---|---|
-| Ligne de boutons d'action encadrée par 2 traits horizontaux | Convention couleurs : **vert** (`--c-primary`) = bouton qui **génère** du contenu (IA, exercices, évaluation) ; **amber** (`--c-accent`) = bouton qui **affiche** ou **navigue**. Verts groupés d'abord, ambers ensuite. Boutons `min-height:42px / padding:0 22px / font:14px 600`. ⚠️ **La ligne ne touche JAMAIS les bords de la colonne** : pas de marge négative annulant le padding du conteneur (règle rappelée plusieurs fois par l'utilisateur) | `bottomActions` dans `VocabulaireActivity.module.css`, `actionBar` dans `VocabulaireExercises.module.css` |
+| Ligne de boutons d'action encadrée par 2 traits horizontaux — ⚠️ **UN TRAIT À GAUCHE, LES BOUTONS, UN TRAIT À DROITE, sur la MÊME ligne**, et non un trait au-dessus et un en dessous (erreur commise le 2026-09-07 : aller LIRE le fichier cité avant d'en écrire une) | Convention couleurs : **vert** (`--c-primary`) = bouton qui **génère** du contenu (IA, exercices, évaluation) ; **amber** (`--c-accent`) = bouton qui **affiche** ou **navigue**. Verts groupés d'abord, ambers ensuite. Boutons `min-height:42px / padding:0 22px / font:14px 600`. ⚠️ **La ligne ne touche JAMAIS les bords de la colonne** : pas de marge négative annulant le padding du conteneur (règle rappelée plusieurs fois par l'utilisateur) | `bottomActions` dans `VocabulaireActivity.module.css`, `actionBar` dans `VocabulaireExercises.module.css` |
 | Accès à un objet instable (`user`, `travail`) dans un callback mémoïsé | Pattern `ref` (jamais l'objet dans les deps — règle AGENTS.md) | `userRef` dans `AuthContext.tsx`, `travailRef` dans `useTravail` |
 | Page avec `router.replace()` | State `redirecting` : `if (redirecting) return;` avant le replace, `return null;` dans le render | pages protégées existantes |
 | Nouvelle façon d'évaluer une activité | **Grille pour l'écriture, habiletés partout ailleurs** — jamais les deux. La grille n'est exigée que pour `typeTravail === 'ecrire'`, client ET serveur | `usesGrille` dans `CreationForm` / `EditDevoirModal` |
@@ -182,6 +182,12 @@ interface Devoir {
   evaluation?: 'formatif' | 'certificatif'; // certificatif = compte pour la note (tag sur les cards) ; absent sur les devoirs antérieurs
   hiddenCriteria?: string[];      // ids de critères de la grille masqués pour CE devoir (popup au choix de la grille)
   // disponibleAt / corrigeDisponibleAt : horodatages posés au basculement (notifications)
+  // ⚠ Le questionnaire de lecture est une RESSOURCE partagée entre activités.
+  // Tout ce qui dit COMMENT cette activité-ci s'en sert vit donc ICI, et pas
+  // dans le questionnaire (décision du 2026-09-07) :
+  //   lectureMode      : 'worksheet' | 'quiz' | 'competition'
+  //   hiddenQuestions  : les questions que CETTE activité ne pose pas (l'œil)
+  // Absents = comportement d'avant, aucune migration. Voir `quizDuDevoir`.
   questionnaireId?: string;       // ref questionnaires/{id} (type rechercher)
   codeAcces?: string;             // code 6 chars extension Chrome (type rechercher)
   autoEvalQuiz?: AutoEvalQuestionnaire | null; // questionnaire d'auto-évaluation
@@ -942,6 +948,16 @@ donc la première instruction ; l'écriture dans le storage vient après.
 ### API_BASE de l'extension pointe la production
 `sidebar/app.js` contient l'URL de production en dur. Pour tester en local il faut la
 basculer sur `http://localhost:3003` **et penser à la remettre avant tout commit**.
+
+### Une route qui lit `devoir.disponible` sans regarder les sessions
+Depuis le 2026-09-01, **la session prime, le devoir sert de repli**
+(`etatEffectif`, `src/lib/session-server.ts`). Deux routes étaient restées en
+arrière : `/api/travaux/mine` et `/api/travaux` lisaient le seul drapeau de
+l'activité.
+**Symptôme** : « Ce devoir n'est pas disponible » (403) chez tous les élèves
+d'une classe pour laquelle le professeur vient pourtant d'ouvrir l'activité.
+**Règle** : toute vérification de disponibilité côté élève passe par
+`etatEffectif`, jamais par `data.disponible`. *(Corrigé le 2026-09-07.)*
 
 ### Spinner infini au rechargement d'une page prof
 L'`AuthProvider` restaure le rôle depuis un cache `sessionStorage` **avant** que

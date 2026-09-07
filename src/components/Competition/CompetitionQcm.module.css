@@ -1,0 +1,142 @@
+/* ═══ Les propositions d'un QCM en direct ═══
+
+   Grandes cases, deux par ligne : elles se visent d'un coup d'œil depuis le
+   fond de la classe et se cliquent au doigt sur un Chromebook.
+
+   ⚠ Les quatre teintes EXCLUENT le vert et le rouge, et ce n'est pas un goût :
+   ces deux couleurs sont réservées à la révélation. Une case verte pendant que
+   la question court se lirait comme la bonne réponse.
+   La FORME (▲ ◆ ● ■) double la couleur : elle nomme la case à voix haute
+   (« la case losange ») et reste lisible pour qui distingue mal les teintes. */
+
+.grille,
+.ligneJuste,
+.ligneAutres {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.grille {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Révélation : la bonne réponse SEULE sur la première ligne… */
+.ligneJuste {
+  grid-template-columns: 1fr;
+  margin-bottom: 12px;
+}
+
+/* …les autres alignées en dessous, à largeur égale. */
+.ligneAutres {
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+}
+
+.caseChoix {
+  width: 100%;
+  min-height: 96px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  border: none;
+  border-radius: var(--c-radius-lg);
+  box-shadow: var(--c-shadow-card);
+  cursor: pointer;
+  transition: transform 0.12s, filter 0.12s;
+}
+
+.caseChoix:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+}
+
+.caseChoix:disabled {
+  cursor: default;
+}
+
+/* Ce que l'élève vient de cocher, avant d'envoyer (QCM à réponses multiples) */
+.coche {
+  outline: 3px solid var(--c-text);
+  outline-offset: 2px;
+}
+
+.forme {
+  font-size: 26px;
+  line-height: 1;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.libelle {
+  flex: 1;
+}
+
+/* Les quatre teintes de jeu — ni vert, ni rouge. */
+.teinte0 { background: #3f6fa8; }  /* bleu ardoise */
+.teinte1 { background: #d4944c; }  /* ambre (l'accent Classica) */
+.teinte2 { background: #7a5a8e; }  /* violet prune */
+.teinte3 { background: #a2673f; }  /* brun cannelle */
+
+/* ── Révélation ── */
+
+.juste {
+  background: var(--c-success);
+  box-shadow: 0 0 0 3px rgba(45, 138, 78, 0.28), var(--c-shadow-card);
+}
+
+/* La mauvaise réponse de CET élève — personne d'autre ne la voit en rouge. */
+.faux {
+  background: var(--c-danger);
+}
+
+/* Les propositions fausses que l'élève n'a pas choisies : elles s'effacent
+   sans disparaître — il doit pouvoir relire ce qu'il a écarté. */
+.eteinte {
+  background: var(--c-bg-element);
+  color: var(--c-text-muted);
+  box-shadow: none;
+}
+
+/* Le mot du prof à la révélation — facultatif, souvent absent. */
+.feedback {
+  margin: 6px 0 0 40px;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--c-text-secondary);
+}
+
+/* La PASTILLE : combien d'élèves ont choisi cet encadré. Elle se pose DANS la
+   case, à droite — la question garde sa forme, on ne la remplace pas par un
+   graphique (décision de JP, 2026-09-07). */
+.pastille {
+  flex-shrink: 0;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--c-text);
+  font-family: var(--c-font-title);
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* Sur une case éteinte, le fond clair de la pastille disparaîtrait : on lui
+   rend un contour. */
+.eteinte .pastille {
+  background: transparent;
+  border: 1px solid var(--c-border-strong);
+  color: var(--c-text-secondary);
+}

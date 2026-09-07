@@ -17,6 +17,7 @@ import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import {
   sanitizeLectureQuiz,
   lectureQuizForEleve,
+  lectureQuizEnDirectPourEleve,
   lectureQuizPourFirestore,
   lectureQuizDepuisFirestore,
 } from '@/lib/lecture-server';
@@ -96,6 +97,8 @@ export async function GET(request: NextRequest) {
         // dizaines d'activités, on ne lit la bibliothèque que pour celles qui
         // y renvoient vraiment.
         lectureQuizId: data.lectureQuizId ?? null,
+        lectureMode: data.lectureMode ?? null,
+        hiddenQuestions: Array.isArray(data.hiddenQuestions) ? data.hiddenQuestions : null,
         lectureQuiz: lectureQuizDepuisFirestore(data.lectureQuiz),
         autoEvalQuiz: data.autoEvalQuiz || null,
         // Lecture d'une œuvre : l'activité ne porte qu'un renvoi vers la
@@ -120,11 +123,18 @@ export async function GET(request: NextRequest) {
           if (q) bibliotheque.set(id, q.quiz);
         })
       );
-      devoirs = devoirs.map((d) =>
-        d.lectureQuizId && bibliotheque.has(d.lectureQuizId)
-          ? { ...d, lectureQuiz: bibliotheque.get(d.lectureQuizId)! }
-          : d
-      );
+      devoirs = devoirs.map((d) => {
+        if (!d.lectureQuizId || !bibliotheque.has(d.lectureQuizId)) return d;
+        const quiz = bibliotheque.get(d.lectureQuizId)!;
+        // Le mode de l'ACTIVITÉ prime sur celui de la ressource — même règle
+        // que `quizDuDevoir`, appliquée ici parce que cette liste court-circuite
+        // cette fonction pour ne lire la bibliothèque qu'une fois par référence.
+        if (!quiz) return { ...d, lectureQuiz: quiz };
+        // ⚠ On ne retire PAS ici les questions écartées : cette liste alimente
+        // l'écran d'édition du prof, qui doit continuer à les voir pour
+        // pouvoir les rouvrir. Le filtrage se fait plus bas, côté élève.
+        return { ...d, lectureQuiz: { ...quiz, mode: d.lectureMode ?? quiz.mode } };
+      });
     }
 
     // Côté prof : nombre de copies remises par devoir.
@@ -179,6 +189,20 @@ export async function GET(request: NextRequest) {
         };
       });
 
+      // Les questions que le prof a écartées de l'activité ne partent pas chez
+      // l'élève : il y répondrait pour rien.
+      devoirs = devoirs.map((d) => {
+        const masquees = d.hiddenQuestions ?? [];
+        if (!d.lectureQuiz || masquees.length === 0) return d;
+        return {
+          ...d,
+          lectureQuiz: {
+            ...d.lectureQuiz,
+            questions: d.lectureQuiz.questions.filter((q) => !masquees.includes(q.id)),
+          },
+        };
+      });
+
       devoirs = devoirs.map((d) => ({
         ...d,
         corrigeReference:
@@ -189,7 +213,7 @@ export async function GET(request: NextRequest) {
         // dès que le corrigé est disponible, sinon version filtrée
         lectureQuiz: d.corrigeDisponible
           ? d.lectureQuiz || null
-          : lectureQuizForEleve(d.lectureQuiz),
+          : lectureQuizEnDirectPourEleve(lectureQuizForEleve(d.lectureQuiz)),
         // Auto-évaluation : rien à filtrer, il n'y a ni bonne réponse ni corrigé
         autoEvalQuiz: d.autoEvalQuiz || null,
       }));
@@ -379,6 +403,16 @@ export async function POST(request: NextRequest) {
     // Renvoi vers la bibliothèque : c'est lui qui prime à la lecture.
     if (typeof body.lectureQuizId === 'string' && body.lectureQuizId) {
       devoirData.lectureQuizId = body.lectureQuizId;
+    }
+    // Comment le questionnaire se joue — porté par l'ACTIVITÉ, pas par la
+    // ressource (voir `Devoir.lectureMode`). Absent = le mode du questionnaire.
+    if (['worksheet', 'quiz', 'competition'].includes(body.lectureMode as string)) {
+      devoirData.lectureMode = body.lectureMode;
+    }
+    if (Array.isArray(body.hiddenQuestions) && body.hiddenQuestions.length > 0) {
+      devoirData.hiddenQuestions = body.hiddenQuestions.filter(
+        (id: unknown): id is string => typeof id === 'string' && !!id
+      );
     }
     if (typeTravail === 'lire' && lectureQuiz && !devoirData.lectureQuizId) {
       const cleaned = sanitizeLectureQuiz(lectureQuiz);

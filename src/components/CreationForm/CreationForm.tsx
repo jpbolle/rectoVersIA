@@ -9,7 +9,7 @@ import QuestionnairePreviewModal from '@/components/QuestionnairePreviewModal/Qu
 import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import PlanDraft from '@/components/DraftEditor/PlanDraft';
 import VocabListEditor from '@/components/VocabListEditor/VocabListEditor';
-import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
+import LectureQuizBuilder, { LectureModeRow } from '@/components/LectureQuizBuilder/LectureQuizBuilder';
 import QuestionnaireLecturePicker, {
   QUESTIONNAIRE_SUR_MESURE,
 } from '@/components/QuestionnaireLecturePicker/QuestionnaireLecturePicker';
@@ -19,7 +19,7 @@ import { getTodayString } from '@/lib/devoir-utils';
 import { createPlanItem, planHasContent } from '@/lib/draft-utils';
 import { useVocabulaireThemes } from '@/hooks/useVocabulaireThemes';
 import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail, EvaluationType, CorrigeReference } from '@/types/devoir';
-import type { LectureQuiz } from '@/types/lecture';
+import type { LectureQuiz, LectureQuizMode } from '@/types/lecture';
 import type { AutoEvalQuestionnaire } from '@/types/autoevaluation';
 import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
@@ -197,6 +197,12 @@ export default function CreationForm({
   const [autoEvaluation, setAutoEvaluation] = useState(true);
   // Questionnaire choisi dans la bibliothèque, ou « sur mesure » (écrit ici)
   const [lectureQuizId, setLectureQuizId] = useState<string>(QUESTIONNAIRE_SUR_MESURE);
+  // COMMENT le questionnaire se joue. Porté par l'activité et non par le
+  // questionnaire : la même ressource sert un diagnostic en worksheet et une
+  // révision en compétition (voir `Devoir.lectureMode`).
+  const [lectureMode, setLectureMode] = useState<LectureQuizMode>('worksheet');
+  // Questions écartées de CETTE activité (voir `Devoir.hiddenQuestions`)
+  const [hiddenQuestions, setHiddenQuestions] = useState<string[]>([]);
 
   // Aperçu du questionnaire de recherche (popup)
   const [showQuestionnairePreview, setShowQuestionnairePreview] = useState(false);
@@ -289,6 +295,8 @@ export default function CreationForm({
     setVocabMessage(null);
     setVocabCreatingNew(false);
     setLectureQuiz(null);
+    setLectureMode('worksheet');
+    setHiddenQuestions([]);
     setAutoEvalQuiz(null);
     setOeuvreId('');
     setOeuvreChapitres([]);
@@ -354,6 +362,10 @@ export default function CreationForm({
     // Questionnaire pris dans la bibliothèque : on n'envoie que la référence.
     // Écrit sur mesure : on envoie le contenu, et le serveur le versera dans la
     // bibliothèque sous le nom de l'activité (voir POST /api/devoirs).
+    if (typeTravail === 'lire') {
+      data.lectureMode = lectureMode;
+      if (hiddenQuestions.length > 0) data.hiddenQuestions = hiddenQuestions;
+    }
     if (typeTravail === 'lire' && lectureQuizId !== QUESTIONNAIRE_SUR_MESURE) {
       data.lectureQuizId = lectureQuizId;
     } else if (typeTravail === 'lire' && lectureQuiz && lectureQuiz.questions.length > 0) {
@@ -909,13 +921,30 @@ export default function CreationForm({
           />
           {/* Le constructeur ne s'ouvre que si le prof écrit son questionnaire
               ici : en piochant dans la bibliothèque, il n'a rien à rédiger. */}
-          {lectureQuizId === QUESTIONNAIRE_SUR_MESURE && (
+          {lectureQuizId === QUESTIONNAIRE_SUR_MESURE ? (
             <LectureQuizBuilder
               value={lectureQuiz}
               onChange={setLectureQuiz}
               disabled={isSubmitting}
               getAuthHeaders={getAuthHeaders}
               allowedHabiletes={habiletes}
+              mode={lectureMode}
+              onModeChange={setLectureMode}
+              hiddenQuestions={hiddenQuestions}
+              onToggleHidden={(id) =>
+                setHiddenQuestions((h) =>
+                  h.includes(id) ? h.filter((x) => x !== id) : [...h, id]
+                )
+              }
+            />
+          ) : (
+            /* Questionnaire pioché dans la bibliothèque : rien à rédiger, mais
+               il reste à dire COMMENT il se joue — c'est propre à CETTE
+               activité, la ressource ne change pas. */
+            <LectureModeRow
+              mode={lectureMode}
+              onChange={setLectureMode}
+              disabled={isSubmitting}
             />
           )}
         </>

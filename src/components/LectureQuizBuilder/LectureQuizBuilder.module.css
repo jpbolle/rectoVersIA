@@ -239,6 +239,38 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Le commentaire de révélation passe à la ligne sous sa proposition */
+  flex-wrap: wrap;
+}
+
+/* Mode Compétition : ce que le prof dira au moment de révéler la réponse,
+   proposition par proposition. En retrait sous son choix, en gris et en
+   italique — c'est un champ FACULTATIF, il ne doit pas peser autant que la
+   proposition elle-même ni donner l'impression qu'on attend qu'il soit rempli.
+   Sélecteur `.choice input.feedbackChoix` : sans le `input`, la règle
+   `.choice input[type='text']` ci-dessous l'emporterait et lui rendrait son
+   `flex: 1`, ce qui le ramènerait sur la même ligne. */
+.choice input.feedbackChoix {
+  flex: 1 0 100%;
+  margin-left: 26px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--c-text-secondary);
+  background: var(--c-bg-element);
+  border-style: dashed;
+}
+
+/* Avertissement du basculement en Compétition : on ne supprime rien, on dit
+   ce qui ne se jouera pas. */
+.avertissement {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  background: #fdf4e7;
+  border-left: 3px solid var(--c-accent);
+  border-radius: var(--c-radius);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--c-text-secondary);
 }
 
 .choice input[type='radio'] {
@@ -1291,4 +1323,19 @@
 @media (max-width: 900px) {
   .trait { height: auto; min-height: 26px; flex-wrap: wrap; }
   .traitTypes { flex-wrap: wrap; }
+}
+
+/* Question écartée de l'activité : le bloc s'efface sans disparaître — le prof
+   doit voir ce qu'il a mis de côté, et pouvoir le reposer d'un clic. */
+.qActionOff {
+  opacity: 1;
+  filter: none;
+}
+
+.qCarteMasquee {
+  opacity: 0.45;
+}
+
+.qCarteMasquee:focus-within {
+  opacity: 1;
 }

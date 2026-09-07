@@ -1,0 +1,146 @@
+/* CE QUE LA CLASSE A RÉPONDU, avant la révélation.
+
+   ⚠ AUCUNE couleur de jugement ici : ni vert ni rouge. C'est le moment où la
+   classe se demande encore qui a raison — colorer répondrait à sa place.
+
+   ⚠ Et AUCUN graphique générique : la question garde sa forme, la pastille s'y
+   pose. Les barres de la première version faisaient perdre la question de vue
+   (correction demandée par JP le 2026-09-07). */
+
+.bloc {
+  display: grid;
+  gap: 10px;
+}
+
+.titre {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  margin: 0;
+}
+
+/* ── La pastille, partout la même ── */
+.pastille {
+  flex-shrink: 0;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border-strong);
+  color: var(--c-text);
+  font-family: var(--c-font-title);
+  font-size: 17px;
+  line-height: 1;
+}
+
+/* ── Nuage de mots (réponse courte) ── */
+.nuage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px 16px;
+  padding: 14px 8px;
+}
+
+.mot {
+  color: var(--c-primary);
+  line-height: 1.2;
+}
+
+/* Ce qui revient souvent est plus gros — c'est tout ce qu'un nuage a à dire. */
+.motFort {
+  color: var(--c-primary-dark);
+  font-weight: 700;
+}
+
+/* ── Remise en ordre : une place, l'étiquette majoritaire ── */
+.places {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.place {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+}
+
+.rang {
+  flex-shrink: 0;
+  width: 26px;
+  font-family: var(--c-font-title);
+  font-size: 18px;
+  color: var(--c-text-muted);
+  text-align: center;
+}
+
+.etiquette {
+  flex: 1;
+  font-size: 15px;
+}
+
+.personne {
+  flex: 1;
+  font-size: 14px;
+  color: var(--c-text-muted);
+  font-style: italic;
+}
+
+/* ── Ensembles : les boîtes, chacune avec ses jetons et leurs comptes ── */
+.boites {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.boite {
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 12px 14px;
+}
+
+.boiteTitre {
+  margin: 0 0 10px;
+  font-family: var(--c-font-title);
+  font-size: 16px;
+  color: var(--c-primary);
+}
+
+.jetons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.jeton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.jetonTexte {
+  flex: 1;
+}
+
+.vide {
+  color: var(--c-text-muted);
+  font-style: italic;
+  font-size: 13px;
+  margin: 0;
+}

@@ -16,6 +16,7 @@ import { sanitizeRessources } from '@/lib/ressources-server';
 import {
   sanitizeLectureQuiz,
   lectureQuizForEleve,
+  lectureQuizEnDirectPourEleve,
   lectureQuizPourFirestore,
   lectureQuizDepuisFirestore,
   computeLectureResume,
@@ -133,7 +134,12 @@ export async function GET(
     // Le questionnaire peut venir de trois endroits (copie figée de la
     // session, bibliothèque, ou embarqué dans l'activité). `quizDuDevoir`
     // tranche l'ordre une fois pour toutes — voir questionnaire-lecture-server.
-    const lectureQuiz = await quizDuDevoir(data, quizFige ? { quizFige } : null);
+    // Le prof règle son activité depuis cet écran : il lui faut le
+    // questionnaire ENTIER, questions écartées comprises, sans quoi l'œil
+    // qu'il a fermé serait irréversible.
+    const lectureQuiz = await quizDuDevoir(data, quizFige ? { quizFige } : null, {
+      complet: auth.role === 'prof',
+    });
 
     let quizComplet = corrigeAccessible;
     if (auth.role === 'eleve' && !quizComplet && lectureQuiz) {
@@ -206,9 +212,11 @@ export async function GET(
       // Questionnaire de lecture : bonnes réponses filtrées côté élève tant
       // que ni le corrigé ni sa correction ne lui sont ouverts (voir
       // `quizComplet` plus haut)
+      // En COMPÉTITION, l'élève ne reçoit AUCUNE question à l'ouverture : elles
+      // lui arrivent une à une par /api/direct/etat, quand le prof les lance.
       lectureQuiz:
         auth.role === 'eleve' && !quizComplet
-          ? lectureQuizForEleve(lectureQuiz)
+          ? lectureQuizEnDirectPourEleve(lectureQuizForEleve(lectureQuiz))
           : lectureQuiz,
       // Auto-évaluation : servie telle quelle, il n'y a rien à cacher
       autoEvalQuiz: data.autoEvalQuiz || null,
@@ -350,6 +358,18 @@ export async function PATCH(
     if (body.lectureQuizId !== undefined) {
       updateData.lectureQuizId =
         typeof body.lectureQuizId === 'string' && body.lectureQuizId ? body.lectureQuizId : null;
+    }
+    if (body.hiddenQuestions !== undefined) {
+      updateData.hiddenQuestions = Array.isArray(body.hiddenQuestions)
+        ? body.hiddenQuestions.filter((id: unknown): id is string => typeof id === 'string' && !!id)
+        : [];
+    }
+    if (body.lectureMode !== undefined) {
+      updateData.lectureMode = ['worksheet', 'quiz', 'competition'].includes(
+        body.lectureMode as string
+      )
+        ? body.lectureMode
+        : null;
     }
     if (body.lectureQuiz !== undefined) {
       updateData.lectureQuiz =

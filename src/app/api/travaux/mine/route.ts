@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateTravailId } from '@/lib/travail-utils';
+import { classesDeLEleve, etatEffectif, sessionsDeLEleve } from '@/lib/session-server';
 import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
 import type { Travail } from '@/types/travail';
 
@@ -39,7 +40,21 @@ export async function GET(request: NextRequest) {
     }
 
     const devoirData = devoirSnap.data()!;
-    if (!devoirData.disponible) {
+    // ⚠ La SESSION prime, le devoir sert de repli (`etatEffectif`).
+    //
+    // Cette route lisait le seul drapeau de l'activité — elle était restée en
+    // arrière du chantier des sessions du 2026-09-01. Conséquence : une
+    // activité ouverte pour la 4C mais fermée au niveau de l'activité rendait
+    // un 403 à toute la classe, avec « Ce devoir n'est pas disponible » à
+    // l'écran alors que le prof venait de l'ouvrir. C'est ce qui se produit en
+    // COMPÉTITION, où ouvrir la partie ouvre la session et rien d'autre.
+    const mesClasses = await classesDeLEleve(auth.uid, auth.email);
+    const mes = await sessionsDeLEleve(devoirId, mesClasses);
+    const etat = etatEffectif(
+      { disponible: devoirData.disponible, corrigeDisponible: devoirData.corrigeDisponible },
+      mes.sessions
+    );
+    if (!etat.disponible) {
       return NextResponse.json(
         { success: false, message: 'Ce devoir n\'est pas disponible' },
         { status: 403 }

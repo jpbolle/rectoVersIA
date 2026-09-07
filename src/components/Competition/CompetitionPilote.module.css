@@ -1,0 +1,376 @@
+/* ═══ Écran PROF du mode Compétition ═══
+
+   UN seul écran, deux zones — et pas deux écrans comme chez Kahoot : au
+   Collège, le projecteur RECOPIE l'écran du prof. La question occupe donc le
+   haut (c'est ce que la classe lit), le pilotage se range en bas. */
+
+/* ⚠ GABARIT REPRIS DE L'ÉCRAN DE CORRECTION
+   (`dashboard/travaux/[devoirId]/[travailId]`) : deux CARTES blanches,
+   arrondies, ombrées, chacune coiffée d'un en-tête bleu-gris (#98ADC4) portant
+   son titre. C'est le système du projet côté professeur — un écran qui s'en
+   écarte se voit immédiatement, et JP l'a vu. */
+
+/* ── Colonne de gauche : l'espace de jeu ── */
+.contentSection {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  box-shadow: var(--c-shadow-card);
+  overflow: hidden;
+}
+
+/* ── Colonne de droite : le panneau à onglets ── */
+.evaluationSection {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionHeader {
+  background: #98ADC4;
+  padding: 16px 20px;
+  border-bottom: 1px solid #8a9fb8;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-radius: var(--c-radius-lg) var(--c-radius-lg) 0 0;
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 18px;
+  color: #fff;
+}
+
+/* Ce qui se lit depuis le fond de la classe se met DANS l'en-tête : le nombre
+   de réponses reçues, que le prof surveille sans quitter la question des yeux. */
+.headerCompteur {
+  font-family: var(--c-font-title);
+  font-size: 20px;
+  color: #fff;
+}
+
+.assistanceWrapper {
+  flex: 1;
+  overflow: hidden;
+  background: var(--c-bg-card);
+  border-radius: 0 0 var(--c-radius-lg) var(--c-radius-lg);
+  box-shadow: var(--c-shadow-card);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Le corps de la carte de gauche : c'est lui qui défile, jamais la colonne
+   (gotcha maison — la colonne prof est en overflow:hidden). */
+.jeu {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 20px 8px;
+}
+
+/* Statistiques : quelques chiffres, pas un tableau de bord. */
+.stats {
+  display: grid;
+  gap: 10px;
+}
+
+.statLigne {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+  font-size: 13px;
+}
+
+.statValeur {
+  font-family: var(--c-font-title);
+  font-size: 22px;
+  color: var(--c-primary);
+}
+
+.bandeau {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 9px 14px;
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.phase {
+  font-weight: 700;
+  color: var(--c-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rebours {
+  font-family: var(--c-font-title);
+  font-size: 120px;
+  line-height: 1;
+  text-align: center;
+  color: var(--c-accent);
+  padding: 30px 0;
+}
+
+.chrono {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.chronoValeur {
+  font-family: var(--c-font-title);
+  font-size: 40px;
+  min-width: 66px;
+  text-align: right;
+  color: var(--c-primary);
+}
+
+.chronoUrgent {
+  color: var(--c-accent-dark);
+}
+
+.chronoBarre {
+  flex: 1;
+  height: 10px;
+  background: var(--c-bg-element);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.chronoBarre i {
+  display: block;
+  height: 100%;
+  background: var(--c-gradient-btn);
+}
+
+/* La question, en grand : elle est lue depuis le fond de la classe. */
+.enonce {
+  font-size: 24px;
+  line-height: 1.45;
+  color: var(--c-text);
+}
+
+.enonce p {
+  margin: 0 0 12px;
+}
+
+.vide {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--c-text-muted);
+  font-style: italic;
+}
+
+/* ── Le sommaire : le prof choisit sa question ── */
+
+.sommaire {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--c-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--c-radius);
+  cursor: pointer;
+}
+
+.ligne:hover:not(:disabled) {
+  background: var(--c-bg-element);
+  border-color: var(--c-border);
+}
+
+/* Déjà posée : barrée. Elle reste cliquable — on repose une question quand la
+   classe n'a rien compris. */
+.posee {
+  color: var(--c-text-dim);
+  text-decoration: line-through;
+}
+
+.encours {
+  background: #fdf4e7;
+  border-color: var(--c-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.rang {
+  flex-shrink: 0;
+  min-width: 26px;
+  font-weight: 700;
+  color: var(--c-text-muted);
+}
+
+.apercu {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.typeTag {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--c-text-muted);
+}
+
+.replier {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-accent-dark);
+  cursor: pointer;
+}
+
+/* ── Barre d'actions : FORME IMPOSÉE du projet ──
+   Reprise de `bottomActions` (VocabulaireActivity), et pas réinventée : les
+   deux traits ENCADRENT les boutons sur la MÊME ligne — un trait à gauche,
+   les boutons, un trait à droite. Je les avais mis au-dessus et en dessous.
+
+   Couleurs : VERT = agir sur le jeu (lancer, arrêter la question) ;
+   AMBRE = afficher ou naviguer (révéler, arrêter la partie). Verts groupés
+   d'abord, ambres ensuite.
+
+   ⚠ Aucune marge négative : la ligne ne touche JAMAIS les bords de la
+   colonne (règle rappelée plusieurs fois par JP). */
+.bottomActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: auto;
+  padding: 24px 0 18px;
+  flex-shrink: 0;
+}
+
+.bottomActionsLine {
+  flex: 1;
+  height: 1px;
+  background: var(--c-border);
+}
+
+.bottomActionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 22px;
+  border: none;
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionBtnPrimary {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.actionBtnPrimary:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
+}
+
+.actionBtnAmber {
+  background: var(--c-accent);
+  color: #fff;
+}
+
+.actionBtnAmber:hover:not(:disabled) {
+  background: #c4843c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 148, 76, 0.4);
+}
+
+/* ── Onglets : repris d'`AssistancePanel` ── */
+.onglets {
+  display: flex;
+  border-bottom: 2px solid var(--c-border);
+  background: var(--c-bg-element);
+  flex-shrink: 0;
+}
+
+.onglet {
+  flex: 1;
+  padding: 14px 20px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.ongletActif {
+  color: var(--c-primary);
+  border-bottom-color: var(--c-primary);
+  background: var(--c-bg-card);
+}
+
+.ongletContenu {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 14px 16px;
+}

@@ -5,7 +5,17 @@
 import type { DrawShape } from './draw';
 import type { NiveauConfiance } from './confiance';
 
-export type LectureQuizMode = 'worksheet' | 'quiz';
+/**
+ * Le TEMPO du questionnaire — qui décide quand la question suivante arrive.
+ * C'est le seul axe qui distingue les trois modes ; tout le reste (types de
+ * questions, correction, profil) leur est commun.
+ *
+ *  - `worksheet`   : l'élève, toutes les questions à l'écran ;
+ *  - `quiz`        : l'élève, une à la fois, sans retour en arrière ;
+ *  - `competition` : LE PROF — toute la classe sur la même question, au même
+ *                    instant, sous chrono. Voir `src/types/manche.ts`.
+ */
+export type LectureQuizMode = 'worksheet' | 'quiz' | 'competition';
 
 // 'info' : bloc informatif — pas une question, le prof introduit ou commente
 // à même le questionnaire (pas de points, pas de réponse)
@@ -163,6 +173,26 @@ export interface LectureQuestion {
    * enregistrée dans l'ordre du professeur — sans quoi tous les corrigés,
    * barèmes et statistiques déjà en base désigneraient la mauvaise case.
    */
+  /**
+   * CHRONO de la question, en secondes — mode `competition` uniquement.
+   *
+   * Absent = `CHRONO_DEFAUT_SEC` (60 s). Réglé question par question, jamais
+   * déduit du type : le prof sait mieux que nous ce que sa question demande
+   * (décision de JP, 2026-09-07). Sans objet sur un bloc informatif.
+   */
+  chronoSec?: number;
+  /**
+   * FEEDBACK PAR PROPOSITION — mode `competition`, QCM uniquement.
+   *
+   * Ce que le prof dit à la révélation, proposition par proposition : pourquoi
+   * ce distracteur est faux. C'est le moment où le jeu redevient un cours.
+   *
+   * Entièrement FACULTATIF, et le restera : le prof ne remplira pas ces champs
+   * la plupart du temps, et un questionnaire sans feedback doit se jouer
+   * exactement pareil. Ce n'est PAS un corrigé au sens du filtre serveur — il
+   * ne part qu'avec la révélation, jamais avec l'énoncé.
+   */
+  feedbackParChoix?: string[];
   pasDeMelange?: boolean;
   // Toute question peut porter une image : vignette + agrandissement,
   // et atelier de tracé complet côté élève (tracés enregistrés avec la réponse)

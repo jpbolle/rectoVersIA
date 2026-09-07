@@ -33,6 +33,7 @@ export default function DevoirCard({
 }: DevoirCardProps) {
   const router = useRouter();
   const [sessionsOuvertes, setSessionsOuvertes] = useState(false);
+  const estCompetition = devoir.lectureQuiz?.mode === 'competition';
 
   const handleToggleDisponible = (value: boolean) => {
     onToggleDisponible?.(devoir.id, value);
@@ -120,15 +121,22 @@ export default function DevoirCard({
           <span className={styles.metaIcon}>📚</span>
           <span>{devoir.grille}</span>
         </span>
-        <span className={styles.metaItem}>
-          <span className={styles.metaIcon}>📅</span>
-          <span>{formatDateShort(devoir.dateRemise)}</span>
-        </span>
+        {/* Une partie n'a pas d'échéance : elle a une heure de cours. */}
+        {!estCompetition && (
+          <span className={styles.metaItem}>
+            <span className={styles.metaIcon}>📅</span>
+            <span>{formatDateShort(devoir.dateRemise)}</span>
+          </span>
+        )}
         <span className={styles.metaItem}>
           <span className={styles.metaIcon}>🎓</span>
           <span>{devoir.classes.length ? devoir.classes.join(', ') : 'aucune classe'}</span>
         </span>
-        {variant === 'prof' && devoir.submittedCount !== undefined && (
+        {/* Rien ne se « remet » en compétition : les réponses vivent dans la
+            manche, et le compteur afficherait 0 pour toujours. Ce qu'on veut
+            voir — qui a joué, qui a répondu — est le sujet de l'onglet
+            Statistiques (étape 5). */}
+        {variant === 'prof' && !estCompetition && devoir.submittedCount !== undefined && (
           <span className={styles.metaItem}>
             <span className={styles.metaIcon}>📥</span>
             <span>
@@ -141,30 +149,44 @@ export default function DevoirCard({
       {variant === 'prof' && (
         <div className={styles.togglesSection} onClick={(e) => e.stopPropagation()}>
           <div className={styles.toggleRow}>
-            <Toggle
-              checked={devoir.disponible}
-              onChange={handleToggleDisponible}
-              labelOn="Travail disponible"
-              labelOff="Travail non disponible"
-            />
+            {/* En COMPÉTITION, « Travail disponible » disparaît : c'est
+                « Ouvrir la partie » qui donne l'accès à la classe. Deux gestes
+                pour une seule intention, c'était le piège assuré — une partie
+                lancée sur une activité fermée tourne dans le vide, et ça se
+                découvre en classe devant vingt-quatre élèves. */}
+            {!estCompetition && (
+              <Toggle
+                checked={devoir.disponible}
+                onChange={handleToggleDisponible}
+                labelOn="Travail disponible"
+                labelOff="Travail non disponible"
+              />
+            )}
+            {/* Le même drapeau, mais il ne dit pas la même chose ici : après la
+                partie, l'élève rouvre son activité et revoit les questions avec
+                les réponses. */}
             <Toggle
               checked={devoir.corrigeDisponible}
               onChange={handleToggleCorrigeDisponible}
-              labelOn="Corrigé disponible"
-              labelOff="Corrigé non disponible"
+              labelOn={estCompetition ? 'Relecture ouverte' : 'Corrigé disponible'}
+              labelOff={estCompetition ? 'Relecture fermée' : 'Corrigé non disponible'}
             />
           </div>
           {/* Les bascules ci-dessus valent pour TOUTES les classes — c'est le
               geste courant, et il reste à un clic. Ce lien n'apparaît que
               lorsqu'il y a plusieurs classes à dissocier : ouvrir le corrigé
               de celle qui a fini sans le livrer à celle qui passe demain. */}
-          {devoir.classes.length > 1 && (
+          {/* En COMPÉTITION, ce lien est le chemin vers la partie : il s'affiche
+              même avec une seule classe, puisqu'on joue toujours AVEC une
+              classe donnée. Ailleurs il ne sert qu'à dissocier, donc à partir
+              de deux. */}
+          {(devoir.classes.length > 1 || estCompetition) && (
             <button
               type="button"
               className={styles.sessionsLink}
               onClick={() => setSessionsOuvertes(true)}
             >
-              🎓 Régler classe par classe
+              {estCompetition ? '🏁 Lancer une partie' : '🎓 Régler classe par classe'}
             </button>
           )}
           <div className={styles.toggleRow}>
@@ -205,6 +227,9 @@ export default function DevoirCard({
         <SessionsModal
           devoirId={devoir.id}
           intitule={devoir.intitule}
+          // Une partie se joue avec UNE classe : le bouton « Jouer » vit donc
+          // sur la session, jamais sur la carte.
+          competition={estCompetition}
           onClose={() => setSessionsOuvertes(false)}
         />
       )}

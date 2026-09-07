@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateTravailId } from '@/lib/travail-utils';
+import { classesDeLEleve, etatEffectif, sessionsDeLEleve } from '@/lib/session-server';
 import { ensureTravaux } from '@/lib/precreate-travaux';
 import { syncSessions } from '@/lib/session-server';
 import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
@@ -40,7 +41,16 @@ export async function POST(request: NextRequest) {
     }
 
     const devoirData = devoirSnap.data()!;
-    if (!devoirData.disponible) {
+    // La SESSION prime, le devoir sert de repli — même correction que dans
+    // /api/travaux/mine : ces deux routes lisaient le seul drapeau de
+    // l'activité et étaient restées en arrière du chantier des sessions.
+    const mesClasses = await classesDeLEleve(auth.uid, auth.email);
+    const mes = await sessionsDeLEleve(body.devoirId, mesClasses);
+    const etat = etatEffectif(
+      { disponible: devoirData.disponible, corrigeDisponible: devoirData.corrigeDisponible },
+      mes.sessions
+    );
+    if (!etat.disponible) {
       return NextResponse.json(
         { success: false, message: 'Ce devoir n\'est pas disponible' },
         { status: 403 }

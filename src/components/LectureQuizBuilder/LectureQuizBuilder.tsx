@@ -13,13 +13,14 @@ import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useDidactique } from '@/hooks/useDidactique';
 import { habileteLabel, habiletesOfType } from '@/types/didactique';
 import { FluoExtrait } from '@/components/LectureQuizActivity/LectureQuizActivity';
+import { CHRONO_DEFAUT_SEC } from '@/types/manche';
 import {
   LECTURE_COMPETENCE_LABELS,
   LECTURE_TYPE_LABELS,
   estAutoCorrigeable,
   generateLectureQuestionId,
 } from '@/types/lecture';
-import type { LectureCompetence } from '@/types/lecture';
+import type { LectureCompetence, LectureQuizMode } from '@/types/lecture';
 import type {
   LectureQuiz,
   LectureQuestion,
@@ -103,6 +104,21 @@ function excerpt(html: string): string {
 interface LectureQuizBuilderProps {
   value: LectureQuiz | null;
   onChange: (quiz: LectureQuiz) => void;
+  /**
+   * Le mode imposé par l'ACTIVITÉ. Fourni par la création et l'édition
+   * d'activité ; absent quand on édite la ressource dans Mes Ressources, où
+   * c'est le mode par défaut du questionnaire qu'on règle.
+   */
+  mode?: LectureQuizMode | null;
+  onModeChange?: (mode: LectureQuizMode) => void;
+  /**
+   * Les questions que CETTE activité ne pose pas (`Devoir.hiddenQuestions`).
+   * Fournies par la création et l'édition d'activité seulement : dans Mes
+   * Ressources on édite la ressource, où il n'y a rien à masquer — l'œil ne
+   * s'affiche donc pas là-bas.
+   */
+  hiddenQuestions?: string[];
+  onToggleHidden?: (id: string) => void;
   disabled?: boolean;
   getAuthHeaders?: () => Promise<Record<string, string> | null>;
   // Habiletés retenues pour l'activité : les questions ne peuvent piocher que
@@ -129,6 +145,92 @@ const TYPES_AJOUTABLES: { type: LectureQuestionType; label: string }[] = [
 ];
 
 /**
+ * LA LIGNE « PRÉSENTATION » — worksheet / quiz / compétition.
+ *
+ * Sortie du constructeur parce qu'elle ne lui appartient plus : le mode vit sur
+ * l'ACTIVITÉ (`Devoir.lectureMode`), et une activité qui pioche son
+ * questionnaire dans la bibliothèque n'ouvre pas de constructeur du tout. Sans
+ * cette extraction, ces activités-là n'auraient aucun moyen de choisir leur
+ * mode.
+ */
+export function LectureModeRow({
+  mode,
+  onChange,
+  disabled,
+  totalPoints,
+}: {
+  mode: LectureQuizMode;
+  onChange: (mode: LectureQuizMode) => void;
+  disabled?: boolean;
+  /** Absent quand le questionnaire vient de la bibliothèque : on ne l'a pas ici */
+  totalPoints?: number;
+}) {
+  const opt = (
+    valeur: LectureQuizMode,
+    label: string,
+    aide: string
+  ) => (
+    <label className={styles.modeOpt}>
+      <input
+        type="radio"
+        checked={mode === valeur}
+        onChange={() => onChange(valeur)}
+        disabled={disabled}
+      />
+      {label}
+      <span className={styles.info} title={aide}>
+        i
+      </span>
+    </label>
+  );
+
+  return (
+    <div className={styles.modeRow}>
+      <span className={styles.modeLabel}>Présentation</span>
+      {opt(
+        'worksheet',
+        '📄 Worksheet',
+        "Toutes les questions sur une page — l'élève répond dans l'ordre qu'il veut, remise unique à la fin."
+      )}
+      {opt(
+        'quiz',
+        '🎯 Quiz',
+        'Une question à la fois, navigation ‹ › et barre de progression. Remise unique à la fin.'
+      )}
+      {opt(
+        'competition',
+        '🏁 Compétition',
+        "C'est VOUS qui lancez les questions, une à une : toute la classe les reçoit au même instant, sous chrono. Podium et score de rapidité. Formatif — jamais une cote."
+      )}
+      {totalPoints !== undefined && (
+        <span className={styles.totalPts}>
+          Total : {totalPoints} pt{totalPoints > 1 ? 's' : ''}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Les types retenus pour le mode COMPÉTITION (décision de JP, 2026-09-07).
+ *
+ * Les quatre écartés le sont pour une raison, pas par oubli :
+ *  - `texte-long` ne se corrige pas tout seul — pas de score, donc pas de podium ;
+ *  - `fluorage` (avec ou sans catégories) et `matrice` : écartés par JP.
+ * Les types manipulés retenus (appariement, ordre, image annotée, ensembles)
+ * restent lents au trackpad : c'est au prof d'allonger leur chrono.
+ */
+const TYPES_COMPETITION: LectureQuestionType[] = [
+  'qcm',
+  'texte-court',
+  'appariement',
+  'ordre',
+  'image-annotee',
+  'ensembles',
+  'info',
+];
+
+/**
  * LE TRAIT D'INSERTION — repris de l'outil d'édition d'une œuvre, où il a fait
  * ses preuves : on ajoute une question LÀ OÙ on la veut, pas au bas d'une liste
  * de vingt blocs qu'il faut ensuite remonter.
@@ -147,6 +249,7 @@ function TraitInsertion({
   onFermer,
   onChoisir,
   disabled,
+  types = TYPES_AJOUTABLES,
 }: {
   ouvert: boolean;
   /** Questionnaire vide : il n'y a rien à survoler, le trait se montre seul. */
@@ -155,6 +258,8 @@ function TraitInsertion({
   onFermer: () => void;
   onChoisir: (type: LectureQuestionType) => void;
   disabled?: boolean;
+  /** Restreinte en mode Compétition — voir TYPES_COMPETITION */
+  types?: { type: LectureQuestionType; label: string }[];
 }) {
   return (
     <div
@@ -165,7 +270,7 @@ function TraitInsertion({
       <span className={styles.traitBarre} />
       {ouvert ? (
         <span className={styles.traitTypes}>
-          {TYPES_AJOUTABLES.map((t) => (
+          {types.map((t) => (
             <button
               key={t.type}
               type="button"
@@ -209,6 +314,10 @@ export default function LectureQuizBuilder({
   disabled = false,
   getAuthHeaders,
   allowedHabiletes = null,
+  mode,
+  onModeChange,
+  hiddenQuestions,
+  onToggleHidden,
 }: LectureQuizBuilderProps) {
   const quiz: LectureQuiz = value ?? { mode: 'worksheet', questions: [] };
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -308,6 +417,20 @@ export default function LectureQuizBuilder({
   };
 
   const totalPoints = quiz.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+
+  // ── Mode Compétition ──
+  // Le mode de l'activité prime ; à défaut, celui de la ressource.
+  const modeCourant: LectureQuizMode = mode ?? quiz.mode;
+  const estCompetition = modeCourant === 'competition';
+  const typesProposes = estCompetition
+    ? TYPES_AJOUTABLES.filter((t) => TYPES_COMPETITION.includes(t.type))
+    : TYPES_AJOUTABLES;
+  // On ne SUPPRIME jamais les questions devenues injouables en basculant de
+  // mode — on les signale. Un questionnaire de quarante questions perdrait
+  // sinon la moitié de son contenu sur un clic, sans retour possible.
+  const injouables = estCompetition
+    ? quiz.questions.filter((q) => !TYPES_COMPETITION.includes(q.type))
+    : [];
 
   // ── Image de question ──
   const triggerUpload = (questionId: string) => {
@@ -513,53 +636,42 @@ export default function LectureQuizBuilder({
 
   return (
     <div className={styles.builder}>
-      {/* Choix worksheet / quiz + total des points */}
-      <div className={styles.modeRow}>
-        <span className={styles.modeLabel}>Présentation</span>
-        <label className={styles.modeOpt}>
-          <input
-            type="radio"
-            checked={quiz.mode === 'worksheet'}
-            onChange={() => update({ mode: 'worksheet' })}
-            disabled={disabled}
-          />
-          📄 Worksheet
-          <span
-            className={styles.info}
-            title="Toutes les questions sur une page — l'élève répond dans l'ordre qu'il veut, remise unique à la fin."
-          >
-            i
-          </span>
-        </label>
-        <label className={styles.modeOpt}>
-          <input
-            type="radio"
-            checked={quiz.mode === 'quiz'}
-            onChange={() => update({ mode: 'quiz' })}
-            disabled={disabled}
-          />
-          🎯 Quiz
-          <span
-            className={styles.info}
-            title="Une question à la fois, navigation ‹ › et barre de progression. Remise unique à la fin."
-          >
-            i
-          </span>
-        </label>
-        <span className={styles.totalPts}>
-          Total : {totalPoints} pt{totalPoints > 1 ? 's' : ''}
-        </span>
-      </div>
+      {/* Le mode vit sur l'ACTIVITÉ : quand le parent le pilote (création ou
+          édition d'activité), c'est lui qui l'enregistre. Sans parent — édition
+          d'un questionnaire dans Mes Ressources — on écrit le mode PAR DÉFAUT
+          de la ressource elle-même. */}
+      <LectureModeRow
+        mode={modeCourant}
+        onChange={(m) => (onModeChange ? onModeChange(m) : update({ mode: m }))}
+        disabled={disabled}
+        totalPoints={totalPoints}
+      />
+
+      {/* Basculer en compétition ne jette rien : on dit ce qui ne se jouera
+          pas, et le prof décide de supprimer ou de revenir en arrière. */}
+      {injouables.length > 0 && (
+        <p className={styles.avertissement}>
+          ⚠️ {injouables.length} question{injouables.length > 1 ? 's' : ''} ne se
+          joue{injouables.length > 1 ? 'nt' : ''} pas en compétition (
+          {[...new Set(injouables.map((q) => TYPE_LABELS[q.type]))].join(', ')}
+          ) — elle{injouables.length > 1 ? 's' : ''} sera
+          {injouables.length > 1 ? 'ont' : ''} ignorée
+          {injouables.length > 1 ? 's' : ''} pendant la partie. Rien n’est
+          supprimé : revenez en Worksheet ou en Quiz pour les retrouver.
+        </p>
+      )}
 
       {/* Blocs de questions (accordéon) */}
       <div className={styles.qList}>
         {quiz.questions.map((q, index) => {
           const isOpen = openIds.has(q.id);
+          const masquee = hiddenQuestions?.includes(q.id) === true;
           return (
           <Fragment key={q.id}>
           {/* Un trait AVANT chaque question — et un dernier après la liste :
               on insère où l'on regarde. */}
           <TraitInsertion
+            types={typesProposes}
             ouvert={traitOuvert === index}
             onOuvrir={() => setTraitOuvert(index)}
             onFermer={() => setTraitOuvert(null)}
@@ -567,7 +679,7 @@ export default function LectureQuizBuilder({
             disabled={disabled}
           />
           <div
-            className={`${styles.qBlock} ${dragIndex === index ? styles.qBlockDragging : ''} ${overIndex === index && dragIndex !== null && dragIndex !== index ? styles.qBlockOver : ''}`}
+            className={`${styles.qBlock} ${masquee ? styles.qCarteMasquee : ''} ${dragIndex === index ? styles.qBlockDragging : ''} ${overIndex === index && dragIndex !== null && dragIndex !== index ? styles.qBlockOver : ''}`}
             draggable={!disabled}
             onDragStart={() => setDragIndex(index)}
             onDragEnd={() => {
@@ -655,6 +767,50 @@ export default function LectureQuizBuilder({
                       disabled={disabled}
                     />
                   </span>
+                )}
+
+                {/* Chrono — mode Compétition seulement. Réglé question par
+                    question et jamais déduit du type : une remise en ordre au
+                    trackpad ne demande pas le temps d'un QCM, et c'est le prof
+                    qui sait laquelle des deux il vient d'écrire. */}
+                {estCompetition && q.type !== 'info' && (
+                  <span className={styles.qPts}>
+                    Chrono
+                    <input
+                      type="number"
+                      min={5}
+                      max={600}
+                      step={5}
+                      value={q.chronoSec ?? CHRONO_DEFAUT_SEC}
+                      onChange={(e) =>
+                        updateQuestion(q.id, {
+                          chronoSec: Math.min(600, Math.max(5, Number(e.target.value) || CHRONO_DEFAUT_SEC)),
+                        })
+                      }
+                      disabled={disabled}
+                    />
+                    s
+                  </span>
+                )}
+                {/* L'œil ferme la question POUR CETTE ACTIVITÉ. Rien n'est
+                    supprimé : le questionnaire est une ressource partagée, elle
+                    reste entière pour les autres activités qui s'en servent. */}
+                {onToggleHidden && (
+                  <button
+                    type="button"
+                    className={`${styles.qAction} ${
+                      hiddenQuestions?.includes(q.id) ? styles.qActionOff : ''
+                    }`}
+                    onClick={() => onToggleHidden(q.id)}
+                    title={
+                      hiddenQuestions?.includes(q.id)
+                        ? 'Écartée de cette activité — cliquez pour la reposer'
+                        : 'Écarter cette question de cette activité (le questionnaire n’est pas modifié)'
+                    }
+                    disabled={disabled}
+                  >
+                    {hiddenQuestions?.includes(q.id) ? '🙈' : '👁'}
+                  </button>
                 )}
                 <button
                   type="button"
@@ -937,11 +1093,13 @@ export default function LectureQuizBuilder({
                             const suite = insererChoix(q.choices ?? [], ci, {
                               correctIndex: q.correctIndex,
                               correctIndexes: q.correctIndexes,
+                              feedbackParChoix: q.feedbackParChoix,
                             });
                             updateQuestion(q.id, {
                               choices: suite.choix,
                               correctIndex: suite.correctIndex,
                               correctIndexes: suite.correctIndexes,
+                              feedbackParChoix: suite.feedbackParChoix,
                             });
                             focaliserChamp(`${q.id}-choix-${ci + 1}`);
                           }}
@@ -957,12 +1115,18 @@ export default function LectureQuizBuilder({
                               // Supprimer un choix DÉCALE les indices : sans
                               // ce recalcul, le corrigé désignerait la réponse
                               // d'à côté sans que rien ne le signale.
+                              // Le feedback est un tableau PARALLÈLE aux choix :
+                              // il se filtre au même rang, il ne se décale pas.
+                              const feedbackParChoix = q.feedbackParChoix
+                                ? q.feedbackParChoix.filter((_, i) => i !== ci)
+                                : undefined;
                               if (q.multiple) {
                                 const correctIndexes = (q.correctIndexes ?? [])
                                   .filter((i) => i !== ci)
                                   .map((i) => (i > ci ? i - 1 : i));
                                 updateQuestion(q.id, {
                                   choices,
+                                  feedbackParChoix,
                                   correctIndexes: correctIndexes.length ? correctIndexes : [0],
                                 });
                                 return;
@@ -975,13 +1139,36 @@ export default function LectureQuizBuilder({
                                     : q.correctIndex !== undefined && q.correctIndex > ci
                                       ? q.correctIndex - 1
                                       : q.correctIndex;
-                              updateQuestion(q.id, { choices, correctIndex });
+                              updateQuestion(q.id, { choices, correctIndex, feedbackParChoix });
                             }}
                             title="Supprimer ce choix"
                             disabled={disabled}
                           >
                             ✕
                           </button>
+                        )}
+                        {/* Le commentaire de révélation — mode Compétition.
+                            Facultatif et il le restera : le prof ne remplira
+                            pas ces champs la plupart du temps, et un
+                            questionnaire sans commentaire se joue pareil. */}
+                        {estCompetition && (
+                          <input
+                            type="text"
+                            className={styles.feedbackChoix}
+                            value={q.feedbackParChoix?.[ci] ?? ''}
+                            onChange={(e) => {
+                              const fb = [...(q.feedbackParChoix ?? [])];
+                              while (fb.length < (q.choices?.length ?? 0)) fb.push('');
+                              fb[ci] = e.target.value;
+                              updateQuestion(q.id, { feedbackParChoix: fb });
+                            }}
+                            placeholder={
+                              juste
+                                ? 'Pourquoi c’est la bonne (facultatif)'
+                                : 'Pourquoi c’est faux (facultatif)'
+                            }
+                            disabled={disabled}
+                          />
                         )}
                       </div>
                       );
@@ -1278,6 +1465,7 @@ export default function LectureQuizBuilder({
             vide, c'est le seul, et il se montre sans qu'on ait à le survoler —
             il n'y aurait rien d'autre à l'écran. */}
         <TraitInsertion
+          types={typesProposes}
           ouvert={traitOuvert === quiz.questions.length || quiz.questions.length === 0}
           toujoursVisible={quiz.questions.length === 0}
           onOuvrir={() => setTraitOuvert(quiz.questions.length)}

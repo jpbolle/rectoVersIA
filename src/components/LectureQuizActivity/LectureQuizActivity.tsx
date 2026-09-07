@@ -207,7 +207,18 @@ export default function LectureQuizActivity({
 
 // ── Carte d'une question ──
 
-function QuestionCard({
+/**
+ * LA CARTE D'UNE QUESTION — exportée pour être partagée.
+ *
+ * Le mode Compétition affiche la MÊME carte que le questionnaire ordinaire :
+ * deux rendus parallèles divergeraient au premier ajustement (c'est déjà arrivé
+ * sur les libellés de type, et sur le rendu des blocs d'une œuvre).
+ *
+ * Exportée sur place, et non déplacée dans un fichier à elle : elle s'appuie
+ * sur `QuestionAudio`, `ImageWorkspace` et tout le module de styles de ce
+ * fichier. `FluoExtrait` est déjà partagée de cette façon avec le constructeur.
+ */
+export function QuestionCard({
   question,
   number,
   answer,

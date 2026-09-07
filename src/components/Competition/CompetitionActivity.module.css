@@ -1,0 +1,153 @@
+/* Écran ÉLÈVE du mode Compétition. Sobre par construction : l'élève regarde
+   sa question et son chrono, rien d'autre ne doit accrocher l'œil. */
+
+.espace {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 8px 4px 24px;
+}
+
+.attente {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--c-text-muted);
+  font-style: italic;
+}
+
+.attenteTitre {
+  font-family: var(--c-font-title);
+  font-size: 24px;
+  color: var(--c-primary);
+  font-style: normal;
+  margin: 0 0 10px;
+}
+
+/* Le compte à rebours : les deux secondes entre l'ordre du prof et le départ
+   réel. C'est lui qui met toute la classe au même instant. */
+.rebours {
+  font-family: var(--c-font-title);
+  font-size: 120px;
+  line-height: 1;
+  text-align: center;
+  color: var(--c-accent);
+  padding: 40px 0;
+}
+
+.chrono {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.chronoValeur {
+  font-family: var(--c-font-title);
+  font-size: 32px;
+  min-width: 54px;
+  text-align: right;
+  color: var(--c-primary);
+}
+
+/* Les dix dernières secondes : le chiffre passe à l'ambre. Pas de clignotement
+   ni de son — trente Chromebooks qui sonnent ensemble, non. */
+.chronoUrgent {
+  color: var(--c-accent-dark);
+}
+
+.chronoBarre {
+  flex: 1;
+  height: 8px;
+  background: var(--c-bg-element);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.chronoBarre i {
+  display: block;
+  height: 100%;
+  background: var(--c-gradient-btn);
+}
+
+.enonce {
+  font-size: 20px;
+  line-height: 1.5;
+  color: var(--c-text);
+}
+
+.enonce p {
+  margin: 0 0 10px;
+}
+
+/* ── Barre d'actions : FORME IMPOSÉE du projet ──
+   Reprise de `bottomActions` (VocabulaireActivity) : les deux traits
+   ENCADRENT les boutons sur la MÊME ligne. Aucune marge négative — la ligne ne
+   touche jamais les bords de la colonne. */
+.bottomActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: auto;
+  padding: 24px 0 18px;
+  flex-shrink: 0;
+}
+
+.bottomActionsLine {
+  flex: 1;
+  height: 1px;
+  background: var(--c-border);
+}
+
+.bottomActionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 22px;
+  border: none;
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.2;
+  color: #fff;
+  background: var(--c-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.repondu {
+  text-align: center;
+  font-weight: 600;
+  color: var(--c-success);
+  margin: 0;
+}
+
+/* Un envoi refusé doit se voir : sans message, l'élève reste devant un écran
+   qui n'a pas bougé et reclique. */
+.refus {
+  text-align: center;
+  font-weight: 600;
+  color: var(--c-danger);
+  margin: 0;
+}

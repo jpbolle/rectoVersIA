@@ -1,0 +1,80 @@
+/* Enveloppe de l'écran de jeu du professeur.
+
+   ⚠ GABARIT REPRIS DE L'ÉCRAN DE CORRECTION
+   (`dashboard/travaux/[devoirId]/[travailId]`), et pas inventé ici : page en
+   pleine hauteur, bandeau vert dégradé, puis DEUX CARTES blanches à en-tête
+   bleu-gris, séparées par la poignée de `ResizableSplit`. C'est le système du
+   projet côté professeur ; un écran qui s'en écarte se voit tout de suite. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--c-bg);
+}
+
+.header {
+  background: var(--c-gradient-header);
+  color: #fff;
+  padding: 20px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: var(--c-shadow-header);
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.backButton {
+  background: var(--c-primary);
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--c-radius-lg);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+}
+
+.backButton:hover {
+  filter: brightness(1.1);
+}
+
+.headerTitle {
+  font-family: var(--c-font-title);
+  font-size: 22px;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  padding: 20px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Message plein écran (chargement, accès refusé) */
+.message {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--c-text-muted);
+  font-style: italic;
+}

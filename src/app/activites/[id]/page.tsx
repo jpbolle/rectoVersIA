@@ -22,6 +22,7 @@ import RechercheResponseViewer from '@/components/RechercheResponseViewer/Recher
 import RechercheStartOverlay from '@/components/RechercheStartOverlay/RechercheStartOverlay';
 import VocabulaireActivity from '@/components/VocabulaireActivity/VocabulaireActivity';
 import LectureQuizActivity from '@/components/LectureQuizActivity/LectureQuizActivity';
+import CompetitionActivity from '@/components/Competition/CompetitionActivity';
 import OeuvreReader from '@/components/OeuvreReader/OeuvreReader';
 import OeuvreSommaire from '@/components/OeuvreReader/OeuvreSommaire';
 import { useOeuvreLecture } from '@/hooks/useOeuvreLecture';
@@ -494,6 +495,10 @@ export default function TravailPage() {
   const isLecture = devoir?.typeTravail === 'lire';
   // Type lire avec questionnaire : la colonne de gauche devient le questionnaire
   const isLectureQuiz = devoir?.typeTravail === 'lire' && !!devoir?.lectureQuiz;
+  // ⚠ Mode COMPÉTITION : le questionnaire ne s'ouvre PAS comme un worksheet.
+  // Il se joue en direct, au rythme du professeur — l'afficher entier laisserait
+  // l'élève y répondre chez lui, à l'avance, sans chrono et sans partie.
+  const isCompetition = isLectureQuiz && devoir?.lectureQuiz?.mode === 'competition';
   // Lecture d'une œuvre : la colonne de gauche devient la liseuse, et la
   // navigation dans le livre s'installe à droite, sous la consigne.
   const isOeuvre = devoir?.typeTravail === 'lire' && !!devoir?.oeuvreId;
@@ -721,6 +726,15 @@ export default function TravailPage() {
               onVerificationTerminee={oeuvreLecture.marquerTerminee}
               lectureSeule={isPreviewMode}
             />
+          </div>
+        ) : isCompetition ? (
+          <div className={styles.editorSection}>
+            <div className={styles.editorHeader}>
+              <h2>{devoir.intitule || 'Compétition'}</h2>
+            </div>
+            {/* L'élève ne connaît aucun identifiant de partie : c'est sa CLASSE
+                qui désigne la session, à partir du seul numéro d'activité. */}
+            <CompetitionActivity devoirId={devoir.id} intitule={devoir.intitule} />
           </div>
         ) : isLectureQuiz ? (
           <div className={styles.editorSection}>

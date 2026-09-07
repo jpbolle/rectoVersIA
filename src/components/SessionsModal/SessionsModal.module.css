@@ -152,3 +152,23 @@
     gap: 12px;
   }
 }
+
+/* Mode Compétition : ouvrir l'écran de jeu de CETTE classe. Dans un onglet à
+   part — on projette la partie, et la liste des activités reste où elle est. */
+.jouer {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-on-primary);
+  text-decoration: none;
+  background: var(--c-gradient-btn);
+  border-radius: var(--c-radius-lg);
+  white-space: nowrap;
+}
+
+.jouer:hover {
+  filter: brightness(1.06);
+}

@@ -24,12 +24,24 @@ import styles from './SessionsModal.module.css';
 interface Props {
   devoirId: string;
   intitule: string;
+  /**
+   * Mode Compétition : chaque classe gagne son bouton « Jouer ». La partie se
+   * rattache à la SESSION, donc à la classe — c'est ici qu'elle a sa place, et
+   * pas sur la carte, qui ne sait pas avec qui on joue.
+   */
+  competition?: boolean;
   onClose: () => void;
   /** Prévient le parent qu'une classe a bougé (rafraîchir la card) */
   onChange?: () => void;
 }
 
-export default function SessionsModal({ devoirId, intitule, onClose, onChange }: Props) {
+export default function SessionsModal({
+  devoirId,
+  intitule,
+  competition = false,
+  onClose,
+  onChange,
+}: Props) {
   const { getAuthHeaders } = useAuth();
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -125,6 +137,17 @@ export default function SessionsModal({ devoirId, intitule, onClose, onChange }:
             <div key={s.id} className={styles.ligne}>
               <span className={styles.classe}>🎓 {s.classeNom}</span>
               <div className={styles.bascules}>
+                {competition && (
+                  <a
+                    href={`/direct/${s.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.jouer}
+                    title={`Ouvrir l’écran de jeu pour la ${s.classeNom}`}
+                  >
+                    🏁 Jouer
+                  </a>
+                )}
                 <Toggle
                   checked={s.disponible}
                   onChange={(v) => basculer(s, 'disponible', v)}

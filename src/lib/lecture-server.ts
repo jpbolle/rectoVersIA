@@ -167,7 +167,8 @@ export function lectureQuizDepuisFirestore(input: unknown): LectureQuiz | null {
 export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
   if (!input || typeof input !== 'object') return null;
   const raw = input as { mode?: unknown; questions?: unknown };
-  const mode = raw.mode === 'quiz' ? 'quiz' : 'worksheet';
+  const mode: LectureQuiz['mode'] =
+    raw.mode === 'quiz' || raw.mode === 'competition' ? raw.mode : 'worksheet';
   if (!Array.isArray(raw.questions)) return null;
 
   const questions: LectureQuestion[] = [];
@@ -209,6 +210,12 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
     // Posé seulement quand il vaut `true` : Firestore refuse `undefined`, et
     // un `false` écrit partout alourdirait tous les documents pour rien.
     if (question.pasDeMelange === true) cleaned.pasDeMelange = true;
+    // Chrono de la question (mode compétition). Borné : un chrono de 3 s rend
+    // la question injouable, un chrono de dix minutes n'est plus un jeu.
+    // Un bloc informatif n'en a pas — personne n'y répond.
+    if (type !== 'info' && typeof question.chronoSec === 'number' && question.chronoSec > 0) {
+      cleaned.chronoSec = Math.min(600, Math.max(5, Math.round(question.chronoSec)));
+    }
 
     // Image jointe (référence ressourceImages)
     const img = question.image as { url?: unknown; fileId?: unknown } | null | undefined;
@@ -299,6 +306,20 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
         cleaned.correctIndexes = idx.length > 0 ? idx : [0];
       } else {
         cleaned.correctIndex = suivreChoix(question.correctIndex) ?? 0;
+      }
+
+      // Feedback par proposition (mode compétition) — il DOIT suivre la même
+      // table de correspondance que le corrigé : un choix vide jeté décalerait
+      // sinon les explications d'un cran, et le prof lirait à l'écran son
+      // commentaire sous la mauvaise proposition. Tout facultatif : rien
+      // n'est écrit si le prof n'a rempli aucun champ.
+      if (Array.isArray(question.feedbackParChoix)) {
+        const fb: string[] = new Array(cleaned.choices?.length ?? 0).fill('');
+        question.feedbackParChoix.forEach((t, i) => {
+          const rang = suivreChoix(i);
+          if (rang !== null && typeof t === 'string' && t.trim()) fb[rang] = t.trim();
+        });
+        if (fb.some((t) => t !== '')) cleaned.feedbackParChoix = fb;
       }
     }
 
@@ -518,6 +539,30 @@ export function preparerPresentation(q: LectureQuestion): LectureQuestion {
   return out;
 }
 
+/**
+ * Ce qu'un ÉLÈVE reçoit d'un questionnaire en mode COMPÉTITION : le mode, et
+ * rien d'autre.
+ *
+ * ⚠ Sans cette coupe, l'activité livrerait les trente-neuf questions au
+ * navigateur dès son ouverture — corrigé retiré, certes, mais lisibles dans
+ * l'onglet réseau une heure avant la partie. Une compétition dont un élève
+ * connaît les questions n'est plus une compétition.
+ *
+ * En direct, les questions arrivent UNE À UNE par `/api/direct/etat`, et
+ * seulement quand le professeur les lance.
+ *
+ * L'exception est la relecture : quand le corrigé lui est ouvert, la partie est
+ * finie et il a le droit de tout revoir — les appelants ne passent alors pas
+ * par ici.
+ */
+export function lectureQuizEnDirectPourEleve(
+  quiz: LectureQuiz | null | undefined
+): LectureQuiz | null {
+  if (!quiz) return null;
+  if (quiz.mode !== 'competition') return quiz;
+  return { mode: quiz.mode, questions: [] };
+}
+
 export function lectureQuizForEleve(quiz: LectureQuiz | null | undefined): LectureQuiz | null {
   if (!quiz) return null;
   return {
@@ -533,6 +578,11 @@ export function lectureQuizForEleve(quiz: LectureQuiz | null | undefined): Lectu
         fluoAttenduParCategorie: _fluoAttenduParCategorie,
         appariementPaires: _appariementPaires,
         ensembleAffectations: _ensembleAffectations,
+        // Le feedback par proposition part avec la RÉVÉLATION, jamais avec
+        // l'énoncé : un commentaire posé sur les seuls distracteurs désignerait
+        // la bonne réponse par son silence. Le mode compétition le ressert au
+        // moment de la révélation, par un chemin à lui.
+        feedbackParChoix: _feedbackParChoix,
         annotations,
         ...rest
       } = q;

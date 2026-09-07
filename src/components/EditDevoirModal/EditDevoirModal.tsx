@@ -13,7 +13,7 @@ import AutoEvalBuilder from '@/components/AutoEvalBuilder/AutoEvalBuilder';
 import { getTodayString } from '@/lib/devoir-utils';
 import { createPlanItem, planHasContent } from '@/lib/draft-utils';
 import type { Devoir, Classe, DevoirRessource, EvaluationType, TypeTravail, CorrigeReference } from '@/types/devoir';
-import type { LectureQuiz } from '@/types/lecture';
+import type { LectureQuiz, LectureQuizMode } from '@/types/lecture';
 import type { AutoEvalQuestionnaire } from '@/types/autoevaluation';
 import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
@@ -118,6 +118,11 @@ export default function EditDevoirModal({
 
   // Questionnaire de lecture (type lire)
   const [lectureQuiz, setLectureQuiz] = useState<LectureQuiz | null>(null);
+  // Le mode appartient à l'activité (voir `Devoir.lectureMode`) ; à défaut, on
+  // reprend celui que porte le questionnaire — c'est ce repli qui laisse les
+  // activités écrites avant ce champ se comporter exactement comme avant.
+  const [lectureMode, setLectureMode] = useState<LectureQuizMode>('worksheet');
+  const [hiddenQuestions, setHiddenQuestions] = useState<string[]>([]);
 
   // Questionnaire d'auto-évaluation (type autoevaluation)
   const [autoEvalQuiz, setAutoEvalQuiz] = useState<AutoEvalQuestionnaire | null>(null);
@@ -156,6 +161,8 @@ export default function EditDevoirModal({
       setRessources(devoir.ressources || null);
       setRessourcesToIA(devoir.ressourcesToIA ?? false);
       setLectureQuiz(devoir.lectureQuiz || null);
+      setLectureMode(devoir.lectureMode || devoir.lectureQuiz?.mode || 'worksheet');
+      setHiddenQuestions(devoir.hiddenQuestions || []);
       setAutoEvalQuiz(devoir.autoEvalQuiz || null);
 
       // Corrigé de référence existant (type ecrire)
@@ -295,6 +302,8 @@ export default function EditDevoirModal({
     if (devoir.typeTravail === 'lire') {
       data.lectureQuiz =
         lectureQuiz && lectureQuiz.questions.length > 0 ? lectureQuiz : null;
+      data.lectureMode = lectureMode;
+      data.hiddenQuestions = hiddenQuestions;
     }
 
     // Questionnaire d'auto-évaluation — même règle
@@ -331,7 +340,7 @@ export default function EditDevoirModal({
     selectedClasses, dateRemise, grille, hiddenCriteria, intitule, consignes,
     accesIA, disponible, ressources, evaluation, modePrincipal, habiletes,
     flipInverted, ressourcesToIA, profTheme, profDraft, planToIA,
-    profProduction, productionToIA, lectureQuiz, autoEvalQuiz, autoEvaluation,
+    profProduction, productionToIA, lectureQuiz, lectureMode, hiddenQuestions, autoEvalQuiz, autoEvaluation,
     nkQuestions, nkThemes,
   ]);
 
@@ -690,6 +699,14 @@ export default function EditDevoirModal({
           disabled={isSaving}
           getAuthHeaders={getAuthHeaders}
           allowedHabiletes={habiletes}
+          mode={lectureMode}
+          onModeChange={setLectureMode}
+          hiddenQuestions={hiddenQuestions}
+          onToggleHidden={(id) =>
+            setHiddenQuestions((h) =>
+              h.includes(id) ? h.filter((x) => x !== id) : [...h, id]
+            )
+          }
         />
       )}
 
