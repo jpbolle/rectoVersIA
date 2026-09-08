@@ -58,7 +58,7 @@ import type { LectureAnswer, LectureQuestion, LectureQuiz } from '@/types/lectur
 
 const CACHE_MS = 500;
 
-interface Entree {
+export interface Entree {
   manche: Manche;
   /**
    * La copie de chaque élève : `uid → (questionId → réponse)`.
@@ -127,6 +127,15 @@ export function reponseVide(a: LectureAnswer): boolean {
   if ((a.fluoWords?.length ?? 0) > 0) return false;
   if (Object.keys(a.fluoParCategorie ?? {}).length > 0) return false;
   if ((a.shapes?.length ?? 0) > 0) return false;
+  // Les deux champs propres aux réponses d'AUTO-ÉVALUATION (`echelon`,
+  // `likert`) : le cache ci-dessous est partagé avec le SONDAGE en direct
+  // (`sondage-server.ts`), dont les copies passent par la même relecture. Sans
+  // ces deux lignes, un emoji choisi ou un cran d'échelle étaient jetés comme
+  // « vides ». Une réponse de lecture ne porte jamais ces champs : rien ne
+  // change pour la compétition.
+  const ae = a as { echelon?: string | null; likert?: number | null };
+  if (typeof ae.echelon === 'string' && ae.echelon) return false;
+  if (typeof ae.likert === 'number' && ae.likert > 0) return false;
   return true;
 }
 
@@ -185,7 +194,7 @@ function docToManche(id: string, d: Record<string, unknown>): Manche {
 }
 
 /** L'entrée de cache d'une manche, rechargée si elle a plus de 500 ms. */
-async function entree(id: string): Promise<Entree | null> {
+export async function entree(id: string): Promise<Entree | null> {
   const now = Date.now();
   const courante = cache.get(id);
   if (courante && now - courante.luA < CACHE_MS) return courante;
@@ -249,7 +258,7 @@ async function entree(id: string): Promise<Entree | null> {
   return e;
 }
 
-async function effectif(e: Entree): Promise<number> {
+export async function effectif(e: Entree): Promise<number> {
   if (e.attendus !== null) return e.attendus;
   const snap = await adminDb
     .collection('eleves')
@@ -491,7 +500,7 @@ async function quizDeLaManche(m: Manche): Promise<LectureQuiz | null> {
 }
 
 /** Les réponses à UNE question : `uid → réponse`. */
-function reponsesA(e: Entree, questionId: string): Map<string, LectureAnswer> {
+export function reponsesA(e: Entree, questionId: string): Map<string, LectureAnswer> {
   const out = new Map<string, LectureAnswer>();
   e.copies.forEach((copie, uid) => {
     const a = copie[questionId];
@@ -1056,7 +1065,7 @@ export async function piloterManche(
  * plus ni bloquer les élèves ni peser dans la répartition du nouveau.
  * Une vingtaine d'écritures, et seulement sur un geste rare.
  */
-async function effacerReponses(mancheId: string, questionId: string): Promise<void> {
+export async function effacerReponses(mancheId: string, questionId: string): Promise<void> {
   const col = adminDb.collection('manches').doc(mancheId).collection('reponses');
   const snap = await col.get();
   if (snap.empty) return;

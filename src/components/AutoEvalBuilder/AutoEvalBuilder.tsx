@@ -23,6 +23,8 @@ import {
   LIKERT_MIN_DEFAUT,
   MATRICE_MODELES,
   LIKERT_NIVEAUX,
+  SONDAGE_CHRONO_DEFAUT_SEC,
+  SONDAGE_CHRONO_MAX_SEC,
   estLikertMatrice,
   estQuestion,
   generateAutoEvalQuestionId,
@@ -43,6 +45,13 @@ interface Props {
   // Habiletés retenues pour l'activité : les questions ne piochent que là-dedans.
   // null = pas de restriction.
   allowedHabiletes?: string[] | null;
+  /**
+   * SONDAGE EN DIRECT (plan du 2026-09-08) : mêmes questions, mais posées en
+   * classe au rythme du prof, anonymes, sans remontée au profil. Le
+   * constructeur remplace alors « obligatoire » par un CHRONO par question,
+   * et range les gestes et le texte d'accompagnement, sans objet ici.
+   */
+  sondage?: boolean;
 }
 
 // Ce qu'on peut ajouter, dans l'ordre du bandeau de boutons
@@ -146,6 +155,7 @@ export default function AutoEvalBuilder({
   onChange,
   disabled = false,
   allowedHabiletes = null,
+  sondage = false,
 }: Props) {
   const { config } = useDidactique();
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
@@ -167,7 +177,9 @@ export default function AutoEvalBuilder({
       type,
       enonce: '',
       competences: [],
-      obligatoire: type !== 'info',
+      obligatoire: !sondage && type !== 'info',
+      // Sondage : chaque question naît avec son chrono (le prof l'ajuste)
+      ...(sondage && type !== 'info' ? { chronoSec: SONDAGE_CHRONO_DEFAUT_SEC } : {}),
       ...(type === 'qcm' ? { choices: ['', ''] } : {}),
       // La matrice démarre sur une échelle de fréquence : une matrice aux
       // colonnes vides ne montre pas à quoi le type sert.
@@ -234,21 +246,30 @@ export default function AutoEvalBuilder({
 
   return (
     <div className={styles.builder}>
-      <h3 className={styles.title}>Questionnaire d’auto-évaluation</h3>
+      <h3 className={styles.title}>
+        {sondage ? 'Questions du sondage' : 'Questionnaire d’auto-évaluation'}
+      </h3>
 
       <div className={styles.intro}>
-        <label className={styles.label}>Sur quoi l’élève se prononce-t-il ?</label>
+        <label className={styles.label}>
+          {sondage ? 'Sur quoi la classe se prononce-t-elle ?' : 'Sur quoi l’élève se prononce-t-il ?'}
+        </label>
         <textarea
           className={styles.introArea}
           value={quiz?.intention ?? ''}
           onChange={(e) => maj({ intention: e.target.value })}
-          placeholder="Ex. : ta contraction de texte rendue la semaine dernière — ou ton attitude au cours depuis les vacances."
+          placeholder={
+            sondage
+              ? 'Ex. : le chapitre 3, que nous venons de lire — ou le débat de tout à l’heure.'
+              : 'Ex. : ta contraction de texte rendue la semaine dernière — ou ton attitude au cours depuis les vacances.'
+          }
           rows={2}
           disabled={disabled}
         />
         <p className={styles.hint}>
-          Rien n’est corrigé ici : l’élève dit où il en est. Ses réponses n’entrent dans aucune
-          note, elles nourrissent l’onglet réflexif de son profil.
+          {sondage
+            ? 'Les questions sont posées en classe, une à une, quand vous les lancez. Les réponses sont anonymes : elles ne remontent ni à une note ni au profil de l’élève. Chaque question porte son chrono (0 = pas de chrono, vous la fermez vous-même).'
+            : 'Rien n’est corrigé ici : l’élève dit où il en est. Ses réponses n’entrent dans aucune note, elles nourrissent l’onglet réflexif de son profil.'}
         </p>
       </div>
 
@@ -256,9 +277,11 @@ export default function AutoEvalBuilder({
         <span className={styles.totalChip}>
           <strong>{nbQuestions}</strong> question{nbQuestions > 1 ? 's' : ''}
         </span>
-        <span className={styles.totalChip}>
-          {questions.filter((q) => q.obligatoire && estQuestion(q)).length} obligatoire(s)
-        </span>
+        {!sondage && (
+          <span className={styles.totalChip}>
+            {questions.filter((q) => q.obligatoire && estQuestion(q)).length} obligatoire(s)
+          </span>
+        )}
       </div>
 
       <div className={styles.qList}>
@@ -308,7 +331,35 @@ export default function AutoEvalBuilder({
                 {!isOpen && q.enonce && <span className={styles.qExcerpt}>{excerpt(q.enonce)}</span>}
 
                 <span className={styles.headRight} onClick={(e) => e.stopPropagation()}>
-                  {!info && (
+                  {/* Sondage : le chrono de la question remplace les gestes et
+                      « obligatoire » — rien ne remonte au profil, rien n'est
+                      exigé, mais chaque question a son temps. */}
+                  {!info && sondage && (
+                    <label
+                      className={styles.chrono}
+                      title="Temps laissé à la classe, en secondes. 0 = pas de chrono : vous fermez la question vous-même."
+                    >
+                      ⏱
+                      <input
+                        type="number"
+                        min={0}
+                        max={SONDAGE_CHRONO_MAX_SEC}
+                        step={5}
+                        value={q.chronoSec ?? SONDAGE_CHRONO_DEFAUT_SEC}
+                        onChange={(e) => {
+                          const n = Math.round(Number(e.target.value));
+                          majQuestion(q.id, {
+                            chronoSec: Number.isFinite(n)
+                              ? Math.max(0, Math.min(SONDAGE_CHRONO_MAX_SEC, n))
+                              : SONDAGE_CHRONO_DEFAUT_SEC,
+                          });
+                        }}
+                        disabled={disabled}
+                      />
+                      s
+                    </label>
+                  )}
+                  {!info && !sondage && (
                     <>
                       <span className={styles.habWrap}>
                         <button
@@ -588,7 +639,7 @@ export default function AutoEvalBuilder({
                     </div>
                   )}
 
-                  {!info && (
+                  {!info && !sondage && (
                     <details className={styles.details}>
                       <summary className={styles.detailsSummary}>Texte d’accompagnement</summary>
                       <textarea

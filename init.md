@@ -333,6 +333,14 @@ interface Questionnaire {
   profil — ne connaît pas la manche. Un élève sans réponse n'est pas rendu.
   **Équipes en option** (`equipes: [{id, nom, membres: uid[]}] | null`) : le score d'une
   équipe est la somme de ses membres, jamais stocké ; noms = couleurs, 8 max.
+  **Un SONDAGE en direct est une manche de genre `sondage`** (`genre: 'sondage'` sur le
+  document ; absent = compétition) : mêmes phases sans `revele`, questions de
+  l'auto-évaluation (`devoirs.autoEvalQuiz`, chrono par question `chronoSec` fixé par le
+  prof), réponses `AutoEvalAnswer` dans la même sous-collection. Moteur à part
+  (`src/lib/sondage-server.ts`) qui **importe la plomberie** de `manche-server` (cache,
+  `entree`, `effectif`, `reponsesA`, `effacerReponses`). **Aucun nom, aucun uid ne sort
+  du serveur** ; rien n'est versé dans `travaux`, rien au profil : la manche est la
+  trace (onglet Statistiques, `bilan`).
 - `oeuvres` + `oeuvres/{id}/sections` : **bibliothèque d'œuvres** (atelier « Lecture
   d'une œuvre »). Le document parent ne porte que le **sommaire** (chapitres → titres de
   sections) ; le contenu vit dans la **sous-collection**, chargée à la demande — une
@@ -568,7 +576,10 @@ interface Questionnaire {
   gestes limités au savoir-être et au réflexif), `AutoEvalActivity` (élève),
   `AutoEvalReview` (**prof : il répond à l'aveugle, la réponse de l'élève se découvre
   question par question**), `AutoEvalEvaluation` (onglet Évaluation : lucidité).
-  Aucune note nulle part — voir `harnais/memoire/rollup_autoevaluation.md`
+  Aucune note nulle part — voir `harnais/memoire/rollup_autoevaluation.md`.
+  En mode **sondage** (`sondage` prop du `AutoEvalBuilder`, atelier `sondage`) : un
+  **chrono par question** remplace « obligatoire », gestes et texte d'accompagnement
+  rangés — voir `harnais/memoire/rollup_sondage.md`
 - Admin : `DidactiquePanel` (bloc « Référentiel du cours » — UAA et méthodes en deux
   colonnes — puis les familles de gestes : Lecture, Écriture, Parole, Lexique, Réflexifs,
   Savoir-être ; alimente `useDidactique`), `AnnonceModal` (envoi d'une notification)
@@ -702,6 +713,19 @@ interface Questionnaire {
   `EquipesPanel` (tirage au sort + étiquettes déplaçables, glisser-déposer natif). L'élève
   ne reçoit **aucune question à l'ouverture** — elles arrivent une à une par
   `/api/direct/etat`
+- Sondage en direct (atelier `sondage`, dispositif `autoevaluation` ; `src/components/Sondage/`,
+  page prof `/sondage/[sessionId]`, routes `/api/sondage/{etat,pilote,reponse}`) :
+  `SondagePilote` (même gabarit et **mêmes styles** que `CompetitionPilote` — deux
+  colonnes, Questions / Statistiques ; actions : question suivante, arrêter la question,
+  arrêter le sondage — **pas de « révéler »**), `SondageActivity` (écran élève, bouton
+  Envoyer partout, la répartition une fois la question close, « merci » à la fin — ni
+  score ni rang), `SondageRepartition` (une forme par type : cases, nuage, emojis,
+  échelle à cinq crans + moyenne, tableau teinté, **cartes anonymes** pour la réponse
+  longue). Le champ de réponse est **`AutoEvalReponse`**, exporté d'`AutoEvalActivity`
+  et partagé. `useDirect` prend une `base` (`/api/sondage`) et un type de vue
+  (`SondageVue`). L'élève ne reçoit **pas `autoEvalQuiz`** (`/api/devoirs`,
+  `/api/devoirs/[id]`) ; la carte cache échéance, copies, corrigé et « Travail disponible »
+  (`estSondage()` dans `src/types/didactique.ts`)
 
 ### Hooks
 `useAuth` (expose `getAuthHeaders`), `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,

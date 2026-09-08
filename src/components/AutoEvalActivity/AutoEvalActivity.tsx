@@ -55,6 +55,201 @@ interface Props {
   isSubmitting?: boolean;
 }
 
+/**
+ * LE CHAMP DE RÉPONSE d'une question d'auto-évaluation — emojis, curseur,
+ * cases, tableau, texte.
+ *
+ * Exporté pour être PARTAGÉ avec le SONDAGE en direct (`SondageActivity`,
+ * `SondagePilote`), qui pose les mêmes questions au tempo du professeur : deux
+ * rendus parallèles divergeraient au premier ajustement (même choix que
+ * `QuestionCard` pour la compétition). `onChange` reçoit le morceau de réponse
+ * à fusionner ; l'appelant tient l'état.
+ */
+export function AutoEvalReponse({
+  question: q,
+  answer,
+  onChange,
+  disabled = false,
+}: {
+  question: AutoEvalQuestion;
+  answer: AutoEvalAnswer | undefined;
+  onChange: (patch: Partial<AutoEvalAnswer>) => void;
+  disabled?: boolean;
+}) {
+  const a = answer ?? {};
+  const readOnly = disabled;
+  const majReponse = (_id: string, patch: Partial<AutoEvalAnswer>) => {
+    if (!readOnly) onChange(patch);
+  };
+
+  switch (q.type) {
+    // ── Échelles à emoji : la réponse se donne d'un seul clic ──
+    case 'competence':
+    case 'humeur': {
+      const echelle = echelleDe(q.type);
+      return (
+        <div className={styles.echelons}>
+          {echelle.map((e) => {
+            const choisi = a.echelon === e.id;
+            return (
+              <button
+                key={e.id}
+                type="button"
+                className={`${styles.echelon} ${choisi ? styles.echelonOn : ''}`}
+                onClick={() => majReponse(q.id, { echelon: choisi ? null : e.id })}
+                disabled={readOnly}
+                aria-pressed={choisi}
+              >
+                <span className={styles.echelonEmoji}>{e.emoji}</span>
+                <span className={styles.echelonTexte}>{e.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ── Échelle de 1 à 5 ──
+    // Avec des items, c'est un tableau (le même MatriceField que la matrice,
+    // aux colonnes numérotées) ; sans items, le curseur d'origine.
+    case 'likert': {
+      if (estLikertMatrice(q)) {
+        return (
+          <div className={styles.likertMatrice}>
+            <div className={styles.likertBornes}>
+              <span>1 — {q.likertMin || LIKERT_MIN_DEFAUT}</span>
+              <span>{LIKERT_NIVEAUX} — {q.likertMax || LIKERT_MAX_DEFAUT}</span>
+            </div>
+            <MatriceField
+              items={q.matriceItems ?? []}
+              colonnes={LIKERT_COLONNES}
+              valeurs={a.matrice ?? {}}
+              onChange={(matrice) => majReponse(q.id, { matrice: uneParLigne(matrice) })}
+              disabled={readOnly}
+              nomGroupe={`ae-${q.id}`}
+            />
+          </div>
+        );
+      }
+      const valeur = a.likert ?? 0;
+      return (
+        <div className={styles.likert}>
+          <div className={styles.likertBornes}>
+            <span>{q.likertMin || LIKERT_MIN_DEFAUT}</span>
+            <span>{q.likertMax || LIKERT_MAX_DEFAUT}</span>
+          </div>
+          <input
+            type="range"
+            className={styles.curseur}
+            min={1}
+            max={LIKERT_NIVEAUX}
+            step={1}
+            // Tant que rien n'est choisi, le curseur se place au milieu sans
+            // que la réponse compte comme donnée
+            value={valeur || Math.ceil(LIKERT_NIVEAUX / 2)}
+            onChange={(e) => majReponse(q.id, { likert: Number(e.target.value) })}
+            disabled={readOnly}
+          />
+          <div className={styles.likertGraduations}>
+            {Array.from({ length: LIKERT_NIVEAUX }, (_, i) => (
+              <span
+                key={i}
+                className={`${styles.graduation} ${valeur === i + 1 ? styles.graduationOn : ''}`}
+              >
+                {i + 1}
+              </span>
+            ))}
+          </div>
+          {!valeur && <p className={styles.aRepondre}>Déplacez le curseur pour répondre.</p>}
+        </div>
+      );
+    }
+
+    case 'qcm':
+      return (
+        <div className={styles.choices}>
+          {q.multiple && (
+            <p className={styles.aRepondre}>Tu peux en choisir plusieurs.</p>
+          )}
+          {(q.choices ?? []).map((opt, j) => {
+            const choisi = q.multiple
+              ? (a.choiceIndexes ?? []).includes(j)
+              : a.choiceIndex === j;
+            const basculer = () => {
+              if (!q.multiple) {
+                majReponse(q.id, { choiceIndex: choisi ? null : j });
+                return;
+              }
+              const set = new Set(a.choiceIndexes ?? []);
+              if (set.has(j)) set.delete(j);
+              else set.add(j);
+              majReponse(q.id, { choiceIndexes: [...set].sort((x, y) => x - y) });
+            };
+            return (
+              <button
+                key={j}
+                type="button"
+                className={`${styles.choice} ${choisi ? styles.choiceOn : ''}`}
+                onClick={basculer}
+                disabled={readOnly}
+                aria-pressed={choisi}
+              >
+                {/* Carré pour le choix multiple, rond pour le choix unique :
+                    la puce dit combien de réponses on peut prendre. */}
+                <span className={styles.choicePuce}>
+                  {q.multiple ? (choisi ? '◼' : '◻') : choisi ? '●' : '○'}
+                </span>
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      );
+
+    // Matrice : plusieurs items qui partagent les mêmes réponses.
+    // Même composant que le questionnaire de lecture — mais SANS `attendu` :
+    // en auto-évaluation, aucune colonne n'est « juste ».
+    case 'matrice':
+      return (
+        <MatriceField
+          nomGroupe={q.id}
+          items={q.matriceItems ?? []}
+          colonnes={q.choices ?? []}
+          valeurs={a.matrice ?? {}}
+          onChange={(matrice) => majReponse(q.id, { matrice: uneParLigne(matrice) })}
+          disabled={readOnly}
+        />
+      );
+
+    case 'texte-court':
+      return (
+        <input
+          type="text"
+          className={styles.champCourt}
+          value={a.text ?? ''}
+          onChange={(e) => majReponse(q.id, { text: e.target.value })}
+          placeholder="Ta réponse…"
+          disabled={readOnly}
+        />
+      );
+
+    case 'texte-long':
+      return (
+        <textarea
+          className={styles.champLong}
+          value={a.text ?? ''}
+          onChange={(e) => majReponse(q.id, { text: e.target.value })}
+          placeholder="Explique en quelques phrases…"
+          rows={5}
+          disabled={readOnly}
+        />
+      );
+
+    default:
+      return null;
+  }
+}
+
 export default function AutoEvalActivity({
   quiz,
   content,
@@ -104,176 +299,14 @@ export default function AutoEvalActivity({
     [questions, answers]
   );
 
-  const rendre = (q: AutoEvalQuestion) => {
-    const a = answers[q.id] ?? {};
-
-    switch (q.type) {
-      // ── Échelles à emoji : la réponse se donne d'un seul clic ──
-      case 'competence':
-      case 'humeur': {
-        const echelle = echelleDe(q.type);
-        return (
-          <div className={styles.echelons}>
-            {echelle.map((e) => {
-              const choisi = a.echelon === e.id;
-              return (
-                <button
-                  key={e.id}
-                  type="button"
-                  className={`${styles.echelon} ${choisi ? styles.echelonOn : ''}`}
-                  onClick={() => majReponse(q.id, { echelon: choisi ? null : e.id })}
-                  disabled={readOnly}
-                  aria-pressed={choisi}
-                >
-                  <span className={styles.echelonEmoji}>{e.emoji}</span>
-                  <span className={styles.echelonTexte}>{e.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        );
-      }
-
-      // ── Échelle de 1 à 5 ──
-      // Avec des items, c'est un tableau (le même MatriceField que la matrice,
-      // aux colonnes numérotées) ; sans items, le curseur d'origine.
-      case 'likert': {
-        if (estLikertMatrice(q)) {
-          return (
-            <div className={styles.likertMatrice}>
-              <div className={styles.likertBornes}>
-                <span>1 — {q.likertMin || LIKERT_MIN_DEFAUT}</span>
-                <span>{LIKERT_NIVEAUX} — {q.likertMax || LIKERT_MAX_DEFAUT}</span>
-              </div>
-              <MatriceField
-                items={q.matriceItems ?? []}
-                colonnes={LIKERT_COLONNES}
-                valeurs={a.matrice ?? {}}
-                onChange={(matrice) => majReponse(q.id, { matrice: uneParLigne(matrice) })}
-                disabled={readOnly}
-                nomGroupe={`ae-${q.id}`}
-              />
-            </div>
-          );
-        }
-        const valeur = a.likert ?? 0;
-        return (
-          <div className={styles.likert}>
-            <div className={styles.likertBornes}>
-              <span>{q.likertMin || LIKERT_MIN_DEFAUT}</span>
-              <span>{q.likertMax || LIKERT_MAX_DEFAUT}</span>
-            </div>
-            <input
-              type="range"
-              className={styles.curseur}
-              min={1}
-              max={LIKERT_NIVEAUX}
-              step={1}
-              // Tant que rien n'est choisi, le curseur se place au milieu sans
-              // que la réponse compte comme donnée
-              value={valeur || Math.ceil(LIKERT_NIVEAUX / 2)}
-              onChange={(e) => majReponse(q.id, { likert: Number(e.target.value) })}
-              disabled={readOnly}
-            />
-            <div className={styles.likertGraduations}>
-              {Array.from({ length: LIKERT_NIVEAUX }, (_, i) => (
-                <span
-                  key={i}
-                  className={`${styles.graduation} ${valeur === i + 1 ? styles.graduationOn : ''}`}
-                >
-                  {i + 1}
-                </span>
-              ))}
-            </div>
-            {!valeur && <p className={styles.aRepondre}>Déplacez le curseur pour répondre.</p>}
-          </div>
-        );
-      }
-
-      case 'qcm':
-        return (
-          <div className={styles.choices}>
-            {q.multiple && (
-              <p className={styles.aRepondre}>Tu peux en choisir plusieurs.</p>
-            )}
-            {(q.choices ?? []).map((opt, j) => {
-              const choisi = q.multiple
-                ? (a.choiceIndexes ?? []).includes(j)
-                : a.choiceIndex === j;
-              const basculer = () => {
-                if (!q.multiple) {
-                  majReponse(q.id, { choiceIndex: choisi ? null : j });
-                  return;
-                }
-                const set = new Set(a.choiceIndexes ?? []);
-                if (set.has(j)) set.delete(j);
-                else set.add(j);
-                majReponse(q.id, { choiceIndexes: [...set].sort((x, y) => x - y) });
-              };
-              return (
-                <button
-                  key={j}
-                  type="button"
-                  className={`${styles.choice} ${choisi ? styles.choiceOn : ''}`}
-                  onClick={basculer}
-                  disabled={readOnly}
-                  aria-pressed={choisi}
-                >
-                  {/* Carré pour le choix multiple, rond pour le choix unique :
-                      la puce dit combien de réponses on peut prendre. */}
-                  <span className={styles.choicePuce}>
-                    {q.multiple ? (choisi ? '◼' : '◻') : choisi ? '●' : '○'}
-                  </span>
-                  {opt}
-                </button>
-              );
-            })}
-          </div>
-        );
-
-      // Matrice : plusieurs items qui partagent les mêmes réponses.
-      // Même composant que le questionnaire de lecture — mais SANS `attendu` :
-      // en auto-évaluation, aucune colonne n'est « juste ».
-      case 'matrice':
-        return (
-          <MatriceField
-            nomGroupe={q.id}
-            items={q.matriceItems ?? []}
-            colonnes={q.choices ?? []}
-            valeurs={a.matrice ?? {}}
-            onChange={(matrice) => majReponse(q.id, { matrice: uneParLigne(matrice) })}
-            disabled={readOnly}
-          />
-        );
-
-      case 'texte-court':
-        return (
-          <input
-            type="text"
-            className={styles.champCourt}
-            value={a.text ?? ''}
-            onChange={(e) => majReponse(q.id, { text: e.target.value })}
-            placeholder="Ta réponse…"
-            disabled={readOnly}
-          />
-        );
-
-      case 'texte-long':
-        return (
-          <textarea
-            className={styles.champLong}
-            value={a.text ?? ''}
-            onChange={(e) => majReponse(q.id, { text: e.target.value })}
-            placeholder="Explique en quelques phrases…"
-            rows={5}
-            disabled={readOnly}
-          />
-        );
-
-      default:
-        return null;
-    }
-  };
+  const rendre = (q: AutoEvalQuestion) => (
+    <AutoEvalReponse
+      question={q}
+      answer={answers[q.id]}
+      onChange={(patch) => majReponse(q.id, patch)}
+      disabled={readOnly}
+    />
+  );
 
   if (questions.length === 0) {
     return (

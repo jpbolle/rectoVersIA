@@ -26,7 +26,7 @@ import type { NavigKidQuestion } from '@/types/navigkid';
 import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
 import HabiletesPicker from '@/components/HabiletesPicker/HabiletesPicker';
 import { useOeuvres } from '@/hooks/useOeuvres';
-import { ATELIERS, findAtelier, TYPES_MODAUX } from '@/types/didactique';
+import { ATELIERS, findAtelier, TYPES_MODAUX, ATELIER_SONDAGE } from '@/types/didactique';
 import type { TypeModal } from '@/types/didactique';
 import styles from './CreationForm.module.css';
 import FlipChoice from '@/components/FlipChoice/FlipChoice';
@@ -907,6 +907,7 @@ export default function CreationForm({
           onChange={setAutoEvalQuiz}
           disabled={isSubmitting}
           allowedHabiletes={habiletes}
+          sondage={atelier === ATELIER_SONDAGE}
         />
       )}
 

@@ -22,7 +22,7 @@ import {
   lectureQuizDepuisFirestore,
 } from '@/lib/lecture-server';
 import { sanitizeAutoEvalQuiz } from '@/lib/autoevaluation-server';
-import { atelierParDispositif, findAtelier, isTypeModal } from '@/types/didactique';
+import { atelierParDispositif, estSondage, findAtelier, isTypeModal } from '@/types/didactique';
 
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -214,8 +214,11 @@ export async function GET(request: NextRequest) {
         lectureQuiz: d.corrigeDisponible
           ? d.lectureQuiz || null
           : lectureQuizEnDirectPourEleve(lectureQuizForEleve(d.lectureQuiz)),
-        // Auto-évaluation : rien à filtrer, il n'y a ni bonne réponse ni corrigé
-        autoEvalQuiz: d.autoEvalQuiz || null,
+        // Auto-évaluation : rien à filtrer, il n'y a ni bonne réponse ni corrigé.
+        // SONDAGE en direct : l'élève ne reçoit AUCUNE question à l'ouverture —
+        // elles lui arrivent une à une par /api/sondage/etat, quand le prof
+        // les lance (même fuite bouchée que pour la compétition).
+        autoEvalQuiz: estSondage(d) ? null : d.autoEvalQuiz || null,
       }));
     }
 

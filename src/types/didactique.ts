@@ -48,6 +48,8 @@ export interface Atelier {
   modeParDefaut: TypeModal;
 }
 
+export const ATELIER_SONDAGE = 'sondage';
+
 export const ATELIERS: Atelier[] = [
   {
     id: 'ecriture',
@@ -99,7 +101,26 @@ export const ATELIERS: Atelier[] = [
     dispositif: 'autoevaluation',
     modeParDefaut: 'reflexif',
   },
+  {
+    // Le SONDAGE : les questions de l'auto-évaluation (rien n'y est juste ou
+    // faux), mais posées EN DIRECT, au rythme du professeur, et ANONYMES. Même
+    // dispositif que l'auto-évaluation — c'est le même constructeur, la même
+    // forme de réponse — dans une autre enveloppe : une partie jouée en classe,
+    // dont rien ne remonte au profil de l'élève (plan du 2026-09-08).
+    // Mode principal « parler » : un sondage nourrit l'échange oral, ce n'est
+    // pas un geste sur soi.
+    id: ATELIER_SONDAGE,
+    label: 'Sondage en direct',
+    court: 'Sondage',
+    dispositif: 'autoevaluation',
+    modeParDefaut: 'parler',
+  },
 ];
+
+/** L'identifiant de l'atelier « Sondage en direct » — repère des aiguillages. */
+export function estSondage(devoir: { atelier?: string | null } | null | undefined): boolean {
+  return devoir?.atelier === ATELIER_SONDAGE;
+}
 
 export function findAtelier(id: string | undefined): Atelier | undefined {
   return ATELIERS.find((a) => a.id === id);

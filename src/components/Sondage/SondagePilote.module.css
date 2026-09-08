@@ -1,0 +1,84 @@
+/* Écran PROF du sondage — ce qui n'existe pas dans l'écran de compétition,
+   dont il reprend tout le reste (`CompetitionPilote.module.css`). */
+
+/* Le bloc informatif, projeté : la « diapo » entre deux questions */
+.info {
+  background: rgba(212, 148, 76, 0.09);
+  border: 1px dashed var(--c-accent);
+  border-radius: 12px;
+  padding: 22px 26px;
+  font-size: 22px;
+  line-height: 1.5;
+  color: var(--c-text);
+  white-space: pre-wrap;
+}
+
+/* La question en lecture seule pendant qu'elle court : on l'agrandit un peu,
+   elle est lue du fond de la classe. */
+.apercu {
+  font-size: 17px;
+}
+
+.apercu button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+/* ── Le bilan : une section par question posée ── */
+.bilan {
+  display: grid;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.bilanItem {
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg-card);
+  overflow: hidden;
+}
+
+.bilanHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.bilanNumero {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+}
+
+.bilanEnonce {
+  flex: 1;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--c-text);
+}
+
+.bilanCompte {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--c-text-muted);
+  white-space: nowrap;
+}
+
+/* Dans le panneau, tout est plus serré qu'au tableau */
+.bilanCorps {
+  padding: 12px;
+  font-size: 13px;
+}

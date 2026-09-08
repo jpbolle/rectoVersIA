@@ -4,6 +4,7 @@
 // l'élève. Un questionnaire d'auto-évaluation ne contient ni bonne réponse ni
 // corrigé — l'élève peut donc recevoir le document tel quel.
 
+import { SONDAGE_CHRONO_MAX_SEC } from '@/types/autoevaluation';
 import type { AutoEvalQuestion, AutoEvalQuestionType, AutoEvalQuestionnaire } from '@/types/autoevaluation';
 
 const TYPES: AutoEvalQuestionType[] = [
@@ -64,6 +65,12 @@ export function sanitizeAutoEvalQuiz(input: unknown): AutoEvalQuestionnaire | nu
 
     const document = texte(question.document);
     if (document) cleaned.document = document;
+
+    // Chrono du SONDAGE en direct : un entier de secondes, borné. Absent sur
+    // une auto-évaluation ordinaire, qui n'en fait rien.
+    if (typeof question.chronoSec === 'number' && Number.isFinite(question.chronoSec)) {
+      cleaned.chronoSec = Math.max(0, Math.min(SONDAGE_CHRONO_MAX_SEC, Math.round(question.chronoSec)));
+    }
 
     // Le QCM et la matrice partagent leurs réponses : ce sont les mêmes
     // colonnes, saisies avec le même éditeur. La matrice y ajoute ses lignes.

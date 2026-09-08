@@ -30,6 +30,8 @@ interface Props {
    * pas sur la carte, qui ne sait pas avec qui on joue.
    */
   competition?: boolean;
+  /** Sondage en direct : même bouton, vers l'écran du sondage ; pas de corrigé */
+  sondage?: boolean;
   onClose: () => void;
   /** Prévient le parent qu'une classe a bougé (rafraîchir la card) */
   onChange?: () => void;
@@ -39,6 +41,7 @@ export default function SessionsModal({
   devoirId,
   intitule,
   competition = false,
+  sondage = false,
   onClose,
   onChange,
 }: Props) {
@@ -148,6 +151,17 @@ export default function SessionsModal({
                     🏁 Jouer
                   </a>
                 )}
+                {sondage && (
+                  <a
+                    href={`/sondage/${s.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.jouer}
+                    title={`Ouvrir l’écran du sondage pour la ${s.classeNom}`}
+                  >
+                    📊 Lancer
+                  </a>
+                )}
                 <Toggle
                   checked={s.disponible}
                   onChange={(v) => basculer(s, 'disponible', v)}
@@ -155,13 +169,15 @@ export default function SessionsModal({
                   labelOff="Travail non disponible"
                   disabled={enCours.has(s.id)}
                 />
-                <Toggle
-                  checked={s.corrigeDisponible}
-                  onChange={(v) => basculer(s, 'corrigeDisponible', v)}
-                  labelOn="Corrigé disponible"
-                  labelOff="Corrigé non disponible"
-                  disabled={enCours.has(s.id)}
-                />
+                {!sondage && (
+                  <Toggle
+                    checked={s.corrigeDisponible}
+                    onChange={(v) => basculer(s, 'corrigeDisponible', v)}
+                    labelOn="Corrigé disponible"
+                    labelOff="Corrigé non disponible"
+                    disabled={enCours.has(s.id)}
+                  />
+                )}
               </div>
             </div>
           ))}

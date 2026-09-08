@@ -23,6 +23,8 @@ import RechercheStartOverlay from '@/components/RechercheStartOverlay/RechercheS
 import VocabulaireActivity from '@/components/VocabulaireActivity/VocabulaireActivity';
 import LectureQuizActivity from '@/components/LectureQuizActivity/LectureQuizActivity';
 import CompetitionActivity from '@/components/Competition/CompetitionActivity';
+import SondageActivity from '@/components/Sondage/SondageActivity';
+import { estSondage } from '@/types/didactique';
 import OeuvreReader from '@/components/OeuvreReader/OeuvreReader';
 import OeuvreSommaire from '@/components/OeuvreReader/OeuvreSommaire';
 import { useOeuvreLecture } from '@/hooks/useOeuvreLecture';
@@ -502,8 +504,12 @@ export default function TravailPage() {
   // Lecture d'une œuvre : la colonne de gauche devient la liseuse, et la
   // navigation dans le livre s'installe à droite, sous la consigne.
   const isOeuvre = devoir?.typeTravail === 'lire' && !!devoir?.oeuvreId;
+  // SONDAGE en direct : le questionnaire ne s'ouvre pas — il se joue au rythme
+  // du professeur, et l'élève ne reçoit aucune question à l'ouverture
+  // (`autoEvalQuiz` lui est servi vide). L'atelier seul fait l'aiguillage.
+  const isSondage = estSondage(devoir);
   // Auto-évaluation : l'élève se prononce sur son travail ou son attitude
-  const isAutoEval = devoir?.typeTravail === 'autoevaluation' && !!devoir?.autoEvalQuiz;
+  const isAutoEval = !isSondage && devoir?.typeTravail === 'autoevaluation' && !!devoir?.autoEvalQuiz;
 
   // ── Configuration du rail : icones + visibilite par type d'activite ──
   const hasAiSuggestions = aiSuggestions
@@ -520,7 +526,7 @@ export default function TravailPage() {
   // dans la gouttière de correction, question par question), auto-évaluation
   // (il n'y a pas de copie ; le regard du prof se lit dans l'onglet Évaluation,
   // en face de celui de l'élève).
-  const showRemarques = !isVocabulaire && !isRecherche && !isLecture && !isAutoEval;
+  const showRemarques = !isVocabulaire && !isRecherche && !isLecture && !isAutoEval && !isSondage;
 
   // Ordre : Consignes → Ressources → Aide IA → Remarques → Recherche → Évaluation
   const railTabs: RailTab[] = [];
@@ -603,7 +609,7 @@ export default function TravailPage() {
         // Questionnaire de lecture et auto-évaluation : au bas du questionnaire.
         // Lecture d'une œuvre : RIEN NE SE REMET — le parcours reste ouvert et
         // le prof suit la progression (décision fondatrice de l'atelier).
-        hideSubmit={isRecherche || isLectureQuiz || isAutoEval || isOeuvre}
+        hideSubmit={isRecherche || isLectureQuiz || isAutoEval || isOeuvre || isSondage}
         submitOutsideApp={isRecherche}
       />
 
@@ -685,6 +691,15 @@ export default function TravailPage() {
                 />
               )}
             </div>
+          </div>
+        ) : isSondage ? (
+          <div className={styles.editorSection}>
+            <div className={styles.editorHeader}>
+              <h2>{devoir.intitule || 'Sondage'}</h2>
+            </div>
+            {/* Comme la compétition : sa CLASSE désigne la partie, à partir du
+                seul numéro d'activité. */}
+            <SondageActivity devoirId={devoir.id} intitule={devoir.intitule} />
           </div>
         ) : isAutoEval ? (
           <div className={styles.editorSection}>

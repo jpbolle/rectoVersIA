@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Toggle from '@/components/Toggle/Toggle';
 import SessionsModal from '@/components/SessionsModal/SessionsModal';
 import { formatDateShort } from '@/lib/devoir-utils';
+import { estSondage } from '@/types/didactique';
 import type { Devoir } from '@/types/devoir';
 import styles from './DevoirCard.module.css';
 
@@ -34,6 +35,10 @@ export default function DevoirCard({
   const router = useRouter();
   const [sessionsOuvertes, setSessionsOuvertes] = useState(false);
   const estCompetition = devoir.lectureQuiz?.mode === 'competition';
+  // Le SONDAGE se joue en direct comme la compétition : mêmes gestes sur la
+  // carte (pas d'échéance, pas de copies, l'ouverture passe par la partie).
+  const sondage = estSondage(devoir);
+  const enDirect = estCompetition || sondage;
 
   const handleToggleDisponible = (value: boolean) => {
     onToggleDisponible?.(devoir.id, value);
@@ -122,7 +127,7 @@ export default function DevoirCard({
           <span>{devoir.grille}</span>
         </span>
         {/* Une partie n'a pas d'échéance : elle a une heure de cours. */}
-        {!estCompetition && (
+        {!enDirect && (
           <span className={styles.metaItem}>
             <span className={styles.metaIcon}>📅</span>
             <span>{formatDateShort(devoir.dateRemise)}</span>
@@ -136,7 +141,7 @@ export default function DevoirCard({
             manche, et le compteur afficherait 0 pour toujours. Ce qu'on veut
             voir — qui a joué, qui a répondu — est le sujet de l'onglet
             Statistiques (étape 5). */}
-        {variant === 'prof' && !estCompetition && devoir.submittedCount !== undefined && (
+        {variant === 'prof' && !enDirect && devoir.submittedCount !== undefined && (
           <span className={styles.metaItem}>
             <span className={styles.metaIcon}>📥</span>
             <span>
@@ -154,7 +159,7 @@ export default function DevoirCard({
                 pour une seule intention, c'était le piège assuré — une partie
                 lancée sur une activité fermée tourne dans le vide, et ça se
                 découvre en classe devant vingt-quatre élèves. */}
-            {!estCompetition && (
+            {!enDirect && (
               <Toggle
                 checked={devoir.disponible}
                 onChange={handleToggleDisponible}
@@ -165,12 +170,15 @@ export default function DevoirCard({
             {/* Le même drapeau, mais il ne dit pas la même chose ici : après la
                 partie, l'élève rouvre son activité et revoit les questions avec
                 les réponses. */}
-            <Toggle
-              checked={devoir.corrigeDisponible}
-              onChange={handleToggleCorrigeDisponible}
-              labelOn={estCompetition ? 'Relecture ouverte' : 'Corrigé disponible'}
-              labelOff={estCompetition ? 'Relecture fermée' : 'Corrigé non disponible'}
-            />
+            {/* Un sondage anonyme n'a ni corrigé ni relecture : rien à ouvrir. */}
+            {!sondage && (
+              <Toggle
+                checked={devoir.corrigeDisponible}
+                onChange={handleToggleCorrigeDisponible}
+                labelOn={estCompetition ? 'Relecture ouverte' : 'Corrigé disponible'}
+                labelOff={estCompetition ? 'Relecture fermée' : 'Corrigé non disponible'}
+              />
+            )}
           </div>
           {/* Les bascules ci-dessus valent pour TOUTES les classes — c'est le
               geste courant, et il reste à un clic. Ce lien n'apparaît que
@@ -180,13 +188,17 @@ export default function DevoirCard({
               même avec une seule classe, puisqu'on joue toujours AVEC une
               classe donnée. Ailleurs il ne sert qu'à dissocier, donc à partir
               de deux. */}
-          {(devoir.classes.length > 1 || estCompetition) && (
+          {(devoir.classes.length > 1 || enDirect) && (
             <button
               type="button"
               className={styles.sessionsLink}
               onClick={() => setSessionsOuvertes(true)}
             >
-              {estCompetition ? '🏁 Lancer une partie' : '🎓 Régler classe par classe'}
+              {sondage
+                ? '📊 Lancer le sondage'
+                : estCompetition
+                ? '🏁 Lancer une partie'
+                : '🎓 Régler classe par classe'}
             </button>
           )}
           <div className={styles.toggleRow}>
@@ -230,6 +242,7 @@ export default function DevoirCard({
           // Une partie se joue avec UNE classe : le bouton « Jouer » vit donc
           // sur la session, jamais sur la carte.
           competition={estCompetition}
+          sondage={sondage}
           onClose={() => setSessionsOuvertes(false)}
         />
       )}

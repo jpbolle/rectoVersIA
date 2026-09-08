@@ -111,7 +111,7 @@ règle d'affichage à tenir pour les trois surfaces.
 |---|---|
 | Mécanique du glisser | **Pointer Events écrits à la main**. Pas le glisser HTML5 : il ne fonctionne **pas au doigt**, et chaque élève a un Chromebook |
 | Barème | **PARTIEL** — 6 items justes sur 8 = 75 % des points. Le tout-ou-rien annulerait sept bonnes réponses pour une étourderie |
-| Maquette | Une maquette HTML manipulable (`harnais/plans/maquette-types-questions.html`), deux tours, puis code |
+| Maquette | Une maquette HTML manipulable (`maquette-types-questions.html`, **supprimée le 2026-09-08** — fonctionnalité livrée et validée, le code fait foi), deux tours, puis code |
 
 **Rattrapage au tap** (ajouté sans être demandé, validé à l'usage) : un appui
 sans mouvement arme l'élément, le tap suivant le pose. Sur un pavé tactile

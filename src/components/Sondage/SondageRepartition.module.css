@@ -1,0 +1,285 @@
+/* CE QUE LA CLASSE A RÉPONDU — sondage en direct.
+
+   Projeté au tableau : tout est plus grand que dans un formulaire. Aucune
+   couleur de jugement — il n'y a rien à juger —, et aucun nom : la seule
+   « mise en avant » est celle de la réponse majoritaire, par le relief. */
+
+.bloc {
+  display: grid;
+  gap: 12px;
+}
+
+.titre {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  margin: 0;
+}
+
+.vide {
+  color: var(--c-text-muted);
+  font-style: italic;
+  font-size: 14px;
+  margin: 0;
+  padding: 18px 0;
+  text-align: center;
+}
+
+/* ── La pastille, partout la même ── */
+.pastille {
+  flex-shrink: 0;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border-strong);
+  color: var(--c-text);
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  line-height: 1;
+}
+
+/* ── Choix multiple : les cases, pastille à droite, barre de part en dessous ── */
+.choix {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.case {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px 18px;
+  background: var(--c-bg-element);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-size: 19px;
+  line-height: 1.4;
+  overflow: hidden;
+}
+
+.caseForte {
+  border-color: var(--c-border-strong);
+  background: var(--c-bg-card);
+}
+
+.caseLettre {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--c-text-secondary);
+}
+
+.caseTexte {
+  flex: 1;
+}
+
+.caseBarre {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 6px;
+  background: var(--c-primary);
+  opacity: 0.55;
+}
+
+/* ── Nuage de mots ── */
+.nuage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px 20px;
+  padding: 18px 8px;
+}
+
+.mot {
+  color: var(--c-primary);
+  line-height: 1.2;
+}
+
+.motFort {
+  color: var(--c-primary-dark);
+  font-weight: 700;
+}
+
+/* ── Réponses longues : cartes anonymes ── */
+.cartes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.carte {
+  padding: 14px 16px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-left: 4px solid var(--c-accent);
+  border-radius: 10px;
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  color: var(--c-text);
+}
+
+/* ── Emojis : les cinq échelons ── */
+.echelons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.echelon {
+  flex: 1;
+  min-width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px;
+  background: var(--c-bg-element);
+  border: 2px solid transparent;
+  border-radius: 14px;
+}
+
+.echelonFort {
+  border-color: var(--c-border-strong);
+  background: var(--c-bg-card);
+}
+
+.echelonEmoji {
+  font-size: 44px;
+  line-height: 1;
+}
+
+.echelonTexte {
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.3;
+  color: var(--c-text-secondary);
+  min-height: 2.6em;
+}
+
+/* ── Échelle de 1 à 5 ── */
+.echelle {
+  display: grid;
+  gap: 10px;
+  max-width: 640px;
+}
+
+.bornes {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+
+.crans {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.cran {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.cranColonne {
+  width: 100%;
+  height: 110px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--c-bg-element);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cranColonne i {
+  display: block;
+  width: 100%;
+  background: var(--c-primary);
+  opacity: 0.6;
+}
+
+.cranNumero {
+  font-family: var(--c-font-title);
+  font-size: 18px;
+  color: var(--c-text-muted);
+}
+
+.moyenne {
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  color: var(--c-text-secondary);
+}
+
+.moyenne strong {
+  font-family: var(--c-font-title);
+  font-size: 22px;
+  color: var(--c-primary);
+}
+
+/* ── Matrice ── */
+.grilleScroll {
+  overflow-x: auto;
+}
+
+.grille {
+  border-collapse: separate;
+  border-spacing: 4px;
+  width: 100%;
+  font-size: 15px;
+}
+
+.grille th {
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+.grille thead th {
+  text-align: center;
+}
+
+.grille td {
+  text-align: center;
+  padding: 10px 8px;
+  border-radius: 8px;
+  font-family: var(--c-font-title);
+  font-size: 18px;
+  color: var(--c-text);
+  min-width: 52px;
+}
+
+.celluleForte {
+  color: #fff;
+  font-weight: 700;
+}

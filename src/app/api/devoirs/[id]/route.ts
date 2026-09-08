@@ -24,7 +24,7 @@ import {
 import { parseLectureAnswers, type LectureResume } from '@/types/lecture';
 import { sanitizeAutoEvalQuiz } from '@/lib/autoevaluation-server';
 import { generateTravailId } from '@/lib/travail-utils';
-import { atelierParDispositif, isTypeModal } from '@/types/didactique';
+import { atelierParDispositif, estSondage, isTypeModal } from '@/types/didactique';
 
 export async function GET(
   request: NextRequest,
@@ -218,8 +218,14 @@ export async function GET(
         auth.role === 'eleve' && !quizComplet
           ? lectureQuizEnDirectPourEleve(lectureQuizForEleve(lectureQuiz))
           : lectureQuiz,
-      // Auto-évaluation : servie telle quelle, il n'y a rien à cacher
-      autoEvalQuiz: data.autoEvalQuiz || null,
+      // Auto-évaluation : servie telle quelle, il n'y a rien à cacher.
+      // SONDAGE en direct : l'élève ne reçoit AUCUNE question à l'ouverture —
+      // elles arrivent une à une par /api/sondage/etat (fuite bouchée comme
+      // pour la compétition).
+      autoEvalQuiz:
+        auth.role === 'eleve' && estSondage(data as { atelier?: string })
+          ? null
+          : data.autoEvalQuiz || null,
       // Lecture d'une œuvre : un renvoi vers la bibliothèque, le contenu vit
       // dans /api/oeuvres. Rien à filtrer — dans CET atelier, le corrigé est
       // ouvert (cf. src/lib/oeuvre-server.ts).

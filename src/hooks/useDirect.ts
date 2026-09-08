@@ -32,9 +32,23 @@ export interface OptionsPiloter {
 /** Rythme de l'interrogation, en millisecondes. */
 const PERIODE_MS = 1000;
 
-export interface EtatDirect {
+/**
+ * Le socle commun des vues que ce hook sait interroger : celle de la
+ * COMPÉTITION (`MancheVue`) et celle du SONDAGE (`SondageVue`). Le hook ne
+ * lit que ces champs-là ; tout le reste est rendu tel quel à l'écran.
+ */
+export interface VueDirectBase {
+  phase: string;
+  debutAt: string | null;
+  chronoSec: number;
+  serverNow: string;
+  aRepondu?: boolean;
+  sommaire?: MancheSommaireItem[];
+}
+
+export interface EtatDirect<V extends VueDirectBase = MancheVue> {
   /** Ce que le serveur dit — `null` tant qu'aucune manche n'est ouverte */
-  vue: MancheVue | null;
+  vue: V | null;
   /**
    * Pourquoi il n'y a rien à montrer. « refuse » veut dire que la partie
    * EXISTE mais qu'elle n'est pas pour cet utilisateur (mauvaise classe,
@@ -59,9 +73,19 @@ interface Options {
   devoirId?: string;
   /** Suspendre l'interrogation (onglet en arrière-plan, partie finie) */
   actif?: boolean;
+  /**
+   * Les routes à interroger : `/api/direct` (compétition, par défaut) ou
+   * `/api/sondage`. Même transport, autre moteur — cf. le plan du 2026-09-08.
+   */
+  base?: string;
 }
 
-export function useDirect({ sessionId, devoirId, actif = true }: Options): EtatDirect & {
+export function useDirect<V extends VueDirectBase = MancheVue>({
+  sessionId,
+  devoirId,
+  actif = true,
+  base = '/api/direct',
+}: Options): EtatDirect<V> & {
   piloter: (action: string, options?: OptionsPiloter) => Promise<void>;
   repondre: (
     questionId: string,
@@ -69,7 +93,7 @@ export function useDirect({ sessionId, devoirId, actif = true }: Options): EtatD
   ) => Promise<{ accepte: boolean; motif?: string }>;
 } {
   const { getAuthHeaders } = useAuth();
-  const [vue, setVue] = useState<MancheVue | null>(null);
+  const [vue, setVue] = useState<V | null>(null);
   const [motif, setMotif] = useState<'aucune' | 'refuse' | null>(null);
   const [sommaire, setSommaire] = useState<MancheSommaireItem[]>([]);
   // Le sommaire ne se demande qu'une fois : trente-neuf énoncés n'ont rien à
@@ -106,12 +130,12 @@ export function useDirect({ sessionId, devoirId, actif = true }: Options): EtatD
     try {
       const veutSommaire = !sommaireDemande.current;
       const res = await fetch(
-        `/api/direct/etat?${query}${veutSommaire ? '&sommaire=1' : ''}`,
+        `${base}/etat?${query}${veutSommaire ? '&sommaire=1' : ''}`,
         { headers, cache: 'no-store' }
       );
       const json = await res.json();
       if (!json.success) return;
-      const data = json.data as MancheVue | null;
+      const data = json.data as V | null;
       if (data) decalageRef.current = new Date(data.serverNow).getTime() - Date.now();
       setVue(data);
       setMotif(data ? null : (json.motif ?? 'aucune'));
@@ -125,7 +149,7 @@ export function useDirect({ sessionId, devoirId, actif = true }: Options): EtatD
     } finally {
       setIsLoading(false);
     }
-  }, [query, getAuthHeaders]);
+  }, [query, base, getAuthHeaders]);
 
   useEffect(() => {
     if (!actif || !query) return;
@@ -146,7 +170,7 @@ export function useDirect({ sessionId, devoirId, actif = true }: Options): EtatD
       if (!sessionId) return;
       const headers = await getAuthHeaders();
       if (!headers) return;
-      const res = await fetch('/api/direct/pilote', {
+      const res = await fetch(`${base}/pilote`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, action, ...options }),
@@ -154,16 +178,16 @@ export function useDirect({ sessionId, devoirId, actif = true }: Options): EtatD
       const json = await res.json();
       // On applique la réponse du pilotage sans attendre l'interrogation
       // suivante : le prof vient de cliquer, son écran doit répondre.
-      if (json.success && json.data) setVue(json.data as MancheVue);
+      if (json.success && json.data) setVue(json.data as V);
     },
-    [sessionId, getAuthHeaders]
+    [sessionId, base, getAuthHeaders]
   );
 
   const repondre = useCallback(
     async (questionId: string, answer: unknown) => {
       const headers = await getAuthHeaders();
       if (!headers) return { accepte: false };
-      const res = await fetch('/api/direct/reponse', {
+      const res = await fetch(`${base}/reponse`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, devoirId, questionId, answer }),
@@ -179,7 +203,7 @@ export function useDirect({ sessionId, devoirId, actif = true }: Options): EtatD
       // pourquoi laisse l'élève recliquer, et nous chercher à l'aveugle.
       return { accepte, motif: json.data?.motif as string | undefined };
     },
-    [sessionId, devoirId, getAuthHeaders]
+    [sessionId, devoirId, base, getAuthHeaders]
   );
 
   // ── Le calcul qui fait tout : où en est-on de la question ? ──

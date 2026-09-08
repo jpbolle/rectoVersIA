@@ -19,7 +19,7 @@ import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
 import HabiletesPicker from '@/components/HabiletesPicker/HabiletesPicker';
-import { atelierParDispositif, findAtelier, TYPES_MODAUX } from '@/types/didactique';
+import { ATELIER_SONDAGE, atelierParDispositif, findAtelier, TYPES_MODAUX } from '@/types/didactique';
 import type { TypeModal } from '@/types/didactique';
 import styles from './EditDevoirModal.module.css';
 import FlipChoice from '@/components/FlipChoice/FlipChoice';
@@ -687,6 +687,7 @@ export default function EditDevoirModal({
           onChange={setAutoEvalQuiz}
           disabled={isSaving}
           allowedHabiletes={habiletes}
+          sondage={atelierId === ATELIER_SONDAGE}
         />
       )}
 

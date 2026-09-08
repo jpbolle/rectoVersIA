@@ -15,6 +15,17 @@
 // aucune règle Firestore à écrire ni à déployer.
 
 import type { LectureAnswer, LectureQuestion } from './lecture';
+import type { AutoEvalQuestion } from './autoevaluation';
+
+/**
+ * Le GENRE d'une manche : une compétition (questionnaire de lecture, coté,
+ * nominatif) ou un sondage (questionnaire d'auto-évaluation, sans bonne
+ * réponse, anonyme). Absent en base = compétition — les manches écrites avant
+ * le 2026-09-08 n'ont pas le champ. Le sondage a son propre moteur
+ * (`src/lib/sondage-server.ts`) et ses propres routes (`/api/sondage/*`) ; il
+ * n'emprunte à la compétition que la plomberie (cache, phases, transport).
+ */
+export type MancheGenre = 'competition' | 'sondage';
 
 /** Délai entre l'ordre du prof et le départ réel de la question. */
 export const DELAI_DEPART_MS = 2000;
@@ -169,6 +180,8 @@ export interface Manche {
   versement?: { at: string; copies: number } | null;
   /** Les équipes ; `null` ou absent = partie individuelle */
   equipes?: Equipe[] | null;
+  /** Compétition ou sondage — voir `MancheGenre`. Absent = compétition */
+  genre?: MancheGenre;
 
   createdAt: string;
   updatedAt: string;
@@ -486,3 +499,77 @@ export function tempsDeReponse(m: Manche, arriveeMs: number): number {
   const ecoule = arriveeMs - new Date(m.debutAt).getTime();
   return Math.max(0, Math.min(ecoule, m.chronoSec * 1000));
 }
+
+// ═══ SONDAGE EN DIRECT (plan du 2026-09-08) ═══
+//
+// Même transport, mêmes phases — moins `revele`, puisqu'il n'y a rien à
+// révéler —, mais un autre questionnaire (celui de l'auto-évaluation) et
+// AUCUN nom nulle part : la répartition ne transporte que des comptes et des
+// textes, jamais qui a dit quoi. Le serveur le sait, pour refuser une seconde
+// réponse ; il ne le sert jamais.
+
+/**
+ * Ce que la classe a répondu à une question de sondage, sans dire qui.
+ *
+ * Une forme par type — la question RESTE à l'écran telle qu'elle a été posée,
+ * et le nombre s'y pose (règle posée pour la compétition, reconduite).
+ */
+export type SondageRepartition =
+  /** Choix multiple : une pastille dans chaque case */
+  | { forme: 'choix'; total: number; parChoix: number[] }
+  /** Réponse courte : nuage de mots */
+  | { forme: 'mots'; total: number; mots: { mot: string; n: number }[] }
+  /** Sentiment de compétence, émotion : une pastille sous chaque emoji (ordre de l'échelle) */
+  | { forme: 'emojis'; total: number; parEchelon: number[] }
+  /** Échelle de 1 à 5 au curseur : une pastille par cran, et la moyenne */
+  | { forme: 'echelle'; total: number; parNiveau: number[]; moyenne: number | null }
+  /**
+   * Matrice, ou échelle à plusieurs items : le tableau, chaque cellule portant
+   * son compte (`lignes[ligne][colonne]`).
+   */
+  | { forme: 'grille'; total: number; lignes: number[][] }
+  /** Réponse longue : les textes, ANONYMES et mélangés — projetés en cartes */
+  | { forme: 'textes'; total: number; textes: string[] };
+
+/** Une question posée, avec sa répartition — l'onglet Statistiques du prof. */
+export interface SondageBilanItem {
+  index: number;
+  numero: number | null;
+  question: AutoEvalQuestion;
+  repartition: SondageRepartition | null;
+  /** Combien ont répondu à cette question */
+  repondu: number;
+}
+
+/**
+ * Ce qu'un navigateur reçoit à chaque interrogation d'un sondage.
+ *
+ * Même squelette que `MancheVue` — c'est le même hook qui l'interroge — sans
+ * score, sans équipe, sans classement : rien de nominatif ne sort d'ici.
+ */
+export interface SondageVue {
+  phase: ManchePhase;
+  questionIndex: number;
+  debutAt: string | null;
+  chronoSec: number;
+  serverNow: string;
+  numero: number;
+  total: number;
+  /** La question courante — servie en jeu et en résultat seulement */
+  question: AutoEvalQuestion | null;
+  /** Prof : où en est la classe */
+  compteur?: { repondu: number; attendus: number };
+  /** Élève : a-t-il déjà répondu ? */
+  aRepondu?: boolean;
+  /** Prof : les rangs déjà posés */
+  posees?: number[];
+  /** Ce que la classe a répondu, une fois la question close */
+  repartition?: SondageRepartition | null;
+  /** Prof : le sommaire, à la demande (`&sommaire=1`) */
+  sommaire?: MancheSommaireItem[];
+  /** Prof : toutes les questions posées et leur répartition — l'onglet Statistiques */
+  bilan?: SondageBilanItem[];
+}
+
+/** Ce que le prof demande à faire sur un sondage. Pas de « révéler », rien à révéler. */
+export type SondageAction = 'ouvrir' | 'lancer' | 'stopper' | 'terminer';

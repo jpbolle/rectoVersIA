@@ -116,7 +116,17 @@ export interface AutoEvalQuestion {
   // Texte d'accompagnement affiché sous l'énoncé (rappel de consigne, extrait
   // du travail à commenter…)
   document?: string;
+  // SONDAGE EN DIRECT seulement : le chrono de la question, en secondes, fixé
+  // par le prof dans le constructeur (décision de JP, 2026-09-08). 0 = pas de
+  // chrono, la question reste ouverte jusqu'à ce que le prof la ferme. Ignoré
+  // par l'auto-évaluation ordinaire, où l'élève va à son rythme.
+  chronoSec?: number;
 }
+
+/** Chrono proposé à la création d'une question de sondage, en secondes. */
+export const SONDAGE_CHRONO_DEFAUT_SEC = 60;
+/** Au-delà, ce n'est plus un sondage en direct : dix minutes. */
+export const SONDAGE_CHRONO_MAX_SEC = 600;
 
 export interface AutoEvalQuestionnaire {
   // Ce sur quoi l'élève se prononce — figure en tête de son questionnaire

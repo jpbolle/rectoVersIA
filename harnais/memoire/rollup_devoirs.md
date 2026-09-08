@@ -53,7 +53,7 @@ créer l'activité au premier caractère, ce qui n'est pas anodin.
 - Onglets « 📋 Description de l'activité » / « 📚 Ajout de ressources » + bouton
   « Retourner » ⟳ (même bouton repris sur le `FlipEditor` élève). Point orange sur
   l'onglet ressources quand il y a du contenu. Maquette validée :
-  `harnais/plans/maquette-creation-flip.html`.
+  `maquette-creation-flip.html` (maquette supprimée depuis, le code fait foi).
 - Verso type **écrire** (toutes grilles, pas seulement résumé) : bloc « Ressource.s »
   + « Espace de planification » (champ « Thème ou thèse » + plan hiérarchisé `PlanDraft`
   sans bandeau) + « Production du professeur ». Chaque bloc a un toggle **« Corrigé IA »
