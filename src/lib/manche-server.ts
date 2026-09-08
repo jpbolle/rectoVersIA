@@ -14,9 +14,35 @@ import { adminDb } from '@/lib/firebase/admin';
 import { quizDuDevoir } from '@/lib/questionnaire-lecture-server';
 import { lectureQuizForEleve } from '@/lib/lecture-server';
 import { classesDeLEleve } from '@/lib/session-server';
-import { mancheId, phaseEffective, tempsDeReponse, CHRONO_DEFAUT_SEC, DELAI_DEPART_MS } from '@/types/manche';
+import { decrypt, decryptFields, encrypt, hashEmail, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
+import { generateTravailId } from '@/lib/travail-utils';
+import {
+  mancheId,
+  phaseEffective,
+  tempsDeReponse,
+  facteurVitesse,
+  bonusSerie,
+  CHRONO_DEFAUT_SEC,
+  DELAI_DEPART_MS,
+  POINTS_PAR_QUESTION,
+  SERIE_SEUIL,
+  tirerEquipes,
+  normaliserEquipes,
+} from '@/types/manche';
 import { sessionId } from '@/types/session';
-import type { Manche, MancheAction, MancheRepartition, MancheVue } from '@/types/manche';
+import { estAutoCorrigeable, partReussite } from '@/types/lecture';
+import type {
+  ClassementEquipeLigne,
+  ClassementLigne,
+  DetailQuestion,
+  Equipe,
+  Manche,
+  MancheAction,
+  ManchePhase,
+  MancheRepartition,
+  MancheVue,
+  MonScore,
+} from '@/types/manche';
 import type { LectureAnswer, LectureQuestion, LectureQuiz } from '@/types/lecture';
 
 // ─── Cache mémoire ───
@@ -50,10 +76,23 @@ interface Entree {
    * (`updatedAt`), donc une lecture par demi-seconde en régime calme.
    */
   copies: Map<string, Record<string, LectureAnswer>>;
+  /**
+   * Le temps de réponse de chacun, question par question (`uid → (questionId
+   * → ms)`). Même vie que `copies` : relu de la base à chaque rafraîchissement,
+   * mis à jour au fil des envois. C'est la matière du score.
+   */
+  temps: Map<string, Record<string, number>>;
   /** Horodatage de la copie la plus récente déjà relue */
   derniereSync: string;
   /** Effectif de la classe — il ne change pas en cours de partie */
   attendus: number | null;
+  /**
+   * Qui est qui : `firebaseUid → « Prénom N. »`, déchiffré UNE FOIS depuis
+   * `eleves`. Sert au podium projeté et au classement du prof. Les élèves de
+   * la classe sans compte Google lié n'y figurent pas — ils ne peuvent pas
+   * jouer de toute façon.
+   */
+  noms: Map<string, string> | null;
   luA: number;
 }
 
@@ -133,6 +172,13 @@ function docToManche(id: string, d: Record<string, unknown>): Manche {
     chronoSec: typeof d.chronoSec === 'number' ? d.chronoSec : CHRONO_DEFAUT_SEC,
     clotureAt: typeof d.clotureAt === 'string' ? d.clotureAt : null,
     posees: Array.isArray(d.posees) ? (d.posees as number[]) : [],
+    chronos:
+      d.chronos && typeof d.chronos === 'object' ? (d.chronos as Record<string, number>) : {},
+    versement:
+      d.versement && typeof d.versement === 'object'
+        ? (d.versement as { at: string; copies: number })
+        : null,
+    equipes: normaliserEquipes(d.equipes),
     createdAt: String(d.createdAt ?? ''),
     updatedAt: String(d.updatedAt ?? ''),
   };
@@ -159,6 +205,7 @@ async function entree(id: string): Promise<Entree | null> {
   // pas rater une écriture faite dans la même milliseconde, au prix d'une
   // relecture de la dernière copie vue, idempotente puisque indexée par UID.
   const copies = courante?.copies ?? new Map<string, Record<string, LectureAnswer>>();
+  const temps = courante?.temps ?? new Map<string, Record<string, number>>();
   let derniereSync = courante?.derniereSync ?? '';
   const col = adminDb.collection('manches').doc(id).collection('reponses');
   const rep = derniereSync
@@ -177,6 +224,14 @@ async function entree(id: string): Promise<Entree | null> {
       if (!reponseVide(a)) propres[qid] = a;
     });
     copies.set(d.id, propres);
+    // Les temps suivent les réponses : une question effacée (reposée) n'a plus
+    // ni réponse ni temps, et le score ne la compte plus.
+    const tempsBruts = (data.tempsMs ?? {}) as Record<string, number>;
+    const tempsPropres: Record<string, number> = {};
+    Object.keys(propres).forEach((qid) => {
+      if (typeof tempsBruts[qid] === 'number') tempsPropres[qid] = tempsBruts[qid];
+    });
+    temps.set(d.id, tempsPropres);
     const u = typeof data.updatedAt === 'string' ? data.updatedAt : '';
     if (u > derniereSync) derniereSync = u;
   });
@@ -184,8 +239,10 @@ async function entree(id: string): Promise<Entree | null> {
   const e: Entree = {
     manche,
     copies,
+    temps,
     derniereSync,
     attendus: courante?.attendus ?? null,
+    noms: courante?.noms ?? null,
     luA: now,
   };
   cache.set(id, e);
@@ -201,6 +258,217 @@ async function effectif(e: Entree): Promise<number> {
     .get();
   e.attendus = snap.size;
   return e.attendus;
+}
+
+/**
+ * Les noms de la classe, `firebaseUid → « Prénom N. »`.
+ *
+ * Une lecture de `eleves` et un déchiffrement, UNE FOIS par manche et par
+ * processus. Prénom + initiale : le podium est projeté au tableau, la classe
+ * le lit — c'est le but —, mais on n'y affiche pas plus que ce que la classe
+ * sait déjà de ses camarades.
+ */
+async function nomsDeLaClasse(e: Entree): Promise<Map<string, string>> {
+  if (e.noms) return e.noms;
+  const snap = await adminDb
+    .collection('eleves')
+    .where('classeId', '==', e.manche.classeId)
+    .get();
+  const noms = new Map<string, string>();
+  snap.docs.forEach((d) => {
+    const data = decryptFields(d.data(), SENSITIVE_ELEVE_FIELDS) as Record<string, unknown>;
+    const uid = typeof data.firebaseUid === 'string' ? data.firebaseUid : '';
+    if (!uid) return;
+    const prenom = String(data.prenom ?? '').trim();
+    const nom = String(data.nom ?? '').trim();
+    const initiale = nom ? ` ${nom[0].toUpperCase()}.` : '';
+    noms.set(uid, `${prenom || 'Élève'}${initiale}`);
+  });
+  e.attendus = snap.size;
+  e.noms = noms;
+  return noms;
+}
+
+// ─── Le score ───
+//
+// Rien n'est STOCKÉ : le classement se recalcule depuis les copies déjà en
+// cache, à chaque vue en `revele` ou `finie`. Vingt-cinq élèves × quelques
+// questions, c'est une boucle de rien — et une question reposée ou un temps
+// corrigé se répercutent sans qu'on ait rien à réparer.
+
+/** Le chrono qui a été joué pour cette question. */
+function chronoJoue(m: Manche, q: LectureQuestion): number {
+  const memorise = m.chronos?.[q.id];
+  if (typeof memorise === 'number') return memorise;
+  return q.type === 'info' ? 0 : q.chronoSec ?? CHRONO_DEFAUT_SEC;
+}
+
+/**
+ * Les questions qui COMPTENT, dans l'ordre où elles ont été posées.
+ *
+ * La question courante n'entre au score qu'une fois RÉVÉLÉE (ou la partie
+ * finie) : tant qu'elle court ou qu'on regarde la répartition, le score
+ * dirait qui a raison avant que le prof ne le montre.
+ */
+function questionsComptees(m: Manche, questions: LectureQuestion[], phase: ManchePhase) {
+  return m.posees
+    .filter((i) => i !== m.questionIndex || phase === 'revele' || phase === 'finie')
+    .map((i) => questions[i])
+    .filter((q): q is LectureQuestion => !!q && q.type !== 'info' && estAutoCorrigeable(q));
+}
+
+interface ScoreCalcule {
+  uid: string;
+  total: number;
+  serie: number;
+  tempsTotalMs: number;
+  repondues: number;
+  /** Points gagnés à la question courante (si elle compte) */
+  courante: number | null;
+  detail: DetailQuestion[];
+}
+
+/**
+ * Le score d'UN élève sur les questions comptées.
+ *
+ * Pour chaque question : part de réussite (barème partiel existant) × 1 000
+ * × facteur de vitesse × (1 + bonus de série). Une absence de réponse vaut 0,
+ * casse la série, et compte le chrono entier au temps total — celui qui n'a
+ * pas répondu n'a pas été plus rapide que celui qui a répondu faux.
+ */
+function scoreDe(
+  m: Manche,
+  uid: string,
+  comptees: LectureQuestion[],
+  copie: Record<string, LectureAnswer>,
+  temps: Record<string, number>,
+  /** L'identifiant de la question courante, si elle compte déjà */
+  idCourante: string | undefined,
+  /** Le numéro affiché de chaque question (les blocs informatifs n'en ont pas) */
+  numeros: Map<string, number>
+): ScoreCalcule {
+  let total = 0;
+  let serie = 0;
+  let tempsTotalMs = 0;
+  let repondues = 0;
+  let courante: number | null = null;
+  const detail: DetailQuestion[] = [];
+
+  comptees.forEach((q) => {
+    const chrono = chronoJoue(m, q);
+    const a = copie[q.id];
+    const t = typeof temps[q.id] === 'number' ? temps[q.id] : chrono * 1000;
+    tempsTotalMs += t;
+    let points = 0;
+    let part: number | null = null;
+    if (a) {
+      repondues += 1;
+      part = partReussite(q, a) ?? 0;
+      if (part >= SERIE_SEUIL) serie += 1;
+      else serie = 0;
+      points = Math.round(
+        POINTS_PAR_QUESTION * part * facteurVitesse(t, chrono) * (1 + bonusSerie(serie))
+      );
+    } else {
+      serie = 0;
+    }
+    total += points;
+    if (q.id === idCourante) courante = points;
+    detail.push({
+      questionId: q.id,
+      numero: numeros.get(q.id) ?? null,
+      part,
+      tempsMs: a ? t : null,
+    });
+  });
+
+  return { uid, total, serie, tempsTotalMs, repondues, courante, detail };
+}
+
+/**
+ * Le classement de la classe. Tous les élèves inscrits y figurent, même ceux
+ * qui n'ont rien envoyé : pour le prof, « qui n'a rien répondu » est une
+ * information. Départage des égalités : le temps cumulé, le plus rapide devant.
+ */
+async function classementDe(
+  e: Entree,
+  questions: LectureQuestion[],
+  phase: ManchePhase
+): Promise<{ lignes: ClassementLigne[]; parUid: Map<string, ScoreCalcule> }> {
+  const m = e.manche;
+  const noms = await nomsDeLaClasse(e);
+  const comptees = questionsComptees(m, questions, phase);
+  const qCourante = m.questionIndex >= 0 ? questions[m.questionIndex] : undefined;
+  const idCourante = qCourante && comptees.includes(qCourante) ? qCourante.id : undefined;
+  const numeros = numerosDesQuestions(questions);
+
+  // Les inscrits d'abord, puis les éventuels joueurs inconnus de `eleves`
+  // (un compte lié après coup) : personne ne disparaît du classement.
+  const uids = new Set<string>([...noms.keys(), ...e.copies.keys()]);
+  const scores = [...uids].map((uid) =>
+    scoreDe(m, uid, comptees, e.copies.get(uid) ?? {}, e.temps.get(uid) ?? {}, idCourante, numeros)
+  );
+  scores.sort((a, b) => b.total - a.total || a.tempsTotalMs - b.tempsTotalMs);
+
+  const parUid = new Map<string, ScoreCalcule>();
+  const lignes = scores.map((sc, i) => {
+    parUid.set(sc.uid, sc);
+    return {
+      uid: sc.uid,
+      rang: i + 1,
+      nom: noms.get(sc.uid) ?? 'Élève',
+      total: sc.total,
+      serie: sc.serie,
+      tempsTotalMs: sc.tempsTotalMs,
+      repondues: sc.repondues,
+      detail: sc.detail,
+    };
+  });
+  return { lignes, parUid };
+}
+
+/**
+ * Le classement des ÉQUIPES : la somme des totaux de leurs membres, départagée
+ * au temps cumulé. Une équipe vide figure quand même, à zéro — le prof doit la
+ * voir pour la remplir.
+ */
+function classementEquipesDe(
+  equipes: Equipe[],
+  lignes: ClassementLigne[]
+): ClassementEquipeLigne[] {
+  const parUid = new Map(lignes.map((l) => [l.uid, l]));
+  const brutes = equipes.map((eq) => {
+    let total = 0;
+    let tempsTotalMs = 0;
+    const membres: string[] = [];
+    eq.membres.forEach((uid) => {
+      const l = parUid.get(uid);
+      if (!l) return;
+      total += l.total;
+      tempsTotalMs += l.tempsTotalMs;
+      membres.push(l.nom);
+    });
+    return { id: eq.id, nom: eq.nom, total, tempsTotalMs, membres };
+  });
+  brutes.sort((a, b) => b.total - a.total || a.tempsTotalMs - b.tempsTotalMs);
+  return brutes.map((b, i) => ({ ...b, rang: i + 1 }));
+}
+
+/** L'équipe d'un élève, s'il en a une. */
+function equipeDe(m: Manche, uid: string): Equipe | undefined {
+  return (m.equipes ?? []).find((eq) => eq.membres.includes(uid));
+}
+
+/** Le numéro affiché de chaque question — les blocs informatifs n'en ont pas. */
+function numerosDesQuestions(questions: LectureQuestion[]): Map<string, number> {
+  const out = new Map<string, number>();
+  let n = 0;
+  questions.forEach((q) => {
+    if (q.type === 'info') return;
+    n += 1;
+    out.set(q.id, n);
+  });
+  return out;
 }
 
 // ─── Le questionnaire de la manche ───
@@ -477,6 +745,74 @@ export async function vueDeLaManche(
     vue.repartition = repartitionDe(brute, [...reponsesA(e, brute.id).values()]);
   }
 
+  // Le SCORE ne sort qu'une fois la bonne réponse montrée (ou la partie
+  // finie) : avant, il dirait qui a raison. Au prof le classement entier ; à
+  // l'élève le sien, et rien d'autre.
+  if (phase === 'revele' || phase === 'finie') {
+    const { lignes, parUid } = await classementDe(e, questions, phase);
+    const equipes = m.equipes ?? null;
+    const classementEquipes = equipes ? classementEquipesDe(equipes, lignes) : null;
+    if (estProf) {
+      vue.classement = lignes;
+      vue.versement = m.versement ?? null;
+      if (classementEquipes) vue.classementEquipes = classementEquipes;
+    } else {
+      const sc = parUid.get(uid);
+      const ligne = lignes.find((l) => l.uid === uid);
+      if (sc && ligne) {
+        const monScore: MonScore = {
+          question: sc.courante,
+          total: sc.total,
+          rang: ligne.rang,
+          sur: lignes.length,
+          serie: sc.serie,
+        };
+        const mienne = equipeDe(m, uid);
+        const ligneEq = mienne && classementEquipes?.find((l) => l.id === mienne.id);
+        if (ligneEq && classementEquipes) {
+          monScore.equipe = {
+            nom: ligneEq.nom,
+            total: ligneEq.total,
+            rang: ligneEq.rang,
+            sur: classementEquipes.length,
+          };
+        }
+        vue.monScore = monScore;
+      }
+    }
+  }
+
+  // ── Les équipes, à TOUTE phase ──
+  // Le prof règle sa composition depuis la salle d'attente ; l'élève doit
+  // savoir avec qui il joue avant la première question.
+  if (m.equipes) {
+    const noms = await nomsDeLaClasse(e);
+    if (estProf) {
+      const places = new Set<string>();
+      vue.equipes = m.equipes.map((eq) => ({
+        id: eq.id,
+        nom: eq.nom,
+        membres: eq.membres.map((u) => {
+          places.add(u);
+          return { uid: u, nom: noms.get(u) ?? 'Élève' };
+        }),
+      }));
+      vue.sansEquipe = [...noms.entries()]
+        .filter(([u]) => !places.has(u))
+        .map(([u, nom]) => ({ uid: u, nom }));
+    } else {
+      const mienne = equipeDe(m, uid);
+      vue.monEquipe = mienne
+        ? {
+            nom: mienne.nom,
+            coequipiers: mienne.membres
+              .filter((u) => u !== uid)
+              .map((u) => noms.get(u) ?? 'Élève'),
+          }
+        : null;
+    }
+  }
+
   if (estProf) {
     vue.posees = m.posees;
     // Le sommaire ne part QU'À LA DEMANDE : trente-neuf énoncés à chaque
@@ -545,6 +881,9 @@ export async function ouvrirManche(
     chronoSec: CHRONO_DEFAUT_SEC,
     clotureAt: null,
     posees: [],
+    chronos: {},
+    versement: null,
+    equipes: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -582,10 +921,19 @@ export async function ouvrirManche(
  * recevoir avant qu'elle ne s'affiche, et c'est ce qui rend le chrono
  * équitable sans avoir besoin d'une ligne réseau poussée.
  */
+export interface OptionsPilotage {
+  chronoSec?: number;
+  index?: number;
+  /** `equipes` : combien d'équipes tirer au sort */
+  nombre?: number;
+  /** `equipes` : la composition retouchée par le prof ; `[]` = plus d'équipes */
+  equipes?: unknown;
+}
+
 export async function piloterManche(
   id: string,
   action: MancheAction,
-  options?: { chronoSec?: number; index?: number }
+  options?: OptionsPilotage
 ): Promise<Manche | null> {
   const e = await entree(id);
   if (!e) return null;
@@ -619,6 +967,9 @@ export async function piloterManche(
         e.copies.forEach((copie) => {
           delete copie[q.id];
         });
+        e.temps.forEach((t) => {
+          delete t[q.id];
+        });
       } else {
         m.posees = [...m.posees, suivant];
       }
@@ -631,6 +982,9 @@ export async function piloterManche(
       // suivante » ne se grise donc jamais dessus.
       m.chronoSec =
         q.type === 'info' ? 0 : options?.chronoSec ?? q.chronoSec ?? CHRONO_DEFAUT_SEC;
+      // On retient le chrono JOUÉ : le score des questions passées en dépend
+      // (cf. `Manche.chronos`).
+      m.chronos = { ...(m.chronos ?? {}), [q.id]: m.chronoSec };
       m.clotureAt = null;
       break;
     }
@@ -650,13 +1004,36 @@ export async function piloterManche(
     case 'terminer':
       m.phase = 'finie';
       m.clotureAt = now.toISOString();
+      // ── La partie finie DEVIENT des copies ──
+      // Chaque élève qui a répondu à au moins une question reçoit son
+      // `travail` rendu, dans la forme exacte du questionnaire de lecture :
+      // la correction, l'onglet Évaluation et le profil n'ont pas une ligne
+      // à apprendre. Idempotent — rejouer « terminer » réécrit les mêmes copies.
+      m.versement = await verserDansTravaux(e, m, now.toISOString());
       break;
+    case 'equipes': {
+      // Deux gestes : TIRER AU SORT (`nombre`) parmi les élèves de la classe
+      // qui ont un compte, ou POSER une composition retouchée (`equipes`).
+      // Possible à toute phase : le score suit les membres.
+      if (typeof options?.nombre === 'number') {
+        const noms = await nomsDeLaClasse(e);
+        // Les joueurs déjà vus mais inconnus de `eleves` jouent aussi
+        const uids = new Set<string>([...noms.keys(), ...e.copies.keys()]);
+        m.equipes = tirerEquipes([...uids], options.nombre);
+      } else if (options?.equipes !== undefined) {
+        m.equipes = normaliserEquipes(options.equipes);
+      }
+      break;
+    }
     case 'ouvrir':
       m.phase = 'salle';
+      m.equipes = null;
       m.questionIndex = -1;
       m.debutAt = null;
       m.clotureAt = null;
       m.posees = [];
+      m.chronos = {};
+      m.versement = null;
       break;
   }
 
@@ -694,6 +1071,116 @@ async function effacerReponses(mancheId: string, questionId: string): Promise<vo
     });
   });
   await lot.commit();
+}
+
+// ─── Versement dans `travaux` (étape 5) ───
+//
+// La manche est un état de jeu ; la COPIE de l'élève, c'est `travaux`. Les
+// réponses ont déjà la forme `LectureAnswersState` (c'est ce qu'écrit
+// `LectureQuizActivity` dans `content`) : on les y pose, on marque la copie
+// rendue, et tout l'aval — correction, Évaluation, profil — fonctionne comme
+// pour un questionnaire ordinaire.
+//
+// ⚠ Le travail d'un élève peut exister sous DEUX identifiants : pré-créé par le
+// prof (`TRV-{devoir}-{eleveDocId}`, repéré par l'empreinte de l'email) ou créé
+// par l'élève (`TRV-{devoir}-{uid}`). Même logique de rattrapage que
+// `/api/travaux/mine` : par `studentId` d'abord, par empreinte ensuite, créé
+// en dernier recours.
+
+/**
+ * Verse les copies de la manche dans `travaux`. Renvoie le compte des copies
+ * écrites. Un élève sans aucune réponse n'est PAS rendu : sa copie reste en
+ * brouillon, et c'est au prof de la déclarer « non rendue » s'il le veut —
+ * comme pour n'importe quelle activité.
+ */
+async function verserDansTravaux(
+  e: Entree,
+  m: Manche,
+  now: string
+): Promise<{ at: string; copies: number }> {
+  // Qui a répondu à quelque chose
+  const joueurs = [...e.copies.entries()].filter(([, copie]) => Object.keys(copie).length > 0);
+  if (joueurs.length === 0) return { at: now, copies: 0 };
+
+  // Les élèves de la classe : uid → identité (pour créer ou retrouver la copie)
+  const elevesSnap = await adminDb
+    .collection('eleves')
+    .where('classeId', '==', m.classeId)
+    .get();
+  const parUid = new Map<
+    string,
+    { eleveId: string; nom: string; prenom: string; email: string }
+  >();
+  elevesSnap.docs.forEach((d) => {
+    const data = d.data();
+    const uid = typeof data.firebaseUid === 'string' ? data.firebaseUid : '';
+    if (!uid) return;
+    parUid.set(uid, {
+      eleveId: d.id,
+      nom: decrypt(data.nom) || '',
+      prenom: decrypt(data.prenom) || '',
+      email: (decrypt(data.email) || '').toLowerCase(),
+    });
+  });
+
+  // Les travaux existants de l'activité, indexés par uid ET par empreinte
+  const travauxSnap = await adminDb
+    .collection('travaux')
+    .where('devoirId', '==', m.devoirId)
+    .get();
+  const parStudentId = new Map<string, string>();
+  const parHash = new Map<string, string>();
+  travauxSnap.docs.forEach((d) => {
+    const data = d.data();
+    if (typeof data.studentId === 'string') parStudentId.set(data.studentId, d.id);
+    if (typeof data.studentEmailHash === 'string') parHash.set(data.studentEmailHash, d.id);
+  });
+
+  const lot = adminDb.batch();
+  let copies = 0;
+  joueurs.forEach(([uid, answers]) => {
+    const identite = parUid.get(uid);
+    const hash = identite?.email ? hashEmail(identite.email) : null;
+    const existant = parStudentId.get(uid) ?? (hash ? parHash.get(hash) : undefined);
+    const content = JSON.stringify({ type: 'lecture', answers });
+
+    if (existant) {
+      lot.update(adminDb.collection('travaux').doc(existant), {
+        content,
+        // Le pré-créé n'a pas encore été réclamé : on le rattache à l'uid
+        // pour que l'élève retrouve sa copie.
+        studentId: uid,
+        sessionId: m.sessionId,
+        status: 'submitted',
+        submittedAt: now,
+        updatedAt: now,
+      });
+    } else {
+      // Aucune copie : on la crée comme le ferait `/api/travaux/mine`.
+      const email = identite?.email ?? '';
+      const nomComplet = identite
+        ? `${identite.prenom} ${identite.nom}`.trim()
+        : 'Élève';
+      lot.set(adminDb.collection('travaux').doc(generateTravailId(m.devoirId, uid)), {
+        id: generateTravailId(m.devoirId, uid),
+        devoirId: m.devoirId,
+        sessionId: m.sessionId,
+        studentId: uid,
+        studentEmail: encrypt(email),
+        studentEmailHash: email ? hashEmail(email) : null,
+        studentName: encrypt(nomComplet),
+        content,
+        status: 'submitted',
+        selfEvaluation: null,
+        createdAt: now,
+        updatedAt: now,
+        submittedAt: now,
+      });
+    }
+    copies += 1;
+  });
+  await lot.commit();
+  return { at: now, copies };
 }
 
 // ─── Réponse d'un élève ───
@@ -764,6 +1251,9 @@ export async function enregistrerReponse(
   const copie = e.copies.get(uid) ?? {};
   copie[questionId] = answer;
   e.copies.set(uid, copie);
+  const t = e.temps.get(uid) ?? {};
+  t[questionId] = tempsMs;
+  e.temps.set(uid, t);
 
   return { ok: true, tempsMs };
 }

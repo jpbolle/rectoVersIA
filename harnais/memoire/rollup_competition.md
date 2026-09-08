@@ -1,15 +1,17 @@
 # Rollup — Mode Compétition (questionnaire en direct)
 
-Chantier du **2026-09-07**, mené d'un bloc, étapes 1 à 3 sur 6.
+Chantier du **2026-09-07**, mené d'un bloc, étapes 1 à 3 sur 6 ; **étapes 4, 5 et 6 écrites le 2026-09-08 — le module est complet, rien de 4 à 6 n'est vu à l'écran**.
 Plan et décisions datées : `harnais/plans/2026-09-07-mode-competition.md`
 (il remplace `2026-09-01-direct-sondage-quiz.md`, dont le 6ᵉ dispositif `direct`
 et le transport SSE sont abandonnés).
 
-> **État en fin de séance (nuit du 7 au 8)** : étapes 1 et 2 **vues à l'écran
-> et validées par JP** ; étape 3 écrite et essayée en partie — écran prof, salle
-> d'attente, **pastilles du QCM vues** côté prof. Les cinq dernières corrections
-> (ci-dessous, « Fin de nuit ») ont été écrites **après le dernier essai** et
-> **n'ont pas été vérifiées** — JP teste le 2026-09-08. **Rien n'est déployé.**
+> **État au 2026-09-08** : étapes 1 à 3 **validées à l'écran par JP** (le
+> scénario qui échouait — arrêter la question → les pastilles apparaissent —
+> tient : la correction n° 1 du cache était la bonne). **Étapes 4 (score, podium,
+> classement), 5 (versement dans `travaux`, détail par élève) et 6 (équipes)
+> écrites le 2026-09-08, `tsc` et `eslint` propres, fonctions pures vérifiées
+> par un script, RIEN VU À L'ÉCRAN — JP teste EN CLASSE le 2026-09-09.** Les six autres types et leur affichage des réponses n'ont toujours
+> pas été joués en vrai. **Rien n'est déployé.**
 
 ## Ce qui posait problème
 
@@ -130,27 +132,114 @@ la minute où la classe se demande encore qui a raison.
    survivait à la question suivante. La confirmation « Réponse envoyée ✓ »
    s'affiche dès le clic, sans attendre le sondage.
 
+## Étape 4 — le score (2026-09-08)
+
+**Option A choisie par JP : des POINTS DE JEU, pas le barème.** 1 000 points par
+question quel que soit son `points` — le barème servira à l'étape 5 (versement
+dans `travaux`), les deux ne se mélangent pas. Avec des questions à 1 point, le
+podium se serait joué sur des décimales.
+
+| Règle | Valeur | Où |
+|---|---|---|
+| Points d'une question | 1 000 × part de réussite (barème partiel existant, `partReussite`) | `POINTS_PAR_QUESTION` |
+| Vitesse | × 1 à l'instant 0, × 0,5 à la fin du chrono, linéaire. Sans chrono : × 1 | `facteurVitesse` |
+| Série | +10 % par bonne réponse consécutive (part ≥ 0,5) dès la 2ᵉ, plafond +50 % ; cassée par une mauvaise réponse OU une absence de réponse | `bonusSerie` |
+| Égalités | Temps cumulé, le plus rapide devant. Ne pas répondre coûte le chrono entier | `classementDe` |
+| Noms | **Prénom + initiale**, déchiffrés côté serveur (`eleves`, lien par `firebaseUid`), une lecture par manche | `nomsDeLaClasse` |
+
+- **Rien n'est stocké** : le classement se recalcule depuis le cache à chaque
+  vue en `revele` / `finie`. Une question reposée ou effacée se répercute seule.
+- **La question courante n'entre au score qu'une fois RÉVÉLÉE** (ou la partie
+  finie) : avant, le score dirait qui a raison.
+- ⚠ `Manche.chronos` (`questionId → s`) mémorise le chrono **joué** : sans lui,
+  le score des questions passées se calculerait sur un chrono deviné.
+- **Prof** : bouton ambre « Afficher le podium » + sélecteur 1 / 3 / 5 / 10 dans
+  la barre d'actions ; le podium **remplace la question** dans la colonne
+  projetée, un second clic la ramène ; affiché d'office en fin de partie. Le
+  choix visible/caché est attaché à l'index de la question — lancer la suivante
+  le remet à zéro **sans effet React**. Onglet Statistiques : **classement
+  complet** (rang, nom, points, série, réponses), les zéros en retrait.
+- **Élève** : à la révélation, « + 820 pts · Total 2 340 pts · 7ᵉ sur 24 · 🔥
+  série de 3 » ; en fin de partie, son total et son rang. **Jamais le
+  classement des autres** (mineurs, en classe, devant leurs camarades).
+- Le podium écarte les élèves à 0 — sauf si personne n'a marqué.
+- Le **feedback par mauvaise réponse** (`feedbackParChoix`) s'affichait déjà à
+  la révélation dans `CompetitionQcm` : rien à ajouter.
+
+## Étape 5 — la partie devient des copies (2026-09-08)
+
+- **Versement AUTOMATIQUE à « Arrêter la partie »** (`terminer` →
+  `verserDansTravaux`), **rejouable sans doublon** (bouton « Verser à nouveau »
+  dans Statistiques). Décision prise seul : JP peut préférer un geste séparé.
+- Chaque élève ayant répondu à **au moins une** question reçoit son `travail` :
+  `content = JSON {type:'lecture', answers}` (la forme exacte qu'écrit
+  `LectureQuizActivity`), `status: 'submitted'`, `sessionId` posé. À partir de
+  là, correction, onglet Évaluation et profil lisent la partie **sans une ligne
+  de plus**.
+- **Un élève sans aucune réponse n'est PAS rendu** : sa copie reste en
+  brouillon, le prof la déclare « non rendue » s'il veut — comme ailleurs.
+- ⚠ Le travail peut exister sous **deux identifiants** (pré-créé
+  `TRV-{devoir}-{eleveDocId}` avec `studentId = eleveDocId`, ou créé par l'élève
+  `TRV-{devoir}-{uid}`). Rattrapage comme `/api/travaux/mine` : par `studentId`,
+  puis par **empreinte d'email** (`eleves` → `decrypt(email)` → `hashEmail`),
+  créé en dernier recours. Le pré-créé est **réclamé** au passage
+  (`studentId = uid`).
+- `Manche.versement = { at, copies }` ; affiché dans Statistiques.
+- **Détail par élève** dans Statistiques : une **puce par question** (verte
+  juste / ambre partiel / rouge faux / grise sans réponse), le temps au survol.
+  C'est là qu'on lit « vite et faux ». Seul endroit du module où les couleurs
+  jugent — c'est l'onglet du prof, pas l'écran projeté.
+
+## Étape 6 — jouer par équipes (2026-09-08)
+
+⚠ **Confusion évitée de justesse, à ne pas refaire** : le plan du 7/09 disait
+« Équipes : `groupes.ts` de quizKit porté ». Or `groupes.ts` forme des **groupes
+de discussion** après une question (réponses identiques / différentes) — cela
+appartient à l'activité **SONDAGE**, chantier à venir, **pas** à la compétition.
+Les équipes de la compétition, telles que JP les a définies le 2026-09-08 :
+
+- **Tous les élèves du groupe répondent ; le score de l'équipe est la SOMME**
+  des scores de ses membres (départage au temps cumulé). Rien de stocké à part
+  la composition (`Manche.equipes`, `null` = individuel).
+- **Tirage au sort** par le prof (nombre d'équipes choisi), puis **étiquettes
+  déplaçables** d'une colonne à l'autre — glisser-déposer natif, aucune
+  bibliothèque. Colonne « Sans équipe » pour les non-placés (ils jouent pour
+  eux seuls). Possible à toute phase : le score suit les membres.
+- Noms = **couleurs** (Rouge, Bleu, Vert, Jaune, Violet, Orange, Rose,
+  Turquoise), 8 max, pas renommables. `EQUIPE_TEINTES` pour l'affichage.
+- **Podium** : interrupteur Élèves / Équipes à côté des tailles ; les équipes
+  par défaut dès qu'il y en a. Statistiques : classement des équipes au-dessus
+  de celui des élèves. **Élève** : son équipe et ses coéquipiers dès la salle
+  d'attente ; à la révélation et en fin de partie, son score ET celui de son
+  équipe.
+- Action de pilotage `equipes` : `{ nombre }` (tirage) ou `{ equipes }`
+  (composition ; `[]` = plus d'équipes). `tirerEquipes` et `normaliserEquipes`
+  sont **pures et testées** (aléa injectable) : tailles à ±1, chacun placé une
+  fois, plafond 8, un élève dans UNE équipe (la première), classe vide sans
+  plantage.
+
 ## Ce qu'il reste
 
 | Étape | Contenu |
 |---|---|
-| **4** | Score (vitesse dégressive + série), **podium 1/3/5/10**, classement général |
-| **5** | Versement de la manche dans `travaux` → correction, Évaluation et profil sans une ligne de plus. Onglet **Statistiques** du prof (qui a répondu, qui n'a rien répondu, qui répond vite et faux) |
-| **6** | **Équipes** (`groupes.ts` de quizKit, porté tel quel) |
+| **6 — à tester** | Onglet Équipes → « Former au hasard » → colonnes → glisser une étiquette → la composition tient après rechargement ; l'élève lit son équipe dans la salle ; podium Équipes après révélation |
+| **4 — à tester** | Une partie réelle : révéler → « Afficher le podium » → les noms et les points ; l'élève voit son score ; fin de partie → podium final. Vérifier qu'un élève sans réponse figure à 0 dans Statistiques |
+| **5 — à tester** | Arrêter la partie → « N copies versées » → la copie s'ouvre dans l'écran de correction habituel avec les bonnes réponses ; l'élève voit son travail rendu dans son activité ; le profil compte la partie |
 
 Puis, comme chantiers séparés : le **sondage** (atelier à part, **toujours
-anonyme**, donc sans groupes par réponse — son vrai parent est le questionnaire
-d'auto-évaluation, pas celui de lecture), et la **popup de l'extension
-NavigKid**.
+anonyme** — son vrai parent est le questionnaire d'auto-évaluation, pas celui
+de lecture ; **c'est LÀ que va la répartition en groupes de discussion de
+quizKit, `groupes.ts`**, précisé par JP le 2026-09-08), et la **popup de
+l'extension NavigKid**.
 
-## À essayer en priorité à la reprise (2026-09-08)
+## À essayer en priorité à la reprise
 
-1. **Le scénario qui échouait** : question neuve → l'élève répond → le bandeau
-   du prof passe à `1 / 2` → « Arrêter la question » avant la fin → les
-   pastilles apparaissent. Si ça tient, la correction n° 1 est bonne.
-2. Les **sept types** en partie réelle et leur **affichage des réponses** —
+1. ~~Le scénario qui échouait~~ — **validé le 2026-09-08**.
+2. **Les étapes 4, 5 et 6** (score, podium, classement, versement, équipes) :
+   rien n'a été vu à l'écran. Test prévu EN CLASSE le 2026-09-09.
+3. Les **sept types** en partie réelle et leur **affichage des réponses** —
    seul le QCM a été vu.
-3. Le verrou après envoi, et la remise à zéro quand on repose une question.
+4. Le verrou après envoi, et la remise à zéro quand on repose une question.
 
 Un vrai compte élève existe (`p1Fd0…`, dans la classe `CLS-mn6br10y-ya1vka`) :
 c'est lui qui a servi aux derniers essais.

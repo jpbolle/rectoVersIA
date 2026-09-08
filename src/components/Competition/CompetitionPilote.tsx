@@ -19,19 +19,38 @@ import { useState } from 'react';
 import ResizableSplit from '@/components/ResizableSplit/ResizableSplit';
 import CompetitionQcm from './CompetitionQcm';
 import Repartition from './Repartition';
+import Podium from './Podium';
+import EquipesPanel from './EquipesPanel';
 import { QuestionCard } from '@/components/LectureQuizActivity/LectureQuizActivity';
 import { useDirect } from '@/hooks/useDirect';
 import { LECTURE_TYPE_LABELS } from '@/types/lecture';
+import { EQUIPE_TEINTES, PODIUM_TAILLES } from '@/types/manche';
 import type { LectureQuestionType } from '@/types/lecture';
+import type { PodiumLigne } from './Podium';
 import styles from './CompetitionPilote.module.css';
 
-type Onglet = 'questions' | 'stats';
+type Onglet = 'questions' | 'equipes' | 'stats';
+type PodiumMode = 'eleves' | 'equipes';
 
 export default function CompetitionPilote({ sessionId }: { sessionId: string }) {
   const { vue, motif, sommaire, demarree, reste, avantDepart, isLoading, piloter } = useDirect({
     sessionId,
   });
   const [onglet, setOnglet] = useState<Onglet>('questions');
+  // ── Le podium, à la demande ──
+  // Le prof choisit combien de lignes il projette (1 / 3 / 5 / 10), et QUAND :
+  // un bouton ambre le fait apparaître à la place de la question, un second
+  // clic la ramène. Le choix « visible / caché » est attaché à la question
+  // pour laquelle il a été fait : lancer la suivante le remet à zéro sans
+  // effet ni remise à zéro manuelle. En fin de partie, le podium s'affiche
+  // d'office.
+  const [podiumTaille, setPodiumTaille] = useState<number>(3);
+  const [podiumChoix, setPodiumChoix] = useState<{ index: number; visible: boolean } | null>(
+    null
+  );
+  // Élèves ou équipes au podium. `null` = pas encore choisi : on projette les
+  // équipes dès qu'il y en a, les élèves sinon.
+  const [podiumMode, setPodiumMode] = useState<PodiumMode | null>(null);
 
   // Une carte seule, au même gabarit : rien ne doit flotter nu dans la page.
   const carteSeule = (contenu: React.ReactNode) => (
@@ -81,6 +100,43 @@ export default function CompetitionPilote({ sessionId }: { sessionId: string }) 
   // lit, puis il passe.
   const chronometre = enQuestion && vue.chronoSec > 0;
   const libelle: Record<string, string> = LECTURE_TYPE_LABELS;
+  const finie = vue.phase === 'finie';
+  const classement = vue.classement ?? [];
+  // Le score n'existe qu'une fois la réponse révélée (ou la partie finie).
+  const podiumPossible = (revele || finie) && classement.length > 0;
+  const podiumVisible = podiumPossible
+    ? podiumChoix?.index === vue.questionIndex
+      ? podiumChoix.visible
+      : finie
+    : false;
+  const basculerPodium = () =>
+    setPodiumChoix({ index: vue.questionIndex, visible: !podiumVisible });
+
+  // ── Les équipes ──
+  const avecEquipes = (vue.equipes?.length ?? 0) > 0;
+  const classementEquipes = vue.classementEquipes ?? [];
+  const modeEffectif: PodiumMode = podiumMode ?? (avecEquipes ? 'equipes' : 'eleves');
+  // Le podium ne sait pas ce qu'il classe : on lui prépare ses lignes.
+  const lignesPodium: PodiumLigne[] =
+    modeEffectif === 'equipes' && avecEquipes
+      ? classementEquipes.map((l) => ({
+          id: l.id,
+          rang: l.rang,
+          nom: l.nom,
+          total: l.total,
+          sous: l.membres.join(' · '),
+          teinte: EQUIPE_TEINTES[l.nom],
+        }))
+      : classement.map((l) => ({
+          id: l.uid,
+          rang: l.rang,
+          nom: l.nom,
+          total: l.total,
+          serie: l.serie,
+        }));
+  const titrePodium =
+    (finie ? 'Podium final' : 'Podium') +
+    (modeEffectif === 'equipes' && avecEquipes ? ' des équipes' : '');
 
   // ── Colonne de gauche : l'espace de jeu ──
   const jeu = (
@@ -129,7 +185,11 @@ export default function CompetitionPilote({ sessionId }: { sessionId: string }) 
           </div>
         )}
 
-        {q && (demarree || close || revele) && (
+        {podiumVisible && (
+          <Podium lignes={lignesPodium} taille={podiumTaille} titre={titrePodium} />
+        )}
+
+        {q && !podiumVisible && (demarree || close || revele) && (
           <>
             <div className={styles.enonce} dangerouslySetInnerHTML={{ __html: q.enonce }} />
 
@@ -172,7 +232,7 @@ export default function CompetitionPilote({ sessionId }: { sessionId: string }) 
             La salle est ouverte. Choisis ta première question dans l’onglet « Questions ».
           </p>
         )}
-        {vue.phase === 'finie' && <p className={styles.vide}>Partie terminée.</p>}
+        {finie && !podiumVisible && <p className={styles.vide}>Partie terminée.</p>}
 
         {/* Barre d'actions — forme imposée du projet (`bottomActions`) : un
             trait, les boutons, un trait, sur la MÊME ligne. Verts (agir sur le
@@ -210,10 +270,55 @@ export default function CompetitionPilote({ sessionId }: { sessionId: string }) 
               type="button"
               className={`${styles.actionBtn} ${styles.actionBtnAmber}`}
               onClick={() => piloter('terminer')}
-              disabled={vue.phase === 'finie'}
+              disabled={finie}
             >
               Arrêter la partie
             </button>
+            {/* Afficher = ambre. Le sélecteur de taille est collé au bouton :
+                on choisit COMBIEN on montre au moment où on le montre. */}
+            <span className={styles.podiumGroupe}>
+              <button
+                type="button"
+                className={`${styles.actionBtn} ${styles.actionBtnAmber}`}
+                onClick={basculerPodium}
+                disabled={!podiumPossible}
+              >
+                {podiumVisible ? 'Revenir à la question' : 'Afficher le podium'}
+              </button>
+              {avecEquipes && (
+                <span className={styles.podiumTailles} role="group" aria-label="Podium des élèves ou des équipes">
+                  {(['eleves', 'equipes'] as PodiumMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={`${styles.podiumTaille} ${
+                        modeEffectif === mode ? styles.podiumTailleActive : ''
+                      }`}
+                      onClick={() => setPodiumMode(mode)}
+                      disabled={!podiumPossible}
+                    >
+                      {mode === 'eleves' ? 'Élèves' : 'Équipes'}
+                    </button>
+                  ))}
+                </span>
+              )}
+              <span className={styles.podiumTailles} role="group" aria-label="Taille du podium">
+                {PODIUM_TAILLES.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`${styles.podiumTaille} ${
+                      podiumTaille === n ? styles.podiumTailleActive : ''
+                    }`}
+                    onClick={() => setPodiumTaille(n)}
+                    disabled={!podiumPossible}
+                    title={`Afficher les ${n} premiers`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </span>
+            </span>
           </div>
           <span className={styles.bottomActionsLine} />
         </div>
@@ -239,6 +344,13 @@ export default function CompetitionPilote({ sessionId }: { sessionId: string }) 
           </button>
           <button
             type="button"
+            className={`${styles.onglet} ${onglet === 'equipes' ? styles.ongletActif : ''}`}
+            onClick={() => setOnglet('equipes')}
+          >
+            Équipes{avecEquipes ? ` (${vue.equipes!.length})` : ''}
+          </button>
+          <button
+            type="button"
             className={`${styles.onglet} ${onglet === 'stats' ? styles.ongletActif : ''}`}
             onClick={() => setOnglet('stats')}
           >
@@ -247,7 +359,16 @@ export default function CompetitionPilote({ sessionId }: { sessionId: string }) 
         </div>
 
         <div className={styles.ongletContenu}>
-          {onglet === 'questions' ? (
+          {onglet === 'equipes' ? (
+            <EquipesPanel
+              equipes={vue.equipes}
+              sansEquipe={vue.sansEquipe}
+              effectif={vue.compteur?.attendus ?? 0}
+              onTirer={(nombre) => piloter('equipes', { nombre })}
+              onRecomposer={(equipes) => piloter('equipes', { equipes })}
+              onSupprimer={() => piloter('equipes', { equipes: [] })}
+            />
+          ) : onglet === 'questions' ? (
             <ul className={styles.sommaire}>
               {sommaire.map((item) => {
                 const posee = (vue.posees ?? []).includes(item.index);
@@ -289,12 +410,136 @@ export default function CompetitionPilote({ sessionId }: { sessionId: string }) 
                   {vue.compteur ? `${vue.compteur.repondu} / ${vue.compteur.attendus}` : '—'}
                 </span>
               </div>
-              {/* Le détail — qui répond vite et faux, le podium, le classement —
-                  est le sujet des étapes 4 et 5. On ne met pas ici un chiffre
-                  qu'on ne sait pas encore calculer. */}
-              <p className={styles.vide}>
-                Le score, le podium et le détail par élève arrivent à l’étape suivante.
-              </p>
+              {/* Le classement ENTIER, pour le prof seul : le podium projeté
+                  n'en montre que la tête. Il n'existe qu'une fois la réponse
+                  révélée — avant, il dirait qui a raison. Le détail par
+                  question (qui répond vite et faux) est le sujet de l'étape 5. */}
+              {avecEquipes && classementEquipes.length > 0 && (
+                <table className={`${styles.classement} ${styles.classementEquipes}`}>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Équipe</th>
+                      <th>Points</th>
+                      <th>Membres</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {classementEquipes.map((l) => (
+                      <tr key={l.id}>
+                        <td>{l.rang}</td>
+                        <td>
+                          <i
+                            className={styles.teinteEquipe}
+                            style={{ background: EQUIPE_TEINTES[l.nom] ?? 'var(--c-text-muted)' }}
+                          />
+                          {l.nom}
+                        </td>
+                        <td className={styles.classementPoints}>
+                          {l.total.toLocaleString('fr-BE')}
+                        </td>
+                        <td className={styles.membres}>{l.membres.join(', ') || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {classement.length > 0 ? (
+                <table className={styles.classement}>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Élève</th>
+                      <th>Points</th>
+                      <th title="Bonnes réponses consécutives">Série</th>
+                      <th title="Question par question : juste, partiel, faux, sans réponse — le temps au survol">
+                        Détail
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {classement.map((l) => (
+                      <tr key={l.uid} className={l.total === 0 ? styles.classementZero : ''}>
+                        <td>{l.rang}</td>
+                        <td>{l.nom}</td>
+                        <td className={styles.classementPoints}>
+                          {l.total.toLocaleString('fr-BE')}
+                        </td>
+                        <td>{l.serie >= 2 ? `🔥 ${l.serie}` : '—'}</td>
+                        <td>
+                          {/* Une puce par question : c'est ici qu'on lit « vite
+                              et faux » — une puce rouge avec un temps court. */}
+                          <span className={styles.detail}>
+                            {(l.detail ?? []).map((d) => {
+                              const etat =
+                                d.part === null
+                                  ? 'vide'
+                                  : d.part >= 1
+                                  ? 'juste'
+                                  : d.part > 0
+                                  ? 'partiel'
+                                  : 'faux';
+                              const secondes =
+                                d.tempsMs === null ? null : Math.round(d.tempsMs / 1000);
+                              const libelleEtat =
+                                etat === 'vide'
+                                  ? 'sans réponse'
+                                  : etat === 'juste'
+                                  ? 'juste'
+                                  : etat === 'partiel'
+                                  ? `partiel (${Math.round(d.part! * 100)} %)`
+                                  : 'faux';
+                              return (
+                                <span
+                                  key={d.questionId}
+                                  className={`${styles.puce} ${styles[`puce_${etat}`]}`}
+                                  title={`Q${d.numero ?? '?'} · ${libelleEtat}${
+                                    secondes !== null ? ` · ${secondes} s` : ''
+                                  }`}
+                                >
+                                  {d.numero ?? '·'}
+                                </span>
+                              );
+                            })}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className={styles.vide}>
+                  Le classement apparaît dès que la première réponse est révélée.
+                </p>
+              )}
+
+              {/* Le versement : la partie finie devient des copies rendues,
+                  lisibles dans la correction et le profil. Automatique à
+                  « Arrêter la partie » ; rejouable si quelque chose a manqué. */}
+              {finie && (
+                <div className={styles.versement}>
+                  {vue.versement ? (
+                    <span>
+                      {vue.versement.copies === 0
+                        ? 'Aucune copie versée — personne n’a répondu.'
+                        : `${vue.versement.copies} ${
+                            vue.versement.copies > 1 ? 'copies versées' : 'copie versée'
+                          } dans les travaux de l’activité, à ${new Date(
+                            vue.versement.at
+                          ).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}.`}
+                    </span>
+                  ) : (
+                    <span>Les copies n’ont pas encore été versées.</span>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.versementBtn}
+                    onClick={() => piloter('terminer')}
+                  >
+                    {vue.versement ? 'Verser à nouveau' : 'Verser les copies'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

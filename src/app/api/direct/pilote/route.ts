@@ -4,7 +4,7 @@ import { accesAccorde, accesManche, ouvrirManche, piloterManche, vueDeLaManche }
 import { mancheId } from '@/types/manche';
 import type { MancheAction } from '@/types/manche';
 
-const ACTIONS: MancheAction[] = ['ouvrir', 'lancer', 'stopper', 'reveler', 'terminer'];
+const ACTIONS: MancheAction[] = ['ouvrir', 'lancer', 'stopper', 'reveler', 'terminer', 'equipes'];
 
 // POST /api/direct/pilote — le professeur mène la partie.
 //
@@ -31,8 +31,12 @@ export async function POST(request: NextRequest) {
       chronoSec?: number;
       /** Le rang que le prof choisit de poser ; absent = la première non posée */
       index?: number;
+      /** `equipes` : combien d'équipes tirer au sort */
+      nombre?: number;
+      /** `equipes` : la composition retouchée ; `[]` = plus d'équipes */
+      equipes?: unknown;
     };
-    const { sessionId, chronoSec, index } = body;
+    const { sessionId, chronoSec, index, nombre, equipes } = body;
     const action = body.action as MancheAction;
 
     if (!sessionId || !ACTIONS.includes(action)) {
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Accès refusé' }, { status: 403 });
     }
 
-    const manche = await piloterManche(id, action, { chronoSec, index });
+    const manche = await piloterManche(id, action, { chronoSec, index, nombre, equipes });
     if (!manche) {
       return NextResponse.json({ success: false, message: 'Manche introuvable' }, { status: 404 });
     }

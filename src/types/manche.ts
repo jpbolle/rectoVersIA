@@ -22,6 +22,73 @@ export const DELAI_DEPART_MS = 2000;
 /** Chrono initial d'une question, en secondes (réglable question par question). */
 export const CHRONO_DEFAUT_SEC = 60;
 
+// ─── Le score (étape 4, décidé le 2026-09-08) ───
+//
+// Des POINTS DE JEU, indépendants du barème du questionnaire (option A, choisie
+// par JP) : 1 000 points par question, quel que soit son `points`. Le barème,
+// lui, servira à l'étape 5 quand la manche sera versée dans `travaux` — les
+// deux ne se mélangent pas. Avec des questions à 1 point, le podium se serait
+// joué sur des décimales.
+
+/** Ce que rapporte une question entièrement juste, répondue à l'instant 0. */
+export const POINTS_PAR_QUESTION = 1000;
+/**
+ * VITESSE DÉGRESSIVE : une bonne réponse vaut de 100 % à 50 % de ses points
+ * selon le temps mis. Jamais « le plus rapide gagne » — une bonne réponse
+ * lente vaut toujours mieux qu'une mauvaise rapide (« au cours de français,
+ * il faut du temps pour répondre », JP).
+ */
+export const VITESSE_MIN = 0.5;
+/** SÉRIE : +10 % par bonne réponse consécutive à partir de la deuxième… */
+export const SERIE_BONUS = 0.1;
+/** …plafonné à +50 %. */
+export const SERIE_MAX = 0.5;
+/** Une réponse compte comme « bonne » pour la série à partir de cette part. */
+export const SERIE_SEUIL = 0.5;
+/** Les tailles de podium que le prof peut choisir. */
+export const PODIUM_TAILLES = [1, 3, 5, 10] as const;
+
+// ─── Les équipes (étape 6, décidé le 2026-09-08) ───
+//
+// Une OPTION de la manche : sans équipes, rien ne change. Avec, chaque élève
+// joue exactement comme avant et le score d'une équipe est la SOMME des scores
+// de ses membres — recalculée à la volée comme tout le reste. Seule la
+// composition est stockée. Le prof tire au sort, puis déplace les élèves à la
+// main s'il le veut ; il peut le faire à tout moment de la partie, le score
+// suivant les membres.
+
+/** Des couleurs pour noms : lisibles au projecteur. Huit équipes au plus. */
+export const EQUIPE_COULEURS = [
+  'Rouge',
+  'Bleu',
+  'Vert',
+  'Jaune',
+  'Violet',
+  'Orange',
+  'Rose',
+  'Turquoise',
+] as const;
+export const EQUIPES_MAX = EQUIPE_COULEURS.length;
+
+/** La teinte de chaque équipe, pour l'en-tête et le podium. */
+export const EQUIPE_TEINTES: Record<string, string> = {
+  Rouge: '#c0392b',
+  Bleu: '#2e6da4',
+  Vert: '#2d6a5a',
+  Jaune: '#c9a227',
+  Violet: '#6c4a9c',
+  Orange: '#d4944c',
+  Rose: '#c2557f',
+  Turquoise: '#2a9d8f',
+};
+
+export interface Equipe {
+  id: string;
+  nom: string;
+  /** Les Firebase UID des membres */
+  membres: string[];
+}
+
 /**
  * Les quatre moments d'une partie.
  *
@@ -83,6 +150,25 @@ export interface Manche {
    * Sans cette trace, « la suivante » n'aurait pas de sens dès le premier saut.
    */
   posees: number[];
+  /**
+   * Le chrono EFFECTIVEMENT joué, question par question (`questionId → s`).
+   *
+   * Le score dépend du temps mis RAPPORTÉ au chrono de la question. Or
+   * `chronoSec` ne porte que la question courante, et le prof peut avoir
+   * ajusté celui d'une question au moment de la lancer : sans cette trace, le
+   * score des questions passées se calculerait sur un chrono deviné.
+   */
+  chronos?: Record<string, number>;
+  /**
+   * Le VERSEMENT dans `travaux` (étape 5) : quand, et combien de copies.
+   *
+   * Fait automatiquement à « Arrêter la partie », rejouable sans doublon. À
+   * partir de là, la correction, l'onglet Évaluation et le profil de l'élève
+   * lisent la partie comme n'importe quel questionnaire de lecture rendu.
+   */
+  versement?: { at: string; copies: number } | null;
+  /** Les équipes ; `null` ou absent = partie individuelle */
+  equipes?: Equipe[] | null;
 
   createdAt: string;
   updatedAt: string;
@@ -105,7 +191,8 @@ export type MancheAction =
   | 'lancer'    // lance la question suivante
   | 'stopper'   // clôt la question courante avant la fin du chrono
   | 'reveler'   // montre la bonne réponse, une fois la question close
-  | 'terminer'; // arrête la partie — la sonnerie n'attend pas
+  | 'terminer'  // arrête la partie — la sonnerie n'attend pas
+  | 'equipes';  // forme (au hasard) ou recompose les équipes
 
 /**
  * Ce qu'un navigateur reçoit à chaque interrogation.
@@ -149,6 +236,163 @@ export interface MancheVue {
    * qui ne change jamais.
    */
   sommaire?: MancheSommaireItem[];
+  /**
+   * Prof : le CLASSEMENT COMPLET de la classe, en `revele` et `finie`
+   * seulement. Le podium projeté en est la tête ; l'onglet Statistiques le
+   * montre en entier — le prof voit tout, c'est son travail.
+   */
+  classement?: ClassementLigne[];
+  /** Prof : le versement dans `travaux`, s'il a eu lieu */
+  versement?: { at: string; copies: number } | null;
+  /**
+   * Prof : la composition des équipes, avec les noms — à toute phase, c'est
+   * son panneau de réglage. Absent = partie individuelle.
+   */
+  equipes?: EquipeVue[];
+  /** Prof : les élèves de la classe qui ne sont dans aucune équipe */
+  sansEquipe?: { uid: string; nom: string }[];
+  /** Prof : le classement des équipes, en `revele` et `finie` */
+  classementEquipes?: ClassementEquipeLigne[];
+  /** Élève : son équipe et ses coéquipiers — dès la salle d'attente */
+  monEquipe?: { nom: string; coequipiers: string[] } | null;
+  /**
+   * Élève : SON score, et rien d'autre. Jamais le classement des autres — ce
+   * sont des mineurs, en classe, devant leurs camarades (règle du plan).
+   */
+  monScore?: MonScore;
+}
+
+// ─── Score ───
+
+/** Une ligne du classement — ce que le prof voit, ce que le podium projette. */
+export interface ClassementLigne {
+  uid: string;
+  rang: number;
+  /** Prénom + initiale du nom, déchiffrés côté serveur */
+  nom: string;
+  total: number;
+  /** Bonnes réponses consécutives en cours */
+  serie: number;
+  /** Temps de réponse cumulé (ms) — départage les égalités */
+  tempsTotalMs: number;
+  /** Questions auxquelles l'élève a répondu, sur celles posées */
+  repondues: number;
+  /**
+   * Prof seulement : question par question, ce qu'il a fait. C'est là qu'on
+   * lit « répond vite et faux » — une part nulle sur un temps court.
+   */
+  detail?: DetailQuestion[];
+}
+
+/** Une question, vue d'un élève : juste / faux / sans réponse, et en combien de temps. */
+export interface DetailQuestion {
+  questionId: string;
+  /** Numéro affiché (les blocs informatifs n'en ont pas) */
+  numero: number | null;
+  /** Part de réussite 0 → 1 ; `null` = pas répondu */
+  part: number | null;
+  tempsMs: number | null;
+}
+
+/** Ce que l'élève apprend de lui-même à la révélation. */
+export interface MonScore {
+  /** Points gagnés à la question qui vient d'être révélée ; `null` si pas concerné */
+  question: number | null;
+  total: number;
+  rang: number;
+  sur: number;
+  serie: number;
+  /** Son équipe, s'il en a une */
+  equipe?: { nom: string; total: number; rang: number; sur: number } | null;
+}
+
+/** Une équipe telle que le prof la voit dans son panneau. */
+export interface EquipeVue {
+  id: string;
+  nom: string;
+  membres: { uid: string; nom: string }[];
+}
+
+/** Une ligne du classement des équipes. */
+export interface ClassementEquipeLigne {
+  id: string;
+  rang: number;
+  nom: string;
+  total: number;
+  tempsTotalMs: number;
+  /** Les noms des membres, pour le podium */
+  membres: string[];
+}
+
+/**
+ * Tire les équipes au sort : les joueurs mélangés, distribués à tour de rôle
+ * dans `nombre` équipes — les tailles ne diffèrent donc jamais de plus d'un.
+ * Pure, pour être testable ; l'aléa est injectable.
+ */
+export function tirerEquipes(
+  uids: string[],
+  nombre: number,
+  alea: () => number = Math.random
+): Equipe[] {
+  const n = Math.max(1, Math.min(EQUIPES_MAX, Math.floor(nombre), uids.length || 1));
+  const melange = [...uids];
+  for (let i = melange.length - 1; i > 0; i--) {
+    const j = Math.floor(alea() * (i + 1));
+    [melange[i], melange[j]] = [melange[j], melange[i]];
+  }
+  const equipes: Equipe[] = EQUIPE_COULEURS.slice(0, n).map((nom, i) => ({
+    id: `EQ-${i + 1}`,
+    nom,
+    membres: [],
+  }));
+  melange.forEach((uid, i) => equipes[i % n].membres.push(uid));
+  return equipes;
+}
+
+/**
+ * Nettoie une composition envoyée par l'écran du prof : identifiants et noms
+ * en chaînes, un élève dans UNE équipe au plus (la première qui le cite
+ * gagne), huit équipes au plus. Renvoie `null` pour « plus d'équipes ».
+ */
+export function normaliserEquipes(brut: unknown): Equipe[] | null {
+  if (!Array.isArray(brut) || brut.length === 0) return null;
+  const vus = new Set<string>();
+  const propres: Equipe[] = [];
+  brut.slice(0, EQUIPES_MAX).forEach((e, i) => {
+    if (!e || typeof e !== 'object') return;
+    const o = e as Record<string, unknown>;
+    // Un élève une seule fois — entre les équipes ET dans la même : on marque
+    // au passage, pas après coup.
+    const membres: string[] = [];
+    if (Array.isArray(o.membres)) {
+      (o.membres as unknown[]).forEach((u) => {
+        if (typeof u !== 'string' || vus.has(u)) return;
+        vus.add(u);
+        membres.push(u);
+      });
+    }
+    propres.push({
+      id: typeof o.id === 'string' && o.id ? o.id : `EQ-${i + 1}`,
+      nom: typeof o.nom === 'string' && o.nom ? o.nom : EQUIPE_COULEURS[i % EQUIPES_MAX],
+      membres,
+    });
+  });
+  return propres.length > 0 ? propres : null;
+}
+
+/**
+ * Le facteur de vitesse : 1 à l'instant 0, `VITESSE_MIN` à la fin du chrono,
+ * linéaire entre les deux. Sans chrono, pas de course : facteur 1.
+ */
+export function facteurVitesse(tempsMs: number, chronoSec: number): number {
+  if (chronoSec <= 0) return 1;
+  const part = Math.max(0, Math.min(1, tempsMs / (chronoSec * 1000)));
+  return 1 - (1 - VITESSE_MIN) * part;
+}
+
+/** Le bonus de série pour la n-ième bonne réponse consécutive (n ≥ 1). */
+export function bonusSerie(serie: number): number {
+  return Math.min(SERIE_MAX, Math.max(0, serie - 1) * SERIE_BONUS);
 }
 
 /**

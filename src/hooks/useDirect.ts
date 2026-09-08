@@ -19,7 +19,15 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import type { MancheSommaireItem, MancheVue } from '@/types/manche';
+import type { Equipe, MancheSommaireItem, MancheVue } from '@/types/manche';
+
+/** Ce qu'un geste de pilotage peut porter. */
+export interface OptionsPiloter {
+  chronoSec?: number;
+  index?: number;
+  nombre?: number;
+  equipes?: Equipe[];
+}
 
 /** Rythme de l'interrogation, en millisecondes. */
 const PERIODE_MS = 1000;
@@ -54,7 +62,7 @@ interface Options {
 }
 
 export function useDirect({ sessionId, devoirId, actif = true }: Options): EtatDirect & {
-  piloter: (action: string, options?: { chronoSec?: number; index?: number }) => Promise<void>;
+  piloter: (action: string, options?: OptionsPiloter) => Promise<void>;
   repondre: (
     questionId: string,
     answer: unknown
@@ -134,7 +142,7 @@ export function useDirect({ sessionId, devoirId, actif = true }: Options): EtatD
   }, [actif]);
 
   const piloter = useCallback(
-    async (action: string, options?: { chronoSec?: number; index?: number }) => {
+    async (action: string, options?: OptionsPiloter) => {
       if (!sessionId) return;
       const headers = await getAuthHeaders();
       if (!headers) return;

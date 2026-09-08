@@ -1,0 +1,160 @@
+/* Onglet « Équipes » : un réglage en haut, des colonnes déposables dessous. */
+
+.panneau {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.former {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--c-text-muted);
+}
+
+.champ input {
+  width: 80px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--c-text);
+  background: var(--c-bg-card);
+}
+
+.btnPrimaire {
+  min-height: 38px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--c-radius);
+  background: var(--c-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btnPrimaire:hover {
+  background: var(--c-primary-light);
+}
+
+.btnDiscret {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: transparent;
+  color: var(--c-text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btnDiscret:hover {
+  color: var(--c-text);
+  border-color: var(--c-text-muted);
+}
+
+.vide,
+.aide {
+  margin: 0;
+  font-size: 13px;
+  color: var(--c-text-muted);
+  font-style: italic;
+}
+
+.colonnes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.colonne {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--c-radius);
+  background: var(--c-bg-element);
+  border: 2px dashed transparent;
+  min-height: 90px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+/* La cible du glisser se signale : le prof doit voir OÙ il lâche. */
+.colonneSurvolee {
+  border-color: var(--c-accent);
+  background: #fff8e8;
+}
+
+.colonneSans {
+  background: transparent;
+  border-color: var(--c-border);
+}
+
+.titreColonne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--c-border);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.titreColonne i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.compte {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+}
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.etiquette {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  font-size: 13px;
+  color: var(--c-text);
+  cursor: grab;
+  user-select: none;
+}
+
+.etiquette:active {
+  cursor: grabbing;
+}
+
+.videColonne {
+  color: var(--c-text-muted);
+  font-size: 13px;
+}

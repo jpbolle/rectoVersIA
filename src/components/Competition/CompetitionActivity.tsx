@@ -98,15 +98,49 @@ export default function CompetitionActivity({ devoirId, intitule }: CompetitionA
       <div className={styles.attente}>
         <p className={styles.attenteTitre}>{intitule || 'Compétition'}</p>
         <p>En attente de ton professeur…</p>
+        {/* Son équipe, dès la salle : il doit savoir avec qui il joue avant la
+            première question. Ses coéquipiers sont des camarades de classe —
+            prénom et initiale, rien qu'ils ne sachent déjà. */}
+        {vue?.monEquipe && (
+          <p className={styles.equipe}>
+            Tu joues dans l’équipe <strong>{vue.monEquipe.nom}</strong>
+            {vue.monEquipe.coequipiers.length > 0
+              ? ` avec ${vue.monEquipe.coequipiers.join(', ')}.`
+              : ', pour l’instant seul.'}
+          </p>
+        )}
       </div>
     );
   }
 
   if (vue.phase === 'finie') {
+    // Son score final, et rien de plus : le classement des autres reste au
+    // tableau du prof (règle du plan — jamais le bas du classement devant la
+    // classe).
     return (
       <div className={styles.attente}>
         <p className={styles.attenteTitre}>Partie terminée</p>
-        <p>Merci d’avoir joué.</p>
+        {vue.monScore ? (
+          <div className={styles.scoreFinal}>
+            <span className={styles.scoreTotal}>
+              {vue.monScore.total.toLocaleString('fr-BE')} pts
+            </span>
+            <span className={styles.scoreRang}>
+              {vue.monScore.rang}
+              <sup>{vue.monScore.rang === 1 ? 'er' : 'e'}</sup> sur {vue.monScore.sur}
+            </span>
+            {vue.monScore.equipe && (
+              <span className={styles.scoreEquipe}>
+                Équipe {vue.monScore.equipe.nom} :{' '}
+                {vue.monScore.equipe.total.toLocaleString('fr-BE')} pts · {vue.monScore.equipe.rang}
+                <sup>{vue.monScore.equipe.rang === 1 ? 're' : 'e'}</sup> sur{' '}
+                {vue.monScore.equipe.sur}
+              </span>
+            )}
+          </div>
+        ) : (
+          <p>Merci d’avoir joué.</p>
+        )}
       </div>
     );
   }
@@ -216,6 +250,33 @@ export default function CompetitionActivity({ devoirId, intitule }: CompetitionA
 
       {aRepondu && vue.phase === 'question' && (
         <p className={styles.repondu}>Réponse envoyée ✓</p>
+      )}
+
+      {/* À la révélation : ce que la question lui a rapporté, son total, son
+          rang. Le sien seulement — le podium se lit au tableau. */}
+      {revele && vue.monScore && (
+        <div className={styles.score}>
+          <span className={styles.scoreQuestion}>
+            {vue.monScore.question === null
+              ? '—'
+              : vue.monScore.question > 0
+              ? `+ ${vue.monScore.question.toLocaleString('fr-BE')} pts`
+              : '0 pt'}
+          </span>
+          <span className={styles.scoreDetail}>
+            Total {vue.monScore.total.toLocaleString('fr-BE')} pts · {vue.monScore.rang}
+            <sup>{vue.monScore.rang === 1 ? 'er' : 'e'}</sup> sur {vue.monScore.sur}
+            {vue.monScore.serie >= 2 && ` · 🔥 série de ${vue.monScore.serie}`}
+          </span>
+          {vue.monScore.equipe && (
+            <span className={styles.scoreDetail}>
+              Équipe {vue.monScore.equipe.nom} :{' '}
+              {vue.monScore.equipe.total.toLocaleString('fr-BE')} pts · {vue.monScore.equipe.rang}
+              <sup>{vue.monScore.equipe.rang === 1 ? 're' : 'e'}</sup> sur{' '}
+              {vue.monScore.equipe.sur}
+            </span>
+          )}
+        </div>
       )}
       {motifRefus && (
         <p className={styles.refus}>

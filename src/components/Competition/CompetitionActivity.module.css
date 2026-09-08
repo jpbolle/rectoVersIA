@@ -151,3 +151,58 @@
   color: var(--c-danger);
   margin: 0;
 }
+
+/* ── Son score, à la révélation ── */
+.score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 18px;
+  border-radius: var(--c-radius);
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+}
+
+.scoreQuestion {
+  font-family: var(--c-font-title);
+  font-size: 30px;
+  color: var(--c-primary);
+}
+
+.scoreDetail {
+  font-size: 14px;
+  color: var(--c-text-muted);
+}
+
+/* ── Son score final ── */
+.scoreFinal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-style: normal;
+}
+
+.scoreTotal {
+  font-family: var(--c-font-title);
+  font-size: 44px;
+  color: var(--c-primary);
+}
+
+.scoreRang {
+  font-size: 18px;
+  color: var(--c-text);
+}
+
+/* Son équipe, dans la salle d'attente */
+.equipe {
+  margin: 16px 0 0;
+  font-style: normal;
+  color: var(--c-text);
+}
+
+.scoreEquipe {
+  font-size: 15px;
+  color: var(--c-text-muted);
+}

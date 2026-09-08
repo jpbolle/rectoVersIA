@@ -374,3 +374,175 @@
   min-height: 0;
   padding: 14px 16px;
 }
+
+/* ── Podium : le bouton et son sélecteur de taille, soudés ── */
+.podiumGroupe {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.podiumTailles {
+  display: inline-flex;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  overflow: hidden;
+}
+
+.podiumTaille {
+  min-width: 34px;
+  min-height: 42px;
+  border: none;
+  background: var(--c-bg-card);
+  color: var(--c-text-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.podiumTaille + .podiumTaille {
+  border-left: 1px solid var(--c-border);
+}
+
+.podiumTaille:hover:not(:disabled) {
+  background: var(--c-bg-element);
+}
+
+.podiumTaille:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.podiumTailleActive {
+  background: var(--c-accent);
+  color: #fff;
+}
+
+/* ── Onglet Statistiques : le classement complet ── */
+.classement {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.classement th,
+.classement td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.classement th {
+  font-weight: 600;
+  color: var(--c-text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.classementPoints {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--c-primary);
+}
+
+/* Ceux qui n'ont rien marqué — souvent ceux qui n'ont rien envoyé : c'est une
+   information pour le prof, on la laisse lisible mais en retrait. */
+.classementZero td {
+  color: var(--c-text-muted);
+}
+
+/* ── Détail par question : une puce par question, dans l'ordre où elles ont
+   été posées. Ici, et ici seulement, les couleurs JUGENT : c'est l'onglet du
+   prof, pas l'écran projeté. ── */
+.detail {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.puce {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  cursor: help;
+}
+
+.puce_juste {
+  background: var(--c-success);
+}
+
+.puce_partiel {
+  background: var(--c-accent);
+}
+
+.puce_faux {
+  background: var(--c-danger);
+}
+
+.puce_vide {
+  background: var(--c-bg-element);
+  color: var(--c-text-muted);
+  border: 1px solid var(--c-border);
+}
+
+/* ── Le versement, sous le classement ── */
+.versement {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: var(--c-radius);
+  background: var(--c-bg-element);
+  font-size: 13px;
+  color: var(--c-text-muted);
+}
+
+.versementBtn {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--c-primary);
+  border-radius: var(--c-radius);
+  background: transparent;
+  color: var(--c-primary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.versementBtn:hover {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+/* ── Classement des équipes, au-dessus de celui des élèves ── */
+.classementEquipes {
+  margin-bottom: 18px;
+}
+
+.teinteEquipe {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.membres {
+  font-size: 12px;
+  color: var(--c-text-muted);
+}

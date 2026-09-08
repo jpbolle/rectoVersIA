@@ -1,0 +1,118 @@
+/* Le podium projeté : gros, aéré, lisible à quatre mètres. */
+
+.podium {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 8px 0;
+}
+
+.titre {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 26px;
+  color: var(--c-primary);
+  text-align: center;
+}
+
+.vide {
+  text-align: center;
+  color: var(--c-text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ligne {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-radius: var(--c-radius);
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  font-size: 20px;
+}
+
+/* Les trois premiers : plus grands, et teintés or / argent / bronze en filet,
+   pas en aplat — l'aplat écraserait le nom. */
+.place1 {
+  font-size: 28px;
+  border-color: #d9a441;
+  background: #fff8e8;
+}
+
+.place2 {
+  font-size: 24px;
+  border-color: #a8b0ba;
+  background: #f4f6f8;
+}
+
+.place3 {
+  font-size: 22px;
+  border-color: #c58a5a;
+  background: #fbf1ea;
+}
+
+.rang {
+  min-width: 44px;
+  text-align: center;
+  font-family: var(--c-font-title);
+  color: var(--c-text-muted);
+}
+
+.identite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--c-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teinte {
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Les membres d'une équipe : en petit, sous son nom. */
+.sous {
+  font-size: 0.55em;
+  color: var(--c-text-muted);
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.serie {
+  font-size: 0.7em;
+  color: var(--c-accent-dark);
+  font-weight: 600;
+}
+
+.points {
+  font-family: var(--c-font-title);
+  color: var(--c-primary);
+  font-variant-numeric: tabular-nums;
+}

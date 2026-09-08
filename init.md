@@ -318,6 +318,21 @@ interface Questionnaire {
 ```
 
 ### Autres collections
+- `manches` + `manches/{id}/reponses` : **une partie jouée en direct** (mode Compétition
+  du questionnaire de lecture). `id = MAN-{sessionId}` — déterministe, une manche par
+  session (activité × classe). Le document porte la phase (`salle → question →
+  resultat → revele → finie`), `questionIndex`, le **départ programmé** `debutAt`,
+  `chronoSec`, `posees[]` et `chronos{}` (le chrono joué, question par question — le
+  score en dépend). Une réponse par élève dans la sous-collection (`answers`,
+  `tempsMs` mesurés par le SERVEUR). Accès **serveur uniquement** ; cache mémoire de
+  500 ms dans `src/lib/manche-server.ts` (la route la plus appelée du projet : 1 s ×
+  25 élèves). **Le score n'est jamais stocké** : recalculé depuis les copies (1 000 pts
+  par question × part de réussite × vitesse 100 → 50 % × série +10 %/plafond +50 %).
+  **« Arrêter la partie » verse les copies dans `travaux`** (`content` JSON
+  `{type:'lecture', answers}`, `submitted`, rejouable) : l'aval — correction, Évaluation,
+  profil — ne connaît pas la manche. Un élève sans réponse n'est pas rendu.
+  **Équipes en option** (`equipes: [{id, nom, membres: uid[]}] | null`) : le score d'une
+  équipe est la somme de ses membres, jamais stocké ; noms = couleurs, 8 max.
 - `oeuvres` + `oeuvres/{id}/sections` : **bibliothèque d'œuvres** (atelier « Lecture
   d'une œuvre »). Le document parent ne porte que le **sommaire** (chapitres → titres de
   sections) ; le contenu vit dans la **sous-collection**, chargée à la demande — une
@@ -675,6 +690,18 @@ interface Questionnaire {
   entre deux lignes, insérer, ou renvoyer la suite dans une **nouvelle section** ;
   détection du locuteur en capitales). Une scène vide s'ouvre sur une **zone de
   collage** — le premier geste du prof, c'est coller le texte d'un seul tenant
+- Compétition (`src/components/Competition/`, page prof `/direct/[sessionId]`, routes
+  `/api/direct/{etat,pilote,reponse}`) : `CompetitionPilote` (écran prof en deux
+  colonnes — espace de jeu **projeté** à gauche, onglets Questions / Statistiques à
+  droite ; barre d'actions verte puis ambre, **podium 1/3/5/10** à la demande),
+  `CompetitionActivity` (écran élève : salle d'attente, compte à rebours, question,
+  **bouton Envoyer partout**, son score à la révélation — jamais le classement des
+  autres), `CompetitionQcm` (cases pleines ▲◆●■, ni vert ni rouge avant la
+  révélation), `Repartition` (ce que la classe a répondu, **dans la forme de la
+  question**), `Podium` (élèves ou équipes, l'appelant prépare les lignes),
+  `EquipesPanel` (tirage au sort + étiquettes déplaçables, glisser-déposer natif). L'élève
+  ne reçoit **aucune question à l'ouverture** — elles arrivent une à une par
+  `/api/direct/etat`
 
 ### Hooks
 `useAuth` (expose `getAuthHeaders`), `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,
@@ -682,7 +709,9 @@ interface Questionnaire {
 `useAiSuggestions`, `useAiGridEvaluation`, `useVocabulaireThemes`, `useVocabulaireWords`,
 `useVocabulaireExercises`, `useDictionaryLookup` (cache client partagé du dictionnaire),
 `useDidactique` (config UAA/gestes, cache module partagé),
-`useScenarisations` (expose `dupliquer` — copie complète d'un parcours)
+`useScenarisations` (expose `dupliquer` — copie complète d'un parcours),
+`useDirect` (mode Compétition : interrogation à 1 s, décalage d'horloge mesuré par
+`serverNow`, chrono local à 10 Hz)
 
 ---
 
