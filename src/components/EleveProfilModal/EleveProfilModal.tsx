@@ -6,12 +6,16 @@
 
 import { useEffect } from 'react';
 import ProfilPanel from '@/components/ProfilPanel/ProfilPanel';
+import NiveauFlePanel from '@/components/NiveauFlePanel/NiveauFlePanel';
+import type { ClasseType } from '@/types/classe';
 import styles from './EleveProfilModal.module.css';
 
 interface EleveProfilModalProps {
   eleveId: string;
   eleveName: string;      // « Prénom Nom »
   classeName?: string;
+  // Classe FLE : le positionnement CECR (radar + curseurs) précède le profil
+  classeType?: ClasseType;
   onClose: () => void;
 }
 
@@ -19,6 +23,7 @@ export default function EleveProfilModal({
   eleveId,
   eleveName,
   classeName,
+  classeType,
   onClose,
 }: EleveProfilModalProps) {
   // Fermeture avec Échap + blocage du scroll de la page derrière
@@ -47,7 +52,8 @@ export default function EleveProfilModal({
               {eleveName}
             </h2>
             <p className={styles.subtitle}>
-              Fiche de l&apos;élève{classeName ? ` — ${classeName}` : ''} · profil d&apos;écrilecteur
+              Fiche de l&apos;élève{classeName ? ` — ${classeName}` : ''} ·{' '}
+              {classeType === 'fle' ? 'niveaux CECR et profil d’écrilecteur' : 'profil d’écrilecteur'}
             </p>
           </div>
           <button type="button" className={styles.closeBtn} onClick={onClose} title="Fermer">
@@ -55,6 +61,16 @@ export default function EleveProfilModal({
           </button>
         </div>
         <div className={styles.body}>
+          {classeType === 'fle' && (
+            <section className={styles.fle}>
+              <h3 className={styles.fleTitre}>Niveaux CECR</h3>
+              <p className={styles.fleSub}>
+                Règle les curseurs : l’élève voit le radar sur sa page « Mon cours ». Les
+                objectifs du mois s’y affichent aussi.
+              </p>
+              <NiveauFlePanel key={`fle-${eleveId}`} eleveId={eleveId} />
+            </section>
+          )}
           {/* key : remonte le panneau (et son état d'onglets) quand on change d'élève */}
           <ProfilPanel key={eleveId} eleveId={eleveId} />
         </div>

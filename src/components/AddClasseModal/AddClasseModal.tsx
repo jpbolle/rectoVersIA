@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Classe } from '@/types/classe';
+import { CLASSE_TYPES } from '@/types/classe';
+import type { Classe, ClasseType } from '@/types/classe';
 import styles from './AddClasseModal.module.css';
 
 interface AddClasseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { nom: string; description?: string }) => Promise<void>;
+  onSubmit: (data: { nom: string; description?: string; type: ClasseType }) => Promise<void>;
   editingClasse?: Classe | null;
   isSaving: boolean;
 }
@@ -21,14 +22,17 @@ export default function AddClasseModal({
 }: AddClasseModalProps) {
   const [nom, setNom] = useState('');
   const [description, setDescription] = useState('');
+  const [type, setType] = useState<ClasseType>('francais');
 
   useEffect(() => {
     if (editingClasse) {
       setNom(editingClasse.nom);
       setDescription(editingClasse.description || '');
+      setType(editingClasse.type ?? 'francais');
     } else {
       setNom('');
       setDescription('');
+      setType('francais');
     }
   }, [editingClasse, isOpen]);
 
@@ -39,6 +43,7 @@ export default function AddClasseModal({
     await onSubmit({
       nom: nom.trim(),
       description: description.trim() || undefined,
+      type,
     });
   };
 
@@ -85,6 +90,31 @@ export default function AddClasseModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ex: Classe à projet, Option latin..."
             />
+          </div>
+
+          {/* Type de cours : modifiable après coup — une classe créée
+              « français » par erreur se corrige ici. Les contenus déjà créés
+              ne changent pas de référentiel. */}
+          <div className={styles.field}>
+            <span className={styles.label}>Type de cours</span>
+            <div className={styles.typeChoices}>
+              {CLASSE_TYPES.map((t) => (
+                <label
+                  key={t.id}
+                  className={`${styles.typeChoice} ${type === t.id ? styles.typeChoiceActive : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="classe-type-edit"
+                    value={t.id}
+                    checked={type === t.id}
+                    onChange={() => setType(t.id)}
+                    disabled={isSaving}
+                  />
+                  {t.label}
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className={styles.actions}>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { eleveExclu } from '@/lib/sequence-server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
@@ -41,6 +42,8 @@ export async function GET(request: NextRequest) {
       const data = doc.data();
       const devoirClasses = data.classes || [];
       if (!devoirClasses.some((c: string) => classeNames.includes(c))) continue;
+      // Réservée à certains élèves de la classe
+      if (eleveExclu(data.eleves, elevesSnap.docs.map((d) => d.id))) continue;
 
       // Vérifier si l'élève a déjà soumis une réponse
       let soumis = false;

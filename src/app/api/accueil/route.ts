@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { decryptFields, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
+import { eleveExclu } from '@/lib/sequence-server';
 import {
   buildCertificationsProfil,
   chargerLabelsUaa,
@@ -84,6 +85,7 @@ export async function GET(request: NextRequest) {
           archive: data.archive ?? false,
           corrigeDisponible: data.corrigeDisponible ?? false,
           typeTravail: (data.typeTravail as string) || 'ecrire',
+          eleves: data.eleves,
           atelier:
             (data.atelier as string) ||
             atelierParDispositif((data.typeTravail as never) || 'ecrire').id,
@@ -94,7 +96,9 @@ export async function GET(request: NextRequest) {
         (d) =>
           d.disponible &&
           !d.archive &&
-          d.classes.some((c) => classeNames.includes(c))
+          d.classes.some((c) => classeNames.includes(c)) &&
+          // Réservée à certains élèves de la classe : les autres ne la voient pas
+          !eleveExclu(d.eleves, eleveIds)
       );
 
     const travaux = new Map(

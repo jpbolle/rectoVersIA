@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useEleves } from '@/hooks/useClasses';
 import ClasseCertifications from './ClasseCertifications';
 import ClasseActivites from './ClasseActivites';
+import { estClasseFle } from '@/types/classe';
 import type { Classe, Eleve } from '@/types/classe';
 import styles from './ClasseDetailForm.module.css';
 
@@ -51,7 +52,10 @@ export default function ClasseDetailForm({
 
       <div className={styles.formHeader}>
         <div className={styles.titleSection}>
-          <h2 className={styles.formTitle}>{classe.nom}</h2>
+          <h2 className={styles.formTitle}>
+            {classe.nom}
+            {estClasseFle(classe) && <span className={styles.typeBadge}>FLE</span>}
+          </h2>
           {classe.description && (
             <p className={styles.description}>{classe.description}</p>
           )}

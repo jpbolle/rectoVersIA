@@ -9,6 +9,7 @@ import Header, { ADMIN_TABS } from '@/components/Header/Header';
 import type { AdminHeaderTab } from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import DidactiquePanel from '@/components/DidactiquePanel/DidactiquePanel';
+import DidactiqueFlePanel from '@/components/DidactiquePanel/DidactiqueFlePanel';
 import AnnonceModal from '@/components/AnnonceModal/AnnonceModal';
 import type { CreateProfesseurData } from '@/types/professeur';
 import { CIBLE_LABELS } from '@/types/annonce';
@@ -55,6 +56,9 @@ export default function AdminPage() {
   const [isReady, setIsReady] = useState(false);
   // Onglet actif, piloté par les boutons du header (variant admin)
   const [activeTab, setActiveTab] = useState<AdminHeaderTab>('vue');
+  // Gestion didactique : deux référentiels, celui du cours de français (UAA,
+  // habiletés) et celui des classes FLE (compétences du CECR, niveaux)
+  const [referentiel, setReferentiel] = useState<'francais' | 'fle'>('francais');
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -386,8 +390,34 @@ export default function AdminPage() {
           <AnnonceModal onClose={() => setShowAnnonceModal(false)} onSend={sendAnnonce} />
         )}
 
-        {/* Didactique du français : UAA + gestes (listes dynamiques des formulaires) */}
-        {activeTab === 'didactique' && <DidactiquePanel />}
+        {/* Gestion didactique : sélecteur de référentiel, puis le panneau
+            correspondant. Français = UAA + gestes ; FLE = compétences du
+            radar, niveaux du CECR, descripteurs « Je peux… ». */}
+        {activeTab === 'didactique' && (
+          <>
+            <div className={styles.refSwitch} role="tablist" aria-label="Référentiel">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={referentiel === 'francais'}
+                className={`${styles.refBtn} ${referentiel === 'francais' ? styles.refBtnActive : ''}`}
+                onClick={() => setReferentiel('francais')}
+              >
+                Cours de français
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={referentiel === 'fle'}
+                className={`${styles.refBtn} ${referentiel === 'fle' ? styles.refBtnActive : ''}`}
+                onClick={() => setReferentiel('fle')}
+              >
+                Français langue étrangère (FLE)
+              </button>
+            </div>
+            {referentiel === 'francais' ? <DidactiquePanel /> : <DidactiqueFlePanel />}
+          </>
+        )}
 
         {/* Gestion des coûts : usage de l'IA */}
         {activeTab === 'couts' && (

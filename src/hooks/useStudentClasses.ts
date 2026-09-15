@@ -2,13 +2,27 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import type { ClasseType } from '@/types/classe';
 
-interface StudentClasse {
+export interface StudentClasse {
   id: string;
   nom: string;
   description: string;
+  type: ClasseType;
   anneeScolaire: string;
   archive: boolean;
+}
+
+// L'élève entre-t-il par l'espace FLE ? Oui si TOUTES ses classes actives
+// sont de type FLE. Classes mixtes : il garde /accueil, avec une entrée
+// « Mon cours » vers /fle. (Plan espace FLE, 2026-09-14.)
+export function espaceFleSeulement(classes: Pick<StudentClasse, 'type' | 'archive'>[]): boolean {
+  const actives = classes.filter((c) => !c.archive);
+  return actives.length > 0 && actives.every((c) => c.type === 'fle');
+}
+
+export function aUneClasseFle(classes: Pick<StudentClasse, 'type' | 'archive'>[]): boolean {
+  return classes.some((c) => !c.archive && c.type === 'fle');
 }
 
 export function useStudentClasses() {

@@ -1,0 +1,322 @@
+/* Parcours d'une séquence FLE, côté élève — grand, aéré, peu de texte */
+.parcours {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.entete {
+  text-align: center;
+}
+
+.titre {
+  font-family: var(--c-font-title);
+  font-size: 28px;
+  color: var(--c-primary);
+  margin: 0 0 6px;
+}
+
+.sousTitre {
+  margin: 0;
+  font-size: 16px;
+  color: var(--c-text-secondary);
+}
+
+/* ── Ligne de progression ── */
+.ligne {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cran {
+  display: flex;
+  align-items: center;
+}
+
+.cranBouton {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid var(--c-border-strong);
+  background: var(--c-bg-card);
+  color: var(--c-text-secondary);
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.cranBouton:hover {
+  transform: scale(1.08);
+}
+
+.cranFait {
+  background: var(--c-success);
+  border-color: var(--c-success);
+  color: #fff;
+}
+
+.cranCourant {
+  border-color: #4a7ba7;
+  color: #4a7ba7;
+  box-shadow: 0 0 0 5px rgba(74, 123, 167, 0.18);
+}
+
+.trait {
+  width: clamp(24px, 6vw, 64px);
+  height: 4px;
+  background: var(--c-border);
+}
+
+.traitFait {
+  background: var(--c-success);
+}
+
+/* ── Modules ── */
+.modules {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.module {
+  background: var(--c-bg-card);
+  border: 1.5px solid var(--c-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.moduleFait {
+  border-color: rgba(45, 138, 78, 0.45);
+}
+
+.moduleEntete {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.moduleEntete:hover {
+  background: var(--c-bg-element);
+}
+
+.modulePicto {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.moduleTexte {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.moduleNum {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+
+.moduleTitre {
+  font-family: var(--c-font-title);
+  font-size: 20px;
+  color: var(--c-text);
+}
+
+.moduleMeta {
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}
+
+.moduleChevron {
+  font-size: 18px;
+  color: var(--c-text-muted);
+}
+
+.moduleCorps {
+  padding: 4px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.theorie {
+  background: rgba(74, 123, 167, 0.07);
+  border: 1px solid rgba(74, 123, 167, 0.25);
+  border-radius: 10px;
+  padding: 10px 16px;
+}
+
+.theorieTitre {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 15px;
+  color: #345d85;
+}
+
+.theorieTexte {
+  margin-top: 10px;
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--c-text);
+}
+
+.theorieTexte h2 {
+  font-size: 19px;
+  margin: 14px 0 6px;
+}
+
+.theorieTexte h3 {
+  font-size: 17px;
+  margin: 12px 0 4px;
+}
+
+.theorieTexte p {
+  margin: 0 0 8px;
+}
+
+.theorieTexte ul,
+.theorieTexte ol {
+  margin: 0 0 8px;
+  padding-left: 22px;
+}
+
+.vide {
+  margin: 0;
+  font-size: 14px;
+  color: var(--c-text-muted);
+}
+
+/* ── Activités ── */
+.activites {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activite {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-bg-card);
+  text-decoration: none;
+  color: var(--c-text);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.activite:hover {
+  border-color: var(--c-primary);
+  transform: translateX(3px);
+}
+
+.activiteEtat {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--c-border-strong);
+}
+
+.activite_en_cours .activiteEtat {
+  color: var(--c-accent);
+}
+
+.activite_fait .activiteEtat {
+  color: var(--c-success);
+}
+
+.activite_fait {
+  background: rgba(45, 138, 78, 0.06);
+}
+
+.activiteNom {
+  flex: 1;
+  font-size: 17px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.activiteType {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--c-bg-element);
+  color: var(--c-text-secondary);
+}
+
+.activiteLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  min-width: 62px;
+  text-align: right;
+}
+
+.activite_fait .activiteLabel {
+  color: var(--c-success);
+}
+
+.activite_en_cours .activiteLabel {
+  color: var(--c-accent-dark);
+}
+
+/* ── Étapes de nature différente ── */
+.cranTheorie {
+  border-color: rgba(74, 123, 167, 0.6);
+  font-size: 18px;
+}
+
+.activiteCourante {
+  border-color: #4a7ba7;
+  box-shadow: 0 0 0 4px rgba(74, 123, 167, 0.15);
+}
+
+.activiteTexte {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.activiteNum {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+
+/* Les volets de ressources, dans un cadre neutre */
+.ressources {
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  background: var(--c-bg);
+  overflow: hidden;
+}

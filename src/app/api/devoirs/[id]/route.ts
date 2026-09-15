@@ -11,6 +11,7 @@ import {
   sessionsDuDevoir,
   syncSessions,
 } from '@/lib/session-server';
+import { eleveExclu, identiteEleve, ouvertParSequence, restrictionElevesPourFirestore, sequenceFlePourFirestore } from '@/lib/sequence-server';
 import { verifyAuth } from '@/lib/api-auth';
 import { sanitizeRessources } from '@/lib/ressources-server';
 import {
@@ -99,12 +100,27 @@ export async function GET(
       }
     }
 
-    // Les eleves ne peuvent voir que les devoirs disponibles
+    // Les eleves ne peuvent voir que les devoirs disponibles — sauf si une
+    // SÉQUENCE FLE de l'élève contient l'activité : une porte de plus, jamais
+    // une de moins (plan espace FLE, étape 4).
     if (auth.role === 'eleve' && !etat.disponible) {
-      return NextResponse.json(
-        { success: false, message: 'Devoir non disponible' },
-        { status: 403 }
-      );
+      const parSequence = await ouvertParSequence(auth.uid, auth.email, data.id || docSnap.id);
+      if (!parSequence) {
+        return NextResponse.json(
+          { success: false, message: 'Devoir non disponible' },
+          { status: 403 }
+        );
+      }
+    }
+    // Activité réservée à certains élèves de la classe : les autres n'y entrent pas
+    if (auth.role === 'eleve' && Array.isArray(data.eleves)) {
+      const identite = await identiteEleve(auth.uid, auth.email);
+      if (eleveExclu(data.eleves, identite.eleveIds)) {
+        return NextResponse.json(
+          { success: false, message: 'Devoir non disponible' },
+          { status: 403 }
+        );
+      }
     }
 
     // Corrigé réservé à ceux qui ont rendu : une copie marquée « non rendu »
@@ -400,6 +416,16 @@ export async function PATCH(
     if (body.autoEvalQuiz !== undefined) {
       updateData.autoEvalQuiz =
         body.autoEvalQuiz === null ? null : sanitizeAutoEvalQuiz(body.autoEvalQuiz);
+    }
+
+    // Élèves concernés : null explicite = toute la classe
+    if (body.eleves !== undefined) {
+      updateData.eleves = restrictionElevesPourFirestore(body.eleves);
+    }
+
+    // Séquence FLE : modules du parcours
+    if (body.sequenceFle !== undefined) {
+      updateData.sequenceFle = body.sequenceFle === null ? null : sequenceFlePourFirestore(body.sequenceFle);
     }
 
     if (Object.keys(updateData).length === 0) {

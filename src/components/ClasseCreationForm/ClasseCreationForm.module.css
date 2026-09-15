@@ -261,6 +261,59 @@
   min-height: 80px;
 }
 
+/* ─── Type de cours (français / FLE) ─── */
+.typeChoices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.typeChoice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.typeChoice:hover {
+  border-color: var(--c-primary);
+}
+
+.typeChoiceActive {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.1);
+  background: rgba(45, 106, 90, 0.05);
+}
+
+/* Le bouton radio natif reste accessible mais ne se voit pas : la carte entière est le choix */
+.typeChoice input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.typeChoiceLabel {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--c-text);
+}
+
+.typeChoiceActive .typeChoiceLabel {
+  color: var(--c-primary);
+}
+
+.typeChoiceAide {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--c-text-secondary);
+}
+
 .formActions {
   display: flex;
   gap: 15px;

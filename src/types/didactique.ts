@@ -36,7 +36,10 @@ export type TypeModal = 'lire' | 'ecrire' | 'parler' | 'reflexif' | 'lexique' | 
 // Correspond au champ historique devoir.typeTravail — d'où l'absence de
 // migration. Liste fermée : un atelier sans dispositif serait une activité que
 // l'app ne saurait pas ouvrir.
-export type Dispositif = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation';
+// « sequence » (2026-09-14) : la SÉQUENCE FLE — un parcours de modules (théorie
+// + activités existantes) donné à une classe DASPA. Pas de copie à rendre : le
+// dispositif affiche le parcours et ouvre les activités qu'il contient.
+export type Dispositif = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation' | 'sequence';
 
 export interface Atelier {
   id: string;
@@ -49,6 +52,7 @@ export interface Atelier {
 }
 
 export const ATELIER_SONDAGE = 'sondage';
+export const ATELIER_SEQUENCE_FLE = 'sequence-fle';
 
 export const ATELIERS: Atelier[] = [
   {
@@ -115,11 +119,31 @@ export const ATELIERS: Atelier[] = [
     dispositif: 'autoevaluation',
     modeParDefaut: 'parler',
   },
+  {
+    // La SÉQUENCE FLE : une activité qui en CONTIENT d'autres. Le prof y
+    // enchaîne des modules de la bibliothèque FLE (théorie + activités), la
+    // donne à une classe FLE comme n'importe quelle activité (sessions,
+    // échéance, ouverture), et choisit quels élèves de la classe y accèdent.
+    // Décision JP du 2026-09-14 : « une activité constructible », plutôt
+    // qu'une ressource à part.
+    id: ATELIER_SEQUENCE_FLE,
+    label: 'Séquence FLE',
+    court: 'Séquence',
+    dispositif: 'sequence',
+    modeParDefaut: 'lire',
+  },
 ];
 
 /** L'identifiant de l'atelier « Sondage en direct » — repère des aiguillages. */
 export function estSondage(devoir: { atelier?: string | null } | null | undefined): boolean {
   return devoir?.atelier === ATELIER_SONDAGE;
+}
+
+/** Une séquence FLE — repère des aiguillages (comme `estSondage`). */
+export function estSequenceFle(
+  devoir: { typeTravail?: string | null; atelier?: string | null } | null | undefined
+): boolean {
+  return devoir?.typeTravail === 'sequence' || devoir?.atelier === ATELIER_SEQUENCE_FLE;
 }
 
 export function findAtelier(id: string | undefined): Atelier | undefined {

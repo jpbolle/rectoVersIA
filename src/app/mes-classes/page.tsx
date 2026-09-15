@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { useStudentClasses } from '@/hooks/useStudentClasses';
+import { aUneClasseFle, espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import StudentClasseCard from '@/components/StudentClasseCard/StudentClasseCard';
@@ -38,7 +38,10 @@ export default function MesClassesPage() {
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
-      <Header variant={role === 'prof' ? 'prof' : 'student'} />
+      <Header
+        variant={role === 'prof' ? 'prof' : espaceFleSeulement(classes) ? 'fle' : 'student'}
+        avecCoursFle={role !== 'prof' && aUneClasseFle(classes)}
+      />
 
       <main className={styles.mainContent}>
         <section className={styles.section}>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import type { ClasseType } from '@/types/classe';
 import { GoogleAuthProvider, signInWithPopup, getAuth } from 'firebase/auth';
 import { getFirebaseApp } from '@/lib/firebase/config';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,7 +29,12 @@ interface UseGoogleClassroomReturn {
   error: string | null;
   authorizeClassroom: () => Promise<boolean>;
   fetchCourses: () => Promise<ClassroomCourse[]>;
-  importCourse: (courseId: string, courseName: string, courseSection?: string) => Promise<ImportResult | null>;
+  importCourse: (
+    courseId: string,
+    courseName: string,
+    courseSection?: string,
+    type?: ClasseType
+  ) => Promise<ImportResult | null>;
   reset: () => void;
 }
 
@@ -148,7 +154,8 @@ export function useGoogleClassroom(): UseGoogleClassroomReturn {
     async (
       courseId: string,
       courseName: string,
-      courseSection?: string
+      courseSection?: string,
+      type?: ClasseType
     ): Promise<ImportResult | null> => {
       if (!accessToken) {
         setError('Non autorisé. Veuillez d\'abord autoriser l\'accès à Google Classroom.');
@@ -175,6 +182,7 @@ export function useGoogleClassroom(): UseGoogleClassroomReturn {
             courseId,
             courseName,
             courseSection,
+            type,
           }),
         });
 

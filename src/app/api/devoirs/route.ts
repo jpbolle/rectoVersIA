@@ -9,6 +9,7 @@ import {
   sessionsParDevoir,
   syncSessions,
 } from '@/lib/session-server';
+import { eleveExclu, lireSequenceFle, restrictionElevesPourFirestore, sequenceFlePourFirestore } from '@/lib/sequence-server';
 import { verifyAuth } from '@/lib/api-auth';
 import { sanitizeRessources } from '@/lib/ressources-server';
 import { calculateSchoolYear } from '@/lib/auth-utils';
@@ -106,6 +107,10 @@ export async function GET(request: NextRequest) {
         oeuvreId: data.oeuvreId || null,
         oeuvreChapitres: Array.isArray(data.oeuvreChapitres) ? data.oeuvreChapitres : null,
         oeuvreMinimum: typeof data.oeuvreMinimum === 'number' ? data.oeuvreMinimum : null,
+        // Élèves concernés : null = toute la classe
+        eleves: Array.isArray(data.eleves) ? (data.eleves as string[]) : null,
+        // Séquence FLE : le parcours (modules)
+        sequenceFle: data.typeTravail === 'sequence' ? lireSequenceFle(data.sequenceFle) : null,
         submittedCount: undefined as number | undefined,
       };
     });
@@ -259,6 +264,11 @@ export async function GET(request: NextRequest) {
       devoirs = devoirs.filter(
         (d) => d.disponible === true && d.classes.some((c: string) => classeNames.includes(c))
       );
+
+      // Activité réservée à certains élèves de la classe : les autres ne la
+      // voient pas (« toute la classe » = `eleves` null)
+      const mesFiches = elevesSnap.docs.map((doc) => doc.id);
+      devoirs = devoirs.filter((d) => !eleveExclu(d.eleves, mesFiches));
     }
 
     return NextResponse.json({ success: true, data: devoirs });
@@ -319,6 +329,8 @@ export async function POST(request: NextRequest) {
       oeuvreId,
       oeuvreChapitres,
       oeuvreMinimum,
+      sequenceFle,
+      eleves,
     } = body;
 
     // Validation des champs requis. Seules les activités d'écriture s'appuient
@@ -461,6 +473,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Si type "autoevaluation", questionnaire d'auto-évaluation
+    // Élèves concernés : toute la classe (null) ou une partie
+    devoirData.eleves = restrictionElevesPourFirestore(eleves);
+
+    // Séquence FLE : son parcours (recopié à la duplication)
+    if (typeTravail === 'sequence') {
+      devoirData.sequenceFle = sequenceFlePourFirestore(sequenceFle ?? {});
+    }
+
     if (typeTravail === 'autoevaluation' && autoEvalQuiz) {
       const cleaned = sanitizeAutoEvalQuiz(autoEvalQuiz);
       if (cleaned) devoirData.autoEvalQuiz = cleaned;

@@ -9,9 +9,13 @@ import styles from './Header.module.css';
 // Onglets de la page /admin, pilotés par le header (variant admin)
 export type AdminHeaderTab = 'vue' | 'membres' | 'didactique' | 'couts';
 
+// `fle` : l'espace de cours des élèves DASPA — quatre entrées, en mots simples
+// (plan espace FLE, 2026-09-14). `avecCoursFle` : un élève de classes MIXTES
+// garde le header élève, augmenté d'une entrée « Mon cours ».
 interface HeaderProps {
-  variant: 'prof' | 'student' | 'admin';
+  variant: 'prof' | 'student' | 'admin' | 'fle';
   topOffset?: number;
+  avecCoursFle?: boolean;
   // Variant admin uniquement : onglet actif + navigation entre onglets
   adminTab?: AdminHeaderTab;
   onAdminTabChange?: (tab: AdminHeaderTab) => void;
@@ -27,7 +31,13 @@ export const ADMIN_TABS: { key: AdminHeaderTab; label: string }[] = [
   { key: 'couts', label: 'Gestion des coûts' },
 ];
 
-export default function Header({ variant, topOffset = 0, adminTab, onAdminTabChange }: HeaderProps) {
+export default function Header({
+  variant,
+  topOffset = 0,
+  avecCoursFle,
+  adminTab,
+  onAdminTabChange,
+}: HeaderProps) {
   const router = useRouter();
 
   return (
@@ -42,7 +52,9 @@ export default function Header({ variant, topOffset = 0, adminTab, onAdminTabCha
             ? 'Assistant de correction'
             : variant === 'admin'
               ? 'Administration'
-              : 'Aide à l\'écrilecture'}
+              : variant === 'fle'
+                ? 'Mon cours de français'
+                : 'Aide à l\'écrilecture'}
         </p>
 
         {variant === 'admin' ? (
@@ -82,6 +94,21 @@ export default function Header({ variant, topOffset = 0, adminTab, onAdminTabCha
               Mes Ressources
             </button>
           </nav>
+        ) : variant === 'fle' ? (
+          <nav className={styles.navButtons}>
+            <button className={styles.navBtn} onClick={() => router.push('/fle')}>
+              Mon cours
+            </button>
+            <button className={styles.navBtn} onClick={() => router.push('/mes-classes')}>
+              Mes classes
+            </button>
+            <button className={styles.navBtn} onClick={() => router.push('/mes-ressources')}>
+              Mon vocabulaire
+            </button>
+            <button className={styles.navBtn} onClick={() => router.push('/profil')}>
+              Mon profil
+            </button>
+          </nav>
         ) : (
           <nav className={styles.navButtons}>
             {/* La page d'ouverture de l'élève : ses retards, ses échéances, ses
@@ -92,6 +119,11 @@ export default function Header({ variant, topOffset = 0, adminTab, onAdminTabCha
             >
               Accueil
             </button>
+            {avecCoursFle && (
+              <button className={styles.navBtn} onClick={() => router.push('/fle')}>
+                Mon cours
+              </button>
+            )}
             <button
               className={styles.navBtn}
               onClick={() => router.push('/activites')}
@@ -121,7 +153,7 @@ export default function Header({ variant, topOffset = 0, adminTab, onAdminTabCha
       </div>
 
       <div className={styles.headerActions}>
-        <NotificationBell variant={variant} />
+        <NotificationBell variant={variant === 'fle' ? 'student' : variant} />
         <UserAvatar />
       </div>
     </header>

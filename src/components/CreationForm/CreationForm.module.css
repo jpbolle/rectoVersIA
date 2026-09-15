@@ -70,7 +70,23 @@
   gap: 16px;
 }
 
-/* Ligne 1 : l'intitulé occupe le double d'une autre colonne */
+/* Ligne 1 : type d'activité, puis l'intitulé en double largeur */
+.formRowTypeIntitule {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16px;
+  align-items: start;
+}
+
+/* Ligne 1 en écriture : le type de grille suit l'intitulé */
+.formRowTypeIntituleGrille {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+/* Ligne 1 (ancienne) : l'intitulé occupe le double d'une autre colonne */
 .formRowIntitule {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;

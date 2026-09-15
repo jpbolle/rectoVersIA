@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { isClasseType } from '@/types/classe';
 import type { Classe } from '@/types/classe';
 
 interface RouteParams {
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       id: doc.id,
       nom: data.nom || '',
       description: data.description || '',
+      type: isClasseType(data.type) ? data.type : 'francais',
       profId: data.profId || '',
       anneeScolaire: data.anneeScolaire || '',
       archive: data.archive || false,
@@ -112,6 +114,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.nom !== undefined) updates.nom = body.nom.trim();
     if (body.description !== undefined) updates.description = body.description.trim();
     if (body.archive !== undefined) updates.archive = body.archive;
+    // Changer le type d'une classe est possible (une classe créée « français »
+    // par erreur) : le référentiel présenté aux nouveaux contenus suit, les
+    // contenus déjà créés ne bougent pas
+    if (body.type !== undefined && isClasseType(body.type)) updates.type = body.type;
 
     await adminDb.collection('classes').doc(id).update(updates);
 
@@ -145,6 +151,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       id,
       nom: (updates.nom as string) ?? data.nom,
       description: (updates.description as string) ?? data.description ?? '',
+      type: isClasseType(updates.type)
+        ? updates.type
+        : isClasseType(data.type)
+          ? data.type
+          : 'francais',
       profId: data.profId,
       anneeScolaire: data.anneeScolaire,
       archive: (updates.archive as boolean) ?? data.archive ?? false,

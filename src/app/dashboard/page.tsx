@@ -288,6 +288,9 @@ export default function DashboardPage() {
           // L'œuvre n'est pas recopiée : elle vit dans la bibliothèque et la
           // copie y renvoie, comme l'original.
           oeuvreId: devoir.oeuvreId ?? null,
+          // Séquence FLE : le parcours suit. Les élèves choisis, non : la copie
+          // n'a pas de classe (le prof les rechoisit avec la classe)
+          sequenceFle: devoir.sequenceFle ?? null,
           oeuvreChapitres: devoir.oeuvreChapitres ?? null,
           oeuvreMinimum: devoir.oeuvreMinimum ?? null,
           vocabulaireConfig: devoir.vocabulaireThemes
@@ -364,6 +367,12 @@ export default function DashboardPage() {
           </section>
         )}
 
+        {/* Créer une activité occupe TOUTE la page : la liste « Mes Activités »
+            s'efface derrière le formulaire et revient une fois l'activité créée
+            (ou le formulaire fermé). Deux blocs empilés faisaient une interface
+            lourde — demande JP du 2026-09-14. Même parti que le détail d'une
+            classe dans Mes Classes. */}
+        {!isFormVisible && (
         <section className={styles.evaluationsSection}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Mes Activités</h2>
@@ -485,6 +494,7 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
+        )}
 
       </main>
 

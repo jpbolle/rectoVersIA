@@ -24,7 +24,8 @@ import VocabulaireActivity from '@/components/VocabulaireActivity/VocabulaireAct
 import LectureQuizActivity from '@/components/LectureQuizActivity/LectureQuizActivity';
 import CompetitionActivity from '@/components/Competition/CompetitionActivity';
 import SondageActivity from '@/components/Sondage/SondageActivity';
-import { estSondage } from '@/types/didactique';
+import { estSequenceFle, estSondage } from '@/types/didactique';
+import SequenceFleActivity from '@/components/SequenceFleActivity/SequenceFleActivity';
 import OeuvreReader from '@/components/OeuvreReader/OeuvreReader';
 import OeuvreSommaire from '@/components/OeuvreReader/OeuvreSommaire';
 import { useOeuvreLecture } from '@/hooks/useOeuvreLecture';
@@ -444,6 +445,26 @@ export default function TravailPage() {
         <button onClick={handleBack} className={styles.errorButton}>
           Retour
         </button>
+      </div>
+    );
+  }
+
+  // ── SÉQUENCE FLE : pas de copie, pas de remise — le parcours, et c'est tout.
+  // On sort AVANT les gardes sur le travail : une séquence n'en a pas besoin.
+  if (devoir && estSequenceFle(devoir)) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.sequenceBarre}>
+          <button
+            type="button"
+            className={styles.sequenceRetour}
+            onClick={() => router.push(isPreviewMode ? '/dashboard' : '/fle')}
+          >
+            ← {isPreviewMode ? 'Mes Activités' : 'Mon cours'}
+          </button>
+          {isPreviewMode && <span className={styles.sequenceApercu}>👁️ Vue élève</span>}
+        </div>
+        <SequenceFleActivity devoirId={devoir.id} intitule={devoir.intitule} isPreviewMode={isPreviewMode} />
       </div>
     );
   }

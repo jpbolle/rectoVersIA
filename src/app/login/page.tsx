@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { useStudentClasses } from '@/hooks/useStudentClasses';
+import { espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
 import GoogleSignInButton from '@/components/GoogleSignInButton/GoogleSignInButton';
 import JoinClasseModal from '@/components/JoinClasseModal/JoinClasseModal';
 import styles from './login.module.css';
@@ -41,7 +41,8 @@ export default function LoginPage() {
     // échéances, ceintures) — pas vers la liste de ses activités.
     if (role === 'eleve' && classes.length > 0) {
       setRedirecting(true);
-      router.replace('/accueil');
+      // Toutes ses classes sont FLE → son espace de cours ; sinon l'accueil
+      router.replace(espaceFleSeulement(classes) ? '/fle' : '/accueil');
       return;
     }
 

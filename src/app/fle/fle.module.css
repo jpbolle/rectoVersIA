@@ -1,0 +1,163 @@
+/* « Mon cours » — page d'ouverture de l'élève FLE. Même armature que /accueil
+   (header fixe de 180 px, contenu centré), mais plus large d'interligne et
+   plus grande de caractère : le public lit encore le français avec effort. */
+
+.pageWrapper {
+  min-height: 100vh;
+  background: var(--c-bg);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.ready {
+  opacity: 1;
+  visibility: visible;
+}
+
+.main {
+  flex: 1;
+  margin: 180px auto 0;
+  padding: 40px 20px 60px;
+  max-width: 1000px;
+  width: 100%;
+}
+
+.hello {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--c-font-title);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--c-primary);
+  margin: 0 0 4px;
+}
+
+.helloPicto {
+  font-size: 30px;
+}
+
+.helloSub {
+  font-size: 15px;
+  color: var(--c-text-secondary);
+  margin: 0 0 28px;
+}
+
+.bloc {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  padding: 22px 26px 26px;
+  margin-bottom: 20px;
+}
+
+.blocHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1.5px solid var(--c-border);
+}
+
+.blocPicto {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.blocTitre {
+  font-family: var(--c-font-title);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--c-text);
+  margin: 0;
+}
+
+.blocVide {
+  margin: 0;
+  font-size: 17px;
+  color: var(--c-text-secondary);
+}
+
+.classes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.classeCarte {
+  display: inline-flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 0 22px;
+  border-radius: 12px;
+  background: rgba(74, 123, 167, 0.1);
+  border: 1.5px solid rgba(74, 123, 167, 0.35);
+  color: #345d85;
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.classeCarte:hover {
+  background: rgba(74, 123, 167, 0.18);
+}
+
+/* ── Mes séquences (travail à faire) ── */
+.sequences {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sequence {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1.5px solid rgba(74, 123, 167, 0.35);
+  border-radius: 12px;
+  background: rgba(74, 123, 167, 0.07);
+  text-decoration: none;
+  color: var(--c-text);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.sequence:hover {
+  transform: translateX(3px);
+  border-color: #4a7ba7;
+}
+
+.sequencePicto {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.sequenceTexte {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sequenceTitre {
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  font-weight: 700;
+  color: #345d85;
+}
+
+.sequenceMeta {
+  font-size: 14px;
+  color: var(--c-text-secondary);
+}
+
+.sequenceFleche {
+  font-size: 24px;
+  color: #4a7ba7;
+}

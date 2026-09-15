@@ -1,0 +1,189 @@
+/* Positionnement CECR : radar + curseurs + objectifs du mois */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.erreur {
+  margin: 0;
+  font-size: 13px;
+  color: var(--c-danger);
+}
+
+.deuxColonnes {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.15fr) minmax(260px, 1fr);
+  gap: 28px;
+  align-items: center;
+}
+
+@media (max-width: 760px) {
+  .deuxColonnes {
+    grid-template-columns: 1fr;
+  }
+}
+
+.colRadar {
+  min-width: 0;
+}
+
+.colCurseurs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.curseursHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid var(--c-border);
+}
+
+.curseursTitre {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.etat {
+  font-size: 11.5px;
+  color: var(--c-text-muted);
+}
+
+/* Une ligne : libellé · niveau · curseur */
+.ligne {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px minmax(120px, 160px);
+  align-items: center;
+  gap: 10px;
+}
+
+.ligneLibelle {
+  font-size: 13.5px;
+  color: var(--c-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ligneNiveau {
+  font-size: 15px;
+  color: #4a7ba7;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.curseur {
+  width: 100%;
+  accent-color: #4a7ba7;
+  cursor: pointer;
+}
+
+/* Lecture seule (élève) : les crans pleins jusqu'au niveau atteint */
+.crans {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-start;
+}
+
+.cran {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--c-border-strong);
+  background: var(--c-bg-card);
+}
+
+.cranPlein {
+  background: #4a7ba7;
+  border-color: #4a7ba7;
+}
+
+/* Objectifs du mois */
+.objectifs {
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg-card);
+  padding: 14px 18px 16px;
+}
+
+.objectifsHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.objectifsTitre {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.objectifsMois {
+  font-size: 12.5px;
+  color: var(--c-text-muted);
+  text-transform: capitalize;
+}
+
+.objectifsChamp {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--c-text);
+  resize: vertical;
+}
+
+.objectifsChamp:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.objectifsTexte {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--c-text);
+  white-space: pre-wrap;
+}
+
+.objectifsVide {
+  margin: 0;
+  font-size: 14px;
+  color: var(--c-text-muted);
+}
+
+.objectifsPasses {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}
+
+.objectifsPasses summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.objectifPasse {
+  margin: 8px 0 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.objectifPasse b {
+  text-transform: capitalize;
+}
+
+/* Côté élève, le panneau se fond dans la page : pas de cadre autour des objectifs */
+.panelCompact .objectifs {
+  padding: 18px 22px 20px;
+}

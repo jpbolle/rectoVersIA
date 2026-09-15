@@ -12,6 +12,7 @@ import CreateGrilleCard from '@/components/CreateGrilleCard/CreateGrilleCard';
 import GrilleBuilder from '@/components/GrilleBuilder/GrilleBuilder';
 import ScenarisationPanel from '@/components/ScenarisationPanel/ScenarisationPanel';
 import OeuvrePanel from '@/components/OeuvrePanel/OeuvrePanel';
+import ModuleFlePanel from '@/components/ModuleFlePanel/ModuleFlePanel';
 import QuestionnaireLecturePanel from '@/components/QuestionnaireLecturePanel/QuestionnaireLecturePanel';
 import GrilleViewer from '@/components/GrilleViewer/GrilleViewer';
 import VocabCard from '@/components/VocabCard/VocabCard';
@@ -22,7 +23,7 @@ import EmptyState from '@/components/EmptyState/EmptyState';
 import type { Grille, GrilleCriterion } from '@/types/grille';
 import styles from './grilles.module.css';
 
-type Tab = 'grilles' | 'vocabulaire' | 'questionnaires' | 'oeuvres' | 'scenarisation';
+type Tab = 'grilles' | 'vocabulaire' | 'questionnaires' | 'oeuvres' | 'scenarisation' | 'modulesFle';
 
 export default function GrillesPage() {
   const { isAuthenticated, isLoading: authLoading, role, isAdmin: userIsAdmin, getAuthHeaders } = useAuth();
@@ -308,7 +309,16 @@ export default function GrillesPage() {
           >
             Design &amp; scénarisation didactique
           </button>
+          <button
+            className={`${styles.tabButton} ${activeTab === 'modulesFle' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('modulesFle')}
+          >
+            Modules FLE
+          </button>
         </div>
+
+        {/* ===== TAB MODULES FLE (bibliothèque des classes DASPA) ===== */}
+        {activeTab === 'modulesFle' && <ModuleFlePanel />}
 
         {/* ===== TAB QUESTIONNAIRES DE LECTURE ===== */}
         {activeTab === 'questionnaires' && <QuestionnaireLecturePanel />}

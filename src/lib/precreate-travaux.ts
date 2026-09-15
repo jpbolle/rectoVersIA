@@ -78,8 +78,13 @@ export async function ensureTravaux(devoirId: string, profId: string): Promise<n
   let batch = adminDb.batch();
   let batchCount = 0;
 
+  // Activité réservée à certains élèves de la classe : les autres n'ont pas de
+  // copie (sinon ils apparaîtraient « non rendu » chez le prof)
+  const restriction: string[] | null = Array.isArray(devoirData.eleves) ? devoirData.eleves : null;
+
   for (const eleve of allEleves) {
     if (existingEmails.has(eleve.email)) continue;
+    if (restriction && !restriction.includes(eleve.id)) continue;
 
     const travailId = generateTravailId(devoirId, eleve.id);
     const travailRef = adminDb.collection('travaux').doc(travailId);

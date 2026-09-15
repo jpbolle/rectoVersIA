@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Header from '@/components/Header/Header';
+import { aUneClasseFle, espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
 import Footer from '@/components/Footer/Footer';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import styles from './mes-ressources.module.css';
@@ -28,6 +29,8 @@ function formatDate(iso: string): string {
 
 export default function MesRessourcesPage() {
   const { isAuthenticated, isLoading: authLoading, role, getAuthHeaders } = useAuth();
+  // Les classes de l'élève décident du header (espace FLE ou espace élève)
+  const { classes: classesEleve } = useStudentClasses();
   const router = useRouter();
 
   const [isReady, setIsReady] = useState(false);
@@ -83,7 +86,10 @@ export default function MesRessourcesPage() {
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
-      <Header variant="student" />
+      <Header
+        variant={espaceFleSeulement(classesEleve) ? 'fle' : 'student'}
+        avecCoursFle={aUneClasseFle(classesEleve)}
+      />
 
       <main className={styles.mainContent}>
         <h1 className={styles.pageTitle}>Mes ressources personnelles</h1>

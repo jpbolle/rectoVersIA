@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { useStudentClasses } from '@/hooks/useStudentClasses';
+import { aUneClasseFle, espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import ProfilPanel from '@/components/ProfilPanel/ProfilPanel';
@@ -37,7 +37,10 @@ export default function ProfilPage() {
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
-      <Header variant={role === 'prof' ? 'prof' : 'student'} />
+      <Header
+        variant={role === 'prof' ? 'prof' : espaceFleSeulement(classes) ? 'fle' : 'student'}
+        avecCoursFle={role !== 'prof' && aUneClasseFle(classes)}
+      />
 
       <main className={styles.main}>
         <h1 className={styles.pageTitle}>Mon profil d&apos;écrilecteur</h1>

@@ -97,6 +97,42 @@
   box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.1);
 }
 
+/* ─── Type de cours (français / FLE) ─── */
+.typeChoices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.typeChoice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  color: var(--c-text);
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.typeChoice:hover {
+  border-color: var(--c-primary);
+}
+
+.typeChoiceActive {
+  border-color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.05);
+  color: var(--c-primary);
+  font-weight: 600;
+}
+
+.typeChoice input {
+  accent-color: var(--c-primary);
+  margin: 0;
+}
+
 .actions {
   display: flex;
   gap: 12px;

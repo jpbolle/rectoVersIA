@@ -20,6 +20,13 @@ import type { NavigKidQuestion } from '@/types/navigkid';
 import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
 import HabiletesPicker from '@/components/HabiletesPicker/HabiletesPicker';
 import { ATELIER_SONDAGE, atelierParDispositif, findAtelier, TYPES_MODAUX } from '@/types/didactique';
+import SequenceFleBuilder from '@/components/SequenceFleBuilder/SequenceFleBuilder';
+import ElevesChoix from '@/components/ElevesChoix/ElevesChoix';
+import type { EleveAvecClasse } from '@/components/ElevesChoix/ElevesChoix';
+import { SEQUENCE_FLE_VIDE } from '@/types/sequence-fle';
+import { useClasses } from '@/hooks/useClasses';
+import { estClasseFle } from '@/types/classe';
+import type { SequenceFleContenu } from '@/types/sequence-fle';
 import type { TypeModal } from '@/types/didactique';
 import styles from './EditDevoirModal.module.css';
 import FlipChoice from '@/components/FlipChoice/FlipChoice';
@@ -33,6 +40,7 @@ const RESSOURCE_LABELS: Record<TypeTravail, string> = {
   rechercher: '📄 Documents d’appui (facultatif)',
   vocabulaire: '📄 Documents (facultatif)',
   autoevaluation: '📄 Travail à commenter (facultatif)',
+  sequence: '📄 Ressources de la séquence (facultatif)',
 };
 
 const TYPE_LABELS: Record<TypeTravail, string> = {
@@ -41,6 +49,7 @@ const TYPE_LABELS: Record<TypeTravail, string> = {
   rechercher: 'Rechercher',
   vocabulaire: 'Vocabulaire',
   autoevaluation: 'Auto-évaluation',
+  sequence: 'Séquence FLE',
 };
 
 function createEmptyPlanDraft(): DraftContent {
@@ -126,6 +135,11 @@ export default function EditDevoirModal({
 
   // Questionnaire d'auto-évaluation (type autoevaluation)
   const [autoEvalQuiz, setAutoEvalQuiz] = useState<AutoEvalQuestionnaire | null>(null);
+  // Élèves concernés : null = toute la classe (toutes activités)
+  const [eleves, setEleves] = useState<string[] | null>(null);
+  const [elevesDesClasses, setElevesDesClasses] = useState<EleveAvecClasse[]>([]);
+  // Séquence FLE (type sequence) : modules du parcours
+  const [sequenceFle, setSequenceFle] = useState<SequenceFleContenu | null>(null);
 
   // `devoir` est un objet INSTABLE (recréé à chaque rendu du parent) : le mettre
   // dans les dépendances rejouait cet effet en cours de saisie et écrasait le
@@ -164,6 +178,8 @@ export default function EditDevoirModal({
       setLectureMode(devoir.lectureMode || devoir.lectureQuiz?.mode || 'worksheet');
       setHiddenQuestions(devoir.hiddenQuestions || []);
       setAutoEvalQuiz(devoir.autoEvalQuiz || null);
+      setSequenceFle(devoir.sequenceFle ?? null);
+      setEleves(devoir.eleves ?? null);
 
       // Corrigé de référence existant (type ecrire)
       const ref = devoir.corrigeReference;
@@ -219,6 +235,10 @@ export default function EditDevoirModal({
   // l'activité elle-même. Les intertitres ne servent qu'à les séparer.
   const aRessources = typeTravail !== 'vocabulaire' && typeTravail !== 'autoevaluation';
   const aContenus = typeTravail !== 'vocabulaire' && !isOeuvre;
+  const isSequence = typeTravail === 'sequence';
+  // Une séquence FLE ne se donne qu'à des classes FLE
+  const { classes: toutesMesClasses } = useClasses();
+  const classeNamesFle = toutesMesClasses.filter((c) => estClasseFle(c) && !c.archive).map((c) => c.nom);
   const aDeuxGroupes = aRessources && aContenus;
   const grillesDeLAtelier = grilles.length
     ? grilles.filter((g) => !g.ateliers.length || g.ateliers.includes(atelierId)).map((g) => g.name)
@@ -278,6 +298,8 @@ export default function EditDevoirModal({
       evaluation,
       modePrincipal,
       habiletes,
+      // Élèves concernés : toute la classe (null) ou une partie
+      eleves: selectedClasses.length > 0 ? eleves : null,
     };
 
     // Corrigé de référence du prof (type ecrire uniquement)
@@ -312,6 +334,11 @@ export default function EditDevoirModal({
         autoEvalQuiz && autoEvalQuiz.questions.length > 0 ? autoEvalQuiz : null;
     }
 
+    // Séquence FLE : le parcours et les élèves choisis
+    if (devoir.typeTravail === 'sequence') {
+      data.sequenceFle = sequenceFle ?? SEQUENCE_FLE_VIDE;
+    }
+
     // Auto-évaluation intégrée (écriture, lecture, recherche)
     if (supporteAutoEval) {
       data.autoEvaluation = autoEvaluation;
@@ -341,7 +368,7 @@ export default function EditDevoirModal({
     accesIA, disponible, ressources, evaluation, modePrincipal, habiletes,
     flipInverted, ressourcesToIA, profTheme, profDraft, planToIA,
     profProduction, productionToIA, lectureQuiz, lectureMode, hiddenQuestions, autoEvalQuiz, autoEvaluation,
-    nkQuestions, nkThemes,
+    nkQuestions, nkThemes, eleves, sequenceFle,
   ]);
 
   // `enregistrer` est recréée à chaque rendu : passée en dépendance, elle
@@ -413,12 +440,21 @@ export default function EditDevoirModal({
           Classe(s) <span className={styles.optional}>— facultatif</span>
         </label>
         <ClassesDropdown
-          options={classeNames}
+          options={isSequence ? classeNamesFle : classeNames}
           selected={selectedClasses}
           onChange={setSelectedClasses}
           disabled={isSaving}
         />
       </div>
+
+      {/* Les élèves concernés, dès qu'une classe est cochée */}
+      <ElevesChoix
+        classesNoms={selectedClasses}
+        value={eleves}
+        onChange={setEleves}
+        onEleves={setElevesDesClasses}
+        disabled={isSaving}
+      />
 
       {/* Didactique : l'atelier est figé (il commande le dispositif), le mode
           principal et les habiletés se modifient */}
@@ -434,7 +470,7 @@ export default function EditDevoirModal({
           </p>
         </div>
 
-        {!usesGrille && (
+        {!usesGrille && !isSequence && (
           <div className={styles.formGroup}>
             <label className={styles.label}>Habiletés travaillées</label>
             <HabiletesPicker
@@ -671,6 +707,8 @@ export default function EditDevoirModal({
                   ? 'Corrigé de référence : transmis à l’IA selon les interrupteurs « Corrigé IA » ; seule la production est montrée à l’élève, quand le corrigé est disponible.'
                   : typeTravail === 'lire'
                     ? 'Le questionnaire de lecture : rempli par l’élève dans sa colonne de gauche. QCM corrigés automatiquement, le reste par vous. Les compétences cochées alimenteront le profil de lecteur.'
+                    : typeTravail === 'sequence'
+                      ? 'Les modules du parcours, dans l’ordre où l’élève les fera. Les élèves qui suivent la séquence se choisissent au recto.'
                     : 'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'
               }
             >
@@ -678,6 +716,17 @@ export default function EditDevoirModal({
             </span>
           </h4>
         </div>
+      )}
+
+      {/* Séquence FLE (type sequence) : élèves choisis + modules du parcours */}
+      {isSequence && (
+        <SequenceFleBuilder
+          value={sequenceFle}
+          onChange={setSequenceFle}
+          elevesDeLaSequence={eleves === null ? elevesDesClasses : elevesDesClasses.filter((e) => eleves.includes(e.id))}
+          plusieursClasses={selectedClasses.length > 1}
+          disabled={isSaving}
+        />
       )}
 
       {/* Questionnaire d'auto-évaluation (type autoevaluation) */}

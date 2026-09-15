@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Toggle from '@/components/Toggle/Toggle';
+import { estClasseFle } from '@/types/classe';
 import type { Classe } from '@/types/classe';
 import styles from './ClasseCard.module.css';
 
@@ -59,7 +60,11 @@ export default function ClasseCard({
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
     >
-      <h3 className={styles.title}>{classe.nom}</h3>
+      <h3 className={styles.title}>
+        {classe.nom}
+        {/* Une classe FLE se reconnaît d'un coup d'œil dans la grille */}
+        {estClasseFle(classe) && <span className={styles.typeBadge}>FLE</span>}
+      </h3>
 
       {classe.code && (
         <div className={styles.codeRow} onClick={(e) => e.stopPropagation()}>

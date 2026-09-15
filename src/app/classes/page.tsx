@@ -17,7 +17,7 @@ import MesElevesSection from '@/components/MesElevesSection/MesElevesSection';
 import EleveProfilModal from '@/components/EleveProfilModal/EleveProfilModal';
 import MessageBox from '@/components/MessageBox/MessageBox';
 import EmptyState from '@/components/EmptyState/EmptyState';
-import type { Classe, Eleve } from '@/types/classe';
+import type { Classe, ClasseType, Eleve } from '@/types/classe';
 import styles from './classes.module.css';
 
 export default function ClassesPage() {
@@ -100,7 +100,7 @@ export default function ClassesPage() {
     setIsClasseModalOpen(true);
   };
 
-  const handleSubmitEditClasse = async (data: { nom: string; description?: string }) => {
+  const handleSubmitEditClasse = async (data: { nom: string; description?: string; type: ClasseType }) => {
     if (!editingClasse) return;
 
     setIsSavingClasse(true);
@@ -171,7 +171,7 @@ export default function ClassesPage() {
     }
   };
 
-  const handleSubmitClasse = async (data: { nom: string; description?: string }) => {
+  const handleSubmitClasse = async (data: { nom: string; description?: string; type: ClasseType }) => {
     setIsSubmitting(true);
     try {
       await createClasse(data);
@@ -446,6 +446,7 @@ export default function ClassesPage() {
           eleveId={ficheEleve.id}
           eleveName={`${ficheEleve.prenom} ${ficheEleve.nom}`}
           classeName={classes.find((c) => c.id === ficheEleve.classeId)?.nom}
+          classeType={classes.find((c) => c.id === ficheEleve.classeId)?.type}
           onClose={() => setFicheEleve(null)}
         />
       )}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateClasseId, generateClasseCode, getCurrentAnneeScolaire } from '@/lib/classe-utils';
+import { isClasseType } from '@/types/classe';
 import type { Classe, CreateClasseData } from '@/types/classe';
 
 // GET - Liste des classes du prof
@@ -57,6 +58,8 @@ export async function GET(request: NextRequest) {
           id: doc.id,
           nom: data.nom || '',
           description: data.description || '',
+          // Absent sur les classes d'avant 2026-09 : « francais »
+          type: isClasseType(data.type) ? data.type : 'francais',
           profId: data.profId || '',
           anneeScolaire: data.anneeScolaire || '',
           archive: data.archive || false,
@@ -119,6 +122,9 @@ export async function POST(request: NextRequest) {
     const classe = {
       nom: body.nom.trim(),
       description: body.description?.trim() || '',
+      // Le type de cours se choisit à la création ; toute valeur inconnue
+      // retombe sur le cours de français
+      type: isClasseType(body.type) ? body.type : 'francais',
       profId: auth.uid,
       anneeScolaire: getCurrentAnneeScolaire(),
       archive: false,

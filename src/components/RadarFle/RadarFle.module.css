@@ -1,0 +1,74 @@
+/* Radar CECR — toile, aire bleue, libellés */
+.figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.svg {
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  display: block;
+}
+
+.anneau {
+  fill: none;
+  stroke: var(--c-border);
+  stroke-width: 1;
+}
+
+.anneauExterieur {
+  fill: rgba(240, 235, 227, 0.5);
+  stroke: var(--c-border-strong);
+  stroke-width: 1.2;
+}
+
+.branche {
+  stroke: var(--c-border);
+  stroke-width: 1;
+}
+
+/* Le bleu du référentiel FLE (carte `card_fle` de /admin) */
+.aire {
+  fill: rgba(74, 123, 167, 0.32);
+  stroke: #4a7ba7;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+
+.point {
+  fill: #4a7ba7;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.etiquetteAnneau {
+  font-family: var(--c-font-body);
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--c-text-muted);
+}
+
+.libelle {
+  font-family: var(--c-font-body);
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--c-text);
+}
+
+.legende {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  text-align: center;
+}
+
+.legende b {
+  color: var(--c-text);
+}
+
+.sep {
+  color: var(--c-text-dim);
+}

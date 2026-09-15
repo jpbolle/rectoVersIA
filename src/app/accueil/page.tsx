@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import { useStudentClasses } from '@/hooks/useStudentClasses';
+import { aUneClasseFle, espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import EmptyState from '@/components/EmptyState/EmptyState';
@@ -87,6 +87,12 @@ export default function AccueilPage() {
     if (role === 'eleve' && !classesLoading && classes.length === 0) {
       setRedirecting(true);
       router.replace('/login');
+      return;
+    }
+    // Un élève dont toutes les classes sont FLE entre par son espace de cours
+    if (role === 'eleve' && !classesLoading && espaceFleSeulement(classes)) {
+      setRedirecting(true);
+      router.replace('/fle');
     }
   }, [isAuthenticated, authLoading, role, classes, classesLoading, router, redirecting]);
 
@@ -116,7 +122,7 @@ export default function AccueilPage() {
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
-      <Header variant="student" />
+      <Header variant="student" avecCoursFle={aUneClasseFle(classes)} />
 
       <main className={styles.main}>
         {chargement ? (

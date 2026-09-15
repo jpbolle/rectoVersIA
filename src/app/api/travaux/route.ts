@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateTravailId } from '@/lib/travail-utils';
 import { classesDeLEleve, etatEffectif, sessionsDeLEleve } from '@/lib/session-server';
+import { eleveExclu, identiteEleve, ouvertParSequence } from '@/lib/sequence-server';
 import { ensureTravaux } from '@/lib/precreate-travaux';
 import { syncSessions } from '@/lib/session-server';
 import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
@@ -50,11 +51,23 @@ export async function POST(request: NextRequest) {
       { disponible: devoirData.disponible, corrigeDisponible: devoirData.corrigeDisponible },
       mes.sessions
     );
-    if (!etat.disponible) {
+    // Une SÉQUENCE FLE de l'élève peut ouvrir ce que la session refuse
+    // (plan espace FLE, étape 4) : porte de plus, jamais de moins.
+    if (!etat.disponible && !(await ouvertParSequence(auth.uid, auth.email, body.devoirId))) {
       return NextResponse.json(
         { success: false, message: 'Ce devoir n\'est pas disponible' },
         { status: 403 }
       );
+    }
+    // Activité réservée à certains élèves de la classe
+    if (Array.isArray(devoirData.eleves)) {
+      const identite = await identiteEleve(auth.uid, auth.email);
+      if (eleveExclu(devoirData.eleves, identite.eleveIds)) {
+        return NextResponse.json(
+          { success: false, message: 'Ce devoir n\'est pas disponible' },
+          { status: 403 }
+        );
+      }
     }
 
     // Generer l'ID du travail

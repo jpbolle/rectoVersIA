@@ -709,3 +709,38 @@
   cursor: pointer;
 }
 .lienDiscret:hover { text-decoration: underline; }
+
+/* ─── Référentiel FLE (DidactiqueFlePanel) ─────────────────────────── */
+.card_fle { --card-color: #4a7ba7; }
+
+/* Un seul bloc pleine largeur sous les deux colonnes (types de module) */
+.oneCol {
+  border-top: 1px solid var(--c-border);
+}
+
+.oneCol .colBlock {
+  border-left: none;
+}
+
+/* Nom d'un groupe non éditable (le niveau d'un descripteur) */
+.groupNom {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+}
+
+.confirmTexte {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--c-text);
+}
+
+.btnDanger {
+  background: #c0392b;
+}
+
+/* Le menu déroulant d'une cellule reprend l'habillage du champ en place */
+select.cell {
+  cursor: pointer;
+}

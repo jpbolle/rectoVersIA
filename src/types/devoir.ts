@@ -2,12 +2,14 @@ import type { PlanItem } from './travail';
 import type { LectureQuizMode, LectureQuiz, LectureResume } from './lecture';
 import type { AutoEvalQuestionnaire } from './autoevaluation';
 import type { TypeModal } from './didactique';
+import type { SequenceFleContenu } from './sequence-fle';
 
 export type Classe = string;
 // Le DISPOSITIF d'une activité : la machinerie que l'app sait afficher.
 // « autoevaluation » depuis le 2026-08-14 — l'élève se prononce sur son
 // propre travail (cf. src/types/autoevaluation.ts).
-export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation';
+// « sequence » depuis le 2026-09-14 : la séquence FLE (cf. src/types/sequence-fle.ts).
+export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation' | 'sequence';
 // formatif : entraînement, ne compte pas — certificatif : compte pour la note
 export type EvaluationType = 'formatif' | 'certificatif';
 
@@ -218,6 +220,14 @@ export interface Devoir {
   // ABSENT = ACTIVÉ : les activités antérieures gardent le comportement
   // qu'elles avaient, où l'auto-évaluation a toujours existé.
   autoEvaluation?: boolean;
+  // ÉLÈVES CONCERNÉS — « toute la classe » (null / absent) ou une partie des
+  // élèves des classes cochées (ids de fiches `eleves`). Vérifié côté serveur
+  // partout où un élève lit ou ouvre l'activité (listes, ouverture, copie).
+  // Généralisé à toutes les activités le 2026-09-14 (né pour la séquence FLE).
+  eleves?: string[] | null;
+  // SÉQUENCE FLE (type sequence) : les modules du parcours. Absent / null =
+  // séquence vide.
+  sequenceFle?: SequenceFleContenu | null;
   // Passerelle en retour vers la scénarisation didactique : posée par
   // /api/scenarisations/[id] quand l'activité est rattachée à un module,
   // effacée quand le lien est rompu. Jamais écrite depuis les formulaires.
@@ -270,6 +280,10 @@ export interface CreateDevoirData {
   oeuvreId?: string | null;
   oeuvreChapitres?: string[] | null;
   oeuvreMinimum?: number | null;
+  // Élèves concernés (null = toute la classe) — voir `Devoir.eleves`
+  eleves?: string[] | null;
+  // Séquence FLE (type sequence uniquement) — sert à la duplication
+  sequenceFle?: SequenceFleContenu | null;
   // AUTO-ÉVALUATION INTÉGRÉE — l'élève se prononce sur son propre travail
   // avant d'en connaître la note. Ce qu'elle recouvre dépend du dispositif :
   //  - écriture  : il s'auto-évalue sur la grille ;

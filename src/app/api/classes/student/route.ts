@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
+import { isClasseType } from '@/types/classe';
 
 // GET - Liste des classes de l'élève connecté
 export async function GET(request: NextRequest) {
@@ -50,6 +51,8 @@ export async function GET(request: NextRequest) {
           id: doc.id,
           nom: data.nom || '',
           description: data.description || '',
+          // Le type de cours décide de l'espace où l'élève arrive (/fle ou /accueil)
+          type: isClasseType(data.type) ? data.type : 'francais',
           anneeScolaire: data.anneeScolaire || '',
           archive: data.archive || false,
         });

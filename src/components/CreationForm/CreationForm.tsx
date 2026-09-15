@@ -7,6 +7,12 @@ import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
 import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/QuestionnaireBuilder';
 import QuestionnairePreviewModal from '@/components/QuestionnairePreviewModal/QuestionnairePreviewModal';
 import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
+import SequenceFleBuilder from '@/components/SequenceFleBuilder/SequenceFleBuilder';
+import ElevesChoix from '@/components/ElevesChoix/ElevesChoix';
+import type { EleveAvecClasse } from '@/components/ElevesChoix/ElevesChoix';
+import { useClasses } from '@/hooks/useClasses';
+import { estClasseFle } from '@/types/classe';
+import type { SequenceFleContenu } from '@/types/sequence-fle';
 import PlanDraft from '@/components/DraftEditor/PlanDraft';
 import VocabListEditor from '@/components/VocabListEditor/VocabListEditor';
 import LectureQuizBuilder, { LectureModeRow } from '@/components/LectureQuizBuilder/LectureQuizBuilder';
@@ -40,6 +46,7 @@ const RESSOURCE_LABELS: Record<TypeTravail, string> = {
   rechercher: '📄 Documents d’appui (facultatif)',
   vocabulaire: '📄 Documents (facultatif)',
   autoevaluation: '📄 Travail à commenter (facultatif)',
+  sequence: '📄 Ressources de la séquence (facultatif)',
 };
 
 function createEmptyPlanDraft(): DraftContent {
@@ -128,11 +135,28 @@ export default function CreationForm({
   // Habiletés travaillées : null = toutes celles de l'atelier
   const [habiletes, setHabiletes] = useState<string[] | null>(null);
 
+  // Élèves concernés : null = toute la classe (toutes activités)
+  const [eleves, setEleves] = useState<string[] | null>(null);
+  // Les élèves des classes cochées, remontés par le menu (pour la séquence FLE)
+  const [elevesDesClasses, setElevesDesClasses] = useState<EleveAvecClasse[]>([]);
+  // Séquence FLE : modules (verso)
+  const [sequenceFle, setSequenceFle] = useState<SequenceFleContenu | null>(null);
+  // Une séquence FLE ne se donne qu'à des classes FLE : le menu des classes se
+  // restreint (demande JP du 2026-09-14). Les noms viennent des classes du prof.
+  const { classes: toutesMesClasses } = useClasses();
+  const classeNamesFle = toutesMesClasses.filter((c) => estClasseFle(c) && !c.archive).map((c) => c.nom);
+
   // Changer d'atelier change le dispositif : la sélection d'habiletés ne veut
   // plus rien dire, et le mode principal reprend la valeur attendue
   const changeAtelier = (id: string) => {
     setAtelier(id);
     setHabiletes(null);
+    setSequenceFle(null);
+    setEleves(null);
+    // Vers une séquence FLE : seules les classes FLE déjà cochées restent
+    if (findAtelier(id)?.dispositif === 'sequence') {
+      setSelectedClasses((c) => c.filter((nom) => classeNamesFle.includes(nom)));
+    }
     // Seule l'écriture s'évalue par grille : ailleurs, ce sont les habiletés
     // qui portent la didactique
     setGrille('');
@@ -252,7 +276,8 @@ export default function CreationForm({
     (typeTravail === 'rechercher' && nkQuestions.some(q => q.texte.trim())) ||
     (typeTravail === 'vocabulaire' && selectedVocabTheme !== null) ||
     (typeTravail === 'lire' && (lectureQuiz?.questions.length ?? 0) > 0) ||
-    (typeTravail === 'autoevaluation' && (autoEvalQuiz?.questions.length ?? 0) > 0);
+    (typeTravail === 'autoevaluation' && (autoEvalQuiz?.questions.length ?? 0) > 0) ||
+    (typeTravail === 'sequence' && (sequenceFle?.etapes.length ?? 0) > 0);
 
   // Bascule animée recto ↔ verso
   const flip = useCallback(() => {
@@ -298,6 +323,8 @@ export default function CreationForm({
     setLectureMode('worksheet');
     setHiddenQuestions([]);
     setAutoEvalQuiz(null);
+    setSequenceFle(null);
+    setEleves(null);
     setOeuvreId('');
     setOeuvreChapitres([]);
     setOeuvreMinimum(8);
@@ -379,6 +406,13 @@ export default function CreationForm({
       data.autoEvaluation = false;
     }
 
+    // Élèves concernés : toute la classe (null) ou une partie
+    data.eleves = selectedClasses.length > 0 ? eleves : null;
+
+    if (typeTravail === 'sequence') {
+      data.sequenceFle = sequenceFle;
+    }
+
     if (atelier === 'lecture-oeuvre' && oeuvreId) {
       data.oeuvreId = oeuvreId;
       // Aucun chapitre coché = l'œuvre entière
@@ -441,10 +475,38 @@ export default function CreationForm({
         )}
       </div>
 
-      {/* Ligne 1 : Intitulé (double largeur) + Classes + Date + Évaluation.
-          En vocabulaire, l'intitulé est un menu de séries lexicales : il garde
-          sa propre ligne juste en dessous. */}
-      <div className={typeTravail === 'vocabulaire' ? styles.formRowThree : styles.formRowIntitule}>
+      {/* Ligne 1 : Type d'activité + Intitulé (double largeur). En vocabulaire,
+          l'intitulé est un menu de séries lexicales : il garde sa propre ligne
+          juste en dessous. (Mise en page demandée par JP, 2026-09-14.) */}
+      <div
+        className={
+          typeTravail === 'vocabulaire'
+            ? styles.formRowSingle
+            : usesGrille
+              ? styles.formRowTypeIntituleGrille
+              : styles.formRowTypeIntitule
+        }
+      >
+        <div className={styles.formGroup}>
+          <label className={styles.label}>
+            Type d&apos;activité <span className={styles.required}>*</span>
+          </label>
+          <select
+            className={styles.select}
+            value={atelier}
+            onChange={(e) => changeAtelier(e.target.value)}
+          >
+            {ATELIERS.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+          {/* Le mode principal découle du type d'activité — chercher, c'est lire */}
+          <p className={styles.modeNote}>
+            Mode principal : {TYPES_MODAUX.find((t) => t.id === modePrincipal)?.court}
+          </p>
+        </div>
         {typeTravail !== 'vocabulaire' && (
           <div className={styles.formGroup}>
             <label className={styles.label}>
@@ -460,15 +522,95 @@ export default function CreationForm({
           </div>
         )}
 
+        {usesGrille && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Type de grille <span className={styles.required}>*</span>
+            </label>
+            <select
+              className={styles.select}
+              value={grille}
+              onChange={(e) => {
+                setGrille(e.target.value);
+                setHiddenCriteria([]);
+                // Choix d'une grille → proposer de masquer certains critères
+                if (e.target.value) setShowHideCriteria(true);
+              }}
+            >
+              <option value="">Sélectionnez...</option>
+              {grillesDeLAtelier.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+            {grille && (
+              <button
+                type="button"
+                className={styles.hiddenCriteriaNote}
+                onClick={() => setShowHideCriteria(true)}
+              >
+                {hiddenCriteria.length > 0
+                  ? `🙈 ${hiddenCriteria.length} critère${hiddenCriteria.length > 1 ? 's' : ''} masqué${hiddenCriteria.length > 1 ? 's' : ''} — modifier`
+                  : 'Masquer certains critères...'}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Vocabulaire : la série lexicale tient lieu d'intitulé */}
+      {typeTravail === 'vocabulaire' && (
+        <div className={styles.formRowIntituleVocab}>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Série lexicale <span className={styles.required}>*</span>
+            </label>
+            <select
+              className={styles.select}
+              value={vocabCreatingNew ? NEW_VOCAB_LIST : intitule}
+              onChange={(e) => {
+                if (e.target.value === NEW_VOCAB_LIST) {
+                  // Nouvelle liste : le verso demande le titre puis les mots
+                  setVocabCreatingNew(true);
+                  setIntitule('');
+                  goToFace('verso');
+                } else {
+                  setVocabCreatingNew(false);
+                  setIntitule(e.target.value);
+                }
+              }}
+              disabled={isSubmitting}
+            >
+              <option value="">Sélectionnez une série...</option>
+              <option value={NEW_VOCAB_LIST}>➕ Nouvelle liste…</option>
+              {vocabThemes.map((theme) => (
+                <option key={theme.id} value={theme.id}>
+                  {theme.name.charAt(0).toUpperCase() + theme.name.slice(1)} ({theme.wordCount} mots)
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Ligne 2 : Classes + Échéance + Évaluation. Sous la ligne, les élèves
+          concernés dès qu'une classe est cochée (toute la classe ou une partie). */}
+      <div className={supporteAutoEval ? styles.formRowFour : styles.formRowThree}>
         <div className={styles.formGroup}>
           <label className={styles.label}>
             Classe(s) <span className={styles.optional}>— facultatif</span>
           </label>
           <ClassesDropdown
-            options={classeNames}
+            options={typeTravail === 'sequence' ? classeNamesFle : classeNames}
             selected={selectedClasses}
             onChange={setSelectedClasses}
             disabled={isSubmitting}
+            placeholder={
+              typeTravail === 'sequence' && classeNamesFle.length === 0
+                ? 'Aucune classe FLE — crée-en une dans Mes Classes'
+                : undefined
+            }
           />
         </div>
 
@@ -507,104 +649,64 @@ export default function CreationForm({
             )}
           </select>
         </div>
-      </div>
-
-      {/* Vocabulaire : la série lexicale tient lieu d'intitulé */}
-      {typeTravail === 'vocabulaire' && (
-        <div className={styles.formRowIntituleVocab}>
+        {supporteAutoEval && (
           <div className={styles.formGroup}>
             <label className={styles.label}>
-              Série lexicale <span className={styles.required}>*</span>
-            </label>
-            <select
-              className={styles.select}
-              value={vocabCreatingNew ? NEW_VOCAB_LIST : intitule}
-              onChange={(e) => {
-                if (e.target.value === NEW_VOCAB_LIST) {
-                  // Nouvelle liste : le verso demande le titre puis les mots
-                  setVocabCreatingNew(true);
-                  setIntitule('');
-                  goToFace('verso');
-                } else {
-                  setVocabCreatingNew(false);
-                  setIntitule(e.target.value);
+              Auto-évaluation
+              {/* Ce que l'interrupteur AJOUTE au questionnaire ordinaire —
+                  l'infobulle du toggle lui-même ne dit que l'état courant.
+                  Même texte que la popup d'édition. */}
+              <span
+                className={styles.info}
+                title={
+                  usesGrille
+                    ? 'Ce que ça ajoute : avant de remettre, l’élève évalue lui-même son travail sur VOTRE grille, critère par critère.\nRien n’est compté dans sa note. L’écart entre son évaluation et la vôtre mesure sa lucidité et remonte dans son profil, onglet « 🪞 Me connaître ».'
+                    : 'Ce que ça ajoute : sous chaque réponse, trois smileys — 😀 « je suis sûr de ma réponse », 😐 « j’ai un doute », 😟 « je sais que c’est faux ».\nL’élève se prononce avant de connaître son résultat, et rien n’est compté dans sa note. L’écart entre son assurance et sa réussite mesure sa lucidité et remonte dans son profil, onglet « 🪞 Me connaître ».'
                 }
-              }}
-              disabled={isSubmitting}
-            >
-              <option value="">Sélectionnez une série...</option>
-              <option value={NEW_VOCAB_LIST}>➕ Nouvelle liste…</option>
-              {vocabThemes.map((theme) => (
-                <option key={theme.id} value={theme.id}>
-                  {theme.name.charAt(0).toUpperCase() + theme.name.slice(1)} ({theme.wordCount} mots)
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* Ligne 2 : Type d'activité (+ mode principal, qui en découle) puis, à
-          droite, la grille pour l'écriture — les habiletés à sa place ailleurs */}
-      <div className={supporteAutoEval ? styles.formRowAutoEval : styles.formRow}>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>
-            Type d&apos;activité <span className={styles.required}>*</span>
-          </label>
-          <select
-            className={styles.select}
-            value={atelier}
-            onChange={(e) => changeAtelier(e.target.value)}
-          >
-            {ATELIERS.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.label}
-              </option>
-            ))}
-          </select>
-          {/* Le mode principal découle du type d'activité — chercher, c'est lire */}
-          <p className={styles.modeNote}>
-            Mode principal : {TYPES_MODAUX.find((t) => t.id === modePrincipal)?.court}
-          </p>
-        </div>
-
-        {usesGrille && (
-          <div className={styles.formGroup}>
-            <label className={styles.label}>
-              Type de grille <span className={styles.required}>*</span>
-            </label>
-            <select
-              className={styles.select}
-              value={grille}
-              onChange={(e) => {
-                setGrille(e.target.value);
-                setHiddenCriteria([]);
-                // Choix d'une grille → proposer de masquer certains critères
-                if (e.target.value) setShowHideCriteria(true);
-              }}
-            >
-              <option value="">Sélectionnez...</option>
-              {grillesDeLAtelier.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-            {grille && (
-              <button
-                type="button"
-                className={styles.hiddenCriteriaNote}
-                onClick={() => setShowHideCriteria(true)}
               >
-                {hiddenCriteria.length > 0
-                  ? `🙈 ${hiddenCriteria.length} critère${hiddenCriteria.length > 1 ? 's' : ''} masqué${hiddenCriteria.length > 1 ? 's' : ''} — modifier`
-                  : 'Masquer certains critères...'}
-              </button>
-            )}
+                i
+              </span>
+            </label>
+            {/* L'explication vit dans l'infobulle : la ligne porte déjà deux
+                sélecteurs, une phrase de plus l'alourdirait pour rien. */}
+            <label
+              className={styles.autoEvalToggle}
+              title={
+                autoEvaluation
+                  ? usesGrille
+                    ? 'L’élève s’évalue sur la grille avant la correction.'
+                    : 'L’élève pose un smiley d’assurance sous chaque réponse.'
+                  : 'L’élève ne se prononce pas sur son travail.'
+              }
+            >
+              <input
+                type="checkbox"
+                checked={autoEvaluation}
+                onChange={(e) => setAutoEvaluation(e.target.checked)}
+                disabled={isSubmitting}
+              />
+              <span className={styles.autoEvalSwitch} />
+              <span className={styles.autoEvalText}>
+                {autoEvaluation ? 'Activée' : 'Désactivée'}
+              </span>
+            </label>
           </div>
         )}
+      </div>
 
-        {!usesGrille && (
+      <ElevesChoix
+        classesNoms={selectedClasses}
+        value={eleves}
+        onChange={setEleves}
+        onEleves={setElevesDesClasses}
+        disabled={isSubmitting}
+      />
+
+
+      {/* Ligne 3 : les habiletés (hors écriture), l'œuvre à lire — ce qui
+          dépend du type d'activité */}
+      <div className={styles.formRow}>
+        {!usesGrille && typeTravail !== 'sequence' && (
           <div className={styles.formGroup}>
             <label className={styles.label}>Habiletés travaillées</label>
             <HabiletesPicker
@@ -708,49 +810,6 @@ export default function CreationForm({
           </>
         )}
 
-        {supporteAutoEval && (
-          <div className={styles.formGroup}>
-            <label className={styles.label}>
-              Auto-évaluation
-              {/* Ce que l'interrupteur AJOUTE au questionnaire ordinaire —
-                  l'infobulle du toggle lui-même ne dit que l'état courant.
-                  Même texte que la popup d'édition. */}
-              <span
-                className={styles.info}
-                title={
-                  usesGrille
-                    ? 'Ce que ça ajoute : avant de remettre, l’élève évalue lui-même son travail sur VOTRE grille, critère par critère.\nRien n’est compté dans sa note. L’écart entre son évaluation et la vôtre mesure sa lucidité et remonte dans son profil, onglet « 🪞 Me connaître ».'
-                    : 'Ce que ça ajoute : sous chaque réponse, trois smileys — 😀 « je suis sûr de ma réponse », 😐 « j’ai un doute », 😟 « je sais que c’est faux ».\nL’élève se prononce avant de connaître son résultat, et rien n’est compté dans sa note. L’écart entre son assurance et sa réussite mesure sa lucidité et remonte dans son profil, onglet « 🪞 Me connaître ».'
-                }
-              >
-                i
-              </span>
-            </label>
-            {/* L'explication vit dans l'infobulle : la ligne porte déjà deux
-                sélecteurs, une phrase de plus l'alourdirait pour rien. */}
-            <label
-              className={styles.autoEvalToggle}
-              title={
-                autoEvaluation
-                  ? usesGrille
-                    ? 'L’élève s’évalue sur la grille avant la correction.'
-                    : 'L’élève pose un smiley d’assurance sous chaque réponse.'
-                  : 'L’élève ne se prononce pas sur son travail.'
-              }
-            >
-              <input
-                type="checkbox"
-                checked={autoEvaluation}
-                onChange={(e) => setAutoEvaluation(e.target.checked)}
-                disabled={isSubmitting}
-              />
-              <span className={styles.autoEvalSwitch} />
-              <span className={styles.autoEvalText}>
-                {autoEvaluation ? 'Activée' : 'Désactivée'}
-              </span>
-            </label>
-          </div>
-        )}
       </div>
 
       {/* Recto / Verso de l'espace élève (uniquement pour type ecrire) */}
@@ -846,6 +905,7 @@ export default function CreationForm({
           {typeTravail === 'rechercher' && 'Rechercher'}
           {typeTravail === 'vocabulaire' && 'Vocabulaire'}
           {typeTravail === 'autoevaluation' && 'Auto-évaluation'}
+          {typeTravail === 'sequence' && 'Séquence FLE'}
         </span>
       </div>
 
@@ -889,6 +949,8 @@ export default function CreationForm({
                   ? 'Le questionnaire de lecture : rempli par l’élève dans sa colonne de gauche. QCM corrigés automatiquement, le reste par vous. Les compétences cochées alimenteront le profil de lecteur.'
                   : typeTravail === 'rechercher'
                     ? 'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'
+                    : typeTravail === 'sequence'
+                      ? 'Les modules du parcours, dans l’ordre où l’élève les fera. Chaque module apporte sa théorie et ses activités ; les élèves qui suivent la séquence se choisissent au recto.'
                     : typeTravail === 'autoevaluation'
                       ? 'Le questionnaire d’auto-évaluation : l’élève y dit où il en est. Rien n’est noté — les gestes cochés alimentent l’onglet réflexif de son profil.'
                       : 'La liste sert de support à l’activité (apprentissage et évaluation). Elle est aussi enregistrée dans Mes Ressources.'
@@ -898,6 +960,17 @@ export default function CreationForm({
           </span>
         </h4>
       </div>
+      )}
+
+      {/* Séquence FLE : les modules du parcours (les élèves se choisissent au recto) */}
+      {typeTravail === 'sequence' && (
+        <SequenceFleBuilder
+          value={sequenceFle}
+          onChange={setSequenceFle}
+          elevesDeLaSequence={eleves === null ? elevesDesClasses : elevesDesClasses.filter((e) => eleves.includes(e.id))}
+          plusieursClasses={selectedClasses.length > 1}
+          disabled={isSubmitting}
+        />
       )}
 
       {/* Questionnaire d'auto-évaluation (type autoevaluation) */}

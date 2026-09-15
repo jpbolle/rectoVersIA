@@ -2,11 +2,13 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useGoogleClassroom } from '@/hooks/useGoogleClassroom';
+import { CLASSE_TYPES } from '@/types/classe';
+import type { ClasseType } from '@/types/classe';
 import styles from './ClasseCreationForm.module.css';
 
 interface ClasseCreationFormProps {
   isVisible: boolean;
-  onSubmit: (data: { nom: string; description?: string }) => Promise<void>;
+  onSubmit: (data: { nom: string; description?: string; type: ClasseType }) => Promise<void>;
   isSubmitting: boolean;
   onClose?: () => void;
   onImportSuccess?: (classeId: string, studentsCount: number) => void;
@@ -21,6 +23,8 @@ export default function ClasseCreationForm({
 }: ClasseCreationFormProps) {
   const [nom, setNom] = useState('');
   const [description, setDescription] = useState('');
+  // Type de cours : le seul réglage manuel qui distingue une classe FLE
+  const [type, setType] = useState<ClasseType>('francais');
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -40,6 +44,7 @@ export default function ClasseCreationForm({
   const resetForm = useCallback(() => {
     setNom('');
     setDescription('');
+    setType('francais');
     setSelectedCourseId('');
     setImportMessage(null);
     resetClassroom();
@@ -52,12 +57,11 @@ export default function ClasseCreationForm({
     }
   }, [isAuthorized, courses.length, isClassroomLoading, fetchCourses]);
 
-  // Afficher l'erreur Classroom
-  useEffect(() => {
-    if (classroomError) {
-      setImportMessage({ type: 'error', text: classroomError });
-    }
-  }, [classroomError]);
+  // L'erreur Classroom s'affiche à la place du message local : dérivée au
+  // rendu, pas recopiée dans un état (un setState dans un effet fait
+  // cascader les rendus — règle du linter react-hooks)
+  const messageAffiche =
+    importMessage ?? (classroomError ? { type: 'error' as const, text: classroomError } : null);
 
   async function handleSubmit() {
     if (!isValid) return;
@@ -65,6 +69,7 @@ export default function ClasseCreationForm({
     await onSubmit({
       nom: nom.trim(),
       description: description.trim() || undefined,
+      type,
     });
 
     resetForm();
@@ -111,7 +116,8 @@ export default function ClasseCreationForm({
 
     setImportMessage(null);
 
-    const result = await importCourse(course.id, course.name, course.section);
+    // Le type de cours choisi dans le formulaire vaut aussi pour une classe importée
+    const result = await importCourse(course.id, course.name, course.section, type);
 
     if (result) {
       setImportMessage({
@@ -211,13 +217,13 @@ export default function ClasseCreationForm({
           </div>
         )}
 
-        {importMessage && (
+        {messageAffiche && (
           <p
             className={`${styles.importMessage} ${
-              importMessage.type === 'success' ? styles.importSuccess : styles.importError
+              messageAffiche.type === 'success' ? styles.importSuccess : styles.importError
             }`}
           >
-            {importMessage.text}
+            {messageAffiche.text}
           </p>
         )}
       </div>
@@ -238,6 +244,31 @@ export default function ClasseCreationForm({
           onChange={(e) => setNom(e.target.value)}
           placeholder="Ex : 4A, 3B, Terminale S1"
         />
+      </div>
+
+      {/* Type de cours — deux cartes à cocher, pas un menu : le choix doit se
+          lire d'un coup d'œil, avec ce qu'il implique */}
+      <div className={styles.formGroup}>
+        <label className={styles.label}>Type de cours</label>
+        <div className={styles.typeChoices}>
+          {CLASSE_TYPES.map((t) => (
+            <label
+              key={t.id}
+              className={`${styles.typeChoice} ${type === t.id ? styles.typeChoiceActive : ''}`}
+            >
+              <input
+                type="radio"
+                name="classe-type"
+                value={t.id}
+                checked={type === t.id}
+                onChange={() => setType(t.id)}
+                disabled={isSubmitting}
+              />
+              <span className={styles.typeChoiceLabel}>{t.label}</span>
+              <span className={styles.typeChoiceAide}>{t.aide}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       {/* Description (optionnel) */}

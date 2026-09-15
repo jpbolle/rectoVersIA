@@ -4,11 +4,15 @@ import { verifyAuth } from '@/lib/api-auth';
 import { generateClasseId, generateEleveId, getCurrentAnneeScolaire } from '@/lib/classe-utils';
 import { getClassroomStudents } from '@/lib/google-classroom';
 import { encryptFields, hashEmail, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
+import { isClasseType } from '@/types/classe';
+import type { ClasseType } from '@/types/classe';
 
 interface ImportRequest {
   courseId: string;
   courseName: string;
   courseSection?: string;
+  // Type de cours choisi dans le formulaire (français / FLE) — absent = français
+  type?: ClasseType;
 }
 
 // POST - Importer une classe depuis Google Classroom
@@ -76,6 +80,7 @@ export async function POST(request: NextRequest) {
     const classe = {
       nom: classeName,
       description: `Importée depuis Google Classroom`,
+      type: isClasseType(body.type) ? body.type : 'francais',
       profId: auth.uid,
       anneeScolaire: getCurrentAnneeScolaire(),
       archive: false,

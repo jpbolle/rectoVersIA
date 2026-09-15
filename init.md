@@ -111,7 +111,7 @@ d'une année sur l'autre.
 | Nouvelle façon d'évaluer une activité | **Grille pour l'écriture, habiletés partout ailleurs** — jamais les deux. La grille n'est exigée que pour `typeTravail === 'ecrire'`, client ET serveur | `usesGrille` dans `CreationForm` / `EditDevoirModal` |
 | Demander une saisie ou une confirmation | **Jamais** `prompt()` / `confirm()` / `alert()` : popup de l'application, centrée, sur fond assombri, en-tête et pied d'actions. Consigne durable (dépôt `harnais`, `0-moi/consignes.md`) | `ScenarisationFormModal`, `CertificationNotesModal` |
 | Nouvelle carte dans **Mes Ressources** | Gabarit de `GrilleCard` : dégradé vert, relief au survol, barre d'actions en bas à droite (dupliquer · ✏️ ouvrir · 🗑️). Les onglets Grilles, Œuvres et Parcours forment une famille — un gabarit divergent se voit | `GrilleCard`, `OeuvreCard`, `ScenarisationCard` |
-| Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
+| Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) — 7 ateliers, 6 dispositifs (`sequence` depuis le 2026-09-14 : une activité qui en contient d'autres, sans copie ni remise) : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
 | Activité où **rien ne se remet** (recherche, questionnaire de lecture, auto-évaluation, lecture d'une œuvre) | `hideSubmit` sur `WorkTopBar` ; la remise, quand elle existe, vit **au bas de la colonne de gauche**, dans la ligne d'actions | `hideSubmit` dans `/activites/[id]` |
 | Nouvelle façon d'afficher des propositions à l'élève (QCM, matrice, appariement, tri) | **Mélangées par élève**, jamais dans l'ordre du prof — `ordreAffichage(taille, graine, melanger)`, graine = `uid + id de question`. ⚠️ **C'est un ORDRE D'AFFICHAGE** : la réponse reste enregistrée dans l'ordre du PROF, sinon tous les corrigés déjà en base désignent la mauvaise case. Case `pasDeMelange` pour une chronologie ou une gradation | `ordreAffichage` dans `src/types/lecture.ts` ; `LectureQuizActivity`, `OeuvreReader`, `QuestionInteractions/` |
 | Ajouter un élément au milieu d'une liste qu'on compose (question, bloc de scène) | **Trait d'insertion** : un trait discret entre deux éléments, qui s'éclaire au survol avec un `+` ; le clic déplie les types **à cet endroit**. Hauteur RÉSERVÉE en permanence, sinon la liste saute sous la souris. Pas de ligne de boutons en bas de page | `TraitInsertion` dans `LectureQuizBuilder`, `Trait` dans `OeuvreBuilder` |
@@ -301,7 +301,7 @@ interface Grille {
 
 ### `classes`, `eleves`
 ```typescript
-interface Classe { id; nom; code; profId; anneeScolaire; archive }   // code "AB1-CD2-EF3"
+interface Classe { id; nom; code; type?; profId; anneeScolaire; archive }   // code "AB1-CD2-EF3" ; type 'francais' | 'fle' (absent = francais, 2026-09-14)
 interface Eleve  { id; classeId; nom; prenom; email; firebaseUid? }
 ```
 
@@ -395,6 +395,10 @@ interface Questionnaire {
   `cotation: 'note' | 'fait'` — certaines certifications accordent leur ceinture
   au seul fait d'avoir été **faites**, et n'entrent alors **pas** dans le
   pourcentage de l'UAA (un « fait » n'est pas un 100 %).
+- **Séquence FLE = une ACTIVITÉ** (`devoirs`, `typeTravail: 'sequence'`, atelier `sequence-fle`, décision JP du 2026-09-14 : « une activité constructible »). Elle porte `sequenceFle: { etapes[] }` — une étape est SOIT une **théorie** (`moduleId`) SOIT une **activité** (`devoirId`), avec sa restriction `eleves: null | ids` (`src/types/sequence-fle.ts`) ; la restriction de l'activité-séquence elle-même est `Devoir.eleves` ; classes, sessions, échéance, ouverture, ressources = ceux de l'activité. **Voie d'autorisation** : `ouvertParSequence(uid, email, devoirId)` (`src/lib/sequence-server.ts`) est appelée dans les 3 routes d'accès (`devoirs/[id]` GET, `travaux` POST, `travaux/mine` GET) **seulement quand `etatEffectif` refuse** — porte de plus, jamais de moins ; elle exige que la séquence soit **ouverte** à l'élève (classe + état effectif + restriction)
+- `modulesFle/{id}` : module FLE réutilisable (`MFL-YYYYMMDD-XXXX`) — `src/types/module-fle.ts`, helpers serveur `src/lib/module-fle-server.ts`
+- `niveauxFle/{eleveId}` : positionnement CECR posé par le prof (curseurs de la fiche élève) — rien ne s'y déduit des travaux
+- `configuration/didactique-fle` : référentiel **FLE** (compétences du radar, niveaux du CECR avec `rang`, descripteurs « Je peux… », types de module) — `src/types/didactique-fle.ts`, route `/api/didactique-fle`, hook `useDidactiqueFle` (cache séparé de `useDidactique`)
 - `configuration/didactique` : UAA + **habiletés** + **méthodes d'enseignement**
   (`methodes`, liste ouverte tenue par l'admin, lue par la colonne Méthode des
   modules). Une habileté =
@@ -462,9 +466,10 @@ interface Questionnaire {
 | `/dashboard/travaux/[devoirId]` | prof | Travaux par devoir (3 colonnes) |
 | `/dashboard/travaux/[devoirId]/[travailId]` | prof | Correction + annotations (`ResizableSplit`) |
 | `/classes` | prof | Gestion classes et élèves + bloc « Mes Élèves » (tous les élèves, filtre actifs/archivés, recherche) ; clic sur un élève (bloc ou détail de classe) → fiche complète en popup (`EleveProfilModal` → `ProfilPanel`) |
-| `/grilles` | prof | Mes Ressources : onglets Grilles + Listes de vocabulaire + **Design & scénarisation didactique** (`ScenarisationPanel`) |
+| `/grilles` | prof | Mes Ressources : onglets Grilles + Listes de vocabulaire + **Design & scénarisation didactique** (`ScenarisationPanel`) + **Modules FLE** (`ModuleFlePanel`, 2026-09-14) |
 | `/archives` | prof | Devoirs archivés |
-| `/admin` | admin | Titre de page = nom de l'onglet actif (`ADMIN_TABS`, source unique dans `Header.tsx`). Header dédié (variant `admin`) en onglets : Vue d'ensemble (stats) / Gestion des membres (professeurs) / Gestion didactique (UAA + habiletés, `DidactiquePanel`) / Gestion des coûts (compteurs d'usage IA — pas de suivi tokens) |
+| `/fle` | élève | **Mon cours** (espace FLE, 2026-09-14) : bonjour, « Mon travail à faire » (vide tant que les séquences n'existent pas), radar CECR + objectifs du mois (`NiveauFlePanel` en lecture), classes. Un élève dont **toutes** les classes sont FLE y arrive depuis `/login` et `/accueil` (`espaceFleSeulement`) ; classes mixtes → `/accueil` + entrée « Mon cours » dans le header |
+| `/admin` | admin | Titre de page = nom de l'onglet actif (`ADMIN_TABS`, source unique dans `Header.tsx`). Header dédié (variant `admin`) en onglets : Vue d'ensemble (stats) / Gestion des membres (professeurs) / Gestion didactique — sélecteur de référentiel **Cours de français** (`DidactiquePanel`, UAA + habiletés) / **FLE** (`DidactiqueFlePanel`) — / Gestion des coûts (compteurs d'usage IA — pas de suivi tokens) |
 | `/roadmap` | tous | Nouveautés + à venir — **pilotée par Firestore**, éditable par l'admin (drag « À venir » → « Nouveautés » pour marquer fait) |
 | `/rgpd` | tous | Données personnelles : quelles données, protection (chiffrement), services IA, droits RGPD — statique, menu avatar |
 | `/accueil` | élève | **Page d'ouverture** (`/` y renvoie) : 3 blocs (travaux et lectures en retard · échéances à venir · derniers résultats) + **roue des ceintures** (`CeinturesRoue`) |
@@ -475,6 +480,8 @@ interface Questionnaire {
 | `/profil` | élève | Profil d'écrilecteur en 7 onglets (Général / Lire / Écrire / Parler / Rechercher / Vocabulaire / **🪞 Me connaître**), un appel API par onglet chargé à la première ouverture |
 
 ### Header
+
+Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classes · Mon vocabulaire · Mon profil — sous-titre « Mon cours de français »). Le variant `student` accepte `avecCoursFle` (entrée « Mon cours » pour un élève de classes mixtes).
 - Prof : Mes Activités → `/dashboard` | Mes Classes → `/classes` | Mes Ressources →
   `/grilles` | Cloche notifications | Avatar menu (l'œil « Vue élève » a été retiré —
   l'aperçu passe par le bouton Prévisualiser des activités)
@@ -498,6 +505,11 @@ interface Questionnaire {
 | `/api/profil/{general,lecture,ecriture,recherche,vocabulaire,reflexif}` | GET | Profil élève, un endpoint par onglet — `recherche` renvoie `{ items, habiletes }` — helpers dans `src/lib/profil-stats.ts` ; `?eleveId=` réservé au prof (fiche élève — `src/lib/profil-target.ts` vérifie l'appartenance à ses classes) |
 | `/api/scenarisations`, `/api/scenarisations/[id]` | CRUD | Scénarisations didactiques (une par cours) — document unique par scénarisation, chapitres et modules **imbriqués**. Le PUT réécrit tout et pose/efface `devoir.scenarisationRef` (passerelle en retour) |
 | `/api/didactique` | GET, PUT | Config didactique (UAA + habiletés) — doc `configuration/didactique`, GET tout connecté, PUT admin ; le GET **normalise** les champs absents des documents anciens (`objets`, `ateliers`) ; hook client `useDidactique` (cache partagé) |
+| *(toutes les routes élève)* | — | **`Devoir.eleves`** (2026-09-14) : `null` = toute la classe, liste d'ids de fiches `eleves` = seuls ceux-là voient/ouvrent l'activité. Appliqué dans `/api/devoirs` (liste), `/api/devoirs/[id]`, `travaux` POST, `travaux/mine`, `/api/accueil`, `/api/navigkid/activites-eleve`, `ensureTravaux` (`eleveExclu`, `src/lib/sequence-server.ts`). ⚠ Pas dans `/api/notifications` |
+| `/api/devoirs/[id]/parcours-fle` | GET | Le parcours d'une **séquence FLE** (activité `typeTravail: 'sequence'`) prêt à afficher : les **étapes** dans l'ordre — théorie (module : introduction + ressources) ou activité (état déduit de `TRV-{devoirId}-{uid}` : `a-faire` / `en-cours` / `fait`) — filtrées par restriction pour l'élève. Prof propriétaire : toutes les étapes, sans état |
+| `/api/modules-fle`, `/api/modules-fle/[id]`, `/api/modules-fle/[id]/dupliquer` | GET, POST, PATCH, DELETE | Bibliothèque de modules FLE (collection `modulesFle`) : trois paniers (les miens / exemples `shared` admin / ceux des collègues à dupliquer), DELETE = **archive**. Un module = une **théorie** : titre, type, niveau, compétences, `introduction` (HTML Tiptap — indications), `ressources` (`DevoirRessource`, les 5 onglets du verso, `sanitizeRessources`). **Pas d'activités** dans un module (2026-09-14) |
+| `/api/niveaux-fle` | GET, PUT | Positionnement CECR d'un élève FLE — doc `niveauxFle/{eleveId}` (`positionnement` compétence → niveau, `objectifsMois`, `historique` 24 max). GET `?eleveId=` prof (élève d'une de SES classes), GET sans paramètre = l'élève lui-même (+ `prenom`, positionnement le plus récent si plusieurs fiches) ; PUT prof |
+| `/api/didactique-fle` | GET, PUT | Référentiel FLE — doc `configuration/didactique-fle`, GET tout connecté, PUT admin ; défauts servis pour un document jamais enregistré ; hook client `useDidactiqueFle` (cache **séparé**) |
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |
 | `/api/professeurs`, `/api/admin/stats`, `/api/admin/prof-stats/[profId]` | — | Admin (profId = email encodé) |
 | `/api/roadmap` | GET, POST | Roadmap Firestore (POST admin) |
@@ -520,6 +532,8 @@ interface Questionnaire {
 | `/api/vocabulaire/*` | — | Thèmes, mots, génération/validation exercices IA, suggestions |
 
 ### Composants clés
+
+- **Espace FLE** (2026-09-14) : `RadarFle` (SVG maison, N branches horaires depuis le haut, anneaux = niveaux visibles, aire bleue `#4a7ba7` — angles d'ÉCRAN, à l'inverse de `CeinturesRoue`), `NiveauFlePanel` (radar + une ligne par compétence : libellé, niveau en gras, curseur `range` côté prof / crans pleins côté élève ; objectifs du mois ; enregistrement différé 500 ms), `DidactiqueFlePanel` (référentiel dans /admin). La fiche élève (`EleveProfilModal`) reçoit `classeType` et place `NiveauFlePanel` avant `ProfilPanel` pour une classe FLE. **Séquences** : `SequenceFleBuilder` au **verso** (création et popup ✏️) pour une activité de type `sequence` : **ligne du temps en serpentin** (rangées mesurées, `row-reverse` une fois sur deux), un « + » entre les encadrés qui demande la **nature** (théorie = module de la bibliothèque / activité de Mes Activités) puis « existant » ou « créer ici » (module → `ModuleFleEditor` en popup, activité → `CreationForm` en popup), « tous / n élèves » par étape ; côté élève `SequenceFleActivity` (rendu par `/activites/[id]` **avant** les gardes sur le travail : ligne de progression, modules dépliables avec théorie « À lire d'abord » et activités à pastille d'état). `/fle` › « Mon travail à faire » liste les séquences de l'élève depuis `/api/devoirs`. **Bibliothèque** : `ModuleFlePanel` (paniers + popup de création titre/type/niveau + popup d'archivage), `ModuleFleCard` (réutilise les styles d'`OeuvreCard` et de `CreateOeuvreCard`), `ModuleFleEditor` (pleine page, deux colonnes : fiche + « Je peux… » du référentiel à gauche, `DocumentEditor` Tiptap + activités ordonnées ▲▼ à droite ; enregistrement EXPLICITE, bouton ambre tant qu'il reste à enregistrer ; popup « Rattacher une activité » qui lit `/api/devoirs`).
 - Éditeurs Tiptap : `WorkEditor` (élève — collage externe bloqué, seul le texte copié
   dans l'espace de travail est recollable via `internal-clipboard.ts`), `RessourceEditor`
   (annotation ressources), `AnnotationEditor` (prof : 3 types textuels + audio + IA),
@@ -1001,6 +1015,21 @@ donc la première instruction ; l'écriture dans le storage vient après.
 ### API_BASE de l'extension pointe la production
 `sidebar/app.js` contient l'URL de production en dur. Pour tester en local il faut la
 basculer sur `http://localhost:3003` **et penser à la remettre avant tout commit**.
+
+### Une activité peut être réservée à certains élèves de la classe
+`Devoir.eleves` (2026-09-14) : toute route qui liste ou ouvre une activité pour un élève
+doit appliquer `eleveExclu(devoir.eleves, identite.eleveIds)` — les listes existantes le
+font, une nouvelle route qui l'oublierait montrerait l'activité aux élèves exclus. Le menu
+« Élèves concernés » (`ElevesChoix`) apparaît sous les classes dans la création et la
+popup ✏️.
+
+### Une activité FLE s'ouvre par sa SÉQUENCE, pas par sa classe
+Depuis le 2026-09-14, un élève peut ouvrir une activité **sans classe ni session** si un
+module d'une séquence FLE (activité `typeTravail: 'sequence'`) **ouverte pour lui** la
+contient (`ouvertParSequence`, `src/lib/sequence-server.ts`). Toute nouvelle route qui décide « cet élève a accès à ce
+devoir » doit reprendre le motif des trois routes existantes : `etatEffectif` d'abord,
+`ouvertParSequence` en repli. ⚠ Une activité sans classe garde `disponible ?? true` : elle
+reste ouvrable par tout élève qui a l'id, séquence ou pas (état antérieur, inchangé).
 
 ### Une route qui lit `devoir.disponible` sans regarder les sessions
 Depuis le 2026-09-01, **la session prime, le devoir sert de repli**
