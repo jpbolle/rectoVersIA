@@ -1016,6 +1016,13 @@ donc la première instruction ; l'écriture dans le storage vient après.
 `sidebar/app.js` contient l'URL de production en dur. Pour tester en local il faut la
 basculer sur `http://localhost:3003` **et penser à la remettre avant tout commit**.
 
+### Le build sur le VPS manque de mémoire sans `NODE_OPTIONS`
+Depuis le 2026-09-15, `npm run build` sur le VPS plante à l'étape « Running TypeScript »
+(« JavaScript heap out of memory ») : Node se limite à 2 Go, le projet en demande plus.
+Toujours lancer `NODE_OPTIONS=--max-old-space-size=4096 npm run build` (skill `/deploy`).
+Le VPS a 8 Go de RAM, pas de swap. Un build échoué après « Creating an optimized production
+build » laisse le site **cassé** jusqu'au build suivant : relancer sans attendre.
+
 ### Une activité peut être réservée à certains élèves de la classe
 `Devoir.eleves` (2026-09-14) : toute route qui liste ou ouvre une activité pour un élève
 doit appliquer `eleveExclu(devoir.eleves, identite.eleveIds)` — les listes existantes le

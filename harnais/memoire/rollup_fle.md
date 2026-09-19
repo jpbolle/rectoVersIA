@@ -10,7 +10,10 @@
   `sequence` avec ligne du temps en serpentin, étapes théorie / activité, création sur
   place ; parcours élève). JP a **vu le serpentin** à l'écran et l'a fait évoluer trois
   fois dans la soirée ; **le reste n'a pas été testé**. `npx tsc --noEmit` passe.
-  **Rien n'est déployé, rien n'est commité** (JP commite lui-même).
+  **Commité, poussé et DÉPLOYÉ par JP le 2026-09-15** (commit « daspalecte - modules et
+  parcours ») — donc **en production sans avoir été testé** pour les étapes 3-4-5 et la
+  restriction d'élèves généralisée. Le premier build VPS a planté (mémoire), relancé avec
+  `NODE_OPTIONS=--max-old-space-size=4096` : réglé.
 - Restriction d'élèves **généralisée à toutes les activités** (`Devoir.eleves`) : à tester
   aussi sur une activité classique.
 - Étape 6 (Daspalecte branché) : pas commencée.

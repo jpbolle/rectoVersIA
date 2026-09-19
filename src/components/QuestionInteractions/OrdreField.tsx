@@ -18,7 +18,7 @@
 
 import { useRef, useState } from 'react';
 import type { LectureAnswer, LectureQuestion } from '@/types/lecture';
-import { dragProps, creerFantome, type DragHandlers, type Fantome } from './pointerDrag';
+import { dragProps, creerFantome, useFantome, type DragHandlers } from './pointerDrag';
 import JetonContenu from './Jeton';
 import styles from './QuestionInteractions.module.css';
 
@@ -63,9 +63,13 @@ export default function OrdreField({
   const vertical = items.some((j) => j.kind === 'texte');
 
   const zoneRef = useRef<HTMLDivElement | null>(null);
-  const fantomeRef = useRef<Fantome | null>(null);
+  const fantomeRef = useFantome();
   const [enCours, setEnCours] = useState<string | null>(null);
   const [provisoire, setProvisoire] = useState<string[] | null>(null);
+  // Le même ordre provisoire, lisible au LÂCHER : les gestionnaires du geste
+  // sont ceux du rendu où le doigt s'est posé, ils y voient `provisoire` à
+  // null — et le jeton reprenait sa place de départ.
+  const provisoireRef = useRef<string[] | null>(null);
   const [arme, setArme] = useState<string | null>(null);
   // Taille du trou — mesurée une fois, à la saisie. En état et non en ref :
   // c'est une valeur d'affichage, elle doit déclencher le rendu du trou.
@@ -104,7 +108,9 @@ export default function OrdreField({
 
   const deplacerVers = (id: string, index: number) => {
     const sans = ordre.filter((x) => x !== id);
-    setProvisoire([...sans.slice(0, index), id, ...sans.slice(index)]);
+    const suivant = [...sans.slice(0, index), id, ...sans.slice(index)];
+    provisoireRef.current = suivant;
+    setProvisoire(suivant);
   };
 
   const handlersDe = (id: string): DragHandlers => ({
@@ -117,6 +123,7 @@ export default function OrdreField({
         setTaille(f.taille);
       }
       setEnCours(id);
+      provisoireRef.current = ordre;
       setProvisoire(ordre);
     },
     onMove(e) {
@@ -127,7 +134,8 @@ export default function OrdreField({
       fantomeRef.current?.detruire();
       fantomeRef.current = null;
       setEnCours(null);
-      const fige = provisoire ?? ordre;
+      const fige = provisoireRef.current ?? ordre;
+      provisoireRef.current = null;
       setProvisoire(null);
       if (!disabled) onChange({ ordre: fige });
     },

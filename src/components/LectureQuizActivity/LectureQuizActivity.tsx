@@ -343,8 +343,13 @@ export function QuestionCard({
         />
       )}
 
-      {/* Image de la question : atelier de tracé complet */}
-      {question.image && (
+      {/* Image de la question : atelier de tracé complet.
+          ⚠ Jamais pour l'image à annoter : son image EST l'exercice, rendue
+          par `AnnotationField`. Servie deux fois, l'élève tombait d'abord sur
+          l'atelier de tracé — sans étiquettes ni cases — et l'exercice
+          n'arrivait qu'une image plus bas (vu en classe le 2026-09-18 : les
+          élèves n'ont jamais trouvé les zones de dépôt). */}
+      {question.image && question.type !== 'image-annotee' && (
         <ImageWorkspace
           imageUrl={question.image.url}
           shapes={answer.shapes || []}

@@ -15,7 +15,9 @@
 // l'ajouter là-bas, c'est livrer la réponse — la fuite a déjà eu lieu une
 // fois sur les QCM de recherche.
 
+import { useState } from 'react';
 import type {
+  AnnotationForme,
   LectureAnnotationCible,
   LectureEnsemble,
   LectureJeton,
@@ -808,28 +810,82 @@ export function EditeurOrdre({ q, update, disabled, choisirMedia }: EditeurProps
 // IMAGE À ANNOTER
 // ════════════════════════════════════════════════════════════════
 
+/** Les trois outils de zone, dans l'ordre du sélecteur. */
+const OUTILS_ZONE: { id: AnnotationForme; icone: string; libelle: string; aide: string }[] = [
+  { id: 'point', icone: '●', libelle: 'Point', aide: 'Cliquez sur l’image pour poser un point.' },
+  { id: 'rect', icone: '▭', libelle: 'Encadré', aide: 'Tracez un encadré en glissant sur l’image.' },
+  { id: 'cercle', icone: '◯', libelle: 'Zone circulaire', aide: 'Tracez une zone en glissant sur l’image.' },
+];
+
+/** Un clic sans glisser avec l'outil encadré ou cercle pose une zone de cette taille (%). */
+const ZONE_DEFAUT = { w: 14, h: 10 };
+/** En deçà (en %), le geste est un clic et non un tracé. */
+const SEUIL_TRACE = 1.5;
+
 export function EditeurImageAnnotee({ q, update, disabled }: EditeurProps) {
   const cibles = q.annotations ?? [];
+  const [outil, setOutil] = useState<AnnotationForme>('point');
+  // Le tracé en cours, pour le voir grandir sous la souris
+  const [brouillon, setBrouillon] = useState<{ x: number; y: number; w: number; h: number } | null>(
+    null
+  );
 
-  const poserPoint = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (disabled) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = Math.round(((e.clientX - r.left) / r.width) * 1000) / 10;
-    const y = Math.round(((e.clientY - r.top) / r.height) * 1000) / 10;
+  const ajouter = (zone: Omit<LectureAnnotationCible, 'id' | 'label'>) =>
     update({
-      annotations: [
-        ...cibles,
-        {
-          id: `a-${Date.now()}-${cibles.length}`,
-          label: '',
-          x,
-          y,
-          // Le côté se devine du clic : un point à gauche de l'image appelle
-          // une case à gauche. Le prof peut toujours le changer.
-          cote: x < 50 ? 'gauche' : 'droite',
-        },
-      ],
+      annotations: [...cibles, { id: `a-${Date.now()}-${cibles.length}`, label: '', ...zone }],
     });
+
+  // Tout se joue au pointeur, écouté sur `window` : le tracé continue même
+  // si la souris sort un instant de l'image.
+  const commencer = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (disabled || e.button > 0) return;
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    const enPct = (ev: { clientX: number; clientY: number }) => ({
+      x: Math.max(0, Math.min(100, ((ev.clientX - r.left) / r.width) * 100)),
+      y: Math.max(0, Math.min(100, ((ev.clientY - r.top) / r.height) * 100)),
+    });
+    const arrondi = (v: number) => Math.round(v * 10) / 10;
+    const depart = enPct(e);
+    const boite = (ev: PointerEvent) => {
+      const p = enPct(ev);
+      return {
+        x: Math.min(depart.x, p.x),
+        y: Math.min(depart.y, p.y),
+        w: Math.abs(p.x - depart.x),
+        h: Math.abs(p.y - depart.y),
+      };
+    };
+
+    if (outil === 'point') {
+      ajouter({ x: arrondi(depart.x), y: arrondi(depart.y), forme: 'point' });
+      return;
+    }
+
+    const move = (ev: PointerEvent) => setBrouillon(boite(ev));
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      setBrouillon(null);
+      let b = boite(ev);
+      // Un simple clic pose une zone de taille par défaut, centrée sur le clic
+      if (b.w < SEUIL_TRACE && b.h < SEUIL_TRACE) {
+        b = {
+          x: Math.max(0, Math.min(100 - ZONE_DEFAUT.w, depart.x - ZONE_DEFAUT.w / 2)),
+          y: Math.max(0, Math.min(100 - ZONE_DEFAUT.h, depart.y - ZONE_DEFAUT.h / 2)),
+          ...ZONE_DEFAUT,
+        };
+      }
+      ajouter({
+        forme: outil,
+        x: arrondi(b.x),
+        y: arrondi(b.y),
+        w: Math.max(1, arrondi(b.w)),
+        h: Math.max(1, arrondi(b.h)),
+      });
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   };
 
   const maj = (id: string, partial: Partial<LectureAnnotationCible>) =>
@@ -844,86 +900,96 @@ export function EditeurImageAnnotee({ q, update, disabled }: EditeurProps) {
     );
   }
 
+  const aide = OUTILS_ZONE.find((o) => o.id === outil)?.aide;
+
   return (
     <div className={styles.annotEditeur}>
       <div className={styles.fieldLabel}>
-        Points à annoter — cliquez sur l&apos;image pour en poser un
+        Zones à annoter
         <span
           className={styles.info}
-          title="Chaque point reçoit une case de dépôt, à gauche ou à droite de l'image, reliée à lui par un trait. L'élève tire les étiquettes de la réserve vers les cases."
+          title="L'élève dépose chaque étiquette directement sur l'image, dans sa zone. Une zone peut être un point, un encadré ou une zone circulaire."
         >
           i
         </span>
       </div>
 
-      <div className={styles.annotToile} onClick={poserPoint}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={q.image.url} alt="" />
-        {cibles.map((c, i) => (
-          <span key={c.id} className={styles.annotPoint} style={{ left: `${c.x}%`, top: `${c.y}%` }}>
-            {i + 1}
-          </span>
+      <div className={styles.modeRow}>
+        {OUTILS_ZONE.map((o) => (
+          <label key={o.id} className={styles.modeOpt}>
+            <input
+              type="radio"
+              checked={outil === o.id}
+              onChange={() => setOutil(o.id)}
+              disabled={disabled}
+            />
+            {o.icone} {o.libelle}
+          </label>
         ))}
       </div>
+      <p className={styles.hint}>{aide}</p>
 
-      {cibles.length === 0 && (
-        <p className={styles.hint}>Aucun point posé. Cliquez sur l&apos;image.</p>
-      )}
+      <div className={styles.annotToile} onPointerDown={commencer}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={q.image.url} alt="" draggable={false} />
+        {cibles.map((c, i) =>
+          c.forme === 'rect' || c.forme === 'cercle' ? (
+            <span
+              key={c.id}
+              className={`${styles.annotZone} ${c.forme === 'cercle' ? styles.annotZoneCercle : ''}`}
+              style={{ left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%` }}
+            >
+              <span className={styles.annotZoneNum}>{i + 1}</span>
+            </span>
+          ) : (
+            <span
+              key={c.id}
+              className={styles.annotPoint}
+              style={{ left: `${c.x}%`, top: `${c.y}%` }}
+            >
+              {i + 1}
+            </span>
+          )
+        )}
+        {brouillon && (
+          <span
+            className={`${styles.annotZone} ${outil === 'cercle' ? styles.annotZoneCercle : ''}`}
+            style={{
+              left: `${brouillon.x}%`,
+              top: `${brouillon.y}%`,
+              width: `${brouillon.w}%`,
+              height: `${brouillon.h}%`,
+            }}
+          />
+        )}
+      </div>
+
+      {cibles.length === 0 && <p className={styles.hint}>Aucune zone posée.</p>}
 
       {cibles.map((c, i) => (
         <div key={c.id} className={styles.annotLigne}>
           <span className={styles.jetonRang}>{i + 1}</span>
+          <span className={styles.annotForme} title={OUTILS_ZONE.find((o) => o.id === (c.forme ?? 'point'))?.libelle}>
+            {OUTILS_ZONE.find((o) => o.id === (c.forme ?? 'point'))?.icone}
+          </span>
           <input
             type="text"
             value={c.label}
             onChange={(e) => maj(c.id, { label: e.target.value })}
-            placeholder="Étiquette attendue à cet endroit"
+            placeholder="Étiquette attendue dans cette zone"
             disabled={disabled}
           />
-          <select
-            value={c.cote}
-            onChange={(e) => maj(c.id, { cote: e.target.value as 'gauche' | 'droite' })}
-            disabled={disabled}
-            title="De quel côté placer la case"
-          >
-            <option value="gauche">← Case à gauche</option>
-            <option value="droite">Case à droite →</option>
-          </select>
           <button
             type="button"
             className={styles.choiceDel}
             onClick={() => update({ annotations: cibles.filter((x) => x.id !== c.id) })}
             disabled={disabled}
-            title="Supprimer ce point"
+            title="Supprimer cette zone"
           >
             ✕
           </button>
         </div>
       ))}
-
-      <div className={styles.fieldLabel} style={{ marginTop: 10 }}>
-        Réserve d&apos;étiquettes
-      </div>
-      <div className={styles.modeRow}>
-        <label className={styles.modeOpt}>
-          <input
-            type="radio"
-            checked={(q.annotationsReserve ?? 'bas') === 'bas'}
-            onChange={() => update({ annotationsReserve: 'bas' })}
-            disabled={disabled}
-          />
-          Sous l&apos;image
-        </label>
-        <label className={styles.modeOpt}>
-          <input
-            type="radio"
-            checked={q.annotationsReserve === 'haut'}
-            onChange={() => update({ annotationsReserve: 'haut' })}
-            disabled={disabled}
-          />
-          Au-dessus de l&apos;image
-        </label>
-      </div>
     </div>
   );
 }

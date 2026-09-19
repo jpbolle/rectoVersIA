@@ -83,7 +83,6 @@ function emptyQuestion(type: LectureQuestionType): LectureQuestion {
   }
   if (type === 'image-annotee') {
     q.annotations = [];
-    q.annotationsReserve = 'bas';
   }
   if (type === 'ensembles') {
     q.ensembles = [

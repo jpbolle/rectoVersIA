@@ -1105,6 +1105,9 @@
   border: 1px solid var(--c-border);
   border-radius: 8px;
   overflow: hidden;
+  /* Le tracé se fait au pointeur : pas de défilement ni de sélection */
+  touch-action: none;
+  user-select: none;
 }
 .annotToile img { display: block; max-width: 100%; height: auto; }
 .annotPoint {
@@ -1123,6 +1126,38 @@
   justify-content: center;
   pointer-events: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+/* Encadré ou zone circulaire, tracé par le prof */
+.annotZone {
+  position: absolute;
+  border: 2px dashed var(--c-accent);
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.annotZoneCercle { border-radius: 50%; }
+.annotZoneNum {
+  position: absolute;
+  top: -9px;
+  left: -9px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.annotForme {
+  width: 18px;
+  text-align: center;
+  color: var(--c-accent);
+  font-size: 13px;
+  flex-shrink: 0;
 }
 .annotLigne {
   display: flex;

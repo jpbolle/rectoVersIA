@@ -6,8 +6,10 @@
    ⚠ Les quatre teintes EXCLUENT le vert et le rouge, et ce n'est pas un goût :
    ces deux couleurs sont réservées à la révélation. Une case verte pendant que
    la question court se lirait comme la bonne réponse.
-   La FORME (▲ ◆ ● ■) double la couleur : elle nomme la case à voix haute
-   (« la case losange ») et reste lisible pour qui distingue mal les teintes. */
+   Le SYMBOLE littéraire (masque, loupe, épée…) double la couleur : il nomme
+   la case à voix haute (« la case du masque ») et reste lisible pour qui
+   distingue mal les teintes. Huit teintes, huit symboles : aucune reprise
+   jusqu'à huit propositions. */
 
 .grille,
 .ligneJuste,
@@ -70,9 +72,9 @@
 }
 
 .forme {
-  font-size: 26px;
+  display: flex;
   line-height: 1;
-  opacity: 0.85;
+  opacity: 0.9;
   flex-shrink: 0;
 }
 
@@ -80,11 +82,16 @@
   flex: 1;
 }
 
-/* Les quatre teintes de jeu — ni vert, ni rouge. */
+/* Les huit teintes de jeu — ni vert, ni rouge, et assez éloignées les unes
+   des autres pour se distinguer au projecteur. */
 .teinte0 { background: #3f6fa8; }  /* bleu ardoise */
 .teinte1 { background: #d4944c; }  /* ambre (l'accent Classica) */
 .teinte2 { background: #7a5a8e; }  /* violet prune */
 .teinte3 { background: #a2673f; }  /* brun cannelle */
+.teinte4 { background: #4a5160; }  /* gris anthracite */
+.teinte5 { background: #a8861f; }  /* ocre moutarde */
+.teinte6 { background: #4b4f9e; }  /* indigo */
+.teinte7 { background: #b0577a; }  /* vieux rose */
 
 /* ── Révélation ── */
 

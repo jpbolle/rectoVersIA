@@ -8,11 +8,40 @@
 // le QCM se joue ici en cases pleines, lisibles depuis le fond de la classe —
 // une liste de boutons ronds ne se lit pas à quatre mètres.
 
+import {
+  Drama,
+  Feather,
+  Hourglass,
+  KeyRound,
+  MirrorRound,
+  ScrollText,
+  Search,
+  Sword,
+  type LucideIcon,
+} from 'lucide-react';
 import type { LectureQuestion } from '@/types/lecture';
 import styles from './CompetitionQcm.module.css';
 
-/** Les quatre formes, dans l'ordre des quatre teintes. */
-const FORMES = ['▲', '◆', '●', '■'];
+/**
+ * Les symboles LITTÉRAIRES, dans l'ordre des huit teintes (choix de JP,
+ * 2026-09-19 : les formes ▲ ◆ ● ■ faisaient trop Kahoot). Le nom sert aussi à
+ * l'oral — « la case du masque ».
+ *
+ * HUIT symboles pour HUIT teintes : jusqu'à huit propositions, aucune case ne
+ * reprend la couleur ni le symbole d'une autre. Au-delà (rare), on reboucle —
+ * il faudrait alors une neuvième teinte qui ne soit ni verte ni rouge.
+ */
+const SYMBOLES: { Icone: LucideIcon; nom: string }[] = [
+  { Icone: Drama, nom: 'masque de théâtre' },
+  { Icone: Search, nom: 'loupe' },
+  { Icone: Sword, nom: 'épée' },
+  { Icone: Feather, nom: 'plume' },
+  { Icone: Hourglass, nom: 'sablier' },
+  { Icone: MirrorRound, nom: 'miroir' },
+  { Icone: ScrollText, nom: 'parchemin' },
+  { Icone: KeyRound, nom: 'clé' },
+];
+const NB_TEINTES = SYMBOLES.length;
 
 interface CompetitionQcmProps {
   question: LectureQuestion;
@@ -54,7 +83,8 @@ export default function CompetitionQcm({
   const Case = (i: number) => {
     const juste = bonnes.includes(i);
     const sien = choisis.includes(i);
-    const classes = [styles.caseChoix, styles[`teinte${i % 4}`]];
+    const classes = [styles.caseChoix, styles[`teinte${i % NB_TEINTES}`]];
+    const { Icone, nom } = SYMBOLES[i % NB_TEINTES];
     if (montreCorrige) {
       classes.push(juste ? styles.juste : sien ? styles.faux : styles.eteinte);
     } else if (sien) {
@@ -69,8 +99,8 @@ export default function CompetitionQcm({
           disabled={!ouverte}
           onClick={() => onChoisir(i)}
         >
-          <span className={styles.forme} aria-hidden="true">
-            {FORMES[i % 4]}
+          <span className={styles.forme} title={nom} aria-hidden="true">
+            <Icone size={30} strokeWidth={1.8} />
           </span>
           <span className={styles.libelle}>{choix[i]}</span>
           {parChoix && <span className={styles.pastille}>{parChoix[i] ?? 0}</span>}

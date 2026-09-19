@@ -12,7 +12,7 @@
 import { useRef, useState } from 'react';
 import type { LectureAnswer, LectureQuestion } from '@/types/lecture';
 import { ordreAffichage } from '@/types/lecture';
-import { dragProps, cibleSous, creerFantome, type DragHandlers, type Fantome } from './pointerDrag';
+import { dragProps, cibleSous, creerFantome, useFantome, type DragHandlers } from './pointerDrag';
 import JetonContenu from './Jeton';
 import styles from './QuestionInteractions.module.css';
 
@@ -75,7 +75,7 @@ export default function EnsemblesField({
   const corrige = showCorrection ? question.ensembleAffectations : undefined;
 
   const racineRef = useRef<HTMLDivElement | null>(null);
-  const fantomeRef = useRef<Fantome | null>(null);
+  const fantomeRef = useFantome();
   const [enCours, setEnCours] = useState<string | null>(null);
   const [survol, setSurvol] = useState<string | null>(null);
   const [arme, setArme] = useState<string | null>(null);

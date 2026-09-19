@@ -264,8 +264,9 @@ export default function LectureQuizReview({
               </div>
             )}
 
-            {/* Image + tracés de l'élève (lecture seule) */}
-            {q.image && (
+            {/* Image + tracés de l'élève (lecture seule) — pas pour l'image
+                à annoter, dont l'image est déjà l'exercice lui-même */}
+            {q.image && q.type !== 'image-annotee' && (
               <div className={styles.imgBlock}>
                 <DrawCanvas
                   imageUrl={q.image.url}

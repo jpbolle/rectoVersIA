@@ -442,19 +442,28 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
               const x = typeof c.x === 'number' ? c.x : NaN;
               const y = typeof c.y === 'number' ? c.y : NaN;
               if (!label || !Number.isFinite(x) || !Number.isFinite(y)) return null;
-              return {
+              const borne = (v: number) => Math.max(0, Math.min(100, v));
+              const cible: LectureAnnotationCible = {
                 id: typeof c.id === 'string' && c.id ? c.id : `a-${i}`,
                 label,
-                x: Math.max(0, Math.min(100, x)),
-                y: Math.max(0, Math.min(100, y)),
-                cote: c.cote === 'droite' ? ('droite' as const) : ('gauche' as const),
+                x: borne(x),
+                y: borne(y),
               };
+              // Un encadré ou un cercle sans taille lisible redevient un point :
+              // une zone de 0 % ne recevrait jamais rien.
+              const w = typeof c.w === 'number' ? c.w : NaN;
+              const h = typeof c.h === 'number' ? c.h : NaN;
+              if ((c.forme === 'rect' || c.forme === 'cercle') && w >= 1 && h >= 1) {
+                cible.forme = c.forme;
+                cible.w = Math.min(w, 100 - cible.x);
+                cible.h = Math.min(h, 100 - cible.y);
+              }
+              return cible;
             })
             .filter((c): c is LectureAnnotationCible => c !== null)
         : [];
       if (cibles.length === 0) continue;
       cleaned.annotations = cibles;
-      cleaned.annotationsReserve = question.annotationsReserve === 'haut' ? 'haut' : 'bas';
     }
 
     if (type === 'ensembles') {

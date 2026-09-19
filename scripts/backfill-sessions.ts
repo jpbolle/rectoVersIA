@@ -228,6 +228,7 @@ async function main() {
   const travauxSnap = await firestore.collection('travaux').get();
   let poses = 0;
   let orphelins = 0;
+  let horsActivite = 0;
   for (const doc of travauxSnap.docs) {
     const t = doc.data();
     if (t.sessionId) continue;
@@ -241,13 +242,26 @@ async function main() {
       orphelins++;
       continue;
     }
-    batch.update(doc.ref, { sessionId: sessionId(t.devoirId, classeId) });
+    // La classe de l'élève n'est pas (ou plus) une classe de l'activité —
+    // élève qui a changé de classe : rattacher sa copie à une session qui
+    // n'existe pas la ferait disparaître des DEUX listes du prof (ni dans une
+    // classe, ni dans « Copies sans classe »). On la laisse sans classe.
+    // (Constaté le 2026-09-19 sur une copie de DEV-20260831-6632.)
+    const cible = sessionId(t.devoirId, classeId);
+    if (!sessionsExistantes.has(cible)) {
+      horsActivite++;
+      continue;
+    }
+    batch.update(doc.ref, { sessionId: cible });
     poses++;
     ops++;
     if (ops >= 400) await commit();
   }
   await commit();
-  console.log(`   ${poses} travaux rattachés · ${orphelins} sans classe retrouvable`);
+  console.log(
+    `   ${poses} travaux rattachés · ${orphelins} sans classe retrouvable · ` +
+      `${horsActivite} dont la classe n'est pas une classe de l'activité (laissés tels quels)`
+  );
 
   console.log(
     APPLY ? '✅ Terminé.' : '🔍 Simulation terminée — relancer avec --apply pour écrire.'

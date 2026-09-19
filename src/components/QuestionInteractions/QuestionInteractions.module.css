@@ -290,108 +290,115 @@
   font-style: italic;
 }
 
-/* ═══════════════ MOTEUR DÉPLACER — image à annoter ═══════════════ */
+/* ═══════════════ MOTEUR DÉPLACER — image à annoter ═══════════════
+   Refonte du 2026-09-19 : on dépose SUR l'image, dans les zones du prof.
+   Les zones doivent se voir sur n'importe quelle image — schéma clair,
+   photo sombre : bordure orange en tirets sur un voile blanc. */
 
-.annotWrap { position: relative; }
-.annotGrid {
-  display: grid;
-  grid-template-columns: 168px 1fr 168px;
-  gap: 16px;
-  align-items: center;
+/* La réserve reste en vue pendant qu'on fait défiler : on ne peut pas faire
+   défiler la page en tenant une étiquette. Aucune marge verticale négative
+   (cf. gotcha `position: sticky` dans init.md). */
+.annotBank {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 10px -6px rgba(0, 0, 0, 0.25);
 }
-@media (max-width: 1000px) {
-  .annotGrid { grid-template-columns: 124px 1fr 124px; gap: 8px; }
-}
-@media (max-width: 700px) {
-  .annotGrid { grid-template-columns: 100px 1fr 100px; gap: 6px; }
-}
-.slotCol { display: flex; flex-direction: column; gap: 14px; }
-.slot {
+
+.annotCadre { display: flex; justify-content: center; }
+/* La scène épouse EXACTEMENT l'image : les zones sont en % de cette boîte */
+.annotStage {
   position: relative;
-  z-index: 3;
-  min-height: 40px;
-  border: 2px dashed var(--c-border-strong);
-  border-radius: 999px;
-  background: var(--c-bg-card);
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
+  display: inline-block;
+  max-width: 100%;
 }
-.slotCol.left .slot { justify-content: flex-end; }
-.slotCol.right .slot { justify-content: flex-start; }
-.slot.dropping {
-  border-style: solid;
-  border-color: var(--c-accent);
-  background: #fffaf2;
-}
-.slot.ok { border-style: solid; border-color: var(--c-success); }
-.slot.ko { border-style: solid; border-color: var(--c-danger); }
-.slot .token {
-  box-shadow: none;
-  padding: 4px 10px;
-  font-size: 12.5px;
-  background: var(--c-bg-element);
+.annotStage img {
   display: block;
   max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* Ce qu'on attendait dans une case ratée — dit sur place, pas dans un
-   bandeau au loin où il faudrait le rapprocher soi-même de la case */
-.attendu {
-  font-size: 11px;
-  font-style: italic;
-  color: var(--c-danger);
-  padding: 0 6px;
-}
-
-.annotStage { position: relative; }
-.annotStage img {
-  width: 100%;
+  /* Réserve + image tiennent ensemble sur l'écran d'un Chromebook */
+  max-height: 65vh;
+  width: auto;
   height: auto;
-  display: block;
   border: 1px solid var(--c-border);
   border-radius: var(--c-radius-lg);
   background: var(--c-bg-card);
+  user-select: none;
 }
-/* Le point posé par le prof : un repère, pas une cible — l'élève n'y touche
-   jamais, il remplit la case qui lui est reliée */
-.anchor {
+
+.zone {
   position: absolute;
-  width: 21px;
-  height: 21px;
-  margin: -10.5px 0 0 -10.5px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  background: var(--c-primary);
-  color: #fff;
-  font-size: 10.5px;
-  font-weight: 700;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 2px dashed var(--c-accent);
+  background: rgba(255, 255, 255, 0.55);
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.zone_rect { border-radius: 6px; }
+.zone_cercle { border-radius: 50%; }
+/* Le point : une cible assez grosse pour le doigt, centrée sur ses
+   coordonnées. Rempli, il épouse l'étiquette posée. */
+.zone_point {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.zone_point::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-accent);
+}
+.zone_point.zoneRemplie {
+  width: auto;
+  height: auto;
+  border-radius: var(--c-radius-lg);
+  padding: 2px;
+}
+.zone_point.zoneRemplie::after { display: none; }
+/* Une étiquette est armée : toutes les zones appellent le tap */
+.zone.zoneAppel { box-shadow: 0 0 0 3px rgba(212, 148, 76, 0.35); }
+.zone.dropping {
+  border-style: solid;
+  background: rgba(255, 250, 242, 0.9);
+  box-shadow: 0 0 0 4px rgba(212, 148, 76, 0.4);
+}
+.zone.zoneRemplie { border-style: solid; background: rgba(255, 255, 255, 0.35); }
+.zone.ok { border-style: solid; border-color: var(--c-success); }
+.zone.ko { border-style: solid; border-color: var(--c-danger); }
+
+/* L'étiquette posée : compacte, et lisible sur l'image */
+.zone .token {
+  padding: 4px 9px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.zone.ok .token { border-color: var(--c-success); background: #f2faf5; }
+.zone.ko .token { border-color: var(--c-danger); background: #fdf4f4; }
+
+/* Ce qu'on attendait dans une zone ratée — dit sur place, pas dans un
+   bandeau au loin où il faudrait le rapprocher soi-même de la zone */
+.attendu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, 3px);
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--c-danger);
+  background: #fff;
+  border: 1px solid var(--c-danger);
+  border-radius: 999px;
+  padding: 1px 8px;
   z-index: 3;
   pointer-events: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
-/* Les traits case ↔ point : posés par le prof, jamais par l'élève */
-.leaderSvg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: visible;
-  z-index: 1;
-}
-.leaderSvg line {
-  stroke: var(--c-border-strong);
-  stroke-width: 1.5;
-  stroke-dasharray: 3 3;
-}
-.leaderSvg line.ok { stroke: var(--c-success); stroke-dasharray: none; }
-.leaderSvg line.ko { stroke: var(--c-danger); stroke-dasharray: none; }
 
 /* ═══════════════ MATRICE ═══════════════ */
 

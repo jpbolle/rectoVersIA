@@ -2,25 +2,26 @@
 
 // ═══ MOTEUR DÉPLACER — image à annoter ═══
 //
-// Disposition arrêtée avec JP le 2026-08-16 :
-//   · la RÉSERVE d'étiquettes sous l'image (ou au-dessus, au choix du prof) ;
-//   · des CASES DE DÉPÔT à gauche et à droite de l'image ;
-//   · chaque case est reliée en permanence, par un trait, à son point sur
-//     l'image. Ce trait est posé par le PROF : l'élève n'y touche jamais, il
-//     ne fait que remplir la case.
+// Refonte du 2026-09-19. L'élève dépose ses étiquettes SUR L'IMAGE MÊME, dans
+// les zones posées par le prof (point, encadré, cercle). Il n'y a plus de
+// case sur le côté reliée à un point par un trait : joué en classe sur des
+// Chromebooks, personne ne les avait trouvées — petites, loin de l'image, et
+// la réserve à une image de distance.
 //
-// La numérotation ne figure QUE sur le point, jamais sur la case (demande de
-// JP) : deux fois le même chiffre à 3 cm d'écart n'aide personne, le trait
-// dit déjà quelle case va avec quel point.
+// Deux règles tiennent l'exercice sur un écran d'entrée de gamme :
+//   · la réserve est AU-DESSUS de l'image, et collante : on ne peut pas faire
+//     défiler la page en tenant une étiquette sous le doigt ;
+//   · l'image est plafonnée en hauteur (≈ 65 % de l'écran) : réserve et zones
+//     tiennent ensemble à l'écran, sans défilement pendant le geste.
 //
-// C'est le même moteur que les ensembles — une case est une boîte qui ne
+// C'est le même moteur que les ensembles — une zone est une boîte qui ne
 // tient qu'une étiquette. D'où l'échange automatique quand on en dépose une
 // seconde : elle ne se perd pas, elle repart d'où venait la nouvelle.
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { LectureAnswer, LectureJeton, LectureQuestion } from '@/types/lecture';
+import { useMemo, useRef, useState } from 'react';
+import type { LectureAnnotationCible, LectureAnswer, LectureJeton, LectureQuestion } from '@/types/lecture';
 import { melangeStable } from '@/types/lecture';
-import { dragProps, cibleSous, creerFantome, type DragHandlers, type Fantome } from './pointerDrag';
+import { dragProps, cibleSous, creerFantome, useFantome, type DragHandlers } from './pointerDrag';
 import styles from './QuestionInteractions.module.css';
 
 interface Props {
@@ -32,6 +33,18 @@ interface Props {
 }
 
 const RESERVE = '__reserve__';
+
+/**
+ * Où se place une zone sur l'image, en % : un point est centré sur ses
+ * coordonnées (sa taille est fixe, en pixels, dans la feuille de style) ; un
+ * encadré ou un cercle part de son coin haut-gauche.
+ */
+export function styleDeZone(c: LectureAnnotationCible): React.CSSProperties {
+  if (c.forme === 'rect' || c.forme === 'cercle') {
+    return { left: `${c.x}%`, top: `${c.y}%`, width: `${c.w ?? 0}%`, height: `${c.h ?? 0}%` };
+  }
+  return { left: `${c.x}%`, top: `${c.y}%` };
+}
 
 function Etiquette({
   id,
@@ -60,8 +73,6 @@ export default function AnnotationField({
   disabled,
   showCorrection,
 }: Props) {
-  // Mémoïsés : ces `?? []` créent un objet neuf à chaque rendu, ce qui
-  // relancerait la mesure des traits en boucle.
   const cibles = useMemo(() => question.annotations ?? [], [question.annotations]);
   const placements = useMemo(() => answer.annotations ?? {}, [answer.annotations]);
 
@@ -79,80 +90,28 @@ export default function AnnotationField({
   );
   const libelle = new Map(etiquettes.map((e) => [e.id, e.texte ?? '']));
 
-  const gauche = cibles.filter((c) => c.cote !== 'droite');
-  const droite = cibles.filter((c) => c.cote === 'droite');
-  const reserveEnHaut = question.annotationsReserve === 'haut';
-
   const racineRef = useRef<HTMLDivElement | null>(null);
-  const fantomeRef = useRef<Fantome | null>(null);
+  const fantomeRef = useFantome();
   const [enCours, setEnCours] = useState<string | null>(null);
   const [survol, setSurvol] = useState<string | null>(null);
   const [arme, setArme] = useState<string | null>(null);
-  const [traits, setTraits] = useState<
-    { id: string; x1: number; y1: number; x2: number; y2: number }[]
-  >([]);
 
-  // Les traits se mesurent sur le DOM réel : la largeur de la colonne change
-  // d'un écran à l'autre, et une coordonnée en dur se décalerait partout.
-  const mesurer = useCallback(() => {
-    const racine = racineRef.current;
-    if (!racine) return;
-    const z = racine.getBoundingClientRect();
-    const suivant: typeof traits = [];
-    racine.querySelectorAll<HTMLElement>('[data-case]').forEach((caseEl) => {
-      const id = caseEl.dataset.case!;
-      const point = racine.querySelector<HTMLElement>(`[data-point="${id}"]`);
-      if (!point) return;
-      const rc = caseEl.getBoundingClientRect();
-      const rp = point.getBoundingClientRect();
-      const aGauche = caseEl.dataset.cote !== 'droite';
-      suivant.push({
-        id,
-        x1: (aGauche ? rc.right : rc.left) - z.left,
-        y1: rc.top + rc.height / 2 - z.top,
-        x2: rp.left + rp.width / 2 - z.left,
-        y2: rp.top + rp.height / 2 - z.top,
-      });
-    });
-    setTraits(suivant);
-  }, []);
-
-  // Mesure APRÈS la pose du DOM — le seul moyen de connaître la géométrie
-  // réelle des cases, que React ne connaît pas. `useLayoutEffect` pour que
-  // les traits soient tracés avant la peinture, sinon ils clignotent.
-  useLayoutEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    mesurer();
-  }, [mesurer, cibles.length, placements]);
-
-  useEffect(() => {
-    const racine = racineRef.current;
-    if (!racine) return;
-    const ro = new ResizeObserver(() => mesurer());
-    ro.observe(racine);
-    window.addEventListener('resize', mesurer);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', mesurer);
-    };
-  }, [mesurer]);
-
-  const poser = (idEtiquette: string, idCase: string) => {
+  const poser = (idEtiquette: string, idZone: string) => {
     if (disabled) return;
     const suivant = { ...placements };
     // D'où vient l'étiquette ? (pour l'échange)
     const origine = Object.keys(suivant).find((k) => suivant[k] === idEtiquette);
     if (origine) delete suivant[origine];
 
-    if (idCase === RESERVE) {
+    if (idZone === RESERVE) {
       onChange({ annotations: suivant });
       return;
     }
-    // Une case ne tient qu'une étiquette : l'occupante repart d'où venait la
+    // Une zone ne tient qu'une étiquette : l'occupante repart d'où venait la
     // nouvelle — un échange, jamais une éjection dans le vide.
-    const occupante = suivant[idCase];
+    const occupante = suivant[idZone];
     if (occupante && origine) suivant[origine] = occupante;
-    suivant[idCase] = idEtiquette;
+    suivant[idZone] = idEtiquette;
     onChange({ annotations: suivant });
   };
 
@@ -182,16 +141,19 @@ export default function AnnotationField({
     },
   });
 
-  const auTap = (idCase: string) => () => {
+  const auTap = (idZone: string) => (e: React.MouseEvent) => {
     if (!arme) return;
-    poser(arme, idCase);
+    // Le tap sur une étiquette déjà posée l'arme elle-même : ne pas le
+    // prendre en plus pour un dépôt dans la zone qui la contient.
+    e.stopPropagation();
+    poser(arme, idZone);
     setArme(null);
   };
 
-  const verdict = (idCase: string): boolean | null => {
+  const verdict = (idZone: string): boolean | null => {
     if (!showCorrection) return null;
-    // L'étiquette porte l'id de sa case attendue : juste = les deux coïncident
-    return placements[idCase] === idCase;
+    // L'étiquette porte l'id de sa zone attendue : juste = les deux coïncident
+    return placements[idZone] === idZone;
   };
 
   const classeEtiquette = (id: string) =>
@@ -204,115 +166,82 @@ export default function AnnotationField({
       .filter(Boolean)
       .join(' ');
 
-  const colonne = (liste: typeof cibles, cote: 'left' | 'right') => (
-    <div className={`${styles.slotCol} ${styles[cote]}`}>
-      {liste.map((c) => {
-        const posee = placements[c.id];
-        const juste = verdict(c.id);
-        return (
-          <div
-            key={c.id}
-            data-case={c.id}
-            data-cote={c.cote === 'droite' ? 'droite' : 'gauche'}
-            onClick={auTap(c.id)}
-            className={[
-              styles.slot,
-              survol === c.id ? styles.dropping : '',
-              juste === true ? styles.ok : '',
-              juste === false ? styles.ko : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-          >
-            {posee && (
-              <Etiquette
-                id={posee}
-                texte={libelle.get(posee) ?? ''}
-                enabled={!disabled}
-                handlers={handlersDe(posee)}
-                className={classeEtiquette(posee)}
-              />
-            )}
-            {/* Ce qu'on attendait, dit SUR la case — pas dans un bandeau au
-                loin qu'il faudrait rapprocher soi-même du bon endroit */}
-            {juste === false && <span className={styles.attendu}>{c.label}</span>}
-          </div>
-        );
-      })}
-    </div>
-  );
-
-  const reserve = (
-    <div
-      data-boite={RESERVE}
-      onClick={auTap(RESERVE)}
-      className={`${styles.bank} ${survol === RESERVE ? styles.dropping : ''}`}
-      style={reserveEnHaut ? { marginBottom: 16 } : { marginTop: 16 }}
-    >
-      <span className={styles.bankLabel}>Étiquettes à placer</span>
-      {etiquettes
-        .filter((e) => !Object.values(placements).includes(e.id))
-        .map((e) => (
-          <Etiquette
-            key={e.id}
-            id={e.id}
-            texte={e.texte ?? ''}
-            enabled={!disabled}
-            handlers={handlersDe(e.id)}
-            className={classeEtiquette(e.id)}
-          />
-        ))}
-    </div>
-  );
+  const restantes = etiquettes.filter((e) => !Object.values(placements).includes(e.id));
 
   return (
-    <div ref={racineRef} className={styles.annotWrap}>
+    <div ref={racineRef}>
       <p className={styles.hint}>
-        Fais glisser une étiquette dans une case — ou tape-la, puis tape la case.
+        Fais glisser chaque étiquette sur l&apos;image, dans sa zone — ou tape-la, puis tape la
+        zone.
       </p>
 
-      <svg className={styles.leaderSvg}>
-        {traits.map((t) => {
-          const juste = verdict(t.id);
-          return (
-            <line
-              key={t.id}
-              x1={t.x1}
-              y1={t.y1}
-              x2={t.x2}
-              y2={t.y2}
-              className={juste === true ? 'ok' : juste === false ? 'ko' : ''}
+      {!disabled && (
+        <div
+          data-boite={RESERVE}
+          onClick={auTap(RESERVE)}
+          className={`${styles.bank} ${styles.annotBank} ${survol === RESERVE ? styles.dropping : ''}`}
+        >
+          <span className={styles.bankLabel}>
+            {restantes.length === 0 ? 'Toutes les étiquettes sont placées' : 'Étiquettes à placer'}
+          </span>
+          {restantes.map((e) => (
+            <Etiquette
+              key={e.id}
+              id={e.id}
+              texte={e.texte ?? ''}
+              enabled={!disabled}
+              handlers={handlersDe(e.id)}
+              className={classeEtiquette(e.id)}
             />
-          );
-        })}
-      </svg>
+          ))}
+        </div>
+      )}
 
-      {reserveEnHaut && reserve}
-
-      <div className={styles.annotGrid}>
-        {colonne(gauche, 'left')}
-
+      <div className={styles.annotCadre}>
         <div className={styles.annotStage}>
           {question.image && (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={question.image.url} alt="Image à annoter" />
+            <img src={question.image.url} alt="Image à annoter" draggable={false} />
           )}
-          {cibles.map((c, i) => (
-            <span
-              key={c.id}
-              data-point={c.id}
-              className={styles.anchor}
-              style={{ left: `${c.x}%`, top: `${c.y}%` }}
-            >
-              {i + 1}
-            </span>
-          ))}
+          {cibles.map((c) => {
+            const posee = placements[c.id];
+            const juste = verdict(c.id);
+            const forme = c.forme === 'rect' || c.forme === 'cercle' ? c.forme : 'point';
+            return (
+              <div
+                key={c.id}
+                data-case={c.id}
+                onClick={auTap(c.id)}
+                style={styleDeZone(c)}
+                className={[
+                  styles.zone,
+                  styles[`zone_${forme}`],
+                  posee ? styles.zoneRemplie : '',
+                  arme && !disabled ? styles.zoneAppel : '',
+                  survol === c.id ? styles.dropping : '',
+                  juste === true ? styles.ok : '',
+                  juste === false ? styles.ko : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                {posee && (
+                  <Etiquette
+                    id={posee}
+                    texte={libelle.get(posee) ?? ''}
+                    enabled={!disabled}
+                    handlers={handlersDe(posee)}
+                    className={classeEtiquette(posee)}
+                  />
+                )}
+                {/* Ce qu'on attendait, dit SUR la zone — pas dans un bandeau
+                    au loin qu'il faudrait rapprocher soi-même du bon endroit */}
+                {juste === false && <span className={styles.attendu}>{c.label}</span>}
+              </div>
+            );
+          })}
         </div>
-
-        {colonne(droite, 'right')}
       </div>
-
-      {!reserveEnHaut && reserve}
     </div>
   );
 }

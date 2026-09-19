@@ -20,10 +20,11 @@
 import { adminDb } from '@/lib/firebase/admin';
 import {
   effacerReponses,
-  effectif,
   entree,
+  joueurs,
   ouvrirManche,
   reponsesA,
+  signalerPresence,
 } from '@/lib/manche-server';
 import type { Entree } from '@/lib/manche-server';
 import { DELAI_DEPART_MS, phaseEffective, tempsDeReponse } from '@/types/manche';
@@ -300,10 +301,12 @@ export async function vueDuSondage(
         })
       );
     }
+    vue.presents = joueurs(id);
     if (brute && estQuestion(brute)) {
+      const repondants = reponsesSondage(e, brute.id);
       vue.compteur = {
-        repondu: reponsesSondage(e, brute.id).size,
-        attendus: await effectif(e),
+        repondu: repondants.size,
+        attendus: joueurs(id, repondants.keys()),
       };
     }
     // Le BILAN : toutes les questions posées et leur répartition, dans l'ordre
@@ -326,8 +329,10 @@ export async function vueDuSondage(
         };
       })
       .filter((b): b is SondageBilanItem => b !== null);
-  } else if (brute) {
-    vue.aRepondu = reponsesSondage(e, brute.id).has(uid);
+  } else {
+    // L'uid reste en mémoire du serveur, il ne sort jamais : l'anonymat tient
+    signalerPresence(id, uid);
+    if (brute) vue.aRepondu = reponsesSondage(e, brute.id).has(uid);
   }
 
   return vue;

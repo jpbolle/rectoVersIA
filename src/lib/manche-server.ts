@@ -84,8 +84,6 @@ export interface Entree {
   temps: Map<string, Record<string, number>>;
   /** Horodatage de la copie la plus récente déjà relue */
   derniereSync: string;
-  /** Effectif de la classe — il ne change pas en cours de partie */
-  attendus: number | null;
   /**
    * Qui est qui : `firebaseUid → « Prénom N. »`, déchiffré UNE FOIS depuis
    * `eleves`. Sert au podium projeté et au classement du prof. Les élèves de
@@ -250,7 +248,6 @@ export async function entree(id: string): Promise<Entree | null> {
     copies,
     temps,
     derniereSync,
-    attendus: courante?.attendus ?? null,
     noms: courante?.noms ?? null,
     luA: now,
   };
@@ -258,15 +255,47 @@ export async function entree(id: string): Promise<Entree | null> {
   return e;
 }
 
-export async function effectif(e: Entree): Promise<number> {
-  if (e.attendus !== null) return e.attendus;
-  const snap = await adminDb
-    .collection('eleves')
-    .where('classeId', '==', e.manche.classeId)
-    .select()
-    .get();
-  e.attendus = snap.size;
-  return e.attendus;
+// ─── Qui joue ───
+//
+// « 12 / 18 » : le prof veut savoir combien ont répondu sur combien JOUENT,
+// pas sur combien sont inscrits — l'absent ou celui qui n'a pas ouvert la
+// partie ne doit pas faire croire à une classe qui décroche.
+//
+// Chaque tablette interroge l'état de la manche une fois par seconde : c'est
+// le signe de vie. Tenu EN MÉMOIRE du processus seulement (choix de JP,
+// 2026-09-19) : rien en base, rien qui sorte du serveur. Limite connue : en
+// développement, un rechargement du code peut séparer la route de l'élève et
+// celle du prof, et le compte tombe à ceux qui ont répondu. En production, un
+// seul processus : pas concerné.
+
+/** Sans nouvelles depuis plus longtemps, l'élève a quitté la partie. */
+const PRESENCE_MS = 15_000;
+
+/** `mancheId → (uid → dernier signe de vie en ms)` */
+const presences = new Map<string, Map<string, number>>();
+
+/** L'élève vient d'interroger la manche : il est là. */
+export function signalerPresence(mancheId: string, uid: string): void {
+  let vus = presences.get(mancheId);
+  if (!vus) presences.set(mancheId, (vus = new Map()));
+  vus.set(uid, Date.now());
+}
+
+/**
+ * Combien jouent : les élèves vus récemment, PLUS ceux qui ont répondu — un
+ * élève qui a répondu joue forcément, et le compteur ne doit jamais afficher
+ * plus de réponses que de joueurs.
+ */
+export function joueurs(mancheId: string, repondants: Iterable<string> = []): number {
+  const limite = Date.now() - PRESENCE_MS;
+  const vus = presences.get(mancheId);
+  const uids = new Set<string>(repondants);
+  vus?.forEach((t, uid) => {
+    if (t >= limite) uids.add(uid);
+    // Ménage au passage : la carte ne grossit pas d'une partie à l'autre
+    else vus.delete(uid);
+  });
+  return uids.size;
 }
 
 /**
@@ -293,7 +322,6 @@ async function nomsDeLaClasse(e: Entree): Promise<Map<string, string>> {
     const initiale = nom ? ` ${nom[0].toUpperCase()}.` : '';
     noms.set(uid, `${prenom || 'Élève'}${initiale}`);
   });
-  e.attendus = snap.size;
   e.noms = noms;
   return noms;
 }
@@ -841,14 +869,17 @@ export async function vueDeLaManche(
     }
     // Pas de compteur sur un bloc informatif : il n'attend aucune réponse,
     // afficher « 0 / 24 » ferait croire à une classe qui ne suit pas.
+    vue.presents = joueurs(id);
     if (brute && brute.type !== 'info') {
+      const repondants = reponsesA(e, brute.id);
       vue.compteur = {
-        repondu: reponsesA(e, brute.id).size,
-        attendus: await effectif(e),
+        repondu: repondants.size,
+        attendus: joueurs(id, repondants.keys()),
       };
     }
-  } else if (brute) {
-    vue.aRepondu = reponsesA(e, brute.id).has(uid);
+  } else {
+    signalerPresence(id, uid);
+    if (brute) vue.aRepondu = reponsesA(e, brute.id).has(uid);
   }
 
   return vue;

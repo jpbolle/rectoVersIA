@@ -82,11 +82,17 @@ export default function SondagePilote({ sessionId }: { sessionId: string }) {
     <div className={styles.contentSection}>
       <div className={styles.sectionHeader}>
         <h2>Sondage</h2>
-        {vue.compteur && (
+        {/* Pendant une question : qui a répondu, sur ceux qui JOUENT. Entre
+            deux questions (salle d'attente comprise) : qui est connecté. */}
+        {vue.compteur ? (
           <span className={styles.headerCompteur}>
-            {vue.compteur.repondu} / {vue.compteur.attendus}
+            {vue.compteur.repondu} / {vue.compteur.attendus} ont répondu
           </span>
-        )}
+        ) : vue.presents !== undefined ? (
+          <span className={styles.headerCompteur}>
+            {vue.presents} connecté{vue.presents > 1 ? 's' : ''}
+          </span>
+        ) : null}
       </div>
 
       <div className={styles.jeu}>

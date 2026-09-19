@@ -16,7 +16,7 @@
 // échoue laisserait l'élève bloqué ; là, il a toujours une porte de sortie.
 // C'est le même gestionnaire, ça ne coûte rien.
 
-import type { PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 
 /** En deçà, l'appui est un tap et non un glisser. */
 export const SEUIL_GLISSER = 5;
@@ -34,11 +34,12 @@ export interface DragHandlers {
  * Rend un élément saisissable au doigt, au pavé et à la souris.
  * `enabled` à false débranche tout (copie remise, lecture seule…).
  *
- * Renvoie des PROPS à étaler sur l'élément, pas un `ref` : les callbacks sont
- * alors ceux du rendu courant, sans ref-miroir à tenir à jour ni écouteur à
- * réabonner. C'est le même principe que le pattern `userRef` du projet, pris
- * par l'autre bout — au lieu de figer une valeur instable, on ne la fige pas
- * du tout.
+ * Renvoie des PROPS à étaler sur l'élément, pas un `ref`.
+ *
+ * ⚠ Les gestionnaires sont ceux du rendu où le doigt s'est POSÉ, et ils le
+ * restent jusqu'au lâcher : un état modifié pendant le geste n'y est pas
+ * visible. Ce qui doit survivre d'un mouvement à l'autre passe par un `ref`
+ * (cf. `provisoireRef` dans `OrdreField`).
  */
 export function dragProps(handlers: DragHandlers, enabled = true) {
   if (!enabled) return {};
@@ -57,7 +58,15 @@ export function dragProps(handlers: DragHandlers, enabled = true) {
         // il perd seulement le suivi hors de l'élément.
       }
 
+      // ⚠ ÉCOUTÉ SUR `window`, PAS SUR L'ÉLÉMENT SAISI. La remise en ordre
+      // remplace le jeton saisi par un trou dès le début du geste : l'élément
+      // quitte la page, emporte ses écouteurs, et le lâcher n'arrivait jamais.
+      // Le fantôme restait alors collé à l'écran, jusque sur les questions
+      // suivantes (vu en compétition le 2026-09-18). `window` reçoit tout,
+      // quel que soit l'élément sous le doigt.
+      const pointeur = e.pointerId;
       const move = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointeur) return;
         if (!bouge && Math.hypot(ev.clientX - depart.x, ev.clientY - depart.y) > SEUIL_GLISSER) {
           bouge = true;
           handlers.onStart?.(ev);
@@ -65,16 +74,17 @@ export function dragProps(handlers: DragHandlers, enabled = true) {
         if (bouge) handlers.onMove?.(ev);
       };
       const up = (ev: PointerEvent) => {
-        el.removeEventListener('pointermove', move);
-        el.removeEventListener('pointerup', up);
-        el.removeEventListener('pointercancel', up);
+        if (ev.pointerId !== pointeur) return;
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('pointercancel', up);
         if (bouge) handlers.onDrop?.(ev);
         else handlers.onTap?.(ev);
       };
 
-      el.addEventListener('pointermove', move);
-      el.addEventListener('pointerup', up);
-      el.addEventListener('pointercancel', up);
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', up);
     },
   };
 }
@@ -137,4 +147,22 @@ export function creerFantome(source: HTMLElement, e: PointerEvent): Fantome {
       noeud.remove();
     },
   };
+}
+
+/**
+ * Le `ref` du fantôme d'un champ, qui le DÉTRUIT si le champ disparaît en
+ * plein geste. En compétition, le prof passe à la question suivante quand il
+ * veut : un élève peut avoir un jeton sous le doigt à ce moment-là, et le
+ * fantôme, posé sur `document.body`, survivrait à la question.
+ */
+export function useFantome() {
+  const ref = useRef<Fantome | null>(null);
+  useEffect(
+    () => () => {
+      ref.current?.detruire();
+      ref.current = null;
+    },
+    []
+  );
+  return ref;
 }

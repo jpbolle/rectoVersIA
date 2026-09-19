@@ -24,8 +24,12 @@ alors que tout fonctionne en local.
 5. Fournir la commande VPS à l'utilisateur — **ne JAMAIS tenter de SSH** ; il l'exécute
    dans le **terminal web Hostinger** (hPanel → VPS → Terminal) :
    ```
-   cd /var/www/rectoVersIA && git pull && npm install && npm run build && pm2 restart rectoVersia
+   cd /var/www/rectoVersIA && git pull && npm install && NODE_OPTIONS=--max-old-space-size=4096 npm run build && pm2 restart rectoVersia
    ```
+   ⚠ `NODE_OPTIONS=--max-old-space-size=4096` est **obligatoire** depuis le 2026-09-15 :
+   la vérification TypeScript de `next build` dépasse les 2 Go que Node s'accorde par
+   défaut (« JavaScript heap out of memory », build worker SIGABRT) alors que le VPS a
+   8 Go. Un build qui échoue à cette étape laisse le site cassé jusqu'au suivant.
 6. Vérifier ensuite : https://rectoversia.edukids.pedagokit.be — en particulier les pages
    touchées. Logs : `pm2 logs rectoVersia --lines 20`.
 

@@ -145,11 +145,17 @@ export default function CompetitionPilote({ sessionId }: { sessionId: string }) 
         <h2>Espace de jeu</h2>
         {/* Le compteur vit dans l'en-tête : le prof le surveille sans quitter
             la question des yeux. */}
-        {vue.compteur && (
+        {/* Pendant une question : qui a répondu, sur ceux qui JOUENT. Entre
+            deux questions (salle d'attente comprise) : qui est connecté. */}
+        {vue.compteur ? (
           <span className={styles.headerCompteur}>
-            {vue.compteur.repondu} / {vue.compteur.attendus}
+            {vue.compteur.repondu} / {vue.compteur.attendus} ont répondu
           </span>
-        )}
+        ) : vue.presents !== undefined ? (
+          <span className={styles.headerCompteur}>
+            {vue.presents} connecté{vue.presents > 1 ? 's' : ''}
+          </span>
+        ) : null}
       </div>
 
       <div className={styles.jeu}>

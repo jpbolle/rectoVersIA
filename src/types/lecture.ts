@@ -112,19 +112,30 @@ export interface LectureFluoCategorie {
   couleur: string;                  // clé de FLUO_COULEURS, pas un code hexa
 }
 
+/** Forme d'une zone de l'image annotée. */
+export type AnnotationForme = 'point' | 'rect' | 'cercle';
+
 /**
- * Une case de dépôt de l'image annotée, et le point auquel elle est reliée.
- * `x` / `y` sont en POURCENTAGE de la taille de l'image — même convention que
- * `DrawShape` (src/types/draw.ts), donc indépendante de la résolution.
- * Le trait case ↔ point est posé par le prof : l'élève n'y touche jamais,
- * il ne fait que remplir la case.
+ * Une ZONE de l'image annotée, posée par le prof sur l'image même. L'élève y
+ * dépose son étiquette directement — plus de case sur le côté ni de trait
+ * (refonte du 2026-09-19 : en classe, personne n'avait trouvé les cases).
+ *
+ * Coordonnées en POURCENTAGE de l'image — même convention que `DrawShape`
+ * (src/types/draw.ts), donc indépendantes de la résolution :
+ *  - `point` : `x` / `y` = le CENTRE (forme par défaut : c'est celle de toutes
+ *    les questions écrites avant la refonte) ;
+ *  - `rect` / `cercle` : `x` / `y` = le coin haut-gauche, `w` / `h` = la taille.
  */
 export interface LectureAnnotationCible {
   id: string;
-  label: string;                    // l'étiquette attendue dans cette case
+  label: string;                    // l'étiquette attendue dans cette zone
   x: number;
   y: number;
-  cote: 'gauche' | 'droite';
+  forme?: AnnotationForme;
+  w?: number;
+  h?: number;
+  /** Ancien côté de la case (avant le 2026-09-19) — n'est plus lu. */
+  cote?: 'gauche' | 'droite';
 }
 
 /** Un ensemble (boîte de tri) nommé par le prof. */
@@ -271,10 +282,9 @@ export interface LectureQuestion {
   ordreItems?: LectureJeton[];
 
   // ── Image à annoter (moteur DÉPLACER) ──
-  // L'image est celle de la question (`image`). Le prof pose des points et
-  // leur case de dépôt ; l'élève tire les étiquettes de la réserve.
+  // L'image est celle de la question (`image`). Le prof y pose des zones
+  // (point, encadré, cercle) ; l'élève y dépose les étiquettes de la réserve.
   annotations?: LectureAnnotationCible[];
-  annotationsReserve?: 'haut' | 'bas';         // où s'affiche la réserve (défaut : bas)
   // La réserve d'étiquettes, mélangée. CALCULÉE PAR LE SERVEUR pour l'élève
   // (`lectureQuizForEleve`) : l'ordre de saisie du prof donnerait le corrigé.
   // Jamais écrite en base — c'est une vue, pas une donnée.

@@ -13,6 +13,74 @@ et le transport SSE sont abandonnés).
 > par un script, RIEN VU À L'ÉCRAN — JP teste EN CLASSE le 2026-09-09.** Les six autres types et leur affichage des réponses n'ont toujours
 > pas été joués en vrai. **Rien n'est déployé.**
 
+> **2026-09-19** : JP a joué en classe « Prise de notes — Documentaire arte sur
+> le cerveau ». **QCM : parfait.** **Glisser-déposer cassé** (remise en ordre :
+> le fantôme restait collé, jusque sur les questions suivantes) — corrigé, cf.
+> section du 19/09. **Compteur prof** passé à « X / Y ont répondu » sur ceux qui
+> JOUENT. **Écrit, rien vu à l'écran, rien déployé.**
+
+## 2026-09-19 — glisser-déposer et compteur de joueurs
+
+- **Glisser-déposer** (`QuestionInteractions/pointerDrag.ts`) : les écouteurs du
+  geste étaient posés sur l'élément saisi ; la remise en ordre le remplace par un
+  trou au premier mouvement → écouteurs partis, lâcher jamais reçu, fantôme
+  éternel. Écoute désormais sur `window` (filtrée par `pointerId`). En plus :
+  `useFantome()` détruit le fantôme si la question disparaît en plein geste, et
+  `OrdreField` garde l'ordre provisoire dans un `ref` (au lâcher, il relisait
+  l'ordre d'avant le geste : le jeton serait revenu à sa place). Vaut aussi hors
+  compétition (questionnaire de lecture, œuvres).
+- **Compteur** : `attendus` = les élèves qui **jouent** (vus dans les 15 s par
+  leur interrogation d’état, + ceux qui ont répondu), et non plus l’effectif inscrit.
+  Présence tenue **en mémoire du processus** (option A de JP) — `signalerPresence`
+  / `joueurs` dans `manche-server.ts`, branchés aussi dans le sondage. `effectif()`
+  et `Entree.attendus` supprimés. Hors question : « N connectés » (`vue.presents`).
+  ⚠ En dév, un rechargement du code peut séparer les caches : compte faussé.
+
+## 2026-09-19 — les résultats après la partie (diagnostic sur la base de production)
+
+Activité `DEV-20260915-8084`, jouée le 16/09 en 4C puis en 4D. Ce que JP a vu :
+34 copies « sans classe », toutes « Non ouvert », sans réponse, 0/21, aucune
+habileté. Lecture seule en base, trois causes distinctes :
+
+1. **Les deux parties n'ont jamais été TERMINÉES** : les manches sont restées en
+   `revele` (4C) et `question` (4D), `versement = null`. Les réponses dorment dans
+   `manches/*/reponses` (16 et 18 copies) et n'ont jamais été versées dans `travaux`.
+   → **Pas un oubli** : JP a répondu (19/09) que l'activité n'est PAS finie, les
+   parties continuent à une prochaine séance. Au 19/09 à 13 h 30, aucune des deux
+   n'était encore arrêtée.
+   → Il suffira que JP clique « Arrêter la partie » dans chaque classe : le versement
+   est idempotent et pose aussi `sessionId`. ⚠ Ne JAMAIS « Ouvrir la partie » à la
+   place : `ouvrirManche` réécrit la manche à zéro.
+2. **`POST /api/travaux` et `/api/travaux/mine` créaient la copie SANS `sessionId`**
+   quand l'élève ouvrait l'activité avant que le prof ait affiché les travaux (donc
+   avant `ensureTravaux`). D'où les 34 copies sans classe, créées le 16/09 entre
+   7 h 50 et 8 h 31. **Corrigé** : `sessionId: mes.sessions[0]?.id ?? null`. Ces routes
+   nomment aussi l'élève par son email (`britany.coclet`), pas par son nom.
+   **Rattrapage des copies existantes** : `scripts/backfill-sessions.ts` (idempotent),
+   complété le 19/09 pour ne jamais rattacher une copie à une session inexistante.
+   Simulation : **59 copies rattachables** (cerveau 34, `DEV-20260910-4201` 14,
+   `DEV-20260831-6632` 11), 1 laissée (élève hors des classes de l'activité), rien
+   d'autre écrit. **APPLIQUÉ par JP le 19/09**, vérifié en base : les 40 copies du
+   cerveau sont dans leur classe (4C 19, 4D 21), aucune sans classe. Reste 1 copie
+   sans classe dans `DEV-20260831-6632` (élève hors des classes de l'activité).
+3. **Les habiletés sont sur l'ACTIVITÉ** (`devoir.habiletes`, 4 ids), aucune sur les
+   questions. Or « Par habileté » ne lit que `question.competences`. JP (19/09) : les
+   questions n'avaient pas reçu d'habileté, c'est normal — **rien à faire**.
+
+Demandé par JP, pas encore arbitré : pour une activité jouée en compétition, les
+3 colonnes (Non ouvert / À corriger / Corrigés) n'ont pas de sens. Il veut le
+podium 3/5/10/tous et des stats (répond trop vite, vite et bien). La copie ne compte
+que la JUSTESSE, pas la vitesse : c'est déjà le cas (barème de lecture).
+
+## 2026-09-19 — symboles littéraires sur les cases du QCM
+
+JP : les formes ▲ ◆ ● ■ « font trop Kahoot », et au-delà de 4 propositions couleurs
+et formes se répétaient (`i % 4`). Désormais **8 teintes** (ni vert ni rouge) et
+**8 symboles `lucide-react`** : masque (`Drama`), loupe, épée, plume, sablier, miroir
+(`MirrorRound`), parchemin (`ScrollText`), clé (`KeyRound`). **Dépendance
+`lucide-react` ajoutée avec l'accord de JP** (option C, préférée aux emoji et au SVG
+maison). Rien vu à l'écran.
+
 ## Ce qui posait problème
 
 Rien dans Recto-versIA n'était **synchrone**. Les six ateliers supposent un

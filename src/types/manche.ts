@@ -229,8 +229,10 @@ export interface MancheVue {
    * et qui doit voir la bonne réponse au moment de la révéler.
    */
   question: LectureQuestion | null;
-  /** Prof : où en est la classe */
+  /** Prof : où en est la classe — `attendus` = les élèves qui JOUENT */
   compteur?: { repondu: number; attendus: number };
+  /** Prof : combien d'élèves ont la partie ouverte en ce moment */
+  presents?: number;
   /** Élève : a-t-il déjà répondu à cette question ? */
   aRepondu?: boolean;
   /** Prof : les rangs déjà posés — sa liste les barre */
@@ -557,8 +559,10 @@ export interface SondageVue {
   total: number;
   /** La question courante — servie en jeu et en résultat seulement */
   question: AutoEvalQuestion | null;
-  /** Prof : où en est la classe */
+  /** Prof : où en est la classe — `attendus` = les élèves qui JOUENT */
   compteur?: { repondu: number; attendus: number };
+  /** Prof : combien d'élèves ont la partie ouverte en ce moment */
+  presents?: number;
   /** Élève : a-t-il déjà répondu ? */
   aRepondu?: boolean;
   /** Prof : les rangs déjà posés */

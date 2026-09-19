@@ -125,6 +125,10 @@ export async function GET(request: NextRequest) {
       const newTravail: Travail = {
         id: travailId,
         devoirId: devoirId,
+        // La classe de l'élève : sans elle, la copie tombe dans « Copies sans
+        // classe » chez le prof (vu le 2026-09-19 : 34 copies d'une partie en
+        // compétition, créées à l'ouverture par les élèves).
+        sessionId: mes.sessions[0]?.id ?? null,
         studentId: auth.uid,
         studentEmail: auth.email,
         studentName: auth.email.split('@')[0],
