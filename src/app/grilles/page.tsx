@@ -12,7 +12,8 @@ import CreateGrilleCard from '@/components/CreateGrilleCard/CreateGrilleCard';
 import GrilleBuilder from '@/components/GrilleBuilder/GrilleBuilder';
 import ScenarisationPanel from '@/components/ScenarisationPanel/ScenarisationPanel';
 import OeuvrePanel from '@/components/OeuvrePanel/OeuvrePanel';
-import ModuleFlePanel from '@/components/ModuleFlePanel/ModuleFlePanel';
+import RessourcesFlePanel from '@/components/RessourcesFlePanel/RessourcesFlePanel';
+import type { SectionFle } from '@/components/RessourcesFlePanel/RessourcesFlePanel';
 import QuestionnaireLecturePanel from '@/components/QuestionnaireLecturePanel/QuestionnaireLecturePanel';
 import GrilleViewer from '@/components/GrilleViewer/GrilleViewer';
 import VocabCard from '@/components/VocabCard/VocabCard';
@@ -40,6 +41,20 @@ export default function GrillesPage() {
 
   // Onglet actif
   const [activeTab, setActiveTab] = useState<Tab>('grilles');
+  // Sous-section FLE demandée par l'URL (lien « Créer dans Mes Ressources ›
+  // FLE » du constructeur de séquence, ouvert dans un nouvel onglet)
+  const [sectionFle, setSectionFle] = useState<SectionFle>('theorie');
+
+  // `?onglet=fle&section=theorie|activites|sequences` — lu une fois, au montage : la
+  // page n'a pas d'autre état dans l'URL, `useSearchParams` imposerait une
+  // frontière Suspense pour rien.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('onglet') !== 'fle') return;
+    setActiveTab('modulesFle');
+    const section = params.get('section');
+    if (section === 'activites' || section === 'sequences') setSectionFle(section);
+  }, []);
 
   const [isReady, setIsReady] = useState(false);
   // Garde de redirection — motif imposé par le projet (AGENTS.md) : sans ce
@@ -317,8 +332,8 @@ export default function GrillesPage() {
           </button>
         </div>
 
-        {/* ===== TAB MODULES FLE (bibliothèque des classes DASPA) ===== */}
-        {activeTab === 'modulesFle' && <ModuleFlePanel />}
+        {/* ===== TAB FLE (bibliothèque des classes DASPA) : points de théorie et activités ===== */}
+        {activeTab === 'modulesFle' && <RessourcesFlePanel key={sectionFle} sectionInitiale={sectionFle} />}
 
         {/* ===== TAB QUESTIONNAIRES DE LECTURE ===== */}
         {activeTab === 'questionnaires' && <QuestionnaireLecturePanel />}

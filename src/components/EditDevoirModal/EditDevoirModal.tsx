@@ -431,30 +431,39 @@ export default function EditDevoirModal({
     </div>
   );
 
+  // ACTIVITÉ FLE (Mes Ressources › Modules FLE) : ni classe, ni élèves, ni échéance,
+  // ni habiletés, ni « Disponible » — la séquence qui la contient porte tout
+  // cela. Le serveur ignore d'ailleurs ces champs pour elle (PATCH).
+  const estFle = devoir?.referentiel === 'fle';
+
   // ── Recto : description de l'activité ──
   const renderRecto = () => (
     <>
-      {/* Classes */}
-      <div className={styles.formGroup}>
-        <label className={styles.label}>
-          Classe(s) <span className={styles.optional}>— facultatif</span>
-        </label>
-        <ClassesDropdown
-          options={isSequence ? classeNamesFle : classeNames}
-          selected={selectedClasses}
-          onChange={setSelectedClasses}
-          disabled={isSaving}
-        />
-      </div>
+      {!estFle && (
+        <>
+          {/* Classes */}
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Classe(s) <span className={styles.optional}>— facultatif</span>
+            </label>
+            <ClassesDropdown
+              options={isSequence ? classeNamesFle : classeNames}
+              selected={selectedClasses}
+              onChange={setSelectedClasses}
+              disabled={isSaving}
+            />
+          </div>
 
-      {/* Les élèves concernés, dès qu'une classe est cochée */}
-      <ElevesChoix
-        classesNoms={selectedClasses}
-        value={eleves}
-        onChange={setEleves}
-        onEleves={setElevesDesClasses}
-        disabled={isSaving}
-      />
+          {/* Les élèves concernés, dès qu'une classe est cochée */}
+          <ElevesChoix
+            classesNoms={selectedClasses}
+            value={eleves}
+            onChange={setEleves}
+            onEleves={setElevesDesClasses}
+            disabled={isSaving}
+          />
+        </>
+      )}
 
       {/* Didactique : l'atelier est figé (il commande le dispositif), le mode
           principal et les habiletés se modifient */}
@@ -470,7 +479,7 @@ export default function EditDevoirModal({
           </p>
         </div>
 
-        {!usesGrille && !isSequence && (
+        {!usesGrille && !isSequence && !estFle && (
           <div className={styles.formGroup}>
             <label className={styles.label}>Habiletés travaillées</label>
             <HabiletesPicker
@@ -598,17 +607,19 @@ export default function EditDevoirModal({
           />
         </div>
 
-        <div className={styles.formGroup}>
-          <DatePicker
-            /* « Échéance » et non « date de remise » : la date est facultative
-               et ne signifie pas toujours une remise (lecture d'une œuvre,
-               activité préparée d'avance). */
-            label="Échéance"
-            value={dateRemise}
-            onChange={setDateRemise}
-            min={getTodayString()}
-          />
-        </div>
+        {!estFle && (
+          <div className={styles.formGroup}>
+            <DatePicker
+              /* « Échéance » et non « date de remise » : la date est facultative
+                 et ne signifie pas toujours une remise (lecture d'une œuvre,
+                 activité préparée d'avance). */
+              label="Échéance"
+              value={dateRemise}
+              onChange={setDateRemise}
+              min={getTodayString()}
+            />
+          </div>
+        )}
       </div>
 
       {/* Recto / Verso de l'espace élève (uniquement pour type ecrire) */}
@@ -645,15 +656,17 @@ export default function EditDevoirModal({
             disabled={isSaving}
           />
         </div>
-        <div className={styles.toggleGroup}>
-          <Toggle
-            checked={disponible}
-            onChange={setDisponible}
-            labelOn="Disponible"
-            labelOff="Non disponible"
-            disabled={isSaving}
-          />
-        </div>
+        {!estFle && (
+          <div className={styles.toggleGroup}>
+            <Toggle
+              checked={disponible}
+              onChange={setDisponible}
+              labelOn="Disponible"
+              labelOff="Non disponible"
+              disabled={isSaving}
+            />
+          </div>
+        )}
       </div>
     </>
   );

@@ -17,7 +17,8 @@
   JP, pour marquer la refonte des deux dernières semaines. Source unique :
   `src/lib/version.ts` (géré à la main, jamais incrémenté automatiquement).
 - **Stack** : Next.js 16 (App Router) + React 19 + TypeScript 5 + Firestore (Blaze) +
-  Tiptap 3 — CSS Modules, design system Classica
+  Tiptap 3 — CSS Modules, design system Classica — icônes `lucide-react` (ajoutée le
+  2026-09-19 avec l'accord de JP ; d'abord pour les cases du QCM de compétition)
 - **Branche** : `main` → le push ne déploie pas ; déploiement manuel sur VPS (skill `/deploy`)
 - **Harnais** : né de la matrice `harnais` v1.2.0, taille L.
   Règles impératives dans `AGENTS.md` (source unique, `CLAUDE.md` est un symlink).
@@ -110,7 +111,7 @@ d'une année sur l'autre.
 | Page avec `router.replace()` | State `redirecting` : `if (redirecting) return;` avant le replace, `return null;` dans le render | pages protégées existantes |
 | Nouvelle façon d'évaluer une activité | **Grille pour l'écriture, habiletés partout ailleurs** — jamais les deux. La grille n'est exigée que pour `typeTravail === 'ecrire'`, client ET serveur | `usesGrille` dans `CreationForm` / `EditDevoirModal` |
 | Demander une saisie ou une confirmation | **Jamais** `prompt()` / `confirm()` / `alert()` : popup de l'application, centrée, sur fond assombri, en-tête et pied d'actions. Consigne durable (dépôt `harnais`, `0-moi/consignes.md`) | `ScenarisationFormModal`, `CertificationNotesModal` |
-| Nouvelle carte dans **Mes Ressources** | Gabarit de `GrilleCard` : dégradé vert, relief au survol, barre d'actions en bas à droite (dupliquer · ✏️ ouvrir · 🗑️). Les onglets Grilles, Œuvres et Parcours forment une famille — un gabarit divergent se voit | `GrilleCard`, `OeuvreCard`, `ScenarisationCard` |
+| Nouvelle carte dans **Mes Ressources** | Gabarit de `GrilleCard` : dégradé vert, contenu centré, icône 32 px, titre 17 px vert, boutons d'action 40 × 36 (dupliquer · ✏️ ouvrir · 🗑️ rouge au survol). Tous les onglets forment une famille — un gabarit divergent se voit (harmonisation du 2026-09-19 : questionnaires réalignés, activités et séquences FLE sorties de la carte du tableau de bord). **Nouvelle carte = styles d'`OeuvreCard.module.css`** (rangée d'actions) ; **carte « + » = `CreateOeuvreCard libelle="…"`**, jamais recopiée | `GrilleCard`, `OeuvreCard`, `ScenarisationCard`, `ModuleFleCard`, `ActiviteRessourceCard` |
 | Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) — 7 ateliers, 6 dispositifs (`sequence` depuis le 2026-09-14 : une activité qui en contient d'autres, sans copie ni remise) : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
 | Activité où **rien ne se remet** (recherche, questionnaire de lecture, auto-évaluation, lecture d'une œuvre) | `hideSubmit` sur `WorkTopBar` ; la remise, quand elle existe, vit **au bas de la colonne de gauche**, dans la ligne d'actions | `hideSubmit` dans `/activites/[id]` |
 | Nouvelle façon d'afficher des propositions à l'élève (QCM, matrice, appariement, tri) | **Mélangées par élève**, jamais dans l'ordre du prof — `ordreAffichage(taille, graine, melanger)`, graine = `uid + id de question`. ⚠️ **C'est un ORDRE D'AFFICHAGE** : la réponse reste enregistrée dans l'ordre du PROF, sinon tous les corrigés déjà en base désignent la mauvaise case. Case `pasDeMelange` pour une chronologie ou une gradation | `ordreAffichage` dans `src/types/lecture.ts` ; `LectureQuizActivity`, `OeuvreReader`, `QuestionInteractions/` |
@@ -331,6 +332,10 @@ interface Questionnaire {
   **« Arrêter la partie » verse les copies dans `travaux`** (`content` JSON
   `{type:'lecture', answers}`, `submitted`, rejouable) : l'aval — correction, Évaluation,
   profil — ne connaît pas la manche. Un élève sans réponse n'est pas rendu.
+  **Compteur prof « X / Y ont répondu »** : Y = les élèves qui JOUENT (vus dans les
+  15 s par leur interrogation d'état, + ceux qui ont répondu), tenus **en mémoire du
+  processus** (`signalerPresence` / `joueurs`), pas l'effectif inscrit. Hors question :
+  « N connectés » (`vue.presents`).
   **Équipes en option** (`equipes: [{id, nom, membres: uid[]}] | null`) : le score d'une
   équipe est la somme de ses membres, jamais stocké ; noms = couleurs, 8 max.
   **Un SONDAGE en direct est une manche de genre `sondage`** (`genre: 'sondage'` sur le
@@ -338,7 +343,7 @@ interface Questionnaire {
   l'auto-évaluation (`devoirs.autoEvalQuiz`, chrono par question `chronoSec` fixé par le
   prof), réponses `AutoEvalAnswer` dans la même sous-collection. Moteur à part
   (`src/lib/sondage-server.ts`) qui **importe la plomberie** de `manche-server` (cache,
-  `entree`, `effectif`, `reponsesA`, `effacerReponses`). **Aucun nom, aucun uid ne sort
+  `entree`, `reponsesA`, `effacerReponses`, `signalerPresence` / `joueurs`). **Aucun nom, aucun uid ne sort
   du serveur** ; rien n'est versé dans `travaux`, rien au profil : la manche est la
   trace (onglet Statistiques, `bilan`).
 - `oeuvres` + `oeuvres/{id}/sections` : **bibliothèque d'œuvres** (atelier « Lecture
@@ -466,7 +471,7 @@ interface Questionnaire {
 | `/dashboard/travaux/[devoirId]` | prof | Travaux par devoir (3 colonnes) |
 | `/dashboard/travaux/[devoirId]/[travailId]` | prof | Correction + annotations (`ResizableSplit`) |
 | `/classes` | prof | Gestion classes et élèves + bloc « Mes Élèves » (tous les élèves, filtre actifs/archivés, recherche) ; clic sur un élève (bloc ou détail de classe) → fiche complète en popup (`EleveProfilModal` → `ProfilPanel`) |
-| `/grilles` | prof | Mes Ressources : onglets Grilles + Listes de vocabulaire + **Design & scénarisation didactique** (`ScenarisationPanel`) + **Modules FLE** (`ModuleFlePanel`, 2026-09-14) |
+| `/grilles` | prof | Mes Ressources : onglets Grilles + Listes de vocabulaire + **Design & scénarisation didactique** (`ScenarisationPanel`) + **Modules FLE** (`RessourcesFlePanel`, 2026-09-19 : bascule **Points de théorie** = `ModuleFlePanel` / **Activités** = `ActiviteFlePanel`, les activités FLE qui n'apparaissent PAS au tableau de bord / **Séquences de cours** = `SequencesFlePanel`, les séquences — aussi au tableau de bord — dont la carte ouvre l'atelier `SequenceAtelier` : serpentin en grand, enregistrement auto, encadrés cliquables vers la ressource ; `?onglet=fle&section=theorie|activites|sequences` lu au montage) |
 | `/archives` | prof | Devoirs archivés |
 | `/fle` | élève | **Mon cours** (espace FLE, 2026-09-14) : bonjour, « Mon travail à faire » (vide tant que les séquences n'existent pas), radar CECR + objectifs du mois (`NiveauFlePanel` en lecture), classes. Un élève dont **toutes** les classes sont FLE y arrive depuis `/login` et `/accueil` (`espaceFleSeulement`) ; classes mixtes → `/accueil` + entrée « Mon cours » dans le header |
 | `/admin` | admin | Titre de page = nom de l'onglet actif (`ADMIN_TABS`, source unique dans `Header.tsx`). Header dédié (variant `admin`) en onglets : Vue d'ensemble (stats) / Gestion des membres (professeurs) / Gestion didactique — sélecteur de référentiel **Cours de français** (`DidactiquePanel`, UAA + habiletés) / **FLE** (`DidactiqueFlePanel`) — / Gestion des coûts (compteurs d'usage IA — pas de suivi tokens) |
@@ -533,7 +538,7 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
 
 ### Composants clés
 
-- **Espace FLE** (2026-09-14) : `RadarFle` (SVG maison, N branches horaires depuis le haut, anneaux = niveaux visibles, aire bleue `#4a7ba7` — angles d'ÉCRAN, à l'inverse de `CeinturesRoue`), `NiveauFlePanel` (radar + une ligne par compétence : libellé, niveau en gras, curseur `range` côté prof / crans pleins côté élève ; objectifs du mois ; enregistrement différé 500 ms), `DidactiqueFlePanel` (référentiel dans /admin). La fiche élève (`EleveProfilModal`) reçoit `classeType` et place `NiveauFlePanel` avant `ProfilPanel` pour une classe FLE. **Séquences** : `SequenceFleBuilder` au **verso** (création et popup ✏️) pour une activité de type `sequence` : **ligne du temps en serpentin** (rangées mesurées, `row-reverse` une fois sur deux), un « + » entre les encadrés qui demande la **nature** (théorie = module de la bibliothèque / activité de Mes Activités) puis « existant » ou « créer ici » (module → `ModuleFleEditor` en popup, activité → `CreationForm` en popup), « tous / n élèves » par étape ; côté élève `SequenceFleActivity` (rendu par `/activites/[id]` **avant** les gardes sur le travail : ligne de progression, modules dépliables avec théorie « À lire d'abord » et activités à pastille d'état). `/fle` › « Mon travail à faire » liste les séquences de l'élève depuis `/api/devoirs`. **Bibliothèque** : `ModuleFlePanel` (paniers + popup de création titre/type/niveau + popup d'archivage), `ModuleFleCard` (réutilise les styles d'`OeuvreCard` et de `CreateOeuvreCard`), `ModuleFleEditor` (pleine page, deux colonnes : fiche + « Je peux… » du référentiel à gauche, `DocumentEditor` Tiptap + activités ordonnées ▲▼ à droite ; enregistrement EXPLICITE, bouton ambre tant qu'il reste à enregistrer ; popup « Rattacher une activité » qui lit `/api/devoirs`).
+- **Espace FLE** (2026-09-14) : `RadarFle` (SVG maison, N branches horaires depuis le haut, anneaux = niveaux visibles, aire bleue `#4a7ba7` — angles d'ÉCRAN, à l'inverse de `CeinturesRoue`), `NiveauFlePanel` (radar + une ligne par compétence : libellé, niveau en gras, curseur `range` côté prof / crans pleins côté élève ; objectifs du mois ; enregistrement différé 500 ms), `DidactiqueFlePanel` (référentiel dans /admin). La fiche élève (`EleveProfilModal`) reçoit `classeType` et place `NiveauFlePanel` avant `ProfilPanel` pour une classe FLE. **Séquences** : `SequenceFleBuilder` au **verso** (création et popup ✏️) pour une activité de type `sequence` : **ligne du temps en serpentin** (rangées mesurées, `row-reverse` une fois sur deux), un « + » (cercle pointillé ; séquence vide = grand « + » et début de serpentin) qui demande la **nature** (point de théorie / activité) puis ne propose que **l'existant** (activités en deux groupes : FLE puis Mes Activités) — créer = lien vers Mes Ressources › Modules FLE en **nouvel onglet**, la liste se relit au retour (`focus`) — 2026-09-19 ; « tous / n élèves » par étape ; côté élève `SequenceFleActivity` (rendu par `/activites/[id]` **avant** les gardes sur le travail : ligne de progression, modules dépliables avec théorie « À lire d'abord » et activités à pastille d'état). `/fle` › « Mon travail à faire » liste les séquences de l'élève depuis `/api/devoirs`. **Bibliothèque** : `ModuleFlePanel` (paniers + carte « + » qui ouvre **directement** l'éditeur sur un point vierge — créé en base au premier « Enregistrer », 2026-09-19 — + popup d'archivage), `ModuleFleCard` (réutilise les styles d'`OeuvreCard` et de `CreateOeuvreCard`), `ModuleFleEditor` (pleine page, deux colonnes : fiche + « Je peux… » du référentiel à gauche, `DocumentEditor` Tiptap + activités ordonnées ▲▼ à droite ; enregistrement EXPLICITE, bouton ambre tant qu'il reste à enregistrer ; popup « Rattacher une activité » qui lit `/api/devoirs`).
 - Éditeurs Tiptap : `WorkEditor` (élève — collage externe bloqué, seul le texte copié
   dans l'espace de travail est recollable via `internal-clipboard.ts`), `RessourceEditor`
   (annotation ressources), `AnnotationEditor` (prof : 3 types textuels + audio + IA),
@@ -548,6 +553,10 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
   `ChampManipule` : l'écran élève, la liseuse d'œuvre et la correction prof passent
   tous par lui. **Un cinquième type manipulé s'habille sur l'un des deux moteurs —
   on n'en écrit jamais un troisième.**
+  **Image à annoter (refonte du 2026-09-19)** : l'élève dépose SUR l'image, dans des
+  zones posées par le prof (`forme` point / encadré / cercle, en % de l'image) ; plus de
+  cases latérales ni de traits. Réserve collante au-dessus, image plafonnée à 65vh.
+  Plan en cours (bulles à compléter, marqueurs) : `harnais/plans/2026-09-19-image-annotee-trois-jeux.md`
 - Vocabulaire : `VocabulaireActivity` (diagnostic → apprentissage → évaluation, mots
   difficiles/flashcards), `VocabulaireList`, `VocabulaireExercises`,
   `VocabulaireEvaluation` (mots croisés + syn/ant + composition), `VocabulaireStats`,
@@ -721,8 +730,9 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
   droite ; barre d'actions verte puis ambre, **podium 1/3/5/10** à la demande),
   `CompetitionActivity` (écran élève : salle d'attente, compte à rebours, question,
   **bouton Envoyer partout**, son score à la révélation — jamais le classement des
-  autres), `CompetitionQcm` (cases pleines ▲◆●■, ni vert ni rouge avant la
-  révélation), `Repartition` (ce que la classe a répondu, **dans la forme de la
+  autres), `CompetitionQcm` (cases pleines, **8 teintes + 8 symboles littéraires**
+  `lucide-react` — masque, loupe, épée, plume, sablier, miroir, parchemin, clé —, ni vert
+  ni rouge avant la révélation), `Repartition` (ce que la classe a répondu, **dans la forme de la
   question**), `Podium` (élèves ou équipes, l'appelant prépare les lignes),
   `EquipesPanel` (tirage au sort + étiquettes déplaçables, glisser-déposer natif). L'élève
   ne reçoit **aucune question à l'ouverture** — elles arrivent une à une par
@@ -757,6 +767,33 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
 
 > Les gotchas **critiques** (boucles de hooks, redirections, ContentLock, échelle des
 > grilles) sont dans `AGENTS.md`. Ici : les pièges opérationnels.
+
+### Toute création d'un `travail` porte son `sessionId`
+Un travail sans `sessionId` tombe dans « Copies sans classe » chez le prof, même si
+l'élève est bien dans la classe. `POST /api/travaux` et `/api/travaux/mine` l'oubliaient
+quand l'élève ouvrait l'activité avant que le prof ait affiché les travaux (donc avant
+`ensureTravaux`) — 59 copies touchées, rattachées le 2026-09-19 par
+`scripts/backfill-sessions.ts` (idempotent, ne rattache qu'à une session EXISTANTE).
+**Règle** : une nouvelle route qui crée un travail pose
+`sessionId: (await sessionsDeLEleve(devoirId, classes)).sessions[0]?.id ?? null`.
+
+### Glisser au pointeur : les écouteurs vont sur `window`, jamais sur l'élément
+`pointerDrag.ts` écoute le geste sur `window`. Écouté sur l'élément saisi, le lâcher se
+perd dès que React retire l'élément pendant le geste (la remise en ordre le remplace
+par un trou) : le fantôme reste collé à l'écran, jusque sur les questions suivantes.
+Et les gestionnaires sont ceux du rendu où le doigt s'est POSÉ : un état modifié
+pendant le geste s'y lit par un `ref` (`provisoireRef`). Un champ qui crée un fantôme
+passe par `useFantome()`, qui le détruit si la question disparaît en plein geste.
+
+### Une question à image : l'atelier de tracé n'est pas pour l'image à annoter
+Toute question avec `image` affiche l'atelier de tracé (`ImageWorkspace` /
+`DrawCanvas`) — SAUF `image-annotee`, dont l'image EST l'exercice. Servie deux fois,
+l'élève dessinait sur la première et ne trouvait jamais les zones (vu en classe).
+
+### Compétition : « Ouvrir la partie » remet la manche à zéro
+`ouvrirManche` réécrit le document de la manche. Une partie en cours se termine par
+**« Arrêter la partie »** (qui verse les copies), jamais par une réouverture. Tant
+qu'elle n'est pas arrêtée, les copies de `travaux` restent vides (« Non ouvert », 0).
 
 ### « Rôle pas encore résolu » n'est pas « rôle qui n'est pas prof »
 `role` vaut `null` le temps que Firebase rende son verdict. Une garde de page
@@ -1036,7 +1073,11 @@ module d'une séquence FLE (activité `typeTravail: 'sequence'`) **ouverte pour 
 contient (`ouvertParSequence`, `src/lib/sequence-server.ts`). Toute nouvelle route qui décide « cet élève a accès à ce
 devoir » doit reprendre le motif des trois routes existantes : `etatEffectif` d'abord,
 `ouvertParSequence` en repli. ⚠ Une activité sans classe garde `disponible ?? true` : elle
-reste ouvrable par tout élève qui a l'id, séquence ou pas (état antérieur, inchangé).
+reste ouvrable par tout élève qui a l'id, séquence ou pas. **D'où l'ACTIVITÉ FLE**
+(`Devoir.referentiel: 'fle'`, 2026-09-19) : POST la crée **sans classe et `disponible:
+false`**, PATCH ignore pour elle `classes`, `eleves` et `disponible: true` — seule la
+séquence l'ouvre. Elle est filtrée du tableau de bord et de `/archives` **côté client**
+(pas dans `GET /api/devoirs` : le « + » de la séquence en a besoin).
 
 ### Une route qui lit `devoir.disponible` sans regarder les sessions
 Depuis le 2026-09-01, **la session prime, le devoir sert de repli**

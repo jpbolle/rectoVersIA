@@ -1,0 +1,52 @@
+/* Mes Ressources › Modules FLE › Séquences de cours : l'atelier d'une séquence.
+   La barre et le cadre reprennent ceux de l'éditeur de point de théorie
+   (ModuleFleEditor.module.css) ; ce fichier n'ajoute que le propre de l'atelier. */
+
+.etat {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  white-space: nowrap;
+}
+
+.etatErreur {
+  color: var(--c-danger);
+}
+
+.reglages {
+  border: 1.5px solid var(--c-primary);
+  background: none;
+  color: var(--c-primary);
+  border-radius: var(--c-radius);
+  min-height: 38px;
+  padding: 0 16px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reglages:hover {
+  background: rgba(45, 106, 90, 0.07);
+}
+
+.entete {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.classes {
+  margin: 8px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.eleves {
+  flex: 1;
+  min-width: 260px;
+  max-width: 460px;
+}

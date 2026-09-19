@@ -228,6 +228,11 @@ export interface Devoir {
   // SÉQUENCE FLE (type sequence) : les modules du parcours. Absent / null =
   // séquence vide.
   sequenceFle?: SequenceFleContenu | null;
+  // ACTIVITÉ FLE — elle vit dans Mes Ressources › Modules FLE › Activités, PAS dans le
+  // tableau de bord : sans classe, née fermée, seule une séquence FLE l'ouvre
+  // aux élèves (`ouvertParSequence`). Absent = activité classique.
+  // (Plan 2026-09-19-fle-theorie-et-activites.)
+  referentiel?: 'fle' | null;
   // Passerelle en retour vers la scénarisation didactique : posée par
   // /api/scenarisations/[id] quand l'activité est rattachée à un module,
   // effacée quand le lien est rompu. Jamais écrite depuis les formulaires.
@@ -284,6 +289,8 @@ export interface CreateDevoirData {
   eleves?: string[] | null;
   // Séquence FLE (type sequence uniquement) — sert à la duplication
   sequenceFle?: SequenceFleContenu | null;
+  // Activité FLE (voir `Devoir.referentiel`)
+  referentiel?: 'fle' | null;
   // AUTO-ÉVALUATION INTÉGRÉE — l'élève se prononce sur son propre travail
   // avant d'en connaître la note. Ce qu'elle recouvre dépend du dispositif :
   //  - écriture  : il s'auto-évalue sur la grille ;

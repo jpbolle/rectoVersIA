@@ -45,17 +45,21 @@ export default function TravauxPage() {
   const [questionnaire, setQuestionnaire] = useState<NavigKidQuestion[] | null>(null);
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
 
-  // Une seule session (ou aucune) : rien à choisir, on va droit aux copies.
-  // Un écran intermédiaire d'une seule ligne serait un clic pour rien.
-  const choixNecessaire = sessions.length > 1 && !sessionActive;
-
-  // Copies qu'aucune session ne réclame : élève supprimé, classe effacée, ou
-  // travail antérieur aux sessions. Sans ce panier, elles disparaîtraient de
-  // l'écran du prof sans que rien ne le dise — le pire des silences.
+  // Copies qu'aucune session ne réclame : élève supprimé, classe effacée,
+  // travail antérieur aux sessions, ou élève d'une autre classe venu par une
+  // SÉQUENCE FLE. Sans ce panier, elles disparaîtraient de l'écran du prof sans
+  // que rien ne le dise — le pire des silences.
   const orphelines = useMemo(
     () => travauxBruts.filter((t) => !t.sessionId),
     [travauxBruts]
   );
+
+  // Une seule session (ou aucune) : rien à choisir, on va droit aux copies.
+  // Un écran intermédiaire d'une seule ligne serait un clic pour rien — SAUF
+  // s'il y a des copies sans classe : la session unique ouverte d'office les
+  // cachait, sans aucun chemin pour y arriver (trouvé le 2026-09-19).
+  const plusieursPaniers = sessions.length > 1 || (sessions.length === 1 && orphelines.length > 0);
+  const choixNecessaire = plusieursPaniers && !sessionActive;
 
   const travaux = useMemo(() => {
     if (!sessionActive) return travauxBruts;
@@ -112,16 +116,17 @@ export default function TravauxPage() {
           fetch(`/api/sessions?devoirId=${devoirId}`, { headers }),
         ]);
 
+        const travauxJson = await travauxRes.json();
+        const copies: Travail[] = travauxJson.success ? travauxJson.data : [];
+        if (travauxJson.success) setTravaux(copies);
+
         const sessionsJson = await sessionsRes.json();
         if (sessionsJson.success) {
           const liste = sessionsJson.data as Session[];
           setSessions(liste);
-          // Une seule classe : on l'ouvre d'office
-          if (liste.length === 1) setSessionActive(liste[0].id);
+          // Une seule classe, et aucune copie hors classe : on l'ouvre d'office
+          if (liste.length === 1 && !copies.some((t) => !t.sessionId)) setSessionActive(liste[0].id);
         }
-
-        const travauxJson = await travauxRes.json();
-        if (travauxJson.success) setTravaux(travauxJson.data);
 
         const correctionsJson = await correctionsRes.json();
         if (correctionsJson.success && Array.isArray(correctionsJson.data)) {
@@ -287,7 +292,10 @@ export default function TravauxPage() {
     return styles.statValueSuccess;
   };
 
-  const handleBack = () => router.push('/dashboard');
+  // Une activité FLE vit dans Mes Ressources › Modules FLE, pas au tableau de bord :
+  // le retour ramène là d'où le prof est venu
+  const handleBack = () =>
+    router.push(devoir?.referentiel === 'fle' ? '/grilles?onglet=fle&section=activites' : '/dashboard');
 
   if ((authLoading && !isAuthenticated) || isLoading) {
     return (
@@ -390,7 +398,7 @@ export default function TravauxPage() {
                 ? 'Choisissez une classe'
                 : isOeuvre
                   ? 'Suivi de lecture'
-                  : sessionActive && sessions.length > 1
+                  : sessionActive && plusieursPaniers
                     ? `Travaux des élèves — ${
                         sessionActive === SANS_CLASSE
                           ? 'sans classe'
@@ -435,7 +443,7 @@ export default function TravauxPage() {
       <main className={styles.main}>
         {/* Retour à la liste des classes — seulement quand il y a un choix à
             refaire, sinon le bouton renverrait sur un écran d'une seule ligne */}
-        {sessionActive && sessions.length > 1 && (
+        {sessionActive && plusieursPaniers && (
           <button
             type="button"
             className={styles.retourSessions}

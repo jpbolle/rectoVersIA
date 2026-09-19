@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import EmptyState from '@/components/EmptyState/EmptyState';
+import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
 import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
 import type { LectureQuiz } from '@/types/lecture';
 import type {
@@ -192,10 +193,7 @@ export default function QuestionnaireLecturePanel() {
       {message && <p className={styles.message}>{message}</p>}
 
       <div className={styles.grid}>
-        <button type="button" className={styles.createCard} onClick={creer}>
-          <span className={styles.createIcon}>➕</span>
-          <span className={styles.createLabel}>Nouveau questionnaire</span>
-        </button>
+        <CreateOeuvreCard onClick={creer} libelle="Nouveau questionnaire" />
 
         {chargement ? (
           <EmptyState icon="hourglass" message="En cours de chargement" />
@@ -244,7 +242,7 @@ export default function QuestionnaireLecturePanel() {
                 </button>
                 <button
                   type="button"
-                  className={styles.actionBtn}
+                  className={`${styles.actionBtn} ${styles.actionDanger}`}
                   onClick={() => supprimer(q)}
                   title="Supprimer"
                   aria-label="Supprimer"

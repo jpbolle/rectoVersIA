@@ -1,0 +1,41 @@
+/* Mes Ressources › Modules FLE : la bascule entre les deux sous-sections — même
+   pilule que le sélecteur de référentiel de /admin (`refSwitch`). */
+
+.panneau {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.bascule {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  background: var(--c-bg-card);
+}
+
+.basculeBtn {
+  border: none;
+  background: none;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.basculeBtn:hover {
+  color: var(--c-primary);
+}
+
+.basculeActive,
+.basculeActive:hover {
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+}

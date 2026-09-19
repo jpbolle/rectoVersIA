@@ -190,6 +190,107 @@
   color: var(--c-text-muted);
 }
 
+/* ── Le « + » : un cercle en pointillé (34 px, cf. LARGEUR_PLUS) ──
+   Jusqu'au 2026-09-19, ces deux classes n'existaient pas : le « + » était un
+   bouton brut du navigateur, quasi invisible sur la ligne (remarque de JP). */
+.plus,
+.plusVide {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+
+.plus {
+  border: 2px dashed #4a7ba7;
+  background: var(--c-bg-card);
+  color: #4a7ba7;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, border-style 0.15s ease, transform 0.15s ease;
+}
+
+.plus:hover,
+.plus:focus-visible {
+  border-style: solid;
+  background: rgba(74, 123, 167, 0.12);
+  transform: scale(1.08);
+}
+
+/* ── Séquence vide : un grand « + » et le début du serpentin ──
+   Le tracé suggère la suite : un trait vers la droite, un virage, et le
+   retour qui s'efface. Positions absolues, lues ensemble (cercle de 56 px,
+   centre à 48 px du haut). */
+.depart {
+  position: relative;
+  height: 132px;
+  width: 380px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.plusDepart {
+  position: absolute;
+  left: 6px;
+  top: 20px;
+  z-index: 1;
+  width: 56px;
+  height: 56px;
+  flex-basis: 56px;
+  font-size: 30px;
+}
+
+.departTrait,
+.departVirage,
+.departRetour {
+  position: absolute;
+  pointer-events: none;
+}
+
+.departTrait {
+  left: 60px;
+  top: 46px;
+  width: 262px;
+  height: 4px;
+  background: var(--c-border);
+  border-radius: 2px;
+}
+
+.departVirage {
+  left: 318px;
+  top: 46px;
+  width: 44px;
+  height: 70px;
+  border: 4px solid var(--c-border);
+  border-left: 0;
+  border-radius: 0 36px 36px 0;
+}
+
+.departRetour {
+  left: 110px;
+  top: 112px;
+  width: 212px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to left, var(--c-border), transparent);
+}
+
+.departAide {
+  position: absolute;
+  left: 76px;
+  top: 64px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--c-text-muted);
+}
+
 .popupPosition {
   font-family: var(--c-font-body);
   font-size: 13px;
@@ -227,78 +328,6 @@
 .option input {
   accent-color: var(--c-primary);
   margin: 0;
-}
-
-/* ── Popup du « + » : deux chemins ── */
-.chemins {
-  display: flex;
-  gap: 8px;
-}
-
-.cheminBtn {
-  flex: 1;
-  border: 1.5px solid var(--c-border);
-  border-radius: 8px;
-  background: var(--c-bg-card);
-  padding: 9px 12px;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--c-text-secondary);
-  cursor: pointer;
-}
-
-.cheminActif {
-  border-color: var(--c-primary);
-  background: rgba(45, 106, 90, 0.07);
-  color: var(--c-primary);
-}
-
-.creation {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.champ {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--c-text-secondary);
-  flex: 1;
-}
-
-.champ input,
-.champ select {
-  border: 1px solid var(--c-border);
-  border-radius: var(--c-radius);
-  padding: 9px 11px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 400;
-  background: var(--c-bg-card);
-  color: var(--c-text);
-}
-
-.deuxChamps {
-  display: flex;
-  gap: 12px;
-}
-
-.popupBoutons {
-  display: flex;
-  gap: 10px;
-}
-
-/* L'éditeur d'un module, en popup large */
-.popupEditeur {
-  width: min(1100px, 96vw);
-  max-height: 92vh;
-  overflow-y: auto;
-  border-radius: var(--c-radius-lg);
-  box-shadow: var(--c-shadow-popup);
 }
 
 /* ── Nature de l'étape : théorie (bleu) / activité (vert) ── */
@@ -357,11 +386,6 @@
   color: var(--c-text);
 }
 
-.natureAide {
-  font-size: 12px;
-  color: var(--c-text-muted);
-}
-
 .natureTheorie.natureActive {
   border-color: #4a7ba7;
   background: rgba(74, 123, 167, 0.08);
@@ -380,10 +404,48 @@
   font-size: 14px;
 }
 
-.creationActivite {
-  background: var(--c-bg-card);
-  padding: 20px 24px 28px;
+/* ── Popup du « + » : l'existant, en groupes, et le lien vers la création ── */
+.groupe {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
+}
+
+.groupeTitre {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+
+.lienCreer {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-primary);
+  text-decoration: none;
+  border-bottom: 1px dashed currentColor;
+}
+
+.lienCreer:hover {
+  border-bottom-style: solid;
+}
+
+/* Titre d'encadré cliquable (atelier des séquences, Mes Ressources) */
+.titreLien {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted rgba(74, 123, 167, 0.6);
+  text-underline-offset: 3px;
+}
+
+.titreLien:hover,
+.titreLien:focus-visible {
+  color: #4a7ba7;
+  text-decoration-style: solid;
 }

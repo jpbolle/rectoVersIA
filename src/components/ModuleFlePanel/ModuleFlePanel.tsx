@@ -1,11 +1,14 @@
 'use client';
 
-// Bibliothèque de modules FLE — onglet « Modules FLE » de Mes Ressources.
+// Bibliothèque des POINTS DE THÉORIE FLE (collection `modulesFle`) —
+// Mes Ressources › Modules FLE › Points de théorie. Le mot « module » reste dans le
+// code et les données ; à l'écran, c'est « point de théorie » (JP, 2026-09-19).
 //
 // Même armature qu'OeuvrePanel : trois paniers (les miens, exemples partagés,
-// ceux des collègues à dupliquer), une carte « + », une popup de création
-// courte (titre, type, niveau), et l'éditeur pleine page (ModuleFleEditor)
-// pour le reste. Pas de `confirm()` : l'archivage passe par une popup.
+// ceux des collègues à dupliquer), une carte « + » qui ouvre DIRECTEMENT
+// l'éditeur pleine page (ModuleFleEditor) sur un point vierge — la popup
+// titre-type-niveau qui le précédait a été retirée (JP, 2026-09-19).
+// Pas de `confirm()` : l'archivage passe par une popup.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,7 +18,7 @@ import EmptyState from '@/components/EmptyState/EmptyState';
 import ModuleFleCard from '@/components/ModuleFleCard/ModuleFleCard';
 import ModuleFleEditor from '@/components/ModuleFleEditor/ModuleFleEditor';
 import type { ModuleFle } from '@/types/module-fle';
-import creerStyles from '@/components/OeuvreCard/CreateOeuvreCard.module.css';
+import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
 import styles from './ModuleFlePanel.module.css';
 
 interface Paniers {
@@ -37,16 +40,7 @@ export default function ModuleFlePanel() {
   const [message, setMessage] = useState<string | null>(null);
   const [enEdition, setEnEdition] = useState<ModuleFle | null>(null);
   const [lectureSeule, setLectureSeule] = useState(false);
-  const [creation, setCreation] = useState(false);
   const [aArchiver, setAArchiver] = useState<ModuleFle | null>(null);
-
-  // Brouillon de création
-  const [titre, setTitre] = useState('');
-  const [type, setType] = useState('');
-  const [niveau, setNiveau] = useState('');
-
-  const typesVisibles = config.typesModule.filter((t) => t.visible);
-  const niveaux = niveauxVisibles(config);
 
   const charger = useCallback(async () => {
     setChargement(true);
@@ -77,34 +71,28 @@ export default function ModuleFlePanel() {
     return () => clearTimeout(t);
   }, [message]);
 
+  // Un point de théorie VIERGE, ouvert tout de suite dans l'éditeur : il ne
+  // naîtra en base qu'au premier « Enregistrer » (id vide = nouveau)
   const ouvrirCreation = () => {
-    setTitre('');
-    setType(typesVisibles[0]?.id ?? '');
-    setNiveau(niveaux[1]?.id ?? niveaux[0]?.id ?? '');
-    setCreation(true);
+    const niveaux = niveauxVisibles(config);
+    setLectureSeule(false);
+    setEnEdition({
+      id: '',
+      titre: '',
+      description: '',
+      type: config.typesModule.find((t) => t.visible)?.id ?? '',
+      niveau: niveaux[1]?.id ?? niveaux[0]?.id ?? '',
+      competences: [],
+      introduction: '',
+      ressources: null,
+      profId: '',
+      shared: false,
+      archive: false,
+      anneeScolaire: '',
+      createdAt: '',
+      updatedAt: '',
+    });
   };
-
-  const creer = useCallback(async () => {
-    if (!titre.trim()) return;
-    try {
-      const headers = await headersRef.current();
-      const res = await fetch('/api/modules-fle', {
-        method: 'POST',
-        headers: { ...(headers || {}), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titre: titre.trim(), type, niveau }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message);
-      setCreation(false);
-      // On enchaîne sur l'éditeur : un module sans théorie ni activité n'est
-      // qu'un titre
-      setLectureSeule(false);
-      setEnEdition(json.data);
-      charger();
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Erreur');
-    }
-  }, [titre, type, niveau, charger]);
 
   const dupliquer = useCallback(
     async (m: ModuleFle) => {
@@ -113,7 +101,7 @@ export default function ModuleFlePanel() {
         const res = await fetch(`/api/modules-fle/${m.id}/dupliquer`, { method: 'POST', headers: headers || undefined });
         const json = await res.json();
         if (!json.success) throw new Error(json.message);
-        setMessage(json.message || 'Module dupliqué');
+        setMessage('Point de théorie dupliqué');
         charger();
       } catch (e) {
         setMessage(e instanceof Error ? e.message : 'Erreur');
@@ -129,7 +117,7 @@ export default function ModuleFlePanel() {
       const res = await fetch(`/api/modules-fle/${aArchiver.id}`, { method: 'DELETE', headers: headers || undefined });
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
-      setMessage('Module archivé');
+      setMessage('Point de théorie archivé');
       setAArchiver(null);
       charger();
     } catch (e) {
@@ -171,18 +159,7 @@ export default function ModuleFlePanel() {
   const grille = (liste: ModuleFle[], mienne: boolean, avecCarteAjout = false) => (
     <div className={styles.grille}>
       {avecCarteAjout && (
-        <article
-          className={creerStyles.card}
-          onClick={ouvrirCreation}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && ouvrirCreation()}
-        >
-          <div className={creerStyles.content}>
-            <span className={creerStyles.icon}>+</span>
-            <h3 className={creerStyles.title}>Créer un module</h3>
-          </div>
-        </article>
+        <CreateOeuvreCard onClick={ouvrirCreation} libelle="Créer un point de théorie" />
       )}
       {liste.map((m) => (
         <ModuleFleCard
@@ -231,80 +208,19 @@ export default function ModuleFlePanel() {
         <>
           <section className={styles.groupe}>
             <div className={styles.groupeEntete}>
-              <h2 className={styles.groupeTitre}>Mes modules FLE</h2>
+              <h2 className={styles.groupeTitre}>Mes points de théorie</h2>
               <p className={styles.groupeAide}>
-                Un module = un point de théorie : une introduction et les ressources qui la
-                portent (document, images, vidéos…). Sur la ligne du temps d’une « Séquence
-                FLE » (Mes Activités), il alterne avec des activités ; un même module sert à
-                autant de séquences qu’on veut.
+                Une introduction et les ressources qui portent la théorie (document, images,
+                vidéos…). Sur la ligne du temps d’une « Séquence FLE » (Mes Activités), un point
+                de théorie alterne avec des activités ; il sert à autant de séquences qu’on veut.
               </p>
             </div>
             {grille(paniers.miens, true, true)}
           </section>
 
-          {section('Modules partagés', 'exemples proposés à tous', paniers.exemples)}
-          {section('Modules des professeurs', 'à dupliquer pour les modifier', paniers.autres)}
+          {section('Points de théorie partagés', 'exemples proposés à tous', paniers.exemples)}
+          {section('Points de théorie des professeurs', 'à dupliquer pour les modifier', paniers.autres)}
         </>
-      )}
-
-      {/* ── Création ── */}
-      {creation && (
-        <div className={styles.overlay} onClick={(e) => e.target === e.currentTarget && setCreation(false)}>
-          <div className={styles.popup}>
-            <header className={styles.popupEntete}>
-              <h3>Nouveau module FLE</h3>
-              <button type="button" className={styles.popupFermer} onClick={() => setCreation(false)}>
-                ✕
-              </button>
-            </header>
-            <div className={styles.popupCorps}>
-              <label className={styles.champ}>
-                Titre
-                <input
-                  type="text"
-                  value={titre}
-                  onChange={(e) => setTitre(e.target.value)}
-                  placeholder="Ex : Le verbe avoir"
-                  autoFocus
-                  onKeyDown={(e) => e.key === 'Enter' && creer()}
-                />
-              </label>
-              <div className={styles.deuxChamps}>
-                <label className={styles.champ}>
-                  Type
-                  <select value={type} onChange={(e) => setType(e.target.value)}>
-                    {typesVisibles.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className={styles.champ}>
-                  Niveau
-                  <select value={niveau} onChange={(e) => setNiveau(e.target.value)}>
-                    {niveaux.map((n) => (
-                      <option key={n.id} value={n.id}>
-                        {n.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </div>
-            <footer className={styles.popupPied}>
-              <span className={styles.popupNote}>La théorie et les activités se règlent juste après.</span>
-              <div className={styles.popupBoutons}>
-                <button type="button" className={styles.btnGhost} onClick={() => setCreation(false)}>
-                  Annuler
-                </button>
-                <button type="button" className={styles.btnPrimary} onClick={creer} disabled={!titre.trim()}>
-                  Créer
-                </button>
-              </div>
-            </footer>
-          </div>
-        </div>
       )}
 
       {/* ── Archivage ── */}
@@ -319,7 +235,7 @@ export default function ModuleFlePanel() {
             </header>
             <div className={styles.popupCorps}>
               <p className={styles.texte}>
-                Le module disparaît de la bibliothèque. Les séquences qui l’utilisent continueront
+                Le point de théorie disparaît de la bibliothèque. Les séquences qui l’utilisent continueront
                 de l’ouvrir : rien n’est supprimé.
               </p>
             </div>

@@ -16,6 +16,7 @@ import LoadingOverlay from '@/components/LoadingOverlay/LoadingOverlay';
 import MessageBox from '@/components/MessageBox/MessageBox';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import { calculateSchoolYear } from '@/lib/auth-utils';
+import { donneesDeCopie } from '@/lib/devoir-copie';
 import type { CreateDevoirData, Devoir } from '@/types/devoir';
 import styles from './dashboard.module.css';
 
@@ -23,7 +24,7 @@ export default function DashboardPage() {
   const { isAuthenticated, isLoading: authLoading, role, getAuthHeaders } = useAuth();
   const router = useRouter();
   const {
-    devoirs,
+    devoirs: tousLesDevoirs,
     isLoading: devoirsLoading,
     createDevoir,
     updateDevoir,
@@ -33,6 +34,11 @@ export default function DashboardPage() {
     toggleCorrige,
     toggleCorrigeDisponible,
   } = useDevoirs();
+  // Les ACTIVITÉS FLE vivent dans Mes Ressources › Modules FLE, pas ici : le tableau
+  // de bord n'en montre que la séquence (décision JP, 2026-09-19). Filtré
+  // AVANT tout le reste — années comprises, sinon une année ne contenant que
+  // des activités FLE apparaîtrait vide dans le menu.
+  const devoirs = useMemo(() => tousLesDevoirs.filter((d) => d.referentiel !== 'fle'), [tousLesDevoirs]);
   const { grilleTypes, grilles } = useGrilleTypes();
   const { classes } = useClasses();
 
@@ -244,59 +250,7 @@ export default function DashboardPage() {
   const handleDuplicateDevoir = useCallback(
     async (devoir: Devoir) => {
       try {
-        // Récupérer le questionnaire si type rechercher
-        let questionnaire: CreateDevoirData['questionnaire'] | undefined;
-        if (devoir.typeTravail === 'rechercher' && devoir.questionnaireId) {
-          const headers = await getAuthHeaders();
-          if (headers) {
-            const qRes = await fetch(`/api/navigkid/questionnaire?id=${devoir.questionnaireId}`, { headers });
-            const qJson = await qRes.json();
-            if (qJson.success) {
-              questionnaire = {
-                themes: qJson.data.theme || '',
-                questions: qJson.data.questions || [],
-              };
-            }
-          }
-        }
-
-        await createDevoir({
-          intitule: `COPIE - ${devoir.intitule}`,
-          grille: devoir.grille,
-          classes: [],
-          dateRemise: devoir.dateRemise,
-          consignes: devoir.consignes || '',
-          accesIA: devoir.accesIA,
-          disponible: false,
-          ressources: devoir.ressources || null,
-          typeTravail: devoir.typeTravail || 'ecrire',
-          evaluation: devoir.evaluation ?? 'formatif',
-          questionnaire,
-          // Le verso doit suivre le recto. Sans ces champs, dupliquer une
-          // activité de lecture rendait une coquille vide : le questionnaire,
-          // les habiletés et le corrigé restaient sur l'original.
-          modePrincipal: devoir.modePrincipal,
-          atelier: devoir.atelier,
-          habiletes: devoir.habiletes ?? null,
-          hiddenCriteria: devoir.hiddenCriteria,
-          autoEvaluation: devoir.autoEvaluation,
-          flipInverted: devoir.flipInverted,
-          corrigeReference: devoir.corrigeReference ?? null,
-          ressourcesToIA: devoir.ressourcesToIA,
-          lectureQuiz: devoir.lectureQuiz ?? null,
-          autoEvalQuiz: devoir.autoEvalQuiz ?? null,
-          // L'œuvre n'est pas recopiée : elle vit dans la bibliothèque et la
-          // copie y renvoie, comme l'original.
-          oeuvreId: devoir.oeuvreId ?? null,
-          // Séquence FLE : le parcours suit. Les élèves choisis, non : la copie
-          // n'a pas de classe (le prof les rechoisit avec la classe)
-          sequenceFle: devoir.sequenceFle ?? null,
-          oeuvreChapitres: devoir.oeuvreChapitres ?? null,
-          oeuvreMinimum: devoir.oeuvreMinimum ?? null,
-          vocabulaireConfig: devoir.vocabulaireThemes
-            ? { themes: devoir.vocabulaireThemes, diagnostic: devoir.vocabulaireDiagnostic }
-            : undefined,
-        });
+        await createDevoir(await donneesDeCopie(devoir, getAuthHeaders));
         setMessage({ text: 'Devoir dupliqué avec succès !', type: 'success' });
       } catch (err) {
         setMessage({

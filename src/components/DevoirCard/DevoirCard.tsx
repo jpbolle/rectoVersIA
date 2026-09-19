@@ -39,6 +39,9 @@ export default function DevoirCard({
   // carte (pas d'échéance, pas de copies, l'ouverture passe par la partie).
   const sondage = estSondage(devoir);
   const enDirect = estCompetition || sondage;
+  // Activité FLE : sans classe et toujours fermée — seule une séquence FLE
+  // l'ouvre. « Disponible » n'a donc pas de sens sur sa carte.
+  const fle = devoir.referentiel === 'fle';
 
   const handleToggleDisponible = (value: boolean) => {
     onToggleDisponible?.(devoir.id, value);
@@ -135,7 +138,13 @@ export default function DevoirCard({
         )}
         <span className={styles.metaItem}>
           <span className={styles.metaIcon}>🎓</span>
-          <span>{devoir.classes.length ? devoir.classes.join(', ') : 'aucune classe'}</span>
+          <span>
+            {fle
+              ? 'ouverte par les séquences FLE'
+              : devoir.classes.length
+                ? devoir.classes.join(', ')
+                : 'aucune classe'}
+          </span>
         </span>
         {/* Rien ne se « remet » en compétition : les réponses vivent dans la
             manche, et le compteur afficherait 0 pour toujours. Ce qu'on veut
@@ -159,7 +168,7 @@ export default function DevoirCard({
                 pour une seule intention, c'était le piège assuré — une partie
                 lancée sur une activité fermée tourne dans le vide, et ça se
                 découvre en classe devant vingt-quatre élèves. */}
-            {!enDirect && (
+            {!enDirect && !fle && (
               <Toggle
                 checked={devoir.disponible}
                 onChange={handleToggleDisponible}

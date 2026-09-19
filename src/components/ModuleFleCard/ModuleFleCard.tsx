@@ -74,7 +74,7 @@ export default function ModuleFleCard({
 
       <div className={styles.actions}>
         {!editable && onVoir && (
-          <button type="button" className={styles.actionBtn} onClick={() => onVoir(module)} title="Voir le module" aria-label="Voir">
+          <button type="button" className={styles.actionBtn} onClick={() => onVoir(module)} title="Voir" aria-label="Voir">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
@@ -83,7 +83,7 @@ export default function ModuleFleCard({
         )}
 
         {editable && onEditer && (
-          <button type="button" className={styles.actionBtn} onClick={() => onEditer(module)} title="Modifier le module" aria-label="Modifier">
+          <button type="button" className={styles.actionBtn} onClick={() => onEditer(module)} title="Modifier" aria-label="Modifier">
             ✏️
           </button>
         )}
@@ -102,7 +102,7 @@ export default function ModuleFleCard({
           </button>
         )}
 
-        <button type="button" className={styles.actionBtn} onClick={() => onDupliquer(module)} title={mienne ? 'Dupliquer le module' : 'Dupliquer dans mes modules'} aria-label="Dupliquer">
+        <button type="button" className={styles.actionBtn} onClick={() => onDupliquer(module)} title={mienne ? 'Dupliquer' : 'Dupliquer dans mes points de théorie'} aria-label="Dupliquer">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <rect x="4" y="1" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
             <rect x="1" y="4" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="var(--c-bg-card)" />
@@ -110,7 +110,7 @@ export default function ModuleFleCard({
         </button>
 
         {editable && onArchiver && (
-          <button type="button" className={`${styles.actionBtn} ${styles.actionDanger}`} onClick={() => onArchiver(module)} title="Archiver le module" aria-label="Archiver">
+          <button type="button" className={`${styles.actionBtn} ${styles.actionDanger}`} onClick={() => onArchiver(module)} title="Archiver" aria-label="Archiver">
             🗑️
           </button>
         )}

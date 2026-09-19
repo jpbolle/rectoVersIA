@@ -55,7 +55,6 @@
   gap: 16px;
 }
 
-.btnPrimary,
 .btnGhost,
 .btnDanger {
   border-radius: var(--c-radius);
@@ -66,21 +65,6 @@
   cursor: pointer;
   transition: all 0.18s ease;
   white-space: nowrap;
-}
-
-.btnPrimary {
-  border: none;
-  background: var(--c-primary);
-  color: #fff;
-}
-
-.btnPrimary:hover:not(:disabled) {
-  background: var(--c-primary-light);
-}
-
-.btnPrimary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .btnGhost {
@@ -172,11 +156,6 @@
   flex-wrap: wrap;
 }
 
-.popupNote {
-  font-size: 12px;
-  color: var(--c-text-muted);
-}
-
 .popupBoutons {
   display: flex;
   gap: 10px;
@@ -187,31 +166,4 @@
   font-size: 14px;
   line-height: 1.5;
   color: var(--c-text);
-}
-
-.champ {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--c-text-secondary);
-  flex: 1;
-}
-
-.champ input,
-.champ select {
-  border: 1px solid var(--c-border);
-  border-radius: var(--c-radius);
-  padding: 9px 11px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 400;
-  background: var(--c-bg-card);
-  color: var(--c-text);
-}
-
-.deuxChamps {
-  display: flex;
-  gap: 12px;
 }

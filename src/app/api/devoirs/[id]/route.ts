@@ -297,6 +297,14 @@ export async function PATCH(
       );
     }
 
+    // ACTIVITÉ FLE : ni classe, ni sélection d'élèves, jamais ouverte en
+    // dehors d'une séquence — quoi que le formulaire envoie (cf. POST).
+    if (docSnap.data()?.referentiel === 'fle') {
+      delete body.classes;
+      delete body.eleves;
+      if (body.disponible === true) delete body.disponible;
+    }
+
     // Champs modifiables
     const updateData: Record<string, unknown> = {};
 

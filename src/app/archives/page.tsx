@@ -25,8 +25,9 @@ export default function ArchivesPage() {
   const [isReady, setIsReady] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Filtrer les devoirs archives
-  const archivedDevoirs = devoirs.filter((d) => d.archive);
+  // Filtrer les devoirs archives — sauf les activités FLE, dont les archives
+  // se retrouvent dans Mes Ressources › Modules FLE › Activités
+  const archivedDevoirs = devoirs.filter((d) => d.archive && d.referentiel !== 'fle');
 
   useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 100);

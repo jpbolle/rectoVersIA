@@ -24,6 +24,12 @@
   border-color: rgba(45, 106, 90, 0.4);
 }
 
+/* Carte qui s'ouvre au clic (activités et séquences de Mes Ressources ›
+   Modules FLE) — les boutons d'action gardent leur propre geste */
+.cardCliquable {
+  cursor: pointer;
+}
+
 .cardArchivee {
   opacity: 0.6;
   background: var(--c-bg-element);

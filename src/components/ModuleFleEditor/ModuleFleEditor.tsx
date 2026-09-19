@@ -12,6 +12,11 @@
 //
 // Enregistrement EXPLICITE (bouton) : un module se compose, il ne se règle
 // pas au curseur. Le bouton dit s'il reste quelque chose à enregistrer.
+//
+// NOUVEAU point de théorie (`module.id` vide) : l'éditeur s'ouvre d'emblée,
+// sans popup préalable (demande JP, 2026-09-19 : « je n'en vois pas
+// l'intérêt »). Le document n'est créé (POST) qu'au premier « Enregistrer » —
+// quitter sans enregistrer ne laisse aucun module vide dans la bibliothèque.
 
 import { useCallback, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,6 +33,9 @@ interface Props {
   lectureSeule?: boolean;
   onFermer: () => void;
   onModifie: () => void;
+  // Texte du bouton de retour (ouvert depuis l'atelier d'une séquence :
+  // « ← Retour à la séquence »)
+  libelleRetour?: string;
 }
 
 type Brouillon = Pick<ModuleFle, 'titre' | 'description' | 'type' | 'niveau' | 'competences' | 'introduction' | 'ressources'>;
@@ -44,7 +52,13 @@ function extraire(m: ModuleFle): Brouillon {
   };
 }
 
-export default function ModuleFleEditor({ module, lectureSeule = false, onFermer, onModifie }: Props) {
+export default function ModuleFleEditor({
+  module,
+  lectureSeule = false,
+  onFermer,
+  onModifie,
+  libelleRetour = '← Modules FLE',
+}: Props) {
   const { getAuthHeaders } = useAuth();
   const { config } = useDidactiqueFle();
 
@@ -52,8 +66,11 @@ export default function ModuleFleEditor({ module, lectureSeule = false, onFermer
   const [enregistre, setEnregistre] = useState<Brouillon>(() => extraire(module));
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  // Id du module ; vide tant qu'un nouveau n'a pas été enregistré une fois
+  const [idModule, setIdModule] = useState(module.id);
+  const nouveau = !idModule;
 
-  const modifie = JSON.stringify(brouillon) !== JSON.stringify(enregistre);
+  const modifie = nouveau || JSON.stringify(brouillon) !== JSON.stringify(enregistre);
   const competences = useMemo(() => competencesVisibles(config), [config]);
   const niveaux = useMemo(() => niveauxVisibles(config), [config]);
   const typesVisibles = config.typesModule.filter((t) => t.visible || t.id === brouillon.type);
@@ -83,13 +100,14 @@ export default function ModuleFleEditor({ module, lectureSeule = false, onFermer
     try {
       const headers = await getAuthHeaders();
       if (!headers) return;
-      const res = await fetch(`/api/modules-fle/${module.id}`, {
-        method: 'PATCH',
+      const res = await fetch(nouveau ? '/api/modules-fle' : `/api/modules-fle/${idModule}`, {
+        method: nouveau ? 'POST' : 'PATCH',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(brouillon),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.message || "Erreur lors de l'enregistrement");
+      if (nouveau) setIdModule((json.data as ModuleFle).id);
       const sauve = extraire(json.data as ModuleFle);
       setEnregistre(sauve);
       setBrouillon(sauve);
@@ -99,16 +117,16 @@ export default function ModuleFleEditor({ module, lectureSeule = false, onFermer
     } finally {
       setOccupe(false);
     }
-  }, [brouillon, module.id, getAuthHeaders, onModifie]);
+  }, [brouillon, nouveau, idModule, getAuthHeaders, onModifie]);
 
   return (
     <section className={styles.editeur}>
       {/* ── Barre du haut : retour, titre, enregistrer ── */}
       <div className={styles.barre}>
         <button type="button" className={styles.retour} onClick={onFermer}>
-          ← Modules FLE
+          {libelleRetour}
         </button>
-        <span className={styles.barreTitre}>{lectureSeule ? 'Module (lecture)' : 'Modifier le module'}</span>
+        <span className={styles.barreTitre}>{lectureSeule ? 'Point de théorie (lecture)' : nouveau ? 'Nouveau point de théorie' : 'Modifier le point de théorie'}</span>
         {!lectureSeule && (
           <button
             type="button"
@@ -142,7 +160,7 @@ export default function ModuleFleEditor({ module, lectureSeule = false, onFermer
               onChange={(e) => poser('description', e.target.value)}
               disabled={lectureSeule}
               rows={3}
-              placeholder="En une phrase : ce que l’élève saura faire après ce module."
+              placeholder="En une phrase : ce que l’élève saura faire après ce point de théorie."
             />
           </label>
           <div className={styles.deuxChamps}>
@@ -216,13 +234,13 @@ export default function ModuleFleEditor({ module, lectureSeule = false, onFermer
           <div className={styles.bloc}>
             <p className={styles.blocTitre}>
               Introduction, indications
-              <span>Ce que l’élève lit en ouvrant le module : de quoi il s’agit, comment s’y prendre.</span>
+              <span>Ce que l’élève lit en ouvrant ce point de théorie : de quoi il s’agit, comment s’y prendre.</span>
             </p>
             <DocumentEditor
               content={brouillon.introduction}
               onChange={(html) => poser('introduction', html)}
               disabled={lectureSeule}
-              placeholder="Dans ce module, tu vas apprendre à…"
+              placeholder="Ici, tu vas apprendre à…"
             />
           </div>
 

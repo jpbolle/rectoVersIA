@@ -111,6 +111,8 @@ export async function GET(request: NextRequest) {
         eleves: Array.isArray(data.eleves) ? (data.eleves as string[]) : null,
         // Séquence FLE : le parcours (modules)
         sequenceFle: data.typeTravail === 'sequence' ? lireSequenceFle(data.sequenceFle) : null,
+        // Activité FLE : rangée dans Mes Ressources › Modules FLE, pas au tableau de bord
+        referentiel: data.referentiel === 'fle' ? ('fle' as const) : null,
         submittedCount: undefined as number | undefined,
       };
     });
@@ -331,7 +333,15 @@ export async function POST(request: NextRequest) {
       oeuvreMinimum,
       sequenceFle,
       eleves,
+      referentiel,
     } = body;
+
+    // ACTIVITÉ FLE (Mes Ressources › Modules FLE) : jamais de classe, et née FERMÉE.
+    // Sans classe il n'y a pas de session, et `etatEffectif` retombe sur
+    // `disponible` : ouverte, elle l'aurait été à tout élève qui en connaît
+    // l'id. Seule une séquence FLE l'ouvre (`ouvertParSequence`).
+    const estFle = referentiel === 'fle' && typeTravail !== 'sequence';
+    const ouverte = estFle ? false : (disponible ?? true);
 
     // Validation des champs requis. Seules les activités d'écriture s'appuient
     // sur une grille : lecture, recherche et vocabulaire portent leur
@@ -351,7 +361,7 @@ export async function POST(request: NextRequest) {
     // Données de base du devoir
     const devoirData: Record<string, unknown> = {
       id,
-      classes,
+      classes: estFle ? [] : classes,
       // null (et non champ absent) : orderBy('dateRemise') exclurait le document
       dateRemise: dateRemise ? new Date(dateRemise) : null,
       grille,
@@ -361,7 +371,7 @@ export async function POST(request: NextRequest) {
       // code à exécuter, et le contrôle du navigateur ne contrôle rien.
       ressources: sanitizeRessources(ressources, { codeAutorise: auth.isAdmin }),
       accesIA: accesIA ?? false,
-      disponible: disponible ?? true,
+      disponible: ouverte,
       archive: false,
       corrige: false,
       corrigeDisponible: false,
@@ -382,7 +392,8 @@ export async function POST(request: NextRequest) {
       // Absent = activé (activités antérieures au réglage)
       autoEvaluation: autoEvaluation !== false,
       // Horodatage de l'ouverture aux élèves (notifications)
-      ...(disponible ?? true ? { disponibleAt: new Date() } : {}),
+      ...(ouverte ? { disponibleAt: new Date() } : {}),
+      ...(estFle ? { referentiel: 'fle' } : {}),
     };
 
     // Critères de la grille masqués pour ce devoir (ids)
@@ -474,7 +485,7 @@ export async function POST(request: NextRequest) {
 
     // Si type "autoevaluation", questionnaire d'auto-évaluation
     // Élèves concernés : toute la classe (null) ou une partie
-    devoirData.eleves = restrictionElevesPourFirestore(eleves);
+    devoirData.eleves = estFle ? null : restrictionElevesPourFirestore(eleves);
 
     // Séquence FLE : son parcours (recopié à la duplication)
     if (typeTravail === 'sequence') {

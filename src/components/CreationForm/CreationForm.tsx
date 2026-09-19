@@ -83,6 +83,15 @@ interface CreationFormProps {
   isSubmitting: boolean;
   onClose?: () => void;
   getAuthHeaders?: () => Promise<Record<string, string> | null>;
+  // ACTIVITÉ FLE (Mes Ressources › Modules FLE › Activités) : ni classe, ni élèves, ni
+  // échéance, ni habiletés du référentiel français, ni « Disponible » — c'est
+  // la séquence FLE qui l'ouvre aux élèves, et c'est elle qui porte classes et
+  // échéance. Pas de type « Séquence » non plus : une séquence ne s'emboîte
+  // pas dans une autre.
+  modeFle?: boolean;
+  // Type d'activité présélectionné (ex. « sequence-fle » depuis Mes Ressources
+  // › Modules FLE › Séquences de cours). Absent = écriture, comme toujours.
+  atelierInitial?: string;
 }
 
 export default function CreationForm({
@@ -95,6 +104,8 @@ export default function CreationForm({
   isSubmitting,
   onClose,
   getAuthHeaders,
+  modeFle = false,
+  atelierInitial,
 }: CreationFormProps) {
   // Face affichée du formulaire (recto : infos de base, verso : ressources)
   const [face, setFace] = useState<FormFace>('recto');
@@ -128,8 +139,9 @@ export default function CreationForm({
   // Type d'activité (atelier) : c'est lui qui décide du dispositif ouvert par
   // l'app. Le mode principal dit la compétence en jeu — une recherche guidée
   // est un travail de lecture menée dans un atelier de recherche.
-  const [atelier, setAtelier] = useState<string>('ecriture');
-  const [modePrincipal, setModePrincipal] = useState<TypeModal>('ecrire');
+  const atelierDeDepart = findAtelier(atelierInitial ?? '') ?? findAtelier('ecriture');
+  const [atelier, setAtelier] = useState<string>(atelierDeDepart?.id ?? 'ecriture');
+  const [modePrincipal, setModePrincipal] = useState<TypeModal>(atelierDeDepart?.modeParDefaut ?? 'ecrire');
   const typeTravail: TypeTravail = findAtelier(atelier)?.dispositif ?? 'ecrire';
 
   // Habiletés travaillées : null = toutes celles de l'atelier
@@ -310,8 +322,8 @@ export default function CreationForm({
     setProductionToIA(false);
     setAccesIA(false);
     setDisponible(false);
-    setAtelier('ecriture');
-    setModePrincipal('ecrire');
+    setAtelier(atelierDeDepart?.id ?? 'ecriture');
+    setModePrincipal(atelierDeDepart?.modeParDefaut ?? 'ecrire');
     setHabiletes(null);
     setEvaluation('formatif');
     setNkQuestions([]);
@@ -334,15 +346,16 @@ export default function CreationForm({
 
   function buildData(): CreateDevoirData {
     const data: CreateDevoirData = {
-      classes: selectedClasses,
-      dateRemise,
+      classes: modeFle ? [] : selectedClasses,
+      dateRemise: modeFle ? '' : dateRemise,
       grille,
       intitule: intitule.trim(),
       consignes: showConsignes ? consignes.trim() : '',
       ressources,
       accesIA,
-      disponible,
+      disponible: modeFle ? false : disponible,
       typeTravail,
+      ...(modeFle ? { referentiel: 'fle' as const } : {}),
       // Toujours transmis : « absent = activé » ne vaut que pour les activités
       // antérieures au réglage, pas pour celles qu'on crée maintenant.
       autoEvaluation: supporteAutoEval ? autoEvaluation : false,
@@ -462,7 +475,7 @@ export default function CreationForm({
   const renderRecto = () => (
     <>
       <div className={styles.formHeader}>
-        <h2 className={styles.formTitle}>Créer une nouvelle activité</h2>
+        <h2 className={styles.formTitle}>{modeFle ? 'Créer une activité FLE' : 'Créer une nouvelle activité'}</h2>
         {onClose && (
           <button
             type="button"
@@ -496,7 +509,7 @@ export default function CreationForm({
             value={atelier}
             onChange={(e) => changeAtelier(e.target.value)}
           >
-            {ATELIERS.map((a) => (
+            {ATELIERS.filter((a) => !modeFle || a.dispositif !== 'sequence').map((a) => (
               <option key={a.id} value={a.id}>
                 {a.label}
               </option>
@@ -597,6 +610,7 @@ export default function CreationForm({
       {/* Ligne 2 : Classes + Échéance + Évaluation. Sous la ligne, les élèves
           concernés dès qu'une classe est cochée (toute la classe ou une partie). */}
       <div className={supporteAutoEval ? styles.formRowFour : styles.formRowThree}>
+        {!modeFle && (
         <div className={styles.formGroup}>
           <label className={styles.label}>
             Classe(s) <span className={styles.optional}>— facultatif</span>
@@ -613,7 +627,9 @@ export default function CreationForm({
             }
           />
         </div>
+        )}
 
+        {!modeFle && (
         <div className={styles.formGroup}>
           <DatePicker
             /* « Échéance » et non « date de remise » : la date est facultative
@@ -626,6 +642,7 @@ export default function CreationForm({
             min={getTodayString()}
           />
         </div>
+        )}
 
         <div className={styles.formGroup}>
           <label className={styles.label}>
@@ -694,19 +711,21 @@ export default function CreationForm({
         )}
       </div>
 
-      <ElevesChoix
-        classesNoms={selectedClasses}
-        value={eleves}
-        onChange={setEleves}
-        onEleves={setElevesDesClasses}
-        disabled={isSubmitting}
-      />
+      {!modeFle && (
+        <ElevesChoix
+          classesNoms={selectedClasses}
+          value={eleves}
+          onChange={setEleves}
+          onEleves={setElevesDesClasses}
+          disabled={isSubmitting}
+        />
+      )}
 
 
       {/* Ligne 3 : les habiletés (hors écriture), l'œuvre à lire — ce qui
           dépend du type d'activité */}
       <div className={styles.formRow}>
-        {!usesGrille && typeTravail !== 'sequence' && (
+        {!usesGrille && typeTravail !== 'sequence' && !modeFle && (
           <div className={styles.formGroup}>
             <label className={styles.label}>Habiletés travaillées</label>
             <HabiletesPicker
@@ -859,18 +878,20 @@ export default function CreationForm({
           </p>
         </div>
 
-        <div className={styles.toggleGroup}>
-          <Toggle
-            checked={disponible}
-            onChange={setDisponible}
-            labelOn="Disponible"
-            labelOff="Non disponible"
-            disabled={isSubmitting}
-          />
-          <p className={styles.toggleHint}>
-            Rend l&apos;activité visible et accessible aux élèves
-          </p>
-        </div>
+        {!modeFle && (
+          <div className={styles.toggleGroup}>
+            <Toggle
+              checked={disponible}
+              onChange={setDisponible}
+              labelOn="Disponible"
+              labelOff="Non disponible"
+              disabled={isSubmitting}
+            />
+            <p className={styles.toggleHint}>
+              Rend l&apos;activité visible et accessible aux élèves
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Actions */}

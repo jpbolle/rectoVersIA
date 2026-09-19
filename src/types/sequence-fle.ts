@@ -84,3 +84,20 @@ export interface ParcoursFle {
   intitule: string;
   etapes: EtapeParcours[];
 }
+
+// Icône d'une activité selon son atelier — encadrés de la ligne du temps et
+// cartes de Mes Ressources › Modules FLE. Repli : 🎯.
+const ICONE_ATELIER: Record<string, string> = {
+  ecriture: '✏️',
+  lecture: '📖',
+  'lecture-oeuvre': '📚',
+  recherche: '🔎',
+  vocabulaire: '🗂️',
+  autoevaluation: '🪞',
+  sondage: '📊',
+  'sequence-fle': '🧭',
+};
+
+export function iconeAtelier(atelier: string | undefined | null): string {
+  return ICONE_ATELIER[atelier ?? ''] ?? '🎯';
+}

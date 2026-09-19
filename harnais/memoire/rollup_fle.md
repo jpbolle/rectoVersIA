@@ -3,7 +3,19 @@
 > Plan validé : [`../plans/2026-09-14-espace-fle.md`](../plans/2026-09-14-espace-fle.md).
 > Ce rollup porte l'état réel du chantier ; le plan reste une trace datée.
 
-## État actuel (fin de session, nuit du 2026-09-14 au 15)
+## État actuel (fin de session du 2026-09-19)
+
+- **Session du 19/09 : tout écrit, RIEN vu à l'écran, rien commité** (tsc, lint des fichiers
+  touchés et `npm run build` passent). Deux plans du jour :
+  [`théorie et activités`](../plans/2026-09-19-fle-theorie-et-activites.md) et
+  [`séquences de cours`](../plans/2026-09-19-fle-sequences-de-cours.md) — détail plus bas.
+- **Prochaine session** : faire tester par JP, dans l'ordre du scénario « À tester » plus
+  bas ; puis trancher les copies « sans classe » venues par une séquence (fin du fichier) ;
+  puis l'étape 6 (Daspalecte).
+- Les étapes 3-4-5 du 14/09 n'avaient pas été testées : JP a essayé le 19/09 (retours →
+  plans du jour), mais pas encore le parcours élève.
+
+### Avant (nuit du 2026-09-14 au 15)
 
 - **Étapes 1 et 2 testées par JP** le 14/09 (aucun bug remonté).
 - **Étapes 3, 4 et 5 écrites** (bibliothèque de modules = théories ; séquence = activité
@@ -18,6 +30,42 @@
   aussi sur une activité classique.
 - Étape 6 (Daspalecte branché) : pas commencée.
 - Vocabulaire : **séquence** > modules > activités. « Parcours » reste à la scénarisation.
+
+## 2026-09-19 — retours de JP après essai → plan « théorie et activités »
+
+Plan : [`../plans/2026-09-19-fle-theorie-et-activites.md`](../plans/2026-09-19-fle-theorie-et-activites.md)
+(validé et **écrit le 19/09, rien vu à l'écran**). En bref :
+- le « + » n'avait **aucun style** (bouton brut) → cercle pointillé ; séquence vide = grand
+  « + » et début de serpentin ;
+- le « + » ne prend plus que **l'existant** ; créer = Mes Ressources › Modules FLE **en nouvel
+  onglet**, la liste se relit au retour ;
+- Mes Ressources : onglet **« Modules FLE »** (nom gardé, demande JP) à deux sous-sections **Points de théorie** (= les
+  `modulesFle`, seul le mot change à l'écran) / **Activités** ;
+- **activité FLE** = `Devoir.referentiel: 'fle'` : sans classe, **née fermée** (seule une
+  séquence l'ouvre), **absente du tableau de bord et des archives**, gérée dans
+  `ActiviteFlePanel` (mêmes `DevoirCard` / `CreationForm modeFle` / `EditDevoirModal`) ;
+- le « + » propose aussi les activités **classiques** (choix JP) → corrigé : copies
+  introuvables d'une activité à une seule classe prise dans une séquence par un élève
+  d'une autre classe (la liste des classes s'affiche désormais s'il y a des copies sans
+  classe) ;
+- points de théorie archivés : ils restent désormais dans les parcours (ils en
+  disparaissaient, contrairement à ce que dit la popup d'archivage).
+
+**Puis, même jour — 3e sous-section « Séquences de cours »** (plan
+[`../plans/2026-09-19-fle-sequences-de-cours.md`](../plans/2026-09-19-fle-sequences-de-cours.md),
+écrit, rien vu) : les séquences (aussi au tableau de bord) avec, au clic, l'**atelier** —
+serpentin en grand, élèves concernés, enregistrement automatique, encadrés cliquables qui
+ouvrent la ressource sur place (« ← Retour à la séquence »). Et : la carte « + » d'un point
+de théorie ouvre **directement** l'éditeur (plus de popup ; créé au premier Enregistrer).
+
+Et **cartes des Ressources harmonisées** (voir le plan « séquences de cours ») :
+`ActiviteRessourceCard` pour activités et séquences FLE, questionnaires réalignés, carte
+« + » unique `CreateOeuvreCard libelle`.
+
+**À tester** : le « + » (vide et plein) ; créer depuis le lien, revenir, voir l'élément
+dans la liste ; créer une activité FLE → absente du tableau de bord, présente dans le
+« + » ; l'élève l'ouvre depuis sa séquence et PAS en tapant son id hors séquence ; ✏️,
+copies (Retour → Ressources FLE), dupliquer, archiver.
 
 ## Étape 1 — ce qui a été écrit (2026-09-14)
 
@@ -302,3 +350,18 @@ la variable `ALLOWED_AUDIENCES` sur le VPS (`.env` de PM2).
 - 2026-09-14 (soir) — Étapes 1 (classe FLE + référentiel FLE) et 2 (radar, curseurs,
   `/fle`) écrites, puis testées par JP. Étapes 3 (bibliothèque de modules), 4 et 5 (séquence = activité,
   option B refaite le soir même, parcours élève) écrites tard le soir, non testées. Rien déployé.
+
+## ⚠ À vérifier à la reprise (noté le 2026-09-19)
+
+- (Mis à jour le 19/09) Une activité FLE n'a pas de classe : toutes ses copies s'affichent
+  à plat, rien n'est caché. Pour une activité **classique** prise dans une séquence, la copie
+  d'un élève d'une autre classe reste « sans classe » mais est désormais **atteignable**
+  (voir plus haut). La question du rattachement reste ouverte.
+- **Copies « sans classe » par la voie de la séquence** : depuis le 19/09,
+  `POST /api/travaux` et `/api/travaux/mine` posent `sessionId: mes.sessions[0]?.id`
+  (cf. gotcha `init.md` « Toute création d'un `travail` porte son `sessionId` »). Une
+  activité ouverte **par `ouvertParSequence`** à un élève dont la classe n'est PAS une
+  classe de l'activité n'a pas de session pour lui → `sessionId: null` → sa copie tombe
+  dans « Copies sans classe ». Décider : rattacher à la session de la SÉQUENCE, créer la
+  session manquante, ou accepter.
+

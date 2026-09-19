@@ -68,8 +68,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const etapes: EtapeParcours[] = [];
     for (const e of etapesRefs) {
       if (e.nature === 'theorie') {
+        // Un point de théorie ARCHIVÉ reste dans les séquences qui l'utilisent :
+        // l'archivage le retire de la bibliothèque, pas des parcours en cours
+        // (c'est ce que promet la popup d'archivage — le code le sautait
+        // jusqu'au 2026-09-19). Seul un document disparu est passé.
         const m = parId.get(e.moduleId!);
-        if (!m || m.archive) continue;
+        if (!m) continue;
         etapes.push({
           id: e.id,
           nature: 'theorie',
