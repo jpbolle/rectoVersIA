@@ -460,7 +460,7 @@ export default function TravailPage() {
             className={styles.sequenceRetour}
             onClick={() => router.push(isPreviewMode ? '/dashboard' : '/fle')}
           >
-            ← {isPreviewMode ? 'Mes Activités' : 'Mon cours'}
+            ← {isPreviewMode ? 'Mes Activités' : 'Mon cours FLE'}
           </button>
           {isPreviewMode && <span className={styles.sequenceApercu}>👁️ Vue élève</span>}
         </div>

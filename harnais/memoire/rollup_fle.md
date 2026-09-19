@@ -3,7 +3,30 @@
 > Plan validé : [`../plans/2026-09-14-espace-fle.md`](../plans/2026-09-14-espace-fle.md).
 > Ce rollup porte l'état réel du chantier ; le plan reste une trace datée.
 
-## État actuel (fin de session du 2026-09-19)
+## État actuel (2026-09-19, soir — 2e session)
+
+- **Étape 6 (Daspalecte) : étapes 1 et 2 ÉCRITES, rien vu à l'écran** — plan
+  [`2026-09-19-daspalecte-ingestion.md`](../plans/2026-09-19-daspalecte-ingestion.md).
+  Mots cliqués → `vocabulairePersonnel/{uid}` comme NavigKid (décision JP), file
+  `vocabulaireEnAttente/{emailHash}` pour l'élève jamais connecté ; stats (séances,
+  exercices, tests de lecture, mots + clics) en tête de l'onglet **Vocabulaire** de la fiche
+  élève. Route **`/api/ingest`** (chemin imposé par l'extension). `tsc` passe.
+- **TESTÉ EN LOCAL par JP le 2026-09-19** : 3 mots cliqués par eleve07 → visibles avec
+  traduction dans *Mes ressources personnelles*, et dans la carte Daspalecte de la fiche
+  prof (après correctif). **Exercices et tests de lecture : pas encore essayés.**
+  Façon de tester : **copie locale de l'extension** (le profil élève a l'extension imposée
+  par l'école, service worker inaccessible), `chrome.storage.local.set({ daspalecteApiBase:
+  'http://localhost:3003', daspalecteTrackingBlocked: false })` dans son service worker, puis
+  connexion avec le compte élève. ⚠ Chaque profil Chrome a ses propres réglages d'extension.
+- **Correctif du test** : fiche `eleves` pas encore liée (élève ajouté à une classe alors
+  qu'il avait déjà un compte — `firebaseUid` n'est posé qu'à sa reconnexion) → la fiche prof
+  le croyait jamais connecté. `resolveProfilTarget` retrouve désormais l'uid par l'email
+  (`uidParEmail`, `src/lib/eleve-lookup.ts`) : vaut pour les 6 onglets du profil.
+- Libellé de l'en-tête élève FLE : **« Mon cours FLE »** (demande JP, 19/09).
+- **Reste** : bascule (extension 2.0.2 avec la nouvelle adresse, variable sur le VPS).
+- Le scénario de test des Modules FLE (ci-dessous) n'a toujours pas été joué.
+
+## État précédent (fin de la 1re session du 2026-09-19)
 
 - **Session du 19/09 : tout écrit, RIEN vu à l'écran, rien commité** (tsc, lint des fichiers
   touchés et `npm run build` passent). Deux plans du jour :
@@ -341,7 +364,7 @@ la variable `ALLOWED_AUDIENCES` sur le VPS (`.env` de PM2).
 3. ~~Bibliothèque de modules FLE~~ — écrit le 2026-09-14, à tester
 4. ~~Séquences FLE + voie d'autorisation~~ — écrit le 2026-09-14 en **option B**, à tester
 5. ~~Séquence côté élève~~ — écrit avec l'étape 4 (`SequenceFleActivity`, `/fle`), à tester
-6. Daspalecte branché (`/api/daspalecte/ingest`), `daspa-app` figée
+6. Daspalecte branché — étapes 1-2 écrites le 2026-09-19 (route `/api/ingest`), bascule à faire
 
 ## Historique
 

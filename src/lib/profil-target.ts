@@ -8,6 +8,7 @@
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { decrypt } from '@/lib/crypto';
+import { uidParEmail } from '@/lib/eleve-lookup';
 
 interface AuthInfo {
   uid: string;
@@ -53,9 +54,12 @@ export async function resolveProfilTarget(
     return { errorStatus: 403, errorMessage: 'Cet élève n’est pas dans vos classes' };
   }
 
+  // Fiche pas encore liée (élève ajouté à la classe alors qu'il avait déjà un
+  // compte) : on retrouve son uid par l'email, sans attendre sa reconnexion
+  const email = decrypt(eleve.email) || '';
   return {
-    uid: eleve.firebaseUid || '',
-    email: decrypt(eleve.email) || '',
+    uid: eleve.firebaseUid || (await uidParEmail(email)) || '',
+    email,
   };
 }
 

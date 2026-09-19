@@ -97,7 +97,7 @@ export default function Header({
         ) : variant === 'fle' ? (
           <nav className={styles.navButtons}>
             <button className={styles.navBtn} onClick={() => router.push('/fle')}>
-              Mon cours
+              Mon cours FLE
             </button>
             <button className={styles.navBtn} onClick={() => router.push('/mes-classes')}>
               Mes classes
@@ -121,7 +121,7 @@ export default function Header({
             </button>
             {avecCoursFle && (
               <button className={styles.navBtn} onClick={() => router.push('/fle')}>
-                Mon cours
+                Mon cours FLE
               </button>
             )}
             <button

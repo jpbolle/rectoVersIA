@@ -42,7 +42,9 @@
 ### Variables d'environnement
 `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_SHEETS_ID`, `FIREBASE_*` (client + admin),
 `ENCRYPTION_KEY` (chiffrement des identités élèves — **même clé sur tous les postes et
-le VPS**, sinon déchiffrement impossible) — **ne jamais écrire les valeurs ici.**
+le VPS**, sinon déchiffrement impossible), `ALLOWED_AUDIENCES` (clients OAuth Google dont
+`/api/ingest` accepte les jetons — celui de l'extension Daspalecte, liste séparée par des
+virgules) — **ne jamais écrire les valeurs ici.**
 Sur le VPS : `.env.local`.
 
 ### Développement local
@@ -423,7 +425,16 @@ interface Questionnaire {
 - `professeurs` : doc ID = email, géré par admin via `/admin` (supporte `expiresAt`)
 - `dictionaryCache` : doc ID = mot — cache des consultations dictionnaire (accès serveur uniquement)
 - `vocabulairePersonnel/{uid}` : mots dont l'élève a demandé la définition (app + NavigKid),
-  format `VocabulaireWord` — accès serveur uniquement, pas de règle Firestore
+  format `VocabulaireWord` — accès serveur uniquement, pas de règle Firestore. Depuis le
+  2026-09-19, aussi les mots **traduits avec Daspalecte** (`traduction`, `langue`,
+  `source: 'daspalecte'`, `clics`, `lastSeenAt`) ; fusion par `fusionnerMots`
+  (`src/lib/daspalecte/mots.ts`)
+- `vocabulaireEnAttente/{emailHash}` : mots Daspalecte d'un élève **jamais connecté** (pas
+  d'uid) — versés dans sa liste à la connexion (`/api/eleves/link`) puis supprimés
+- `tracesDaspalecte/{sessionId}` (+ `/events/{eventId}`) et `resultatsDaspalecte/{eventId}`
+  (`kind: 'exercise' | 'reading_test'`) : traces de l'extension Daspalecte, élève désigné
+  par `studentEmailHash` — accès serveur uniquement. Stats recalculées à la lecture
+  (`src/lib/daspalecte/stats.ts`), carte en tête de l'onglet Vocabulaire du profil
 - `devoirs` : le champ `uaa` affiché sur les cards est **enrichi à la lecture** par
   `/api/devoirs` (jointure grille par nom) — pas stocké dans le document
 - `ressourceImages` : images de ressources en **base64** (≤ 700 Ko, compression navigateur
@@ -515,6 +526,7 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
 | `/api/modules-fle`, `/api/modules-fle/[id]`, `/api/modules-fle/[id]/dupliquer` | GET, POST, PATCH, DELETE | Bibliothèque de modules FLE (collection `modulesFle`) : trois paniers (les miens / exemples `shared` admin / ceux des collègues à dupliquer), DELETE = **archive**. Un module = une **théorie** : titre, type, niveau, compétences, `introduction` (HTML Tiptap — indications), `ressources` (`DevoirRessource`, les 5 onglets du verso, `sanitizeRessources`). **Pas d'activités** dans un module (2026-09-14) |
 | `/api/niveaux-fle` | GET, PUT | Positionnement CECR d'un élève FLE — doc `niveauxFle/{eleveId}` (`positionnement` compétence → niveau, `objectifsMois`, `historique` 24 max). GET `?eleveId=` prof (élève d'une de SES classes), GET sans paramètre = l'élève lui-même (+ `prenom`, positionnement le plus récent si plusieurs fiches) ; PUT prof |
 | `/api/didactique-fle` | GET, PUT | Référentiel FLE — doc `configuration/didactique-fle`, GET tout connecté, PUT admin ; défauts servis pour un document jamais enregistré ; hook client `useDidactiqueFle` (cache **séparé**) |
+| `/api/ingest` | POST | **Extension Daspalecte** (chemin imposé par `analytics.js` : `${apiBase}/api/ingest`). Jeton **d'accès Google** (pas Firebase) vérifié par `tokeninfo` contre `ALLOWED_AUDIENCES` ; contrat `IngestBody` de daspa-app inchangé (`src/lib/daspalecte/schema.ts`) ; lot idempotent en une transaction. Prof → 200 ignoré ; aucune fiche `eleves` → 403 `unknown_account` (l'extension coupe alors son suivi) |
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |
 | `/api/professeurs`, `/api/admin/stats`, `/api/admin/prof-stats/[profId]` | — | Admin (profId = email encodé) |
 | `/api/roadmap` | GET, POST | Roadmap Firestore (POST admin) |

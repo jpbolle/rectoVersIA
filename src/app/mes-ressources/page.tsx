@@ -18,6 +18,8 @@ type Tab = 'vocabulaire' | 'avenir';
 interface PersoWord {
   word: string;
   definition: string;
+  // Mot cliqué dans l'extension Daspalecte : sa traduction
+  traduction: string;
   addedAt: string | null;
 }
 
@@ -64,7 +66,7 @@ export default function MesRessourcesPage() {
         if (!headers) return;
         const res = await fetch('/api/vocabulaire/personnel', { headers });
         const json = await res.json();
-        const raw: Array<{ word?: string; definition?: string; addedAt?: string }> =
+        const raw: Array<{ word?: string; definition?: string; traduction?: string; addedAt?: string }> =
           json.success ? json.data?.words || [] : [];
         setWords(
           raw
@@ -72,6 +74,7 @@ export default function MesRessourcesPage() {
             .map((w) => ({
               word: w.word!,
               definition: w.definition || '',
+              traduction: w.traduction || '',
               addedAt: w.addedAt || null,
             }))
             .sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || ''))
@@ -116,17 +119,21 @@ export default function MesRessourcesPage() {
             ) : words.length === 0 ? (
               <EmptyState
                 icon="📖"
-                message="Aucun mot pour le moment. Les mots dont tu demandes la définition (dans l'app ou avec NavigKid) apparaîtront ici."
+                message="Aucun mot pour le moment. Les mots dont tu demandes la définition (dans l'app ou avec NavigKid) ou la traduction (avec Daspalecte) apparaîtront ici."
               />
             ) : (
               <>
                 <div className={styles.persoNote}>
-                  Les mots dont tu as demandé la définition, dans l&apos;app ou avec NavigKid.
+                  Les mots dont tu as demandé la définition (dans l&apos;app ou avec NavigKid) ou la
+                  traduction (avec Daspalecte).
                 </div>
                 {words.map((w) => (
                   <div key={w.word} className={styles.persoItem}>
                     <span className={styles.persoWord}>{w.word}</span>
-                    <span className={styles.persoDef}>{w.definition}</span>
+                    <span className={styles.persoDef}>
+                      {w.traduction && <span className={styles.persoTrad}>{w.traduction}</span>}
+                      {w.definition}
+                    </span>
                     {w.addedAt && <span className={styles.persoDate}>{formatDate(w.addedAt)}</span>}
                   </div>
                 ))}

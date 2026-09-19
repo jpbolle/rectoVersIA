@@ -21,6 +21,7 @@ import { useDidactique } from '@/hooks/useDidactique';
 import { habileteLabel } from '@/types/didactique';
 import { LECTURE_COMPETENCE_LABELS } from '@/types/lecture';
 import type { LectureCompetence } from '@/types/lecture';
+import type { DaspalecteStats } from '@/types/daspalecte';
 import styles from '@/app/profil/profil.module.css';
 
 // ─── Onglets ─────────────────────────────────────────────────────────────────
@@ -1150,14 +1151,110 @@ function VocabGroupCols({ group }: { group: ProfilVocabGroup }) {
   );
 }
 
+// Traces de l'extension Daspalecte (élèves DASPA) : ce que l'élève a fait en
+// lisant sur le web — mots cliqués, exercices, tests de lecture.
+function DaspalecteCard({ stats }: { stats: DaspalecteStats }) {
+  const [tousLesMots, setTousLesMots] = useState(false);
+  const clics = stats.mots.reduce((s, m) => s + m.clics, 0);
+  const MOTS_VISIBLES = 30;
+  const mots = tousLesMots ? stats.mots : stats.mots.slice(0, MOTS_VISIBLES);
+
+  return (
+    <div className={styles.vocActCard}>
+      <div className={styles.vocActHead}>
+        <span className={styles.vocActTitle}>Extension Daspalecte</span>
+        {stats.derniereActivite && (
+          <span className={styles.vocActDate}>
+            dernière activité le {formatDateShort(stats.derniereActivite)}
+          </span>
+        )}
+      </div>
+
+      <div className={styles.vocActStats}>
+        <div className={styles.vocActStat}>
+          <span className={styles.vocActStatValue}>{stats.mots.length}</span>
+          <span className={styles.vocActStatLabel}>
+            mot{stats.mots.length > 1 ? 's' : ''} traduit{stats.mots.length > 1 ? 's' : ''} ({clics} clic{clics > 1 ? 's' : ''})
+          </span>
+        </div>
+        <div className={styles.vocActStat}>
+          <span className={styles.vocActStatValue}>{stats.sessions}</span>
+          <span className={styles.vocActStatLabel}>séance{stats.sessions > 1 ? 's' : ''} de lecture</span>
+        </div>
+        <div className={styles.vocActStat}>
+          <span className={styles.vocActStatValue}>{stats.exercices.nombre}</span>
+          <span className={styles.vocActStatLabel}>exercice{stats.exercices.nombre > 1 ? 's' : ''}</span>
+        </div>
+        <div className={styles.vocActStat}>
+          <span className={styles.vocActStatValue}>{stats.lectures.nombre}</span>
+          <span className={styles.vocActStatLabel}>test{stats.lectures.nombre > 1 ? 's' : ''} de lecture</span>
+        </div>
+      </div>
+
+      <div className={styles.vocActScores}>
+        <div className={styles.vocActScoreRow}>
+          <span className={styles.vocActScoreLabel}>Exercices</span>
+          {stats.exercices.reussite !== null
+            ? <span className={styles.scoreChips}>
+                <ScoreChip pct={stats.exercices.reussite} detail="de réussite" />
+              </span>
+            : <span className={styles.vocActNone}>aucun</span>}
+        </div>
+        <div className={styles.vocActScoreRow}>
+          <span className={styles.vocActScoreLabel}>Tests de lecture</span>
+          {stats.lectures.moyenne !== null
+            ? <span className={styles.scoreChips}>
+                <ScoreChip pct={stats.lectures.moyenne} detail={`moyenne sur ${stats.lectures.nombre}`} />
+                {stats.lectures.dernier !== null && (
+                  <ScoreChip pct={stats.lectures.dernier} detail="dernier" />
+                )}
+              </span>
+            : <span className={styles.vocActNone}>aucun</span>}
+        </div>
+      </div>
+
+      {stats.mots.length > 0 && (
+        <>
+          <div className={styles.daspaMotsTitre}>Mots cliqués, les plus fréquents d&apos;abord</div>
+          <div className={styles.daspaMots}>
+            {mots.map((m) => (
+              <span key={m.word} className={styles.daspaMot} title={m.langue ? `Langue : ${m.langue}` : undefined}>
+                <strong>{m.word}</strong>
+                {m.traduction && <span className={styles.daspaTrad}>{m.traduction}</span>}
+                {m.clics > 1 && <span className={styles.daspaClics}>×{m.clics}</span>}
+              </span>
+            ))}
+          </div>
+          {stats.mots.length > MOTS_VISIBLES && (
+            <button type="button" className={styles.daspaPlus} onClick={() => setTousLesMots((v) => !v)}>
+              {tousLesMots ? 'Afficher moins' : `Afficher les ${stats.mots.length} mots`}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // profView : un prof consulte la fiche — statistiques par activité seulement,
-// sans les listes de mots (réservées à la vue élève).
+// sans les listes de mots (réservées à la vue élève). Exception : les mots
+// cliqués dans Daspalecte, qui sont justement ce que le prof veut voir.
 function VocabulaireTab({ data, profView }: { data: ProfilVocabulaire; profView: boolean }) {
-  if (data.activites.length === 0 && data.groups.length === 0 && data.perso.length === 0) {
+  if (
+    data.activites.length === 0 && data.groups.length === 0 && data.perso.length === 0 &&
+    !data.daspalecte
+  ) {
     return <EmptyState icon="📊" message="Absence de données" />;
   }
   return (
     <>
+      {data.daspalecte && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Lecture avec Daspalecte</h2>
+          <DaspalecteCard stats={data.daspalecte} />
+        </section>
+      )}
+
       {data.activites.length > 0 && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Activités de vocabulaire</h2>

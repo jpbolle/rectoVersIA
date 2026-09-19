@@ -1,3 +1,5 @@
+import type { DaspalecteStats } from './daspalecte';
+
 export interface CriterionHistory {
   devoirName: string;
   date: string;
@@ -276,4 +278,6 @@ export interface ProfilVocabulaire {
   groups: ProfilVocabGroup[];
   perso: ProfilPersoWord[];
   activites: VocabActiviteStat[];
+  // Traces de l'extension Daspalecte (élèves DASPA) — null = aucune
+  daspalecte?: DaspalecteStats | null;
 }

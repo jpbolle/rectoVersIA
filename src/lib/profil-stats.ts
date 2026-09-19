@@ -562,9 +562,10 @@ export async function buildVocabulaireProfil(
   activites.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   // Mots personnels (définitions demandées dans l'app ou NavigKid)
-  const persoDoc = await adminDb.collection('vocabulairePersonnel').doc(uid).get();
+  // `uid` vide = élève jamais connecté : `doc('')` lèverait une erreur
+  const persoDoc = uid ? await adminDb.collection('vocabulairePersonnel').doc(uid).get() : null;
   const persoRaw: Array<{ word?: string; definition?: string; addedAt?: string }> =
-    (persoDoc.exists ? persoDoc.data()?.words : []) || [];
+    (persoDoc?.exists ? persoDoc.data()?.words : []) || [];
   const perso: ProfilPersoWord[] = persoRaw
     .filter((w) => w.word)
     .map((w) => ({

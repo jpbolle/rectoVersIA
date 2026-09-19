@@ -1,5 +1,20 @@
-import { adminDb } from '@/lib/firebase/admin';
+import { adminAuth, adminDb } from '@/lib/firebase/admin';
 import { hashEmail } from '@/lib/crypto';
+
+/**
+ * L'uid Firebase d'un élève, retrouvé par son email dans Firebase Auth — SERVEUR
+ * UNIQUEMENT. Sert quand sa fiche `eleves` n'est pas encore liée (`firebaseUid`
+ * n'est posé qu'à la connexion suivante : cas d'un élève ajouté à une classe
+ * alors qu'il avait déjà un compte). null = jamais connecté à Recto-versIA.
+ */
+export async function uidParEmail(email: string): Promise<string | null> {
+  if (!email) return null;
+  try {
+    return (await adminAuth.getUserByEmail(email.trim().toLowerCase())).uid;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Retrouve les documents eleves par email — SERVEUR UNIQUEMENT.

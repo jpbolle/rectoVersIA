@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
+import { verserMotsEnAttente } from '@/lib/daspalecte/mots';
 
 // POST - Lier le firebaseUid d'un eleve connecte a son document dans la collection "eleves"
 export async function POST(request: NextRequest) {
@@ -47,6 +48,13 @@ export async function POST(request: NextRequest) {
     if (linkedCount > 0) {
       await batch.commit();
     }
+
+    // Mots traduits avec Daspalecte avant sa première connexion : ils
+    // attendaient l'uid de l'élève pour rejoindre sa liste personnelle.
+    // Un échec ici ne doit pas empêcher la connexion.
+    await verserMotsEnAttente(auth.uid, auth.email).catch((error) =>
+      console.error('Versement des mots Daspalecte en attente:', error)
+    );
 
     return NextResponse.json({
       success: true,
