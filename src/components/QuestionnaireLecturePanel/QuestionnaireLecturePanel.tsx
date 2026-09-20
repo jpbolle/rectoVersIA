@@ -114,6 +114,16 @@ export default function QuestionnaireLecturePanel() {
       );
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Enregistrement impossible');
+      // ⚠ Le serveur écarte les questions inutilisables (sans énoncé, sans
+      // image…). Quand il l'a fait, on le DIT et on laisse l'éditeur OUVERT :
+      // refermer sur un « Questionnaire enregistré » a fait croire, le
+      // 2026-09-20, que dix questions étaient en base alors que deux l'étaient.
+      if (json.avertissement) {
+        setMessage(json.avertissement);
+        if (nouveau && json.data?.id) setOuvert({ ...ouvert, id: json.data.id });
+        await charger();
+        return;
+      }
       setMessage('Questionnaire enregistré.');
       setOuvert(null);
       await charger();
@@ -154,6 +164,12 @@ export default function QuestionnaireLecturePanel() {
     [getAuthHeaders, charger]
   );
 
+  // Un avertissement de travail écarté ne peut pas avoir l'air d'une
+  // confirmation : il se distingue à l'œil (le ⚠️ le signe).
+  const classeMessage = message?.startsWith('⚠️')
+    ? `${styles.message} ${styles.messageAlerte}`
+    : styles.message;
+
   // ── Le constructeur, plein écran ──
   if (ouvert) {
     return (
@@ -177,7 +193,7 @@ export default function QuestionnaireLecturePanel() {
             Fermer
           </button>
         </div>
-        {message && <p className={styles.message}>{message}</p>}
+        {message && <p className={classeMessage}>{message}</p>}
         <LectureQuizBuilder
           value={quiz}
           onChange={setQuiz}
@@ -190,7 +206,7 @@ export default function QuestionnaireLecturePanel() {
   // ── La bibliothèque ──
   return (
     <section>
-      {message && <p className={styles.message}>{message}</p>}
+      {message && <p className={classeMessage}>{message}</p>}
 
       <div className={styles.grid}>
         <CreateOeuvreCard onClick={creer} libelle="Nouveau questionnaire" />

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { sanitizeLectureQuiz } from '@/lib/lecture-server';
+import { avertissementQuestionsJetees, sanitizeLectureQuiz } from '@/lib/lecture-server';
 import { lireQuestionnaire, quizPourFirestore } from '@/lib/questionnaire-lecture-server';
 
 const COLLECTION = 'questionnairesLecture';
@@ -65,14 +65,18 @@ export async function PATCH(
     if (typeof body.nom === 'string' && body.nom.trim()) patch.nom = body.nom.trim();
     if (typeof body.description === 'string') patch.description = body.description.trim();
     if (body.archive !== undefined) patch.archive = body.archive === true;
+    let avertissement: string | null = null;
     if (body.quiz !== undefined) {
-      patch.quiz = quizPourFirestore(sanitizeLectureQuiz(body.quiz));
+      const quizNettoye = sanitizeLectureQuiz(body.quiz);
+      // Dire ce qui a été écarté, au lieu de le jeter en silence (2026-09-20).
+      avertissement = avertissementQuestionsJetees(body.quiz, quizNettoye);
+      patch.quiz = quizPourFirestore(quizNettoye);
     }
     // `shared` reste à l'admin : c'est lui qui décide des exemples du projet.
     if (body.shared !== undefined && auth.isAdmin) patch.shared = body.shared === true;
 
     await ref.update(patch);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, avertissement });
   } catch (error) {
     console.error('Erreur PATCH /api/questionnaires-lecture/[id]:', error);
     return NextResponse.json({ success: false, message: 'Erreur serveur' }, { status: 500 });

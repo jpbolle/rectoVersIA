@@ -2,6 +2,8 @@
 
 > Où va cette application. **Ce qui est déjà construit ne se lit pas ici** mais dans
 > [`init.md`](./init.md) ; ce qui bouge cette semaine est dans la mémoire.
+> Les **gros chantiers**, leur état réel et leur ordre :
+> [`harnais/macro-plan.md`](./harnais/macro-plan.md).
 > La page `/roadmap` dans l'app (pilotée par Firestore) est la version montrée aux
 > utilisateurs — ce fichier-ci est la version de travail.
 >
@@ -11,6 +13,14 @@
 
 ## Maintenant
 
+- [ ] **Question « image à annoter » — les trois jeux sont ÉCRITS, rien n'est vu**
+  (étapes 2 et 3 écrites le 2026-09-20 ; plan
+  `harnais/plans/2026-09-19-image-annotee-trois-jeux.md`). Le sélecteur de **jeu**
+  existe désormais dans le constructeur : **étiquettes à placer** (déjà là),
+  **bulles à compléter** (l'élève écrit dans la zone, correction automatique
+  tolérante) et **marqueurs à placer** (il pose ses propres marques ; les zones
+  attendues ne lui sont jamais envoyées avant le corrigé). ⚠ **Reste à voir à
+  l'écran et à jouer en classe** — c'est ce qui coche la case.
 - [ ] **Contraction de texte** — la qualité de la correction IA et du résumé/plan produit
   laisse à désirer ; c'est la priorité 1 fixée en fin de session de mai 2026.
 

@@ -116,6 +116,144 @@ export interface LectureFluoCategorie {
 export type AnnotationForme = 'point' | 'rect' | 'cercle';
 
 /**
+ * LE JEU proposé sur l'image — trois, et un seul socle : dans les trois cas le
+ * prof pose des ZONES sur l'image, et l'élève travaille SUR l'image.
+ *
+ *  · `etiquettes` : il tire une étiquette de la réserve et la pose dans sa zone ;
+ *  · `bulles`     : il n'a pas d'étiquette, il ÉCRIT dans chaque zone ;
+ *  · `marqueurs`  : il pose lui-même une ou plusieurs marques ; les zones sont
+ *                   ce qu'on attendait, et ne lui sont donc JAMAIS envoyées
+ *                   avant le corrigé.
+ *
+ * Absent = `etiquettes` : les questions écrites avant le 2026-09-20 gardent
+ * leur comportement, aucune migration.
+ */
+export type AnnotationJeu = 'etiquettes' | 'bulles' | 'marqueurs';
+
+export function jeuAnnotation(q: Pick<LectureQuestion, 'annotationJeu'>): AnnotationJeu {
+  return q.annotationJeu === 'bulles' || q.annotationJeu === 'marqueurs'
+    ? q.annotationJeu
+    : 'etiquettes';
+}
+
+/**
+ * Une marque posée par l'ÉLÈVE dans le jeu « marqueurs ». Même géométrie
+ * qu'une zone (en % de l'image), parce que le prof peut lui donner le point,
+ * l'encadré ou le cercle — et que la correction compare des centres.
+ */
+export interface LectureMarque {
+  id: string;
+  x: number;
+  y: number;
+  forme?: AnnotationForme;
+  w?: number;
+  h?: number;
+}
+
+/**
+ * Tolérance, en % de l'image, autour d'une zone « point » : sans elle, il
+ * faudrait tomber au pixel près. Approximation assumée de la cible de 34 px
+ * dessinée par la feuille de style — le % ne connaît pas la taille réelle de
+ * l'image, et un écart de deux points de pourcentage ne change rien au geste.
+ */
+export const ANNOT_TOLERANCE_POINT = 4;
+
+/**
+ * Combien de fois, au plus, la marque de l'élève peut être plus grande que la
+ * zone attendue.
+ *
+ * ⚠ Sans ce plafond, le seul centre suffirait : un cercle qui engloberait la
+ * moitié de l'image serait compté juste dès que son centre tomberait dans la
+ * zone. Ce n'est pas désigner, c'est jeter un filet. Trois fois laisse la
+ * place à un geste large et tremblant sur un trackpad de Chromebook, pas à un
+ * cercle qui embrasse tout. *(demandé par JP, 2026-09-20)*
+ */
+export const ANNOT_MARQUE_AIRE_MAX = 3;
+
+/**
+ * Le plafond quand la zone attendue est un **point** (% de l'image).
+ *
+ * Un point dit « c'est ici », jamais « c'est grand comme ça » : on ne peut
+ * donc pas comparer des aires, et refuser un cercle généreux autour du bon
+ * endroit serait injuste — c'est le cas le plus courant, le prof piquant un
+ * point et l'élève entourant. Reste un garde-fou absolu : une marque qui
+ * couvre plus du quart de l'image ne désigne plus rien.
+ */
+export const ANNOT_MARQUE_MAX_SUR_POINT = 25;
+
+/** Le centre d'une marque ou d'une zone, en % de l'image. */
+export function centreZone(z: { x: number; y: number; forme?: AnnotationForme; w?: number; h?: number }): {
+  x: number;
+  y: number;
+} {
+  if ((z.forme === 'rect' || z.forme === 'cercle') && z.w && z.h) {
+    return { x: z.x + z.w / 2, y: z.y + z.h / 2 };
+  }
+  return { x: z.x, y: z.y };
+}
+
+/**
+ * La marque de l'élève désigne-t-elle la zone attendue ?
+ *
+ * DEUX conditions, et la seconde n'est pas un détail :
+ *  1. le **centre** de la marque tombe dans la zone — c'est lui qui vise, pas
+ *     le recouvrement : entourer largement le bon endroit reste juste ;
+ *  2. la marque ne dépasse pas `ANNOT_MARQUE_AIRE_MAX` fois l'**aire** de la
+ *     zone — sinon un cercle immense, posé au petit bonheur, serait compté
+ *     juste dès que son centre tomberait quelque part dedans.
+ *
+ * Une marque **sans taille** (un simple tap) n'a rien à mesurer : seule la
+ * première condition la concerne.
+ */
+export function marqueDansZone(marque: LectureMarque, zone: LectureAnnotationCible): boolean {
+  const c = centreZone(marque);
+  const aZoneTaille = (zone.forme === 'rect' || zone.forme === 'cercle') && !!zone.w && !!zone.h;
+
+  let dedans: boolean;
+  if (zone.forme === 'rect' && aZoneTaille) {
+    dedans = c.x >= zone.x && c.x <= zone.x + zone.w! && c.y >= zone.y && c.y <= zone.y + zone.h!;
+  } else if (zone.forme === 'cercle' && aZoneTaille) {
+    const rx = zone.w! / 2;
+    const ry = zone.h! / 2;
+    const dx = (c.x - (zone.x + rx)) / rx;
+    const dy = (c.y - (zone.y + ry)) / ry;
+    dedans = dx * dx + dy * dy <= 1;
+  } else {
+    dedans =
+      Math.abs(c.x - zone.x) <= ANNOT_TOLERANCE_POINT &&
+      Math.abs(c.y - zone.y) <= ANNOT_TOLERANCE_POINT;
+  }
+  if (!dedans) return false;
+
+  const largeur = marque.w ?? 0;
+  const hauteur = marque.h ?? 0;
+  if (largeur <= 0 || hauteur <= 0) return true; // un tap : rien à mesurer
+
+  // Zone sans taille (un point piqué par le prof) : pas d'aire à comparer,
+  // seulement le garde-fou absolu.
+  if (!aZoneTaille) {
+    return largeur <= ANNOT_MARQUE_MAX_SUR_POINT && hauteur <= ANNOT_MARQUE_MAX_SUR_POINT;
+  }
+  // Zone dessinée : on compare les AIRES des boîtes englobantes. Un cercle et
+  // un encadré de même boîte diffèrent du même facteur π/4 : le rapport ne
+  // bouge donc pas.
+  return largeur * hauteur <= zone.w! * zone.h! * ANNOT_MARQUE_AIRE_MAX;
+}
+
+/**
+ * Le texte écrit dans une bulle est-il admis ? Même tolérance que la réponse
+ * courte (majuscules, accents, espaces — jamais l'orthographe), et la même
+ * règle : la note du prof prime sur l'automatique.
+ */
+export function bulleJuste(zone: LectureAnnotationCible, donne: string | undefined): boolean {
+  const ecrit = normaliserReponseCourte(donne ?? '');
+  if (!ecrit) return false;
+  return [zone.label, ...(zone.acceptees ?? [])]
+    .filter((r) => r && r.trim() !== '')
+    .some((r) => normaliserReponseCourte(r) === ecrit);
+}
+
+/**
  * Une ZONE de l'image annotée, posée par le prof sur l'image même. L'élève y
  * dépose son étiquette directement — plus de case sur le côté ni de trait
  * (refonte du 2026-09-19 : en classe, personne n'avait trouvé les cases).
@@ -128,7 +266,17 @@ export type AnnotationForme = 'point' | 'rect' | 'cercle';
  */
 export interface LectureAnnotationCible {
   id: string;
-  label: string;                    // l'étiquette attendue dans cette zone
+  /**
+   * Ce qu'on attend dans cette zone : l'étiquette (jeu « étiquettes »), la
+   * réponse affichée au corrigé (jeu « bulles »). **Vide dans le jeu
+   * « marqueurs »** : une zone n'y attend qu'une marque, pas un mot.
+   */
+  label: string;
+  /**
+   * Bulles : les autres formulations admises. La première réponse montrée au
+   * corrigé reste `label`. Jamais envoyé à l'élève (c'est le corrigé).
+   */
+  acceptees?: string[];
   x: number;
   y: number;
   forme?: AnnotationForme;
@@ -283,8 +431,17 @@ export interface LectureQuestion {
 
   // ── Image à annoter (moteur DÉPLACER) ──
   // L'image est celle de la question (`image`). Le prof y pose des zones
-  // (point, encadré, cercle) ; l'élève y dépose les étiquettes de la réserve.
+  // (point, encadré, cercle) ; ce que l'élève y fait dépend du JEU.
   annotations?: LectureAnnotationCible[];
+  // Le jeu : étiquettes à placer (défaut), bulles à compléter, marqueurs à
+  // poser. Voir `AnnotationJeu`.
+  annotationJeu?: AnnotationJeu;
+  // Marqueurs : ce que l'élève pose — un point d'un seul tap, ou un encadré /
+  // un cercle tracé au doigt. Absent = point.
+  marqueurOutil?: AnnotationForme;
+  // Marqueurs : peut-il en poser plusieurs ? Absent = une seule marque, qui se
+  // déplace au tap suivant.
+  marqueurMultiple?: boolean;
   // La réserve d'étiquettes, mélangée. CALCULÉE PAR LE SERVEUR pour l'élève
   // (`lectureQuizForEleve`) : l'ordre de saisie du prof donnerait le corrigé.
   // Jamais écrite en base — c'est une vue, pas une donnée.
@@ -323,6 +480,10 @@ export interface LectureAnswer {
   // Image annotée : idCible -> idÉtiquette (l'étiquette a l'id de sa cible
   // attendue, donc idCible === valeur quand c'est juste)
   annotations?: Record<string, string>;
+  // Image annotée, jeu « bulles » : idCible -> le texte écrit dans la zone
+  annotationsTexte?: Record<string, string>;
+  // Image annotée, jeu « marqueurs » : les marques posées par l'élève, en %
+  marques?: LectureMarque[];
   // Ensembles : idJeton -> idEnsemble (absent = resté dans la réserve)
   ensembles?: Record<string, string>;
   // Degré d'assurance annoncé par l'élève au moment de répondre — facultatif,
@@ -477,7 +638,18 @@ export function estAutoCorrigeable(q: LectureQuestion): boolean {
     case 'ordre':
       return Array.isArray(q.ordreItems) && q.ordreItems.length > 1;
     case 'image-annotee':
-      return Array.isArray(q.annotations) && q.annotations.length > 0;
+      if (!Array.isArray(q.annotations) || q.annotations.length === 0) return false;
+      // ⚠ Le libellé des zones est RETIRÉ tant que le corrigé n'est pas rendu
+      // (`lectureQuizForEleve`). Sans lui, une bulle ne peut pas se corriger :
+      // la dire auto-corrigeable la noterait 0 sur n dans l'onglet Évaluation
+      // de l'élève, au lieu de la laisser « à noter ».
+      // (Le jeu « étiquettes », lui, compare des identifiants, pas des mots :
+      // il se corrige sans le libellé. Les marqueurs n'ont pas de zones du
+      // tout tant que le corrigé n'est pas là.)
+      if (jeuAnnotation(q) === 'bulles') {
+        return q.annotations.some((c) => c.label.trim() !== '' || (c.acceptees ?? []).length > 0);
+      }
+      return true;
     case 'ensembles':
       return !!q.ensembleAffectations && Object.keys(q.ensembleAffectations).length > 0;
     case 'fluorage':
@@ -555,6 +727,20 @@ export function partReussite(q: LectureQuestion, a: LectureAnswer | undefined): 
     }
     case 'image-annotee': {
       const cibles = q.annotations ?? [];
+      const jeu = jeuAnnotation(q);
+      if (jeu === 'bulles') {
+        const justes = cibles.filter((c) => bulleJuste(c, a?.annotationsTexte?.[c.id])).length;
+        return part(justes, cibles.length);
+      }
+      if (jeu === 'marqueurs') {
+        // Zones trouvées ÷ zones attendues. Une marque posée à côté ne coûte
+        // RIEN (décision de JP, 2026-09-19) : on ne pénalise pas la recherche,
+        // et l'élève qui couvrirait l'image de marques est déjà démasqué par
+        // ce que le prof voit à la correction.
+        const marques = a?.marques ?? [];
+        const justes = cibles.filter((c) => marques.some((m) => marqueDansZone(m, c))).length;
+        return part(justes, cibles.length);
+      }
       const justes = cibles.filter((c) => a?.annotations?.[c.id] === c.id).length;
       return part(justes, cibles.length);
     }
@@ -632,7 +818,14 @@ export function lectureARepondu(q: LectureQuestion, a: LectureAnswer | undefined
     case 'ordre':
       return (a.ordre?.length ?? 0) > 0;
     case 'image-annotee':
-      return Object.keys(a.annotations ?? {}).length > 0;
+      switch (jeuAnnotation(q)) {
+        case 'bulles':
+          return Object.values(a.annotationsTexte ?? {}).some((t) => t.trim() !== '');
+        case 'marqueurs':
+          return (a.marques?.length ?? 0) > 0;
+        default:
+          return Object.keys(a.annotations ?? {}).length > 0;
+      }
     case 'ensembles':
       return Object.keys(a.ensembles ?? {}).length > 0;
     default:

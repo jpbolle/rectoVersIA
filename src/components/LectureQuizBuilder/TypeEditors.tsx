@@ -18,6 +18,7 @@
 import { useState } from 'react';
 import type {
   AnnotationForme,
+  AnnotationJeu,
   LectureAnnotationCible,
   LectureEnsemble,
   LectureJeton,
@@ -29,10 +30,13 @@ import {
   FLUO_COULEUR_IDS,
   fluoHex,
   generateJetonId,
+  jeuAnnotation,
   matriceColonnes,
 } from '@/types/lecture';
 import { MATRICE_MODELES } from '@/types/autoevaluation';
 import { focaliserChamp, insererLigneMatrice } from '@/lib/choix-liste';
+import { OUTILS_ZONE, tracerZone, type Boite, type ZoneTracee } from '@/lib/annotation-zones';
+import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import { FluoExtrait } from '@/components/LectureQuizActivity/LectureQuizActivity';
 import styles from './LectureQuizBuilder.module.css';
 
@@ -810,82 +814,44 @@ export function EditeurOrdre({ q, update, disabled, choisirMedia }: EditeurProps
 // IMAGE À ANNOTER
 // ════════════════════════════════════════════════════════════════
 
-/** Les trois outils de zone, dans l'ordre du sélecteur. */
-const OUTILS_ZONE: { id: AnnotationForme; icone: string; libelle: string; aide: string }[] = [
-  { id: 'point', icone: '●', libelle: 'Point', aide: 'Cliquez sur l’image pour poser un point.' },
-  { id: 'rect', icone: '▭', libelle: 'Encadré', aide: 'Tracez un encadré en glissant sur l’image.' },
-  { id: 'cercle', icone: '◯', libelle: 'Zone circulaire', aide: 'Tracez une zone en glissant sur l’image.' },
+/** Les trois jeux proposés sur une image — voir `AnnotationJeu`. */
+const JEUX_ANNOTATION: { id: AnnotationJeu; libelle: string; aide: string }[] = [
+  {
+    id: 'etiquettes',
+    libelle: 'Étiquettes à placer',
+    aide: 'L’élève tire chaque étiquette de la réserve et la dépose dans sa zone.',
+  },
+  {
+    id: 'bulles',
+    libelle: 'Bulles à compléter',
+    aide:
+      'L’élève écrit lui-même dans chaque zone. Correction automatique : majuscules, accents et espaces en trop sont ignorés — l’orthographe, non.',
+  },
+  {
+    id: 'marqueurs',
+    libelle: 'Marqueurs à placer',
+    aide:
+      'L’élève pose ses propres marques sur l’image. Les zones que vous tracez sont ce qu’on attend : elles ne lui sont JAMAIS montrées avant le corrigé. Une marque posée à côté ne retire aucun point.',
+  },
 ];
-
-/** Un clic sans glisser avec l'outil encadré ou cercle pose une zone de cette taille (%). */
-const ZONE_DEFAUT = { w: 14, h: 10 };
-/** En deçà (en %), le geste est un clic et non un tracé. */
-const SEUIL_TRACE = 1.5;
 
 export function EditeurImageAnnotee({ q, update, disabled }: EditeurProps) {
   const cibles = q.annotations ?? [];
+  const jeu = jeuAnnotation(q);
   const [outil, setOutil] = useState<AnnotationForme>('point');
   // Le tracé en cours, pour le voir grandir sous la souris
-  const [brouillon, setBrouillon] = useState<{ x: number; y: number; w: number; h: number } | null>(
-    null
-  );
+  const [brouillon, setBrouillon] = useState<Boite | null>(null);
 
-  const ajouter = (zone: Omit<LectureAnnotationCible, 'id' | 'label'>) =>
+  const ajouter = (zone: ZoneTracee) =>
     update({
       annotations: [...cibles, { id: `a-${Date.now()}-${cibles.length}`, label: '', ...zone }],
     });
 
-  // Tout se joue au pointeur, écouté sur `window` : le tracé continue même
-  // si la souris sort un instant de l'image.
+  // Le tracé lui-même est PARTAGÉ avec le champ de l'élève (jeu « marqueurs ») :
+  // une seule définition du clic, du seuil et de la taille par défaut.
   const commencer = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (disabled || e.button > 0) return;
-    e.preventDefault();
-    const r = e.currentTarget.getBoundingClientRect();
-    const enPct = (ev: { clientX: number; clientY: number }) => ({
-      x: Math.max(0, Math.min(100, ((ev.clientX - r.left) / r.width) * 100)),
-      y: Math.max(0, Math.min(100, ((ev.clientY - r.top) / r.height) * 100)),
-    });
-    const arrondi = (v: number) => Math.round(v * 10) / 10;
-    const depart = enPct(e);
-    const boite = (ev: PointerEvent) => {
-      const p = enPct(ev);
-      return {
-        x: Math.min(depart.x, p.x),
-        y: Math.min(depart.y, p.y),
-        w: Math.abs(p.x - depart.x),
-        h: Math.abs(p.y - depart.y),
-      };
-    };
-
-    if (outil === 'point') {
-      ajouter({ x: arrondi(depart.x), y: arrondi(depart.y), forme: 'point' });
-      return;
-    }
-
-    const move = (ev: PointerEvent) => setBrouillon(boite(ev));
-    const up = (ev: PointerEvent) => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      setBrouillon(null);
-      let b = boite(ev);
-      // Un simple clic pose une zone de taille par défaut, centrée sur le clic
-      if (b.w < SEUIL_TRACE && b.h < SEUIL_TRACE) {
-        b = {
-          x: Math.max(0, Math.min(100 - ZONE_DEFAUT.w, depart.x - ZONE_DEFAUT.w / 2)),
-          y: Math.max(0, Math.min(100 - ZONE_DEFAUT.h, depart.y - ZONE_DEFAUT.h / 2)),
-          ...ZONE_DEFAUT,
-        };
-      }
-      ajouter({
-        forme: outil,
-        x: arrondi(b.x),
-        y: arrondi(b.y),
-        w: Math.max(1, arrondi(b.w)),
-        h: Math.max(1, arrondi(b.h)),
-      });
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    if (disabled) return;
+    tracerZone(e, outil, setBrouillon, ajouter);
   };
 
   const maj = (id: string, partial: Partial<LectureAnnotationCible>) =>
@@ -901,14 +867,70 @@ export function EditeurImageAnnotee({ q, update, disabled }: EditeurProps) {
   }
 
   const aide = OUTILS_ZONE.find((o) => o.id === outil)?.aide;
+  const jeuChoisi = JEUX_ANNOTATION.find((j) => j.id === jeu);
 
   return (
     <div className={styles.annotEditeur}>
+      <div className={styles.annotGroupe}>
+        <div className={styles.fieldLabel}>
+          Jeu proposé à l’élève
+          <span
+            className={styles.info}
+            title="Dans les trois cas, vous posez des zones sur l'image et l'élève travaille SUR l'image. Ce qui change, c'est ce qu'il y dépose."
+          >
+            i
+          </span>
+        </div>
+        <div className={styles.modeRow}>
+          {JEUX_ANNOTATION.map((j) => (
+            <label key={j.id} className={styles.modeOpt}>
+              <input
+                type="radio"
+                checked={jeu === j.id}
+                onChange={() => update({ annotationJeu: j.id })}
+                disabled={disabled}
+              />
+              {j.libelle}
+            </label>
+          ))}
+        </div>
+        <p className={styles.hint}>{jeuChoisi?.aide}</p>
+
+        {jeu === 'marqueurs' && (
+          <div className={styles.modeRow}>
+            <label className={styles.modeOpt}>
+              Ce que l’élève pose&nbsp;:
+              <select
+                value={q.marqueurOutil ?? 'point'}
+                onChange={(e) => update({ marqueurOutil: e.target.value as AnnotationForme })}
+                disabled={disabled}
+              >
+                {OUTILS_ZONE.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.libelle} {o.icone}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.modeOpt}>
+              <input
+                type="checkbox"
+                checked={!!q.marqueurMultiple}
+                onChange={(e) => update({ marqueurMultiple: e.target.checked })}
+                disabled={disabled}
+              />
+              Plusieurs marques permises
+            </label>
+          </div>
+        )}
+      </div>
+
+      <div className={styles.annotGroupe}>
       <div className={styles.fieldLabel}>
-        Zones à annoter
+        {jeu === 'marqueurs' ? 'Zones attendues' : 'Zones à annoter'}
         <span
           className={styles.info}
-          title="L'élève dépose chaque étiquette directement sur l'image, dans sa zone. Une zone peut être un point, un encadré ou une zone circulaire."
+          title="Une zone peut être un point, un encadré ou une zone circulaire. Cliquez pour poser un point, glissez pour tracer une zone."
         >
           i
         </span>
@@ -923,7 +945,9 @@ export function EditeurImageAnnotee({ q, update, disabled }: EditeurProps) {
               onChange={() => setOutil(o.id)}
               disabled={disabled}
             />
-            {o.icone} {o.libelle}
+            {/* Le mot d'abord, le symbole après : on lit ce qu'on choisit,
+                le dessin ne fait que le confirmer. */}
+            {o.libelle} <span className={styles.outilIcone}>{o.icone}</span>
           </label>
         ))}
       </div>
@@ -966,30 +990,75 @@ export function EditeurImageAnnotee({ q, update, disabled }: EditeurProps) {
 
       {cibles.length === 0 && <p className={styles.hint}>Aucune zone posée.</p>}
 
+      {/* Dire à quoi sert la colonne de droite : en marqueurs, ce qu'on y écrit
+          ne s'adresse PAS à l'élève pendant l'exercice — la confusion a eu lieu
+          dès le premier essai (2026-09-20). La consigne, elle, vit dans l'énoncé. */}
+      {cibles.length > 0 && (
+        <p className={styles.hint}>
+          {jeu === 'marqueurs'
+            ? 'Ce qu’on attend à chaque endroit — montré à l’élève au CORRIGÉ seulement. Ce qu’il doit chercher se dit dans l’énoncé de la question.'
+            : jeu === 'bulles'
+              ? 'La réponse attendue dans chaque bulle. Elle ne part jamais chez l’élève avant le corrigé.'
+              : 'L’étiquette attendue dans chaque zone. Elles lui sont servies mélangées, en réserve.'}
+        </p>
+      )}
+
+      <div className={styles.annotListe}>
       {cibles.map((c, i) => (
-        <div key={c.id} className={styles.annotLigne}>
-          <span className={styles.jetonRang}>{i + 1}</span>
-          <span className={styles.annotForme} title={OUTILS_ZONE.find((o) => o.id === (c.forme ?? 'point'))?.libelle}>
-            {OUTILS_ZONE.find((o) => o.id === (c.forme ?? 'point'))?.icone}
-          </span>
-          <input
-            type="text"
-            value={c.label}
-            onChange={(e) => maj(c.id, { label: e.target.value })}
-            placeholder="Étiquette attendue dans cette zone"
-            disabled={disabled}
-          />
-          <button
-            type="button"
-            className={styles.choiceDel}
-            onClick={() => update({ annotations: cibles.filter((x) => x.id !== c.id) })}
-            disabled={disabled}
-            title="Supprimer cette zone"
-          >
-            ✕
-          </button>
+        <div key={c.id} className={styles.annotBloc}>
+          <div className={styles.annotLigne}>
+            <span className={styles.jetonRang}>{i + 1}</span>
+            <span
+              className={styles.annotForme}
+              title={OUTILS_ZONE.find((o) => o.id === (c.forme ?? 'point'))?.libelle}
+            >
+              {OUTILS_ZONE.find((o) => o.id === (c.forme ?? 'point'))?.icone}
+            </span>
+            <input
+              type="text"
+              value={c.label}
+              onChange={(e) => maj(c.id, { label: e.target.value })}
+              placeholder={
+                jeu === 'bulles'
+                  ? 'Réponse attendue dans cette bulle'
+                  : jeu === 'marqueurs'
+                    ? 'Ce qu’on cherche ici (facultatif — montré au corrigé)'
+                    : 'Étiquette attendue dans cette zone'
+              }
+              disabled={disabled}
+            />
+            <button
+              type="button"
+              className={styles.choiceDel}
+              onClick={() => update({ annotations: cibles.filter((x) => x.id !== c.id) })}
+              disabled={disabled}
+              title="Supprimer cette zone"
+            >
+              ✕
+            </button>
+          </div>
+          {/* Bulles : les autres formulations admises. Une par ligne — pas un
+              champ d'une seule ligne, où l'on ne peut plus rien sélectionner
+              dès que le texte dépasse. */}
+          {jeu === 'bulles' && (
+            <AutoGrowTextarea
+              className={styles.annotAcceptees}
+              minRows={1}
+              maxRows={8}
+              value={(c.acceptees ?? []).join('\n')}
+              onChange={(e) =>
+                maj(c.id, {
+                  acceptees: e.target.value.split('\n').map((r) => r.trim()).filter(Boolean),
+                })
+              }
+              placeholder="Autres réponses admises — une par ligne"
+              disabled={disabled}
+            />
+          )}
         </div>
       ))}
+      </div>
+      </div>
     </div>
   );
 }

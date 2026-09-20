@@ -2,11 +2,17 @@
 
 // ═══ MOTEUR DÉPLACER — image à annoter ═══
 //
-// Refonte du 2026-09-19. L'élève dépose ses étiquettes SUR L'IMAGE MÊME, dans
-// les zones posées par le prof (point, encadré, cercle). Il n'y a plus de
-// case sur le côté reliée à un point par un trait : joué en classe sur des
-// Chromebooks, personne ne les avait trouvées — petites, loin de l'image, et
-// la réserve à une image de distance.
+// Refonte du 2026-09-19, achevée le 2026-09-20. L'élève travaille SUR L'IMAGE
+// MÊME, dans les zones posées par le prof (point, encadré, cercle). Il n'y a
+// plus de case sur le côté reliée à un point par un trait : joué en classe sur
+// des Chromebooks, personne ne les avait trouvées — petites, loin de l'image,
+// et la réserve à une image de distance.
+//
+// TROIS JEUX, un seul socle (voir `AnnotationJeu`) :
+//   · étiquettes — il tire une étiquette de la réserve et la pose dans sa zone ;
+//   · bulles     — il ÉCRIT dans chaque zone ;
+//   · marqueurs  — il pose lui-même ses marques, et les zones attendues ne lui
+//                  arrivent qu'avec le corrigé.
 //
 // Deux règles tiennent l'exercice sur un écran d'entrée de gamme :
 //   · la réserve est AU-DESSUS de l'image, et collante : on ne peut pas faire
@@ -14,13 +20,21 @@
 //   · l'image est plafonnée en hauteur (≈ 65 % de l'écran) : réserve et zones
 //     tiennent ensemble à l'écran, sans défilement pendant le geste.
 //
-// C'est le même moteur que les ensembles — une zone est une boîte qui ne
-// tient qu'une étiquette. D'où l'échange automatique quand on en dépose une
-// seconde : elle ne se perd pas, elle repart d'où venait la nouvelle.
+// Le jeu « étiquettes » est le même moteur que les ensembles — une zone est
+// une boîte qui ne tient qu'une étiquette. D'où l'échange automatique quand on
+// en dépose une seconde : elle ne se perd pas, elle repart d'où venait la
+// nouvelle.
 
 import { useMemo, useRef, useState } from 'react';
-import type { LectureAnnotationCible, LectureAnswer, LectureJeton, LectureQuestion } from '@/types/lecture';
-import { melangeStable } from '@/types/lecture';
+import type {
+  LectureAnnotationCible,
+  LectureAnswer,
+  LectureJeton,
+  LectureMarque,
+  LectureQuestion,
+} from '@/types/lecture';
+import { bulleJuste, jeuAnnotation, marqueDansZone, melangeStable } from '@/types/lecture';
+import { OUTILS_ZONE, tracerZone, type Boite } from '@/lib/annotation-zones';
 import { dragProps, cibleSous, creerFantome, useFantome, type DragHandlers } from './pointerDrag';
 import styles from './QuestionInteractions.module.css';
 
@@ -39,11 +53,46 @@ const RESERVE = '__reserve__';
  * coordonnées (sa taille est fixe, en pixels, dans la feuille de style) ; un
  * encadré ou un cercle part de son coin haut-gauche.
  */
-export function styleDeZone(c: LectureAnnotationCible): React.CSSProperties {
+export function styleDeZone(c: {
+  x: number;
+  y: number;
+  forme?: string;
+  w?: number;
+  h?: number;
+}): React.CSSProperties {
   if (c.forme === 'rect' || c.forme === 'cercle') {
     return { left: `${c.x}%`, top: `${c.y}%`, width: `${c.w ?? 0}%`, height: `${c.h ?? 0}%` };
   }
   return { left: `${c.x}%`, top: `${c.y}%` };
+}
+
+const formeDe = (f: string | undefined) => (f === 'rect' || f === 'cercle' ? f : 'point');
+
+/** L'image et ce qu'on pose dessus — commune aux trois jeux. */
+function Scene({
+  question,
+  onPointerDown,
+  children,
+}: {
+  question: LectureQuestion;
+  /** Présent = on trace sur l'image : le doigt ne doit plus faire défiler la page. */
+  onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={styles.annotCadre}>
+      <div
+        className={`${styles.annotStage} ${onPointerDown ? styles.annotStageTrace : ''}`}
+        onPointerDown={onPointerDown}
+      >
+        {question.image && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={question.image.url} alt="Image à annoter" draggable={false} />
+        )}
+        {children}
+      </div>
+    </div>
+  );
 }
 
 function Etiquette({
@@ -66,13 +115,20 @@ function Etiquette({
   );
 }
 
-export default function AnnotationField({
-  question,
-  answer,
-  onChange,
-  disabled,
-  showCorrection,
-}: Props) {
+export default function AnnotationField(props: Props) {
+  switch (jeuAnnotation(props.question)) {
+    case 'bulles':
+      return <JeuBulles {...props} />;
+    case 'marqueurs':
+      return <JeuMarqueurs {...props} />;
+    default:
+      return <JeuEtiquettes {...props} />;
+  }
+}
+
+// ─────────────────────────── JEU 1 — ÉTIQUETTES ───────────────────────────
+
+function JeuEtiquettes({ question, answer, onChange, disabled, showCorrection }: Props) {
   const cibles = useMemo(() => question.annotations ?? [], [question.annotations]);
   const placements = useMemo(() => answer.annotations ?? {}, [answer.annotations]);
 
@@ -197,51 +253,199 @@ export default function AnnotationField({
         </div>
       )}
 
-      <div className={styles.annotCadre}>
-        <div className={styles.annotStage}>
-          {question.image && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={question.image.url} alt="Image à annoter" draggable={false} />
-          )}
-          {cibles.map((c) => {
-            const posee = placements[c.id];
-            const juste = verdict(c.id);
-            const forme = c.forme === 'rect' || c.forme === 'cercle' ? c.forme : 'point';
+      <Scene question={question}>
+        {cibles.map((c) => {
+          const posee = placements[c.id];
+          const juste = verdict(c.id);
+          return (
+            <div
+              key={c.id}
+              data-case={c.id}
+              onClick={auTap(c.id)}
+              style={styleDeZone(c)}
+              className={[
+                styles.zone,
+                styles[`zone_${formeDe(c.forme)}`],
+                posee ? styles.zoneRemplie : '',
+                arme && !disabled ? styles.zoneAppel : '',
+                survol === c.id ? styles.dropping : '',
+                juste === true ? styles.ok : '',
+                juste === false ? styles.ko : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              {posee && (
+                <Etiquette
+                  id={posee}
+                  texte={libelle.get(posee) ?? ''}
+                  enabled={!disabled}
+                  handlers={handlersDe(posee)}
+                  className={classeEtiquette(posee)}
+                />
+              )}
+              {/* Ce qu'on attendait, dit SUR la zone — pas dans un bandeau
+                  au loin qu'il faudrait rapprocher soi-même du bon endroit */}
+              {juste === false && <span className={styles.attendu}>{c.label}</span>}
+            </div>
+          );
+        })}
+      </Scene>
+    </div>
+  );
+}
+
+// ──────────────────────────── JEU 2 — BULLES ────────────────────────────
+//
+// L'élève écrit DANS la zone. Pas de réserve, pas de glisser : sur un
+// Chromebook, écrire est le geste le plus sûr qui soit.
+
+function JeuBulles({ question, answer, onChange, disabled, showCorrection }: Props) {
+  const cibles = useMemo(() => question.annotations ?? [], [question.annotations]);
+  const textes = useMemo(() => answer.annotationsTexte ?? {}, [answer.annotationsTexte]);
+
+  const ecrire = (idZone: string, valeur: string) => {
+    if (disabled) return;
+    onChange({ annotationsTexte: { ...textes, [idZone]: valeur } });
+  };
+
+  // ⚠ Le corrigé ne part qu'avec `showCorrection` : sans lui, `label` arrive
+  // vide et aucun verdict n'est possible (rien ne doit être affiché en rouge
+  // sur la foi d'une chaîne vide).
+  const verdict = (c: LectureAnnotationCible): boolean | null =>
+    showCorrection ? bulleJuste(c, textes[c.id]) : null;
+
+  return (
+    <div>
+      <p className={styles.hint}>
+        Écris ta réponse dans chaque bulle, sur l&apos;image.
+      </p>
+
+      <Scene question={question}>
+        {cibles.map((c) => {
+          const juste = verdict(c);
+          return (
+            <div
+              key={c.id}
+              style={styleDeZone(c)}
+              className={[
+                styles.zone,
+                styles[`zone_${formeDe(c.forme)}`],
+                styles.zoneBulle,
+                juste === true ? styles.ok : '',
+                juste === false ? styles.ko : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              <input
+                type="text"
+                className={styles.bulleInput}
+                value={textes[c.id] ?? ''}
+                onChange={(e) => ecrire(c.id, e.target.value)}
+                disabled={disabled}
+                placeholder="…"
+                aria-label="Réponse à écrire dans cette zone"
+              />
+              {juste === false && <span className={styles.attendu}>{c.label}</span>}
+            </div>
+          );
+        })}
+      </Scene>
+    </div>
+  );
+}
+
+// ─────────────────────────── JEU 3 — MARQUEURS ───────────────────────────
+//
+// L'élève pose lui-même ses marques. Les zones attendues ne lui sont PAS
+// envoyées (`lectureQuizForEleve` les retire) : elles n'apparaissent qu'avec
+// le corrigé — sinon l'exercice consisterait à viser ce qu'on lui montre.
+//
+// Aucune pénalité : une marque à côté ne retire rien (décision de JP).
+
+function JeuMarqueurs({ question, answer, onChange, disabled, showCorrection }: Props) {
+  const cibles = useMemo(() => question.annotations ?? [], [question.annotations]);
+  const marques = useMemo(() => answer.marques ?? [], [answer.marques]);
+  const outil = question.marqueurOutil === 'rect' || question.marqueurOutil === 'cercle'
+    ? question.marqueurOutil
+    : 'point';
+  const multiple = !!question.marqueurMultiple;
+  const [brouillon, setBrouillon] = useState<Boite | null>(null);
+
+  const poser = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    // Un tap sur une marque déjà posée la retire : il ne doit pas en poser une
+    // seconde par-dessus.
+    if ((e.target as HTMLElement).closest('[data-marque]')) return;
+    tracerZone(e, outil, setBrouillon, (zone) => {
+      const marque: LectureMarque = { id: `m-${Date.now()}-${marques.length}`, ...zone };
+      onChange({ marques: multiple ? [...marques, marque] : [marque] });
+    });
+  };
+
+  const retirer = (id: string) => {
+    if (disabled) return;
+    onChange({ marques: marques.filter((m) => m.id !== id) });
+  };
+
+  const aide = OUTILS_ZONE.find((o) => o.id === outil)?.libelle ?? 'Point';
+
+  return (
+    <div>
+      <p className={styles.hint}>
+        {outil === 'point'
+          ? `Tape sur l’image pour poser ${multiple ? 'tes marques' : 'ta marque'}.`
+          : `Trace ${multiple ? 'tes zones' : 'ta zone'} en glissant sur l’image (${aide.toLowerCase()}).`}
+        {!disabled && marques.length > 0 && ' Tape une marque pour l’effacer.'}
+      </p>
+
+      <Scene question={question} onPointerDown={disabled ? undefined : poser}>
+        {/* Ce qu'on attendait — seulement quand le corrigé est ouvert */}
+        {showCorrection &&
+          cibles.map((c) => {
+            const trouvee = marques.some((m) => marqueDansZone(m, c));
             return (
               <div
                 key={c.id}
-                data-case={c.id}
-                onClick={auTap(c.id)}
                 style={styleDeZone(c)}
                 className={[
                   styles.zone,
-                  styles[`zone_${forme}`],
-                  posee ? styles.zoneRemplie : '',
-                  arme && !disabled ? styles.zoneAppel : '',
-                  survol === c.id ? styles.dropping : '',
-                  juste === true ? styles.ok : '',
-                  juste === false ? styles.ko : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
+                  styles[`zone_${formeDe(c.forme)}`],
+                  styles.zoneAttendue,
+                  trouvee ? styles.ok : styles.ko,
+                ].join(' ')}
               >
-                {posee && (
-                  <Etiquette
-                    id={posee}
-                    texte={libelle.get(posee) ?? ''}
-                    enabled={!disabled}
-                    handlers={handlersDe(posee)}
-                    className={classeEtiquette(posee)}
-                  />
-                )}
-                {/* Ce qu'on attendait, dit SUR la zone — pas dans un bandeau
-                    au loin qu'il faudrait rapprocher soi-même du bon endroit */}
-                {juste === false && <span className={styles.attendu}>{c.label}</span>}
+                {c.label && <span className={styles.attendu}>{c.label}</span>}
               </div>
             );
           })}
-        </div>
-      </div>
+
+        {marques.map((m) => (
+          <div
+            key={m.id}
+            data-marque={m.id}
+            onClick={() => retirer(m.id)}
+            style={styleDeZone(m)}
+            className={[
+              styles.marque,
+              styles[`zone_${formeDe(m.forme)}`],
+              disabled ? styles.fige : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          />
+        ))}
+
+        {brouillon && (
+          <div
+            style={styleDeZone({ ...brouillon, forme: outil })}
+            className={`${styles.marque} ${styles.marqueBrouillon} ${
+              outil === 'cercle' ? styles.zone_cercle : styles.zone_rect
+            }`}
+          />
+        )}
+      </Scene>
     </div>
   );
 }

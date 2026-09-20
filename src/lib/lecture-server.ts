@@ -15,6 +15,7 @@ import type {
 import {
   FLUO_COULEUR_IDS,
   estAutoCorrigeable,
+  jeuAnnotation,
   melangeStable,
   normaliserReponseCourte,
   partReussite,
@@ -433,6 +434,19 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
     if (type === 'image-annotee') {
       // L'image est celle de la question : sans elle, il n'y a rien à annoter
       if (!cleaned.image) continue;
+      // Le JEU d'abord : il décide de ce qu'une zone doit porter.
+      const jeu =
+        question.annotationJeu === 'bulles' || question.annotationJeu === 'marqueurs'
+          ? question.annotationJeu
+          : 'etiquettes';
+      if (jeu !== 'etiquettes') cleaned.annotationJeu = jeu;
+      if (jeu === 'marqueurs') {
+        cleaned.marqueurOutil =
+          question.marqueurOutil === 'rect' || question.marqueurOutil === 'cercle'
+            ? question.marqueurOutil
+            : 'point';
+        cleaned.marqueurMultiple = question.marqueurMultiple === true;
+      }
       const cibles: LectureAnnotationCible[] = Array.isArray(question.annotations)
         ? (question.annotations as unknown[])
             .map((raw, i) => {
@@ -441,7 +455,10 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
               const label = texteCourt(c.label, 80);
               const x = typeof c.x === 'number' ? c.x : NaN;
               const y = typeof c.y === 'number' ? c.y : NaN;
-              if (!label || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+              // Une zone de marqueurs n'attend pas un mot mais une marque :
+              // exiger un libellé jetterait toutes les zones du jeu.
+              if (jeu !== 'marqueurs' && !label) return null;
+              if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
               const borne = (v: number) => Math.max(0, Math.min(100, v));
               const cible: LectureAnnotationCible = {
                 id: typeof c.id === 'string' && c.id ? c.id : `a-${i}`,
@@ -457,6 +474,15 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
                 cible.forme = c.forme;
                 cible.w = Math.min(w, 100 - cible.x);
                 cible.h = Math.min(h, 100 - cible.y);
+              }
+              // Bulles : les autres formulations admises. Une seule est montrée
+              // au corrigé (`label`), les autres ne servent qu'à corriger.
+              if (jeu === 'bulles' && Array.isArray(c.acceptees)) {
+                const acceptees = (c.acceptees as unknown[])
+                  .map((r) => texteCourt(r, 80))
+                  .filter((r) => r !== '')
+                  .slice(0, 20);
+                if (acceptees.length > 0) cible.acceptees = acceptees;
               }
               return cible;
             })
@@ -495,6 +521,81 @@ export function sanitizeLectureQuiz(input: unknown): LectureQuiz | null {
 
   if (questions.length === 0) return null;
   return { mode, questions };
+}
+
+/**
+ * CE QUE LE NETTOYEUR A JETÉ — pour le DIRE au professeur.
+ *
+ * ⚠ `sanitizeLectureQuiz` écarte toute question qu'il juge inutilisable (pas
+ * d'énoncé, image manquante, une seule proposition…). C'est juste : une
+ * question vide servie à un élève serait pire. Mais le faire **en silence**
+ * a coûté une soirée de travail le 2026-09-20 : dix questions composées, deux
+ * enregistrées, et rien à l'écran pour le dire. Le prof a cru avoir tout
+ * perdu — il avait tout perdu.
+ *
+ * Cette fonction compare l'envoi du client au résultat nettoyé et rend une
+ * phrase par question écartée. Toute route qui enregistre un questionnaire
+ * doit la renvoyer au client, qui l'affiche SANS refermer l'éditeur.
+ */
+export function questionsJetees(brut: unknown, nettoye: LectureQuiz | null): string[] {
+  const raw = (brut as { questions?: unknown })?.questions;
+  if (!Array.isArray(raw)) return [];
+  const gardees = new Set((nettoye?.questions ?? []).map((q) => q.id));
+
+  const messages: string[] = [];
+  raw.forEach((item, i) => {
+    if (!item || typeof item !== 'object') return;
+    const q = item as Record<string, unknown>;
+    const id = typeof q.id === 'string' ? q.id : '';
+    if (id && gardees.has(id)) return;
+
+    const rang = `Question ${i + 1}`;
+    const enonce = typeof q.enonce === 'string' ? q.enonce.trim() : '';
+    const type = q.type as LectureQuestionType | undefined;
+    const vide = (v: unknown) => !Array.isArray(v) || v.length === 0;
+
+    if (!type || !QUESTION_TYPES.includes(type)) {
+      messages.push(`${rang} : type inconnu`);
+    } else if (!enonce || (type === 'info' && !enonce.replace(/<[^>]+>/g, '').trim())) {
+      messages.push(`${rang} : pas d’énoncé`);
+    } else if (
+      type === 'qcm' &&
+      (!Array.isArray(q.choices) ||
+        q.choices.filter((c) => typeof c === 'string' && c.trim()).length < 2)
+    ) {
+      messages.push(`${rang} : moins de deux propositions`);
+    } else if (type === 'image-annotee' && !q.image) {
+      messages.push(`${rang} : aucune image jointe`);
+    } else if (type === 'image-annotee' && vide(q.annotations)) {
+      messages.push(`${rang} : aucune zone posée sur l’image`);
+    } else if (type === 'ordre' && (!Array.isArray(q.ordreItems) || q.ordreItems.length < 2)) {
+      messages.push(`${rang} : moins de deux éléments à remettre en ordre`);
+    } else if (type === 'appariement' && (vide(q.appariementGauche) || vide(q.appariementDroite))) {
+      messages.push(`${rang} : une des deux colonnes est vide`);
+    } else if (type === 'ensembles' && (vide(q.ensembles) || vide(q.ensembleItems))) {
+      messages.push(`${rang} : il manque des boîtes ou des étiquettes`);
+    } else {
+      messages.push(`${rang} : incomplète`);
+    }
+  });
+  return messages;
+}
+
+/**
+ * La phrase à montrer au prof, ou `null` quand rien n'a été jeté.
+ * Volontairement alarmante : c'est du travail qui vient de disparaître.
+ */
+export function avertissementQuestionsJetees(
+  brut: unknown,
+  nettoye: LectureQuiz | null
+): string | null {
+  const jetees = questionsJetees(brut, nettoye);
+  if (jetees.length === 0) return null;
+  return `⚠️ ${jetees.length} question${jetees.length > 1 ? 's' : ''} n’${
+    jetees.length > 1 ? 'ont' : 'a'
+  } PAS été enregistrée${jetees.length > 1 ? 's' : ''} — ${jetees.join(' · ')}. Complétez-${
+    jetees.length > 1 ? 'les' : 'la'
+  } et enregistrez à nouveau.`;
 }
 
 // Version élève : retire les bonnes réponses des QCM, les réponses idéales
@@ -539,7 +640,10 @@ export function preparerPresentation(q: LectureQuestion): LectureQuestion {
   if (q.ensembleItems) {
     out.ensembleItems = melangeStable(q.ensembleItems, `${q.id}-e`);
   }
-  if (q.annotations) {
+  // La réserve d'étiquettes n'existe que dans le jeu « étiquettes ». En
+  // bulles, le libellé d'une zone EST la réponse attendue : la servir en
+  // réserve donnerait le corrigé en clair, mélangé mais lisible.
+  if (q.annotations && jeuAnnotation(q) === 'etiquettes') {
     out.annotationsEtiquettes = melangeStable(
       q.annotations.map((c) => ({ id: c.id, kind: 'texte' as const, texte: c.label })),
       q.id
@@ -598,12 +702,22 @@ export function lectureQuizForEleve(quiz: LectureQuiz | null | undefined): Lectu
 
       const filtre = rest as LectureQuestion;
 
-      // Image annotée : les CASES doivent partir (l'élève voit où déposer),
-      // mais pas leur libellé attendu — sinon la réponse est écrite dessus.
-      // Les étiquettes à placer voyagent à part, déjà mélangées par
-      // `preparerPresentation` : ne pas les recalculer ici.
+      // Image annotée : ce qui part dépend du JEU.
+      //  · étiquettes et bulles — les ZONES partent (l'élève doit voir où
+      //    déposer ou écrire), jamais leur libellé attendu ni les autres
+      //    formulations admises, qui sont le corrigé ;
+      //  · marqueurs — les zones NE PARTENT PAS DU TOUT : elles sont l'endroit
+      //    à trouver. Les envoyer, même sans libellé, reviendrait à dessiner
+      //    la réponse sur l'image.
       if (annotations) {
-        filtre.annotations = annotations.map((c) => ({ ...c, label: '' }));
+        if (jeuAnnotation(filtre) === 'marqueurs') {
+          delete filtre.annotations;
+        } else {
+          filtre.annotations = annotations.map(({ acceptees: _acceptees, ...c }) => ({
+            ...c,
+            label: '',
+          }));
+        }
       }
 
       return filtre;

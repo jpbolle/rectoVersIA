@@ -219,3 +219,13 @@
   color: var(--c-text);
   margin: 0 0 16px;
 }
+
+/* Du travail vient d'être écarté : ça ne peut pas ressembler à un accusé de
+   réception. Fond chaud, liseré ambre, texte lisible jusqu'au bout. */
+.messageAlerte {
+  background: #fdf4e7;
+  border-color: rgba(212, 148, 76, 0.55);
+  color: var(--c-text);
+  font-weight: 600;
+  line-height: 1.5;
+}

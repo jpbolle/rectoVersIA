@@ -1,7 +1,41 @@
 # PLAN — Image à annoter : trois jeux, dépôt SUR l'image
 
-> Statut : ✅ **VALIDÉ le 2026-09-19** (« go »). **Étape 1 écrite le 2026-09-19, rien vu
-> à l'écran** ; étapes 2 et 3 pas commencées.
+> Statut : ✅ **VALIDÉ le 2026-09-19** (« go »). **Les trois étapes sont écrites** :
+> l'étape 1 le 2026-09-19, les étapes 2 (bulles) et 3 (marqueurs) le **2026-09-20**.
+> ⚠ **Rien n'a encore été vu à l'écran, rien n'est déployé.**
+
+### Étapes 2 et 3 — ce qui a été fait (2026-09-20)
+
+- `AnnotationJeu` (`etiquettes` | `bulles` | `marqueurs`), **absent = étiquettes** :
+  les questions écrites avant gardent leur comportement, aucune migration.
+- `LectureAnnotationCible.acceptees` (bulles) ; `LectureAnswer.annotationsTexte`
+  (bulles) et `LectureAnswer.marques` (marqueurs, mêmes formes qu'une zone).
+- Correction : `bulleJuste` (même tolérance que la réponse courte) et
+  `marqueDansZone` (le CENTRE de la marque dans la zone ; tolérance fixe autour
+  d'une zone « point » — `ANNOT_TOLERANCE_POINT`). `partReussite` branche sur le jeu.
+- ⚠ **Précision du 2026-09-20, à l'essai de JP** : le centre ne suffit pas. « Si je fais
+  un immense cercle qui englobe la zone du prof, cela ne doit pas être forcément bon. »
+  La marque doit donc aussi rester d'une **taille raisonnable** : au plus
+  `ANNOT_MARQUE_AIRE_MAX` (×3) l'aire d'une zone dessinée ; et, sur une zone **point**
+  — qui ne dit pas la taille de la chose et qu'on entoure légitimement —, le seul
+  plafond absolu `ANNOT_MARQUE_MAX_SUR_POINT` (un quart de l'image).
+- ⚠ **Ce qui part chez l'élève** (`lectureQuizForEleve`) : en bulles, les zones
+  partent sans leur libellé **ni les formulations admises** ; en marqueurs, **les
+  zones ne partent pas du tout** — elles sont l'endroit à trouver. La réserve
+  d'étiquettes n'est plus fabriquée que pour le jeu « étiquettes » (en bulles, le
+  libellé d'une zone EST la réponse).
+- ⚠ Une bulle n'est **auto-corrigeable que si son libellé est là** : sans cette
+  garde, l'onglet Évaluation de l'élève notait 0 sur n avant le corrigé au lieu de
+  laisser la question « à noter ».
+- `src/lib/annotation-zones.ts` (nouveau) : le tracé au pointeur, **partagé** par le
+  constructeur et par le champ de l'élève — l'élève trace ses marques avec
+  exactement les mêmes gestes que son professeur.
+- Constructeur : sélecteur de **jeu**, et pour les marqueurs, l'outil donné à
+  l'élève + « plusieurs marques permises ». En bulles, chaque zone gagne un champ
+  « autres réponses admises, une par ligne ».
+- **50 vérifications** passent (deux scripts, non versionnés) : 31 sur les fonctions de
+  correction, et **19 sur ce qui part chez l'élève** — aucune fuite du corrigé, dans les
+  trois jeux.
 
 ### Étape 1 — ce qui a été fait (2026-09-19)
 
@@ -89,11 +123,11 @@ points deviennent des zones « point », les bulles disparaissent. Aucune migrat
 
 ## Étapes
 
-1. **Zones sur l'image + jeu « étiquettes » refait** : modèle, constructeur (3 outils),
+1. ✅ **Zones sur l'image + jeu « étiquettes » refait** : modèle, constructeur (3 outils),
    champ élève (dépôt sur l'image, réserve collante), vue de correction du prof. C'est
    ce qui débloque la question déjà jouée en classe.
-2. **Bulles à compléter.**
-3. **Marqueurs à placer.**
+2. ✅ **Bulles à compléter.**
+3. ✅ **Marqueurs à placer.**
 4. (plus tard, si voulu) En compétition, « ce que la classe a répondu » pour les
    marqueurs : **tous les marqueurs de la classe superposés sur l'image**. Aujourd'hui
    l'image à annoter ne se résume pas.

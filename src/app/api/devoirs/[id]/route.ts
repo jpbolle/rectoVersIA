@@ -15,6 +15,7 @@ import { eleveExclu, identiteEleve, ouvertParSequence, restrictionElevesPourFire
 import { verifyAuth } from '@/lib/api-auth';
 import { sanitizeRessources } from '@/lib/ressources-server';
 import {
+  avertissementQuestionsJetees,
   sanitizeLectureQuiz,
   lectureQuizForEleve,
   lectureQuizEnDirectPourEleve,
@@ -401,11 +402,16 @@ export async function PATCH(
         ? body.lectureMode
         : null;
     }
+    let avertissementQuiz: string | null = null;
     if (body.lectureQuiz !== undefined) {
-      updateData.lectureQuiz =
-        body.lectureQuiz === null
-          ? null
-          : lectureQuizPourFirestore(sanitizeLectureQuiz(body.lectureQuiz));
+      if (body.lectureQuiz === null) {
+        updateData.lectureQuiz = null;
+      } else {
+        const cleaned = sanitizeLectureQuiz(body.lectureQuiz);
+        // Dire ce qui a été écarté plutôt que de le jeter en silence (2026-09-20).
+        avertissementQuiz = avertissementQuestionsJetees(body.lectureQuiz, cleaned);
+        updateData.lectureQuiz = lectureQuizPourFirestore(cleaned);
+      }
     }
 
     if (body.oeuvreId !== undefined) {
@@ -517,6 +523,7 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       message: 'Devoir mis a jour avec succes',
+      avertissement: avertissementQuiz,
     });
   } catch (error) {
     console.error('Erreur PATCH /api/devoirs/[id]:', error);

@@ -6,6 +6,93 @@
 > d'œuvre — « pas de bug a priori ».** Le reste (matrice, appariement, remise
 > en ordre, image annotée, ensembles) n'a pas encore été ouvert.
 
+## Session du 2026-09-20 — image à annoter : les TROIS jeux
+
+**Écrit d'un bloc, `tsc` et `eslint` propres, 50 vérifications de fonctions pures
+passent (deux scripts, non versionnés). RIEN VU À L'ÉCRAN, rien commité.**
+Plan : `harnais/plans/2026-09-19-image-annotee-trois-jeux.md` (étapes 2 et 3).
+
+Le constat de départ, vérifié dans le code au début de la session : le plan était
+validé le 19/09 mais **seule l'étape 1** était écrite. `annotationJeu` n'existait
+nulle part — le prof n'avait donc **aucun moyen de savoir** que deux jeux sur trois
+manquaient, faute de sélecteur.
+
+### Ce qui a été écrit
+
+- **`annotationJeu`** (`etiquettes` | `bulles` | `marqueurs`), **absent = étiquettes** :
+  aucune migration, les questions déjà en base ne bougent pas.
+- **Bulles** : l'élève écrit dans la zone (`annotationsTexte`). Correction automatique
+  **tolérante** (`bulleJuste` — majuscules, accents, espaces ; jamais l'orthographe), le
+  prof liste d'**autres formulations admises** par zone (`acceptees`, une par ligne).
+- **Marqueurs** : l'élève pose ses marques (`marques`, mêmes formes qu'une zone).
+  Une zone est trouvée si le **CENTRE** d'une marque tombe dedans (`marqueDansZone` —
+  rectangle, ellipse, ou tolérance fixe `ANNOT_TOLERANCE_POINT` autour d'un point)
+  **ET** si la marque reste d'une taille raisonnable. **Aucune pénalité** pour une
+  marque à côté.
+
+  ⚠ **La taille, ajoutée au premier essai de JP (20/09)** : « si je fais un immense
+  cercle qui englobe la zone correcte, cela ne doit pas être forcément bon ». Deux
+  plafonds, parce que les deux situations ne se ressemblent pas : sur une zone
+  **dessinée**, la marque ne dépasse pas **3× son aire** ; sur une zone **point**, il
+  n'y a pas d'aire à comparer — un point dit « c'est ici », pas « c'est grand comme
+  ça », et l'élève entoure légitimement — donc seulement un garde-fou absolu, **le
+  quart de l'image**. C'est le cas le plus courant : JP pique des points et donne le
+  cercle à l'élève. Réglages : outil donné à l'élève,
+  plusieurs marques permises ou non.
+- **`src/lib/annotation-zones.ts`** (nouveau) : le tracé au pointeur, **partagé** par le
+  constructeur et par le champ de l'élève — il trace avec les gestes de son professeur.
+
+### ⚠ Les deux pièges traités
+
+1. **Ce qui part chez l'élève dépend du jeu.** En bulles, le libellé d'une zone EST la
+   réponse : il part vide, les `acceptees` ne partent pas, et **aucune réserve
+   d'étiquettes n'est fabriquée**. En marqueurs, **les zones ne partent pas du tout** —
+   les envoyer dessinerait la réponse sur l'image. Vaut aussi en **compétition**
+   (`/api/direct/etat` passe par `lectureQuizForEleve`). 19 vérifications là-dessus.
+2. **Une bulle n'est auto-corrigeable que si son libellé est arrivé.** Sans cette garde,
+   l'onglet Évaluation de l'élève notait la question **0 sur n** avant le corrigé, au
+   lieu de la laisser « à noter ».
+
+### ⚠ INCIDENT du 2026-09-20 — huit questions perdues en silence
+
+JP compose **dix** questions dans le constructeur ; la page « hoquette » et ce qu'il
+tape ne s'inscrit pas. Il enregistre plusieurs fois. Au final, **deux questions**.
+
+**Ce que la base dit** (lecture du 21/09) : le questionnaire `QLE-20260920-MYBZ` a été
+écrit **une seule fois**, à 21:41:45, en même temps que l'activité `DEV-20260920-9550`
+qui le référence — et **jamais modifié depuis** (son titre y porte encore la coquille
+« neuromithes » que JP avait corrigée sur l'activité à 22:03). Les huit questions
+n'ont donc **jamais atteint Firestore** : rien à récupérer, ni par sauvegarde ni par PITR.
+
+**Mécanisme** : `sanitizeLectureQuiz` **écarte sans un mot** toute question sans énoncé.
+La frappe perdue a laissé huit énoncés vides ; le nettoyeur les a jetés ; l'éditeur
+s'est refermé sur « Questionnaire enregistré ».
+
+**Corrigé le 21/09** : `questionsJetees` / `avertissementQuestionsJetees`
+(`lecture-server.ts`) disent **combien** de questions ont été écartées, **lesquelles**
+(leur rang) et **pourquoi**. Les quatre routes qui enregistrent un questionnaire le
+renvoient (`/api/devoirs` POST et PATCH, `/api/questionnaires-lecture` POST et PATCH),
+et `QuestionnaireLecturePanel` l'affiche en encadré ambre **sans refermer l'éditeur**.
+11 vérifications rejouent le scénario des dix questions.
+
+⚠ **Ce qui n'est PAS élucidé** : la cause du « hoquet » — la frappe qui ne s'inscrit
+pas. Tant qu'il n'est pas reproduit, le garde-fou évite la perte silencieuse, pas la
+perte de frappe. À chercher dès qu'il se reproduit (console + onglet Réseau).
+
+### Retours de JP à l'écran (constructeur)
+
+- le **symbole après l'intitulé** dans les outils de zone (« Point ● ») ;
+- l'éditeur était **tassé** : `styles.annotEditeur` n'existait pas dans la feuille de
+  style. Deux groupes (Jeu proposé / Zones à annoter) séparés par un filet, de l'air
+  entre les rangées.
+- Au passage, les deux signalements du contrôle design de ce fichier : filet de 3 px à
+  gauche de `.avertissement` → liseré complet d'1 px ; trait d'insertion animé en
+  **`transform: scaleY()`** au lieu de sa hauteur (plus de recalcul de mise en page).
+
+**Reste** : voir les deux nouveaux jeux à l'écran, côté prof ET côté élève, puis les
+jouer en classe. Et, si voulu, l'étape 4 du plan — en compétition, « ce que la classe a
+répondu » pour les marqueurs (tous les marqueurs superposés sur l'image).
+
 ## Session du 2026-08-20 — mélange, constructeurs, lisibilité
 
 **Livré, `tsc` / `eslint` / `build` passent. Rien testé à l'écran.**

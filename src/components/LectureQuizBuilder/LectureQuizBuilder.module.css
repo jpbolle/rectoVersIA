@@ -262,11 +262,14 @@
 
 /* Avertissement du basculement en Compétition : on ne supprime rien, on dit
    ce qui ne se jouera pas. */
+/* Le message porte déjà son ⚠️ et son fond chaud : un filet épais sur le seul
+   bord gauche n'ajoute aucune information, et c'est le tic visuel le plus
+   reconnaissable des interfaces générées. Un liseré complet, discret. */
 .avertissement {
   margin: 0 0 14px;
   padding: 10px 14px;
   background: #fdf4e7;
-  border-left: 3px solid var(--c-accent);
+  border: 1px solid rgba(212, 148, 76, 0.4);
   border-radius: var(--c-radius);
   font-size: 13px;
   line-height: 1.5;
@@ -1159,11 +1162,51 @@
   font-size: 13px;
   flex-shrink: 0;
 }
+/* ── Éditeur de l'image à annoter ──
+   Deux réglages superposés (le JEU, puis les ZONES) : sans respiration ni
+   séparation, les deux blocs se lisent comme un seul et l'œil ne sait plus
+   quel intitulé commande quelle rangée. */
+.annotEditeur { margin-top: 4px; }
+
+.annotGroupe + .annotGroupe {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--c-border);
+}
+.annotEditeur .fieldLabel { margin: 0 0 8px; }
+.annotEditeur .modeRow { gap: 22px; row-gap: 10px; }
+.annotEditeur .modeRow + .modeRow { margin-top: 14px; }
+.annotEditeur .hint { margin-top: 9px; }
+.annotEditeur .annotToile { margin-top: 12px; }
+.annotListe { margin-top: 14px; }
+
+/* Le symbole suit le mot : il confirme le choix, il ne l'annonce pas */
+.outilIcone {
+  color: var(--c-text-secondary);
+  font-size: 13px;
+}
+
+/* Une zone et tout ce qu'elle porte : sa ligne, et — en bulles — les autres
+   formulations admises, sous elle */
+.annotBloc { margin-bottom: 5px; }
+
 .annotLigne {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 5px;
+}
+
+.annotAcceptees {
+  border: 1px dashed var(--c-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin: 0 0 8px 46px; /* aligné sur le champ de la ligne, après rang et forme */
+  width: calc(100% - 46px);
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--c-text-secondary);
+  resize: none;
 }
 .annotLigne input[type='text'] {
   flex: 1;
@@ -1275,20 +1318,25 @@
   gap: 8px;
 }
 
+/* Le trait s'épaissit par TRANSFORM, jamais par sa hauteur : animer la hauteur
+   fait recalculer la mise en page de toute la liste de questions à chaque
+   survol. Il occupe donc ses 2 px en permanence et n'en montre que la moitié
+   au repos — la ligne ne bouge plus d'un pixel. */
 .traitBarre {
   flex: 1;
-  height: 1px;
+  height: 2px;
   border-radius: 2px;
   background-color: var(--c-border);
   opacity: 0.55;
-  transition: background-color 0.12s, opacity 0.12s, height 0.12s;
+  transform: scaleY(0.5);
+  transition: background-color 0.12s, opacity 0.12s, transform 0.12s;
 }
 .trait:hover .traitBarre,
 .traitOuvert .traitBarre,
 .traitToujours .traitBarre {
   background-color: var(--c-accent);
   opacity: 1;
-  height: 2px;
+  transform: scaleY(1);
 }
 
 /* Le « + » ne se montre qu'au survol : dix pastilles de types entre chaque

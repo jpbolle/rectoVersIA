@@ -146,8 +146,9 @@ Trois couches qui doivent rester cohérentes : **interface ⊆ route serveur ⊆
 
 ### `devoirs`
 > Champs récents : `lectureQuiz` (questionnaire de lecture, type lire — voir
-> `src/types/lecture.ts` ; `correctIndex`, `reponseIdeale`, `reponsesAcceptees`
-> et `fluoAttendu`
+> `src/types/lecture.ts` ; `correctIndex`, `reponseIdeale`, `reponsesAcceptees`,
+> `fluoAttendu` et, pour l'image à annoter, le libellé des zones, leurs
+> `acceptees` — voire les zones **entières** dans le jeu « marqueurs » —
 > **filtrés côté élève** par `src/lib/lecture-server.ts` — **sauf quand
 > `corrigeDisponible`** : l'élève reçoit alors le quiz complet pour voir sa
 > correction) ; questions avec `audio` (base64 `ressourceImages`, ≤ 700 Ko,
@@ -565,10 +566,26 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
   `ChampManipule` : l'écran élève, la liseuse d'œuvre et la correction prof passent
   tous par lui. **Un cinquième type manipulé s'habille sur l'un des deux moteurs —
   on n'en écrit jamais un troisième.**
-  **Image à annoter (refonte du 2026-09-19)** : l'élève dépose SUR l'image, dans des
-  zones posées par le prof (`forme` point / encadré / cercle, en % de l'image) ; plus de
-  cases latérales ni de traits. Réserve collante au-dessus, image plafonnée à 65vh.
-  Plan en cours (bulles à compléter, marqueurs) : `harnais/plans/2026-09-19-image-annotee-trois-jeux.md`
+  **Image à annoter — TROIS JEUX, un seul socle** (refonte du 2026-09-19, achevée le
+  2026-09-20). Dans les trois cas le prof pose des **zones** sur l'image (`forme` point /
+  encadré / cercle, en % de l'image) et l'élève travaille **sur l'image** — plus de cases
+  latérales ni de traits. `annotationJeu` : **absent = `etiquettes`**, aucune migration.
+  · **étiquettes** — il tire une étiquette de la réserve (collante, au-dessus ; image
+  plafonnée à 65vh) et la pose dans sa zone ;
+  · **bulles** — il **écrit** dans la zone (`annotationsTexte`) ; correction automatique
+  tolérante (`bulleJuste`, même normalisation que la réponse courte), le prof liste
+  d'autres formulations admises par zone (`acceptees`) ;
+  · **marqueurs** — il pose ses propres marques (`marques`, mêmes formes qu'une zone) ;
+  une zone est trouvée si le **centre** d'une marque tombe dedans **et** si la marque
+  reste d'une taille raisonnable (`marqueDansZone`) — sans ce second garde-fou, un cercle
+  qui embrasse la moitié de l'image serait compté juste : ce n'est plus désigner, c'est
+  jeter un filet. Zone dessinée : la marque ne dépasse pas `ANNOT_MARQUE_AIRE_MAX` fois
+  son aire. Zone **point** : pas d'aire à comparer (un point ne dit pas la taille de la
+  chose, et l'élève entoure légitimement) — seulement le plafond absolu
+  `ANNOT_MARQUE_MAX_SUR_POINT`. **Aucune pénalité** pour une marque posée à côté.
+  Réglages : `marqueurOutil`, `marqueurMultiple`.
+  Le tracé au pointeur est **partagé** par le constructeur et l'élève
+  (`src/lib/annotation-zones.ts`).
 - Vocabulaire : `VocabulaireActivity` (diagnostic → apprentissage → évaluation, mots
   difficiles/flashcards), `VocabulaireList`, `VocabulaireExercises`,
   `VocabulaireEvaluation` (mots croisés + syn/ant + composition), `VocabulaireStats`,
@@ -796,6 +813,35 @@ par un trou) : le fantôme reste collé à l'écran, jusque sur les questions su
 Et les gestionnaires sont ceux du rendu où le doigt s'est POSÉ : un état modifié
 pendant le geste s'y lit par un `ref` (`provisoireRef`). Un champ qui crée un fantôme
 passe par `useFantome()`, qui le détruit si la question disparaît en plein geste.
+
+### Le nettoyeur d'un questionnaire JETTE les questions inutilisables — il doit le DIRE
+`sanitizeLectureQuiz` écarte toute question qu'il juge inservable : **pas d'énoncé**,
+moins de deux propositions, image à annoter sans image, remise en ordre à un seul
+élément… C'est juste — une question vide servie à un élève serait pire — mais c'était
+**silencieux**.
+**Incident du 2026-09-20** : dix questions composées, **deux enregistrées**, aucun
+message ; l'éditeur se refermait sur « Questionnaire enregistré ». Le travail n'avait
+jamais atteint Firestore (vérifié : le document n'a été écrit qu'une fois, à la création
+de l'activité). Rien n'était récupérable.
+**Règle** : toute route qui enregistre un questionnaire renvoie
+`avertissementQuestionsJetees(brut, nettoye)` dans sa réponse, et l'écran l'affiche
+**sans refermer l'éditeur** (`/api/devoirs` POST et PATCH, `/api/questionnaires-lecture`
+POST et PATCH). Une nouvelle route qui appelle le nettoyeur sans renvoyer cet
+avertissement rouvre le même piège.
+
+### Image à annoter : ce qui part chez l'élève dépend du JEU
+Les trois jeux ne cachent pas la même chose, et `lectureQuizForEleve` en tient compte :
+- **étiquettes** : les zones partent, **libellés vidés** ; la réserve part à part, mélangée ;
+- **bulles** : les zones partent (il faut savoir où écrire), **sans libellé ni
+  `acceptees`**, et **aucune réserve n'est fabriquée** — le libellé d'une zone EST la
+  réponse attendue ;
+- **marqueurs** : les zones **ne partent pas du tout**. Elles sont l'endroit à trouver ;
+  les envoyer, même anonymes, dessinerait la réponse sur l'image.
+
+Corollaire : une bulle n'est **auto-corrigeable que si son libellé est là**
+(`estAutoCorrigeable`). Sans cette garde, l'onglet Évaluation de l'élève notait la
+question **0 sur n** avant le corrigé au lieu de la laisser « à noter ».
+*(2026-09-20)*
 
 ### Une question à image : l'atelier de tracé n'est pas pour l'image à annoter
 Toute question avec `image` affiche l'atelier de tracé (`ImageWorkspace` /
@@ -1203,6 +1249,8 @@ prof.
 - [`AGENTS.md`](./AGENTS.md) — règles impératives
 - [`harnais/README.md`](./harnais/README.md) — carte du harnais
 - [`harnais/memoire/MEMORY.md`](./harnais/memoire/MEMORY.md) — état cross-sessions
+- [`harnais/macro-plan.md`](./harnais/macro-plan.md) — les **gros chantiers**, leur état
+  réel et l'ordre dans lequel on les mène
 - [`roadmap.md`](./roadmap.md) — où va le produit (+ page `/roadmap` dans l'app pour les
   utilisateurs)
 - `DEPLOYMENT.md` — guide de déploiement détaillé
@@ -1254,6 +1302,10 @@ prof.
   ponctuation ni l'orthographe, cf. `normaliserReponseCourte`). C'est la seule
   question auto-corrigée dont **la note du prof prime** : son corrigé peut être
   incomplet, un QCM non.
+- `src/lib/annotation-zones.ts` — le **tracé d'une zone au pointeur** (outils, seuil du
+  clic, taille par défaut), **partagé** par le constructeur et par le champ de l'élève :
+  l'élève trace ses marques avec exactement les gestes de son professeur. Écouteurs sur
+  `window`, coordonnées en % de l'image.
 - `src/lib/choix-liste.ts` — la touche **Entrée** ajoute une option dans les trois
   constructeurs de questionnaires, et **décale les corrigés** avec elle.
 - `src/lib/oeuvre-commentaires.ts` — le **fluorage commenté** : tokenisation des mots

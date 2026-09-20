@@ -16,6 +16,7 @@ import { calculateSchoolYear } from '@/lib/auth-utils';
 import { generateDevoirId } from '@/lib/devoir-utils';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import {
+  avertissementQuestionsJetees,
   sanitizeLectureQuiz,
   lectureQuizForEleve,
   lectureQuizEnDirectPourEleve,
@@ -440,8 +441,13 @@ export async function POST(request: NextRequest) {
         (id: unknown): id is string => typeof id === 'string' && !!id
       );
     }
+    // Ce que le nettoyeur écarte doit être DIT au prof : c'est ici qu'une
+    // soirée de travail a disparu en silence le 2026-09-20 (dix questions
+    // composées, deux enregistrées, aucun message).
+    let avertissementQuiz: string | null = null;
     if (typeTravail === 'lire' && lectureQuiz && !devoirData.lectureQuizId) {
       const cleaned = sanitizeLectureQuiz(lectureQuiz);
+      avertissementQuiz = avertissementQuestionsJetees(lectureQuiz, cleaned);
       if (cleaned) {
         devoirData.lectureQuiz = lectureQuizPourFirestore(cleaned);
         // ── TOUT QUESTIONNAIRE REJOINT LA BIBLIOTHÈQUE ──
@@ -542,6 +548,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: { id, codeAcces: devoirData.codeAcces || null },
       message: `Devoir "${intitule}" cree avec succes`,
+      avertissement: avertissementQuiz,
     });
   } catch (error) {
     console.error('Erreur POST /api/devoirs:', error);

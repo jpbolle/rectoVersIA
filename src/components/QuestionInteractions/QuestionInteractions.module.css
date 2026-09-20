@@ -400,6 +400,69 @@
   pointer-events: none;
 }
 
+/* ── JEU « BULLES » : on écrit DANS la zone ──
+   Une zone « point » ne peut pas rester un rond de 34 px : elle devient une
+   bulle, assez large pour qu'un groupe de mots s'y lise. */
+.zoneBulle {
+  min-width: 108px;
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.92);
+}
+.zone_point.zoneBulle {
+  width: auto;
+  height: auto;
+  border-radius: var(--c-radius-lg);
+}
+.bulleInput {
+  width: 100%;
+  min-width: 96px;
+  border: none;
+  outline: none;
+  background: transparent;
+  text-align: center;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--c-text);
+  padding: 2px 4px;
+}
+.bulleInput:focus { background: #fffdf8; border-radius: 6px; }
+.bulleInput:disabled { color: var(--c-text); opacity: 1; } /* la copie se relit, elle ne se grise pas */
+
+/* ── JEU « MARQUEURS » : l'élève pose ses propres marques ──
+   Pendant le tracé, le doigt ne doit pas faire défiler la page sous l'image. */
+.annotStageTrace { touch-action: none; }
+
+.marque {
+  position: absolute;
+  z-index: 4;
+  border: 2.5px solid var(--c-primary);
+  background: rgba(45, 106, 90, 0.16);
+  cursor: pointer;
+}
+/* Un point posé par l'élève : plein, centré sur son clic, assez gros au doigt */
+.marque.zone_point {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--c-primary);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.marque.zone_rect { border-radius: 6px; }
+.marque.zone_cercle { border-radius: 50%; }
+.marque.fige { cursor: default; }
+.marqueBrouillon {
+  border-style: dashed;
+  background: rgba(45, 106, 90, 0.08);
+  pointer-events: none;
+}
+
+/* La zone attendue, montrée seulement avec le corrigé : elle est le corrigé */
+.zoneAttendue { background: transparent; pointer-events: none; }
+.zoneAttendue.ok { border-color: var(--c-success); }
+.zoneAttendue.ko { border-color: var(--c-danger); }
+.zoneAttendue.zone_point::after { background: currentColor; }
+
 /* ═══════════════ MATRICE ═══════════════ */
 
 .matriceScroll { overflow-x: auto; }

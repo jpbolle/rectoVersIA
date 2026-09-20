@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { calculateSchoolYear } from '@/lib/auth-utils';
-import { sanitizeLectureQuiz } from '@/lib/lecture-server';
+import { avertissementQuestionsJetees, sanitizeLectureQuiz } from '@/lib/lecture-server';
 import { listerQuestionnaires, quizPourFirestore } from '@/lib/questionnaire-lecture-server';
 import { generateQuestionnaireLectureId } from '@/types/questionnaire-lecture';
 
@@ -43,6 +43,10 @@ export async function POST(request: NextRequest) {
 
     const id = generateQuestionnaireLectureId();
     const maintenant = new Date();
+    // Ce que le nettoyeur écarte doit être DIT : une question incomplète
+    // jetée en silence, c'est du travail perdu sans le savoir (2026-09-20).
+    const quizNettoye = sanitizeLectureQuiz(body.quiz);
+    const avertissement = avertissementQuestionsJetees(body.quiz, quizNettoye);
     await adminDb
       .collection('questionnairesLecture')
       .doc(id)
@@ -55,12 +59,12 @@ export async function POST(request: NextRequest) {
         archive: false,
         // Le contenu passe par le MÊME garde-fou que celui des activités :
         // c'est lui qui recale les corrigés quand un choix vide est jeté.
-        quiz: quizPourFirestore(sanitizeLectureQuiz(body.quiz) ?? { mode: 'worksheet', questions: [] }),
+        quiz: quizPourFirestore(quizNettoye ?? { mode: 'worksheet', questions: [] }),
         createdAt: maintenant,
         updatedAt: maintenant,
       });
 
-    return NextResponse.json({ success: true, data: { id } });
+    return NextResponse.json({ success: true, data: { id }, avertissement });
   } catch (error) {
     console.error('Erreur POST /api/questionnaires-lecture:', error);
     return NextResponse.json({ success: false, message: 'Erreur serveur' }, { status: 500 });
