@@ -15,10 +15,19 @@ import EditDevoirModal from '@/components/EditDevoirModal/EditDevoirModal';
 import LoadingOverlay from '@/components/LoadingOverlay/LoadingOverlay';
 import MessageBox from '@/components/MessageBox/MessageBox';
 import EmptyState from '@/components/EmptyState/EmptyState';
+import { atelierLabel, atelierParDispositif } from '@/types/didactique';
+import type { Dispositif } from '@/types/didactique';
 import { calculateSchoolYear } from '@/lib/auth-utils';
 import { donneesDeCopie } from '@/lib/devoir-copie';
 import type { CreateDevoirData, Devoir } from '@/types/devoir';
 import styles from './dashboard.module.css';
+
+// Le TYPE d'une activité : son atelier, ou celui que son dispositif désigne
+// pour les activités créées avant l'existence du champ. Même règle que
+// l'étiquette de `DevoirCard` — les deux doivent dire la même chose.
+function atelierDe(d: { atelier?: string; typeTravail?: string }): string {
+  return d.atelier || atelierParDispositif(d.typeTravail as Dispositif).id;
+}
 
 export default function DashboardPage() {
   const { isAuthenticated, isLoading: authLoading, role, getAuthHeaders } = useAuth();
@@ -65,6 +74,8 @@ export default function DashboardPage() {
   // activités de l'an dernier mêlées à celles de la rentrée.
   const SANS_ANNEE = '__sans_annee__';
   const TOUTES = '__toutes__';
+  const TOUS = '__tous__';
+  const SANS_EVAL = '__sans_eval__';
 
   // Les années réellement présentes, la plus récente d'abord. On ne propose
   // jamais une année vide : un menu qui montre des choix sans contenu se lit
@@ -99,10 +110,41 @@ export default function DashboardPage() {
     [devoirs, anneeFiltre]
   );
 
+  // ── Filtres par type d'activité et par nature de l'évaluation ──
+  // Le filtre par année ne suffisait plus : une année de français, c'est des
+  // dizaines d'activités de toutes sortes (demande JP, 2026-09-20).
+  const [typeFiltre, setTypeFiltre] = useState<string>(TOUS);
+  const [evalFiltre, setEvalFiltre] = useState<string>(TOUS);
+
+  // On ne propose que les types réellement présents : un menu qui offre des
+  // choix vides se lit comme une panne (même parti que pour les années).
+  const typesDisponibles = useMemo(() => {
+    const vus = new Set<string>();
+    devoirsAnnee.forEach((d) => vus.add(atelierDe(d)));
+    return [...vus].sort((a, b) => atelierLabel(a, true).localeCompare(atelierLabel(b, true)));
+  }, [devoirsAnnee]);
+
+  // ── Tri par échéance, la plus proche d'abord ──
+  // Une activité sans échéance ferme la marche : elle n'attend rien de
+  // personne, elle n'a pas à passer devant celle de demain.
+  const devoirsTries = useMemo(() => {
+    const retenus = devoirsAnnee.filter(
+      (d) =>
+        (typeFiltre === TOUS || atelierDe(d) === typeFiltre) &&
+        (evalFiltre === TOUS || (d.evaluation || SANS_EVAL) === evalFiltre)
+    );
+    return [...retenus].sort((a, b) => {
+      if (!a.dateRemise && !b.dateRemise) return a.intitule.localeCompare(b.intitule);
+      if (!a.dateRemise) return 1;
+      if (!b.dateRemise) return -1;
+      return a.dateRemise.localeCompare(b.dateRemise);
+    });
+  }, [devoirsAnnee, typeFiltre, evalFiltre]);
+
   // Devoirs non archivés, séparés en "en cours" et "corrigés"
-  const devoirsActuels = devoirsAnnee.filter((d) => !d.archive && !d.corrige);
-  const devoirsCorreges = devoirsAnnee.filter((d) => !d.archive && d.corrige);
-  const devoirsArchives = devoirsAnnee.filter((d) => d.archive);
+  const devoirsActuels = devoirsTries.filter((d) => !d.archive && !d.corrige);
+  const devoirsCorreges = devoirsTries.filter((d) => !d.archive && d.corrige);
+  const devoirsArchives = devoirsTries.filter((d) => d.archive);
 
   // Onglet actif
   const [activeTab, setActiveTab] = useState<'actuels' | 'archives'>('actuels');
@@ -347,6 +389,36 @@ export default function DashboardPage() {
                 {anneesDisponibles.length > 1 && (
                   <option value={TOUTES}>Toutes les années</option>
                 )}
+              </select>
+
+              {/* Type d'activité — le même vocabulaire que l'étiquette de la
+                  carte, pour qu'on retrouve ce qu'on a filtré. */}
+              {typesDisponibles.length > 1 && (
+                <select
+                  className={styles.anneeSelect}
+                  value={typeFiltre}
+                  onChange={(e) => setTypeFiltre(e.target.value)}
+                  title="Type d'activité"
+                >
+                  <option value={TOUS}>Tous les types</option>
+                  {typesDisponibles.map((t) => (
+                    <option key={t} value={t}>
+                      {atelierLabel(t, true)}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <select
+                className={styles.anneeSelect}
+                value={evalFiltre}
+                onChange={(e) => setEvalFiltre(e.target.value)}
+                title="Nature de l'évaluation"
+              >
+                <option value={TOUS}>Formatif et certificatif</option>
+                <option value="formatif">Formatif</option>
+                <option value="certificatif">Certificatif</option>
+                <option value={SANS_EVAL}>Non précisé</option>
               </select>
               <div className={styles.tabs}>
                 <button

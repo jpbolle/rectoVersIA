@@ -8,6 +8,7 @@ import {
   elevesConcernes,
   noteId,
   notesAutomatiques,
+  faitsAutomatiques,
   notesSaisies,
   trouverCertification,
 } from '@/lib/certification-server';
@@ -45,9 +46,12 @@ export async function GET(request: NextRequest) {
     const { scenarisation, module } = trouve;
     const eleves = await elevesConcernes(scenarisation, auth.uid, classeId);
     const devoirId = devoirCertificatif(module);
-    const [saisies, autos] = await Promise.all([
+    const [saisies, autos, faitsAuto] = await Promise.all([
       notesSaisies(moduleId),
       notesAutomatiques(devoirId, eleves),
+      // Certification non cotée : la copie corrigée vaut « fait ». Inutile de
+      // le calculer pour une certification notée, où le prof saisit un %.
+      estCotee(module) ? Promise.resolve(new Set<string>()) : faitsAutomatiques(devoirId, eleves),
     ]);
 
     const data: CertificationNotesPayload = {
@@ -61,7 +65,7 @@ export async function GET(request: NextRequest) {
       // La date de l'épreuve est celle de la dernière saisie : elle sert à
       // dater la ligne dans le profil de l'élève, rien de plus.
       date: [...saisies.values()][0]?.date || '',
-      lignes: buildLignes(eleves, saisies, autos),
+      lignes: buildLignes(eleves, saisies, autos, faitsAuto),
     };
 
     return NextResponse.json({ success: true, data });

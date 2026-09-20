@@ -23,7 +23,17 @@
   le croyait jamais connecté. `resolveProfilTarget` retrouve désormais l'uid par l'email
   (`uidParEmail`, `src/lib/eleve-lookup.ts`) : vaut pour les 6 onglets du profil.
 - Libellé de l'en-tête élève FLE : **« Mon cours FLE »** (demande JP, 19/09).
-- **Reste** : bascule (extension 2.0.2 avec la nouvelle adresse, variable sur le VPS).
+- **DÉPLOYÉ en production le 2026-09-19** : `ALLOWED_AUDIENCES` posée dans le `.env.local`
+  du VPS, site redéployé, `POST /api/ingest` répond `401 token_missing` sans jeton (vérifié).
+- **Extension 2.0.2 soumise à l'examen du Web Store le 2026-09-19** (`DEFAULT_API_BASE` →
+  `https://rectoversia.edukids.pedagokit.be`, paquet 3,8 Mo). Tant que l'examen n'est pas
+  passé, les élèves restent en 2.0.1 et leurs traces partent encore dans `daspa-app` (perdues,
+  décision du 14/09). **Le dépôt `daspalecte-main` n'est pas commité** (`analytics.js`,
+  `manifest.json`).
+- **À vérifier** : la politique de confidentialité publiée sur pedagokit.be nomme-t-elle
+  encore l'app Daspalecte comme destination des données ? Les catégories, elles, ne changent pas.
+- **Pas encore essayés** : exercices et tests de lecture de l'extension (tuiles et % de
+  réussite de la carte prof) ; module complémentaire Docs/Slides (n'envoie toujours rien).
 - Le scénario de test des Modules FLE (ci-dessous) n'a toujours pas été joué.
 
 ## État précédent (fin de la 1re session du 2026-09-19)

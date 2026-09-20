@@ -16,6 +16,37 @@
 
 ## Ensuite
 
+**L'application change de nom : « Traces » (décidé le 2026-09-20)** :
+
+- [ ] **Renommer Recto-versIA en Traces** — chantier à mener d'un bloc, jamais écran par
+  écran : le nom est dans l'interface, les emails, la page `/roadmap`, les documents du
+  harnais, l'URL de production (`rectoversia.edukids.pedagokit.be`), le chemin du VPS
+  (`/var/www/rectoVersIA`), le process PM2, le dépôt Git et l'extension NavigKid.
+  ⚠ **Distinguer ce qui se renomme de ce qui ne peut pas** : l'URL et le dépôt engagent
+  des liens déjà distribués à des élèves et une extension publiée au Web Store — à trancher
+  séparément du nom affiché. Commencer par les **strings d'interface**, qui ne cassent rien.
+- [ ] **Remplacer les effets « flip » par de simples transitions** — l'animation de
+  retournement (recto/verso) traverse ~24 fichiers : `FlipChoice`, `FlipEditor` et ses
+  styles, `devoir.flipInverted`, `facesInversees` d'une scène d'œuvre, l'espace de
+  rédaction de l'élève et la correction du prof. Viser un **fondu ou un glissement**, plus
+  sobres et moins coûteux à l'affichage sur les Chromebooks.
+  ⚠ **Le modèle de données reste** : `flipInverted` et `facesInversees` disent *quelle face
+  s'ouvre en premier*, pas *comment on passe de l'une à l'autre*. Ne pas les supprimer en
+  même temps que l'animation. Lié au changement de nom : « recto / verso » était la
+  métaphore de l'ancien nom — décider si le **vocabulaire d'interface** change aussi.
+
+**Un cahier de notes pour le prof (demandé le 2026-09-20)** :
+
+- [ ] **Séparer « ce que je fais faire » de « ce que mes élèves ont obtenu »** — aujourd'hui
+  les deux se mélangent : Mes Ressources et Design & scénarisation servent à *préparer*,
+  mais c'est aussi par là qu'on va chercher les notes (popup « 📊 Notes des élèves » d'une
+  certification, bloc Certifications d'une classe, statistiques d'une activité). Le prof
+  qui veut simplement voir où en est sa 4C doit traverser une bibliothèque de ressources.
+  **Piste** : un espace « Cahier de notes » à part — l'élève en ligne, l'activité en
+  colonne — qui lise ce qui existe déjà (corrections, `certificationsEleves`, ceintures par
+  UAA) sans créer de nouvelle vérité. ⚠ À cadrer par un plan : décider ce qui *déménage*
+  et ce qui reste en place, sinon deux chemins mèneront aux mêmes notes.
+
 **Système d'icônes (relevé à l'audit design du 2026-08-15)** :
 
 - [ ] **Remplacer les émoji par un vrai jeu d'icônes** — toute l'application

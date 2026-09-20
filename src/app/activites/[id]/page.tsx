@@ -630,7 +630,12 @@ export default function TravailPage() {
         // Questionnaire de lecture et auto-évaluation : au bas du questionnaire.
         // Lecture d'une œuvre : RIEN NE SE REMET — le parcours reste ouvert et
         // le prof suit la progression (décision fondatrice de l'atelier).
-        hideSubmit={isRecherche || isLectureQuiz || isAutoEval || isOeuvre || isSondage}
+        hideSubmit={
+          // Le VOCABULAIRE rejoint la liste : l'élève y coche des mots et fait
+          // ses exercices pendant des semaines, il n'y a jamais rien à remettre.
+          // Le bouton promettait une fin qui n'existe pas (demande JP, 2026-09-20).
+          isRecherche || isLectureQuiz || isAutoEval || isOeuvre || isSondage || isVocabulaire
+        }
         submitOutsideApp={isRecherche}
       />
 

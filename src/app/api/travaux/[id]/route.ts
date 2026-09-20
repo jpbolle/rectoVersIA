@@ -42,6 +42,11 @@ export async function GET(
       studentId: data.studentId,
       studentEmail: decrypt(data.studentEmail),
       studentName: decrypt(data.studentName),
+      // ⚠ La session (= la classe) était OUBLIÉE ici, alors que la liste des
+      // copies la renvoie : tout écran qui charge une copie seule croyait donc
+      // qu'elle n'appartenait à aucune classe. C'est ce qui renvoyait le prof
+      // sur un panier vide après une correction (2026-09-20).
+      sessionId: data.sessionId ?? null,
       content: data.content || '',
       draftContent: data.draftContent || null,
       ressourceAnnotations: data.ressourceAnnotations || '',

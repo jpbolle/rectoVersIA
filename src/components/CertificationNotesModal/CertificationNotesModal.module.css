@@ -276,10 +276,30 @@
 
 /* Certification non cotée : une case, pas un champ. Grande cible — le prof
    coche une classe entière d'affilée. */
+.faitCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: 30px;
+}
+
 .faitBox {
   width: 22px;
   height: 22px;
-  margin: 0 0 0 30px;
+  margin: 0;
   accent-color: var(--c-primary);
   cursor: pointer;
+}
+
+.faitBox:disabled {
+  cursor: default;
+}
+
+/* La raison du verrouillage, dite à côté de la case : sans elle, une case
+   grisée passe pour une panne. */
+.faitAuto {
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
 }

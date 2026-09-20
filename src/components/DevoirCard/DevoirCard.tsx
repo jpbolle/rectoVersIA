@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Toggle from '@/components/Toggle/Toggle';
 import SessionsModal from '@/components/SessionsModal/SessionsModal';
 import { formatDateShort } from '@/lib/devoir-utils';
-import { estSondage } from '@/types/didactique';
+import { atelierLabel, atelierParDispositif, estSondage } from '@/types/didactique';
+import type { Dispositif } from '@/types/didactique';
 import type { Devoir } from '@/types/devoir';
 import styles from './DevoirCard.module.css';
 
@@ -42,6 +43,18 @@ export default function DevoirCard({
   // Activité FLE : sans classe et toujours fermée — seule une séquence FLE
   // l'ouvre. « Disponible » n'a donc pas de sens sur sa carte.
   const fle = devoir.referentiel === 'fle';
+
+  // Le type d'activité, en un mot. Un sondage et une compétition sont deux
+  // usages d'un même atelier : ils se nomment eux-mêmes, sinon ils passeraient
+  // tous deux pour une simple « Lecture ».
+  const libelleAtelier = sondage
+    ? 'Sondage'
+    : estCompetition
+      ? 'Compétition'
+      : atelierLabel(
+          devoir.atelier || atelierParDispositif(devoir.typeTravail as Dispositif).id,
+          true
+        );
 
   const handleToggleDisponible = (value: boolean) => {
     onToggleDisponible?.(devoir.id, value);
@@ -90,30 +103,33 @@ export default function DevoirCard({
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
     >
-      <h3 className={styles.title}>{devoir.intitule}</h3>
+      {/* ── Le titre et ses étiquettes, sur la même ligne ──
+          Ce qui NOMME l'activité se lit d'un bloc : son intitulé, son type
+          (écriture, lecture, œuvre…) et sa nature (formatif / certificatif).
+          Le reste — grille, échéance, classes — vient juste en dessous.
+          ⚠ Plus d'étiquette « Voc » : le type le dit déjà, elle faisait
+          doublon (signalé par JP le 2026-09-20). */}
+      <div className={styles.titreLigne}>
+        <h3 className={styles.title}>{devoir.intitule}</h3>
+        <span className={styles.atelierTag}>{libelleAtelier}</span>
+        {devoir.evaluation && (
+          <span
+            className={
+              devoir.evaluation === 'certificatif'
+                ? styles.evalTagCertificatif
+                : styles.evalTagFormatif
+            }
+          >
+            {devoir.evaluation === 'certificatif' ? 'Certificatif' : 'Formatif'}
+          </span>
+        )}
+      </div>
 
-      {(devoir.evaluation ||
-        devoir.typeTravail === 'vocabulaire' ||
-        (devoir.uaa && devoir.uaa.length > 0)) && (
+      {devoir.uaa && devoir.uaa.length > 0 && devoir.typeTravail !== 'vocabulaire' && (
         <div className={styles.uaaTags}>
-          {devoir.typeTravail === 'vocabulaire' ? (
-            <span className={styles.uaaTag}>Voc</span>
-          ) : (
-            devoir.uaa?.map((n) => (
-              <span key={n} className={styles.uaaTag}>UAA {n}</span>
-            ))
-          )}
-          {devoir.evaluation && (
-            <span
-              className={
-                devoir.evaluation === 'certificatif'
-                  ? styles.evalTagCertificatif
-                  : styles.evalTagFormatif
-              }
-            >
-              {devoir.evaluation === 'certificatif' ? 'Certificatif' : 'Formatif'}
-            </span>
-          )}
+          {devoir.uaa.map((n) => (
+            <span key={n} className={styles.uaaTag}>UAA {n}</span>
+          ))}
         </div>
       )}
 
@@ -125,10 +141,14 @@ export default function DevoirCard({
       )}
 
       <div className={styles.metaRow}>
-        <span className={styles.metaItem}>
-          <span className={styles.metaIcon}>📚</span>
-          <span>{devoir.grille}</span>
-        </span>
+        {/* La grille d'évaluation. Une activité qui n'en a pas (vocabulaire,
+            recherche…) n'affiche pas une icône suivie de rien. */}
+        {devoir.grille && (
+          <span className={styles.metaItem}>
+            <span className={styles.metaIcon}>📚</span>
+            <span>{devoir.grille}</span>
+          </span>
+        )}
         {/* Une partie n'a pas d'échéance : elle a une heure de cours. */}
         {!enDirect && (
           <span className={styles.metaItem}>
@@ -176,16 +196,20 @@ export default function DevoirCard({
                 labelOff="Travail non disponible"
               />
             )}
-            {/* Le même drapeau, mais il ne dit pas la même chose ici : après la
-                partie, l'élève rouvre son activité et revoit les questions avec
-                les réponses. */}
-            {/* Un sondage anonyme n'a ni corrigé ni relecture : rien à ouvrir. */}
-            {!sondage && (
+            {/* ⚠ Le corrigé ne se règle PLUS depuis la carte pour une activité
+                ordinaire : il s'ouvre classe par classe, depuis la page des
+                copies, là où l'on vient justement de corriger (demande JP,
+                2026-09-20). Un drapeau qui livrait le corrigé à toutes les
+                classes d'un coup était plus dangereux que commode.
+                La COMPÉTITION garde le sien : il n'y dit pas la même chose —
+                après la partie, l'élève rouvre son activité et revoit les
+                questions avec les réponses. */}
+            {estCompetition && (
               <Toggle
                 checked={devoir.corrigeDisponible}
                 onChange={handleToggleCorrigeDisponible}
-                labelOn={estCompetition ? 'Relecture ouverte' : 'Corrigé disponible'}
-                labelOff={estCompetition ? 'Relecture fermée' : 'Corrigé non disponible'}
+                labelOn="Relecture ouverte"
+                labelOff="Relecture fermée"
               />
             )}
           </div>
@@ -198,30 +222,32 @@ export default function DevoirCard({
               classe donnée. Ailleurs il ne sert qu'à dissocier, donc à partir
               de deux. */}
           {(devoir.classes.length > 1 || enDirect) && (
-            <button
-              type="button"
-              className={styles.sessionsLink}
-              onClick={() => setSessionsOuvertes(true)}
-            >
-              {sondage
-                ? '📊 Lancer le sondage'
-                : estCompetition
-                ? '🏁 Lancer une partie'
-                : '🎓 Régler classe par classe'}
-            </button>
+            <div className={styles.toggleRow}>
+              <button
+                type="button"
+                className={styles.sessionsLink}
+                onClick={() => setSessionsOuvertes(true)}
+              >
+                {sondage
+                  ? '📊 Lancer le sondage'
+                  : estCompetition
+                  ? '🏁 Lancer une partie'
+                  : '🎓 Régler classe par classe'}
+              </button>
+            </div>
           )}
           <div className={styles.toggleRow}>
-            <Toggle
-              checked={devoir.archive}
-              onChange={handleToggleArchive}
-              labelOn="Archivé"
-              labelOff="Archiver le travail"
-            />
             <Toggle
               checked={devoir.corrige}
               onChange={handleToggleCorrige}
               labelOn="Travail classé"
               labelOff="Classer le travail corrigé"
+            />
+            <Toggle
+              checked={devoir.archive}
+              onChange={handleToggleArchive}
+              labelOn="Archivé"
+              labelOff="Archiver le travail"
             />
           </div>
         </div>

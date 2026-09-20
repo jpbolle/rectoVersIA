@@ -27,21 +27,32 @@
   cursor: zoom-in;
 }
 
+/* Titre et étiquettes sur une même ligne : l'intitulé, puis ce qui le
+   qualifie. Le titre ne partage pas sa ligne avec les boutons d'action, d'où
+   la réserve à droite. */
+.titreLigne {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px 9px;
+  margin-bottom: 8px;
+  padding-right: 60px;
+}
+
 .title {
   color: var(--c-primary);
   font-family: var(--c-font-title);
   font-weight: 700;
   font-size: 18px;
-  margin: 0 0 12px 0;
+  margin: 0;
   line-height: 1.4;
-  padding-right: 60px;
 }
 
 .uaaTags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .uaaTag {
@@ -61,27 +72,43 @@
 .evalTagCertificatif {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
+  padding: 2px 9px;
   border-radius: 20px;
   background: var(--c-accent);
   color: #fff;
-  font-size: 12px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* Le type d'activité, à côté de Formatif / Certificatif. Teinte d'accent pour
+   qu'il ne se confonde pas avec l'étiquette d'évaluation, qui dit autre chose. */
+.atelierTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: rgba(212, 148, 76, 0.12);
+  color: var(--c-accent);
+  border: 1px solid rgba(212, 148, 76, 0.4);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
   text-transform: uppercase;
 }
 
 .evalTagFormatif {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
+  padding: 2px 9px;
   border-radius: 20px;
   background: var(--c-bg-element);
   color: var(--c-text-secondary);
   border: 1px solid var(--c-border);
-  font-size: 12px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
   text-transform: uppercase;
 }
 
@@ -110,10 +137,14 @@
 }
 
 /* Lien discret sous les bascules : on ne dissocie les classes qu'à l'occasion,
-   le geste courant (toute l'activité) reste celui des bascules au-dessus. */
+   le geste courant (toute l'activité) reste celui des bascules au-dessus.
+   ⚠ Le retrait de 60 px n'est pas décoratif : il vaut la largeur de
+   l'interrupteur (48 px) plus son écart au texte (12 px), pour que « Régler
+   classe par classe » commence exactement sous « Travail disponible » et non
+   sous le bouton lui-même (demande JP, 2026-09-20). */
 .sessionsLink {
-  align-self: flex-start;
-  margin-top: 2px;
+  justify-self: start;
+  margin: -4px 0 0 60px;
   border: none;
   background: none;
   padding: 2px 0;
@@ -262,7 +293,6 @@
 
   .title {
     font-size: 17px;
-    margin-bottom: 10px;
   }
 
   .metaRow {
@@ -295,7 +325,9 @@
 
   .title {
     font-size: 16px;
-    margin-bottom: 8px;
+  }
+
+  .titreLigne {
     padding-right: 50px;
   }
 

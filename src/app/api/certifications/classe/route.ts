@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { COLLECTION_NOTES, resumerCertifications } from '@/lib/certification-server';
+import {
+  COLLECTION_NOTES,
+  faitsAutomatiques,
+  resumerCertifications,
+} from '@/lib/certification-server';
 import { normaliserScenarisation } from '@/types/scenarisation';
 import type { Scenarisation } from '@/types/scenarisation';
 import type { CertificationDeClasse } from '@/types/certification';
@@ -42,15 +46,37 @@ export async function GET(request: NextRequest) {
     }
 
     const elevesIds = new Set(elevesSnap.docs.map((d) => d.id));
+
+    // Les élèves de la classe, avec leur compte Google : c'est par lui que la
+    // copie corrigée se rattache à l'élève.
+    const elevesClasse = elevesSnap.docs.map((d) => ({
+      eleveId: d.id,
+      nom: '',
+      prenom: '',
+      classeId,
+      classeNom,
+      firebaseUid: (d.data().firebaseUid as string) || null,
+      emailHash: (d.data().emailHash as string) || null,
+    }));
+
     const data: CertificationDeClasse[] = await Promise.all(
       certifs.map(async (c) => {
-        const snap = await adminDb
-          .collection(COLLECTION_NOTES)
-          .where('moduleId', '==', c.moduleId)
-          .get();
+        // Une certification NON COTÉE se coche toute seule quand la copie est
+        // corrigée : sans en tenir compte, le compteur annoncerait « 0 / 19 »
+        // alors que la classe entière a fini (2026-09-20).
+        const [snap, faitsAuto] = await Promise.all([
+          adminDb.collection(COLLECTION_NOTES).where('moduleId', '==', c.moduleId).get(),
+          c.cotation === 'fait'
+            ? faitsAutomatiques(c.devoirId, elevesClasse)
+            : Promise.resolve(new Set<string>()),
+        ]);
+        const comptees = new Set(
+          snap.docs.map((d) => d.data().eleveId as string).filter((id) => elevesIds.has(id))
+        );
+        faitsAuto.forEach((id) => comptees.add(id));
         return {
           ...c,
-          notees: snap.docs.filter((d) => elevesIds.has(d.data().eleveId)).length,
+          notees: comptees.size,
           eleves: elevesIds.size,
         };
       })

@@ -23,6 +23,14 @@ import {
   estEnReussite,
 } from '@/types/ceintures';
 import { UAA_LIST } from '@/types/grille';
+import { copieCorrigee } from '@/lib/correction-etat';
+import { quizDuDevoir } from '@/lib/questionnaire-lecture-server';
+import type { LectureQuiz } from '@/types/lecture';
+import type {
+  CorrectionPourEtat,
+  DevoirPourEtat,
+  TravailPourEtat,
+} from '@/lib/correction-etat';
 import type { ModuleDidactique, Scenarisation } from '@/types/scenarisation';
 import type { LigneNoteCertification, NoteCertification } from '@/types/certification';
 import type {
@@ -75,6 +83,12 @@ interface EleveConcerne {
   classeId: string;
   classeNom: string;
   firebaseUid: string | null;
+  // ⚠ Empreinte HMAC de l'email — la SEULE clé fiable pour rapprocher un élève
+  // de sa copie. `firebaseUid` n'est posé qu'à la connexion suivant l'ajout en
+  // classe : sur le parcours de français du 2026-09-20, 25 fiches sur 40 en
+  // avaient un, contre 40 sur 40 pour l'empreinte. Ce n'est pas une donnée
+  // sensible (c'est une empreinte), elle ne se déchiffre pas.
+  emailHash: string | null;
 }
 
 export async function elevesConcernes(
@@ -102,6 +116,7 @@ export async function elevesConcernes(
           classeId: c.id,
           classeNom: c.data().nom as string,
           firebaseUid: (data.firebaseUid as string) || null,
+          emailHash: (data.emailHash as string) || null,
         };
       });
     })
@@ -140,17 +155,219 @@ export async function notesAutomatiques(
   const out = new Map<string, number>();
   if (!devoirId) return out;
 
-  const snap = await adminDb.collection('corrections').where('devoirId', '==', devoirId).get();
+  // Les corrections ne portent que l'uid ; c'est la COPIE qui porte aussi
+  // l'empreinte d'email. On passe donc par elle pour retrouver l'élève.
+  const [snap, travauxSnap] = await Promise.all([
+    adminDb.collection('corrections').where('devoirId', '==', devoirId).get(),
+    adminDb.collection('travaux').where('devoirId', '==', devoirId).get(),
+  ]);
   const parUid = new Map<string, number>();
   snap.docs.forEach((d) => {
     const data = d.data();
     if (typeof data.score === 'number') parUid.set(data.studentId, data.score);
   });
+  const parEmpreinte = new Map<string, number>();
+  travauxSnap.docs.forEach((d) => {
+    const t = d.data();
+    const score = parUid.get(t.studentId);
+    if (t.studentEmailHash && typeof score === 'number') {
+      parEmpreinte.set(t.studentEmailHash as string, score);
+    }
+  });
 
   eleves.forEach((e) => {
-    if (!e.firebaseUid) return;
-    const score = parUid.get(e.firebaseUid);
+    const score =
+      (e.firebaseUid ? parUid.get(e.firebaseUid) : undefined) ??
+      (e.emailHash ? parEmpreinte.get(e.emailHash) : undefined);
     if (typeof score === 'number') out.set(e.eleveId, Math.round(score));
+  });
+  return out;
+}
+
+// ─── Les copies corrigées d'une activité ───
+//
+// Renvoie la DATE de la copie corrigée, indexée SUR DEUX CLÉS : le compte
+// Google de l'élève et l'empreinte de son email. La présence de la clé vaut
+// « corrigée » ; la date sert à dater la certification déduite.
+// ⚠ Les deux clés ne sont pas un luxe : `eleves.firebaseUid` n'est posé qu'à la
+// connexion suivant l'ajout en classe, et manquait sur 15 fiches sur 40 le
+// 2026-09-20 — d'où des élèves dont la copie était corrigée depuis longtemps et
+// qui restaient « à faire ».
+async function copiesCorrigeesParUid(devoirId: string): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+
+  const devoirSnap = await adminDb.collection('devoirs').doc(devoirId).get();
+  if (!devoirSnap.exists) return out;
+  const devoir = devoirSnap.data() as Record<string, unknown>;
+
+  const [travauxSnap, corrSnap, sessionsSnap] = await Promise.all([
+    adminDb.collection('travaux').where('devoirId', '==', devoirId).get(),
+    adminDb.collection('corrections').where('devoirId', '==', devoirId).get(),
+    adminDb.collection('sessions').where('devoirId', '==', devoirId).get(),
+  ]);
+
+  const corrections = new Map<string, CorrectionPourEtat>();
+  corrSnap.docs.forEach((d) => {
+    const c = d.data();
+    if (c.studentId) corrections.set(c.studentId, c as CorrectionPourEtat);
+  });
+
+  // ── Le questionnaire n'est PAS forcément sur l'activité ──
+  // Il peut vivre dans la bibliothèque (`lectureQuizId`), ou dans la copie
+  // figée par la session. Lire `devoir.lectureQuiz` en direct renvoyait alors
+  // un questionnaire vide, et toutes les copies passaient pour non corrigées
+  // (trouvé le 2026-09-20). C'est `quizDuDevoir` qui connaît les trois
+  // chemins — et il sert à chaque session le questionnaire qu'elle a figé.
+  const sessions = new Map(sessionsSnap.docs.map((d) => [d.id, d.data()]));
+  const quizParSession = new Map<string, LectureQuiz | null>();
+  const quizPour = async (sessionId: string | null | undefined) => {
+    const cle = sessionId ?? '';
+    if (!quizParSession.has(cle)) {
+      const session = sessionId ? (sessions.get(sessionId) ?? null) : null;
+      quizParSession.set(cle, await quizDuDevoir(devoir, session));
+    }
+    return quizParSession.get(cle) ?? null;
+  };
+
+  const estLecture = devoir.typeTravail === 'lire';
+
+  for (const d of travauxSnap.docs) {
+    const t = d.data();
+    if (!t.studentId) continue;
+    const pourEtat: DevoirPourEtat = {
+      typeTravail: String(devoir.typeTravail ?? ''),
+      lectureQuiz: estLecture ? await quizPour(t.sessionId as string | null) : null,
+    };
+    if (!copieCorrigee(pourEtat, t as TravailPourEtat, corrections.get(t.studentId))) continue;
+    const date = String(t.submittedAt || t.updatedAt || '').slice(0, 10);
+    out.set(t.studentId as string, date);
+    if (t.studentEmailHash) out.set(t.studentEmailHash as string, date);
+  }
+
+  return out;
+}
+
+// ─── Les certifications « faites » que l'application déduit toute seule ───
+//
+// Une certification NON COTÉE rattachée à une activité est acquise dès que la
+// copie de l'élève est corrigée : le prof n'a plus à aller cocher « fait »
+// (décision du 2026-09-20, plan `harnais/plans/2026-09-20-certification-faite-automatique.md`).
+//
+// ⚠ Rien n'est écrit en base. La copie corrigée EST la preuve — la recopier
+// créerait un second état à tenir d'accord, qui se périmerait au premier
+// ajustement. Ce qui suit fabrique donc des notes VIRTUELLES, que l'appelant
+// traite comme les autres.
+//
+// ⚠ Le rapprochement passe par le compte Google de l'élève : un élève jamais
+// connecté reste hors d'atteinte, et se coche à la main.
+export async function faitsAutomatiques(
+  devoirId: string | null,
+  eleves: EleveConcerne[]
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  if (!devoirId) return out;
+
+  const corrigees = await copiesCorrigeesParUid(devoirId);
+  eleves.forEach((e) => {
+    const trouve =
+      (e.firebaseUid && corrigees.has(e.firebaseUid)) ||
+      (e.emailHash && corrigees.has(e.emailHash));
+    if (trouve) out.add(e.eleveId);
+  });
+  return out;
+}
+
+export async function notesFaitesAuto(eleveIds: string[]): Promise<NoteCertification[]> {
+  if (eleveIds.length === 0) return [];
+
+  // 1. Les élèves : leur classe et leur compte Google
+  const eleveDocs = await Promise.all(
+    eleveIds.map((id) => adminDb.collection('eleves').doc(id).get())
+  );
+  const eleves = eleveDocs
+    .filter((d) => d.exists)
+    .map((d) => {
+      const data = d.data()!;
+      return {
+        eleveId: d.id,
+        classeId: String(data.classeId ?? ''),
+        firebaseUid: (data.firebaseUid as string) || null,
+        emailHash: (data.emailHash as string) || null,
+      };
+    })
+    // Une des deux clés suffit — voir `copiesCorrigeesParUid`.
+    .filter((e) => !!e.classeId && (!!e.firebaseUid || !!e.emailHash));
+  if (eleves.length === 0) return [];
+
+  // 2. Leurs classes — un parcours désigne les siennes par NOM
+  const classeIds = [...new Set(eleves.map((e) => e.classeId))];
+  const classes = new Map<string, { nom: string; profId: string }>();
+  (await Promise.all(classeIds.map((id) => adminDb.collection('classes').doc(id).get()))).forEach(
+    (d) => {
+      if (!d.exists) return;
+      const c = d.data()!;
+      classes.set(d.id, { nom: String(c.nom ?? ''), profId: String(c.profId ?? '') });
+    }
+  );
+
+  // 3. Les parcours des profs concernés
+  const profIds = [...new Set([...classes.values()].map((c) => c.profId))].filter(Boolean);
+  const scens = (
+    await Promise.all(
+      profIds.map(async (p) => {
+        const snap = await adminDb.collection('scenarisations').where('profId', '==', p).get();
+        return snap.docs.map((d) =>
+          normaliserScenarisation({ id: d.id, ...d.data() } as Scenarisation)
+        );
+      })
+    )
+  ).flat();
+
+  // 4. Les certifications non cotées rattachées à une activité
+  const cibles = scens.flatMap((scen) =>
+    certificationsDe(scen)
+      .filter((c) => !estCotee(c.module))
+      .map((c) => ({ scen, chapitreId: c.chapitreId, module: c.module, devoirId: devoirCertificatif(c.module) }))
+      .filter((c): c is typeof c & { devoirId: string } => !!c.devoirId)
+  );
+  if (cibles.length === 0) return [];
+
+  // 5. L'état des copies — une lecture par activité, même si deux
+  //    certifications la partagent
+  const etats = new Map<string, Map<string, string>>();
+  await Promise.all(
+    [...new Set(cibles.map((c) => c.devoirId))].map(async (devoirId) => {
+      etats.set(devoirId, await copiesCorrigeesParUid(devoirId));
+    })
+  );
+
+  // 6. Une note virtuelle par (certification, élève dont la copie est corrigée)
+  const maintenant = new Date().toISOString();
+  const out: NoteCertification[] = [];
+  cibles.forEach(({ scen, chapitreId, module, devoirId }) => {
+    const noms = scen.classes ?? [];
+    eleves.forEach((e) => {
+      const classe = classes.get(e.classeId);
+      if (!classe || !noms.includes(classe.nom)) return;
+      const corrigees = etats.get(devoirId);
+      const date =
+        (e.firebaseUid ? corrigees?.get(e.firebaseUid) : undefined) ??
+        (e.emailHash ? corrigees?.get(e.emailHash) : undefined);
+      if (date === undefined) return;
+      out.push({
+        id: noteId(module.id, e.eleveId),
+        scenarisationId: scen.id,
+        chapitreId,
+        moduleId: module.id,
+        eleveId: e.eleveId,
+        profId: classe.profId,
+        anneeScolaire: scen.anneeScolaire || '',
+        percent: null,
+        fait: true,
+        date,
+        updatedAt: maintenant,
+      });
+    });
   });
   return out;
 }
@@ -158,7 +375,8 @@ export async function notesAutomatiques(
 export function buildLignes(
   eleves: EleveConcerne[],
   saisies: Map<string, NoteCertification>,
-  autos: Map<string, number>
+  autos: Map<string, number>,
+  faitsAuto: Set<string> = new Set()
 ): LigneNoteCertification[] {
   return eleves.map((e) => ({
     eleveId: e.eleveId,
@@ -167,7 +385,10 @@ export function buildLignes(
     classeId: e.classeId,
     classeNom: e.classeNom,
     percent: saisies.get(e.eleveId)?.percent ?? null,
-    fait: saisies.get(e.eleveId)?.fait === true,
+    // Une certification non cotée est faite dès que la copie est corrigée —
+    // la saisie du prof ne sert plus qu'aux élèves sans copie dans l'app.
+    fait: saisies.get(e.eleveId)?.fait === true || faitsAuto.has(e.eleveId),
+    faitAuto: faitsAuto.has(e.eleveId),
     commentaire: saisies.get(e.eleveId)?.commentaire ?? '',
     percentAuto: autos.get(e.eleveId) ?? null,
   }));
@@ -275,7 +496,7 @@ export async function buildCertificationsProfil(
   const lots = Array.from({ length: Math.ceil(eleveIds.length / 30) }, (_, i) =>
     eleveIds.slice(i * 30, (i + 1) * 30)
   );
-  const notes: NoteCertification[] = (
+  const saisies: NoteCertification[] = (
     await Promise.all(
       lots.map(async (lot) => {
         const snap = await adminDb.collection(COLLECTION_NOTES).where('eleveId', 'in', lot).get();
@@ -283,6 +504,15 @@ export async function buildCertificationsProfil(
       })
     )
   ).flat();
+
+  // 1 bis. Les certifications « faites » déduites des copies corrigées. Une
+  // saisie du prof sur la même certification l'emporte — elle est plus
+  // ancienne et peut porter un commentaire.
+  const dejaLa = new Set(saisies.map((n) => `${n.moduleId}|${n.eleveId}`));
+  const notes = [
+    ...saisies,
+    ...(await notesFaitesAuto(eleveIds)).filter((a) => !dejaLa.has(`${a.moduleId}|${a.eleveId}`)),
+  ];
   if (notes.length === 0) return null;
 
   // 2. Les scénarisations citées — chargées PAR ID, pas de jointure à faire

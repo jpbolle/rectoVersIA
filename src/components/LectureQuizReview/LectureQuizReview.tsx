@@ -22,6 +22,9 @@ import styles from './LectureQuizReview.module.css';
 // Libellés : liste unique dans src/types/lecture.ts (voir LECTURE_TYPE_LABELS)
 const TYPE_LABELS = LECTURE_TYPE_LABELS;
 
+// Ancre d'une carte de question, cible des pastilles de navigation
+const ancre = (questionId: string) => `lqr-${questionId}`;
+
 interface LectureQuizReviewProps {
   quiz: LectureQuiz;
   travailContent: string | null | undefined;
@@ -42,6 +45,10 @@ export default function LectureQuizReview({
   const state = parseLectureAnswers(travailContent);
   const answers = state?.answers ?? {};
   const [popupImage, setPopupImage] = useState<string | null>(null);
+  // Ne montrer que ce qui réclame le professeur. Éteint par défaut : la copie
+  // entière reste la vue normale, ceci est un raccourci pour les longs
+  // questionnaires (demande de JP, 2026-09-20).
+  const [seulementACorriger, setSeulementACorriger] = useState(false);
 
   // Libellés des gestes de lecture : config didactique, repli sur les slugs
   // historiques puis sur l'id brut (geste supprimé de la config)
@@ -63,8 +70,39 @@ export default function LectureQuizReview({
   );
   const totalPoints = quiz.questions.reduce((s, q) => s + (q.points || 0), 0);
 
+  // ── Les questions qui réclament le professeur ──
+  // On se fonde sur le calcul SANS les reprises du prof : une question que la
+  // machine ne sait pas trancher y vaut `null`. Ce sont les réponses longues,
+  // les soulignages sans catégories, et tout type auto dont le corrigé n'a
+  // jamais été saisi.
+  // ⚠ Volontairement PAS « les questions encore sans note » : cet ensemble-là
+  // rétrécirait à chaque point saisi, et la liste sauterait sous la souris.
+  // Celui-ci ne bouge pas de toute la correction.
+  const aCorriger = new Set(
+    quiz.questions.filter((q) => scoreAuto.get(q.id) === null).map((q) => q.id)
+  );
+  // La bascule n'a de sens que si elle cache vraiment quelque chose.
+  const filtreUtile = aCorriger.size > 0 && aCorriger.size < scoreAuto.size;
+
+  const questionsVisibles = quiz.questions
+    .map((q, index) => ({ q, index }))
+    .filter(({ q }) => !seulementACorriger || aCorriger.has(q.id));
+
   // Note effective affichée pour une question (reprise du prof ou automatique)
   const noteCourante = (q: LectureQuestion) => scoreByQuestion.get(q.id)?.points ?? null;
+
+  // Numéro affiché de chaque question — les blocs informatifs ne comptent pas.
+  const numeros = new Map<string, number>();
+  quiz.questions.forEach((q, i) => {
+    if (q.type === 'info') return;
+    numeros.set(q.id, quiz.questions.slice(0, i).filter((p) => p.type !== 'info').length + 1);
+  });
+
+  // Pastilles de navigation : un long questionnaire se parcourt autrement
+  // qu'à la molette. L'ancre est posée sur la carte (`ancre`).
+  const sauts = questionsVisibles.filter(({ q }) => q.type !== 'info');
+  const allerA = (id: string) =>
+    document.getElementById(ancre(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   // ✔ / ✘ : le maximum ou zéro, d'un geste. Le champ reste ouvert à côté —
   // c'est un raccourci, pas un verrou.
@@ -92,18 +130,68 @@ export default function LectureQuizReview({
     <div className={styles.review}>
       {totalPoints > 0 && (
         <div className={styles.autoScore}>
-          🎯 <b>{score.points}/{score.max}</b>
-          {score.percent !== null && <> ({score.percent}%)</>}
-          <span className={styles.totalPts}> sur {totalPoints} pts au total</span>
-          {score.aNoter > 0 && (
-            <span className={styles.totalPts}>
-              {' '}· {score.aNoter} question{score.aNoter > 1 ? 's' : ''} à noter
+          <div className={styles.autoScoreLigne}>
+            <span>
+              🎯 <b>{score.points}/{score.max}</b>
+              {score.percent !== null && <> ({score.percent}%)</>}
+              <span className={styles.totalPts}> sur {totalPoints} pts au total</span>
+              {score.aNoter > 0 && (
+                <span className={styles.totalPts}>
+                  {' '}· {score.aNoter} question{score.aNoter > 1 ? 's' : ''} à noter
+                </span>
+              )}
             </span>
+            {/* La bascule loge dans le bandeau, poussée à droite : une ligne de
+                plus au-dessus de la copie coûtait de la hauteur pour rien. */}
+            {filtreUtile && (
+              <label className={styles.filtre}>
+                <input
+                  type="checkbox"
+                  checked={seulementACorriger}
+                  onChange={(e) => setSeulementACorriger(e.target.checked)}
+                />
+                <span>
+                  Seulement les questions à corriger
+                  <span className={styles.filtreCompte}> ({aCorriger.size})</span>
+                </span>
+              </label>
+            )}
+          </div>
+
+          {/* ── Pastilles de navigation ──
+              Une par question affichée. Trois états, qui disent d'un coup
+              d'œil où en est la correction : ambre plein = le prof doit encore
+              noter, ambre pâle = il l'a fait, gris = la machine s'en charge. */}
+          {sauts.length > 1 && (
+            <nav className={styles.sauts} aria-label="Aller à une question">
+              {sauts.map(({ q }) => {
+                const aMoi = aCorriger.has(q.id);
+                const notee = typeof scoreByQuestion.get(q.id)?.points === 'number';
+                const etat = !aMoi
+                  ? styles.sautAuto
+                  : notee
+                    ? styles.sautFait
+                    : styles.sautAFaire;
+                return (
+                  <button
+                    key={q.id}
+                    type="button"
+                    className={`${styles.saut} ${etat}`}
+                    onClick={() => allerA(q.id)}
+                    title={`Question ${numeros.get(q.id)} — ${
+                      !aMoi ? 'corrigée automatiquement' : notee ? 'notée' : 'à noter'
+                    }`}
+                  >
+                    {numeros.get(q.id)}
+                  </button>
+                );
+              })}
+            </nav>
           )}
         </div>
       )}
 
-      {quiz.questions.map((q, index) => {
+      {questionsVisibles.map(({ q, index }, rang) => {
         const answer = answers[q.id];
         // Bloc informatif : simple rappel du texte du prof
         if (q.type === 'info') {
@@ -133,9 +221,11 @@ export default function LectureQuizReview({
         const number = quiz.questions.slice(0, index).filter((p) => p.type !== 'info').length + 1;
         return (
           <Fragment key={q.id}>
-          {/* Astérisque de séparation — comme dans la vue élève */}
-          {index > 0 && <div className={styles.separateur} aria-hidden="true">✳</div>}
-          <div className={styles.card}>
+          {/* Astérisque de séparation — comme dans la vue élève. Il se règle
+              sur le RANG affiché, pas sur l'index d'origine : sous filtre, la
+              première question visible ne doit pas être précédée d'un ✳. */}
+          {rang > 0 && <div className={styles.separateur} aria-hidden="true">✳</div>}
+          <div className={styles.card} id={ancre(q.id)}>
             <div className={styles.cardHead}>
               <span className={styles.num}>{number}</span>
               <span className={styles.typeLabel}>{TYPE_LABELS[q.type]}</span>

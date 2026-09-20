@@ -12,8 +12,12 @@ import { LEVEL_PERCENTAGES } from '@/types/grille';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import { SANS_CLASSE } from '@/types/session';
 import type { Session } from '@/types/session';
+import { parseLectureAnswers } from '@/types/lecture';
+import { scoreLectureQuiz } from '@/lib/lecture-scoring';
+import type { LectureScore } from '@/lib/lecture-scoring';
 import { calculateSchoolYear } from '@/lib/auth-utils';
 import SessionsListe from '@/components/SessionsListe/SessionsListe';
+import Toggle from '@/components/Toggle/Toggle';
 import Link from 'next/link';
 import Footer from '@/components/Footer/Footer';
 import OeuvreSuivi from '@/components/OeuvreSuivi/OeuvreSuivi';
@@ -66,6 +70,71 @@ export default function TravauxPage() {
     if (sessionActive === SANS_CLASSE) return orphelines;
     return travauxBruts.filter((t) => t.sessionId === sessionActive);
   }, [travauxBruts, sessionActive, orphelines]);
+
+  // ── La session choisie doit survivre au retour arrière ──
+  // Elle ne vivait que dans un state : revenir d'une copie ramenait le prof à
+  // l'écran de choix des classes au lieu de ses trois colonnes (signalé le
+  // 2026-09-20). On la pose donc dans l'URL de l'entrée d'historique courante.
+  // Lecture une seule fois au montage, par `window.location` : c'est le motif
+  // retenu dans `/grilles`, `useSearchParams` imposant une frontière Suspense
+  // pour un seul paramètre.
+  useEffect(() => {
+    const demandee = new URLSearchParams(window.location.search).get('session');
+    if (demandee) setSessionActive(demandee);
+  }, []);
+
+  // `replaceState` plutôt qu'une navigation Next : on ne change pas de page,
+  // on annote celle-ci pour que le navigateur la retrouve telle quelle.
+  const choisirSession = useCallback((id: string | null) => {
+    setSessionActive(id);
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set('session', id);
+    else url.searchParams.delete('session');
+    window.history.replaceState(null, '', url);
+  }, []);
+
+  // La classe ouverte, quand c'en est une : le panier « sans classe » n'a pas
+  // de session, donc rien à ouvrir ni à fermer.
+  const sessionOuverte = useMemo(
+    () =>
+      sessionActive && sessionActive !== SANS_CLASSE
+        ? (sessions.find((s) => s.id === sessionActive) ?? null)
+        : null,
+    [sessions, sessionActive]
+  );
+
+  const [corrigeEnCours, setCorrigeEnCours] = useState(false);
+
+  const basculerCorrige = useCallback(
+    async (valeur: boolean) => {
+      if (!sessionOuverte) return;
+      const id = sessionOuverte.id;
+      setCorrigeEnCours(true);
+      // Optimiste : une bascule qui n'obéit pas tout de suite se reclique.
+      setSessions((liste) =>
+        liste.map((s) => (s.id === id ? { ...s, corrigeDisponible: valeur } : s))
+      );
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers) throw new Error('Session expirée — rechargez la page');
+        const res = await fetch(`/api/sessions/${id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ corrigeDisponible: valeur }),
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || 'Enregistrement impossible');
+      } catch (e) {
+        setSessions((liste) =>
+          liste.map((s) => (s.id === id ? { ...s, corrigeDisponible: !valeur } : s))
+        );
+        setError(e instanceof Error ? e.message : 'Erreur');
+      } finally {
+        setCorrigeEnCours(false);
+      }
+    },
+    [sessionOuverte, getAuthHeaders]
+  );
 
   useEffect(() => {
     if (role && role !== 'prof') {
@@ -164,6 +233,39 @@ export default function TravauxPage() {
     return travail.status === 'draft' && travail.content === '';
   }, []);
 
+  // ── « Corrigé » veut dire « plus rien n'attend le professeur » ──
+  // Un questionnaire de lecture ne range JAMAIS son total en base : il se
+  // recalcule à l'affichage (cf. `lecture-scoring.ts`), et `correction.score`
+  // reste donc à 0 pour toujours. Trier les colonnes sur ce score laissait
+  // TOUTES les copies de lecture dans « À corriger », même entièrement notées
+  // et rendues visibles (signalé le 2026-09-20).
+  //
+  // Le bon critère : le prof a noté toutes les questions qui réclamaient SON
+  // intervention — c'est exactement `aNoter === 0`. Corollaire assumé : une
+  // copie entièrement auto-corrigeable (que des QCM) est corrigée d'emblée,
+  // puisque le prof n'a rien à y faire. La visibilité pour l'élève ne joue
+  // pas : on peut avoir corrigé sans encore vouloir montrer.
+  //
+  // ⚠ Le questionnaire utilisé ici est celui de la BIBLIOTHÈQUE, pas celui
+  // figé par la session — la liste des sessions ne transporte pas `quizFige`,
+  // et c'est délibéré (un questionnaire entier par session). L'écart possible
+  // ne déplace qu'une carte de colonne, il ne touche jamais une note.
+  const scoresLecture = useMemo(() => {
+    const parTravail = new Map<string, LectureScore>();
+    if (devoir?.typeTravail !== 'lire' || !devoir.lectureQuiz) return parTravail;
+    for (const t of travaux) {
+      parTravail.set(
+        t.id,
+        scoreLectureQuiz(
+          devoir.lectureQuiz,
+          parseLectureAnswers(t.content)?.answers ?? {},
+          corrections.get(t.id)?.questionScores
+        )
+      );
+    }
+    return parTravail;
+  }, [travaux, corrections, devoir]);
+
   const { travauxNonOuverts, travauxNonCorriges, travauxCorriges } = useMemo(() => {
     const nonOuverts: Travail[] = [];
     const nonCorriges: Travail[] = [];
@@ -171,10 +273,11 @@ export default function TravauxPage() {
 
     for (const t of travaux) {
       const correction = corrections.get(t.id);
+      const lecture = scoresLecture.get(t.id);
       // Copie marquée « non rendu » : plus rien à corriger → colonne Corrigés
       if (t.nonRendu) corriges.push(t);
       else if (isNotOpened(t)) nonOuverts.push(t);
-      else if (correction && correction.score > 0) corriges.push(t);
+      else if (lecture ? lecture.aNoter === 0 : !!correction && correction.score > 0) corriges.push(t);
       else nonCorriges.push(t);
     }
 
@@ -188,7 +291,7 @@ export default function TravauxPage() {
     corriges.sort((a, b) => a.studentName.localeCompare(b.studentName));
 
     return { travauxNonOuverts: nonOuverts, travauxNonCorriges: nonCorriges, travauxCorriges: corriges };
-  }, [travaux, corrections, isLate, isNotOpened]);
+  }, [travaux, corrections, scoresLecture, isLate, isNotOpened]);
 
   const stats = useMemo(() => {
     // Copies marquées « non rendu » : les justifiées sortent des statistiques,
@@ -201,11 +304,32 @@ export default function TravauxPage() {
     const remiseTotal = travaux.length - excusedCount;
     const tauxRemise = remiseTotal > 0 ? Math.round((submittedCount / remiseTotal) * 100) : null;
 
-    const correctedOnes = Array.from(corrections.entries())
-      .filter(([travailId, c]) => c.score > 0 && !nonRenduIds.has(travailId))
-      .map(([, c]) => c);
+    // Les copies qui comptent : celles de la session ouverte, non marquées
+    // « non rendu ». ⚠ On partait auparavant de TOUTES les corrections de
+    // l'activité, donc de toutes les classes mélangées — ce que la page
+    // promet justement de ne plus faire.
+    const retenues = travaux.filter((t) => !nonRenduIds.has(t.id));
+
+    // La note d'une copie. Pour l'écriture, celle de la grille. Pour un
+    // questionnaire de lecture, le total RECALCULÉ — rien n'est rangé en base
+    // (cf. le tri des colonnes plus haut), d'où des statistiques qui restaient
+    // désespérément vides (signalé le 2026-09-20). Une copie encore en cours
+    // de correction n'entre pas dans les moyennes.
+    const noteDe = (travailId: string): number | null => {
+      const lecture = scoresLecture.get(travailId);
+      if (lecture) return lecture.aNoter === 0 ? lecture.percent : null;
+      const c = corrections.get(travailId);
+      return c && c.score > 0 ? c.score : null;
+    };
+
+    // Réservé aux moyennes par critère : la grille, elle, n'existe que pour
+    // l'écriture.
+    const correctedOnes = retenues
+      .map((t) => corrections.get(t.id))
+      .filter((c): c is Correction => !!c && c.score > 0);
+
     const allScores = [
-      ...correctedOnes.map((c) => c.score),
+      ...retenues.map((t) => noteDe(t.id)).filter((s): s is number => s !== null),
       ...Array(sanctionedCount).fill(0) as number[],
     ];
     const successCount = allScores.filter((s) => s >= 50).length;
@@ -283,7 +407,7 @@ export default function TravauxPage() {
       distribution, top3Weak,
       orthoStudents, ponctuStudents, syntaxeStudents, multipleIssuesStudents,
     };
-  }, [corrections, travaux, grille]);
+  }, [corrections, travaux, scoresLecture, grille]);
 
   const scoreClass = (val: number | null) => {
     if (val === null) return styles.statValue;
@@ -327,7 +451,14 @@ export default function TravauxPage() {
 
   const renderCard = (travail: Travail) => {
     const correction = corrections.get(travail.id);
-    const hasScore = correction && correction.score > 0;
+    // Même raison qu'au tri des colonnes : la lecture n'a pas de `score` en
+    // base, son pourcentage se recalcule.
+    const lecture = scoresLecture.get(travail.id);
+    const pourcentage = lecture
+      ? lecture.percent
+      : correction && correction.score > 0
+        ? correction.score
+        : null;
     const late = isLate(travail);
     const notOpened = isNotOpened(travail);
 
@@ -357,7 +488,7 @@ export default function TravauxPage() {
               </span>
             )}
           </div>
-          {hasScore && <span className={styles.scoreBubble}>{correction.score}%</span>}
+          {pourcentage !== null && <span className={styles.scoreBubble}>{pourcentage}%</span>}
         </div>
         {!notOpened && (
           <div className={styles.travailMeta}>
@@ -441,17 +572,36 @@ export default function TravauxPage() {
       )}
 
       <main className={styles.main}>
-        {/* Retour à la liste des classes — seulement quand il y a un choix à
-            refaire, sinon le bouton renverrait sur un écran d'une seule ligne */}
-        {sessionActive && plusieursPaniers && (
-          <button
-            type="button"
-            className={styles.retourSessions}
-            onClick={() => setSessionActive(null)}
-          >
-            ← Toutes les classes
-          </button>
-        )}
+        <div className={styles.barreClasse}>
+          {/* Retour à la liste des classes — seulement quand il y a un choix à
+              refaire, sinon le bouton renverrait sur un écran d'une seule ligne */}
+          {sessionActive && plusieursPaniers && (
+            <button
+              type="button"
+              className={styles.retourSessions}
+              onClick={() => choisirSession(null)}
+            >
+              ← Toutes les classes
+            </button>
+          )}
+
+          {/* ── Le corrigé, classe par classe ──
+              Le réglage existait déjà, mais enterré dans la popup des sessions
+              de la carte. Il est ici parce que c'est ici qu'on vient de
+              corriger : on ouvre le corrigé de la classe qu'on vient de finir,
+              pas des autres (demande JP, 2026-09-20). */}
+          {sessionOuverte && (
+            <div className={styles.corrigeToggle}>
+              <Toggle
+                checked={sessionOuverte.corrigeDisponible}
+                onChange={basculerCorrige}
+                disabled={corrigeEnCours}
+                labelOn={`Corrigé visible pour ${sessionOuverte.classeNom}`}
+                labelOff={`Corrigé caché pour ${sessionOuverte.classeNom}`}
+              />
+            </div>
+          )}
+        </div>
 
         {choixNecessaire ? (
           <section className={styles.section}>
@@ -465,9 +615,9 @@ export default function TravauxPage() {
                   total: copies.length,
                 };
               }}
-              onOuvrir={(s) => setSessionActive(s.id)}
+              onOuvrir={(s) => choisirSession(s.id)}
               orphelines={orphelines.length}
-              onOuvrirOrphelines={() => setSessionActive(SANS_CLASSE)}
+              onOuvrirOrphelines={() => choisirSession(SANS_CLASSE)}
             />
           </section>
         ) : isOeuvre ? (

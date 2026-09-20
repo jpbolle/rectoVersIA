@@ -18,7 +18,9 @@ import UserAvatar from '@/components/UserAvatar';
 import type { Travail, NonRenduStatus } from '@/types/travail';
 import type { Devoir } from '@/types/devoir';
 import type { DraftType } from '@/types/travail';
-import type { DraftItemAnnotation } from '@/types/correction';
+import type { Correction, DraftItemAnnotation } from '@/types/correction';
+import { copieCorrigee } from '@/lib/correction-etat';
+import { SANS_CLASSE } from '@/types/session';
 import RechercheResponseViewer from '@/components/RechercheResponseViewer/RechercheResponseViewer';
 import VocabulaireListReadOnly from '@/components/VocabulaireListReadOnly/VocabulaireListReadOnly';
 import LectureQuizReview from '@/components/LectureQuizReview/LectureQuizReview';
@@ -64,6 +66,12 @@ export default function TravailDetailPage() {
   const [travail, setTravail] = useState<Travail | null>(null);
   const [devoir, setDevoir] = useState<Devoir | null>(null);
   const [travaux, setTravaux] = useState<Travail[]>([]);
+  // ⚠ Les corrections des AUTRES copies, lues une seule fois au chargement et
+  // jamais rafraîchies — c'est délibéré. Elles servent à ranger le menu
+  // déroulant ; si elles suivaient la correction en cours, la copie qu'on vient
+  // de noter changerait de place sous la souris et « suivant » ne voudrait plus
+  // rien dire. L'ordre se remet à jour au retour sur l'écran.
+  const [correctionsCopies, setCorrectionsCopies] = useState<Map<string, Correction>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReturning, setIsReturning] = useState(false);
@@ -298,11 +306,21 @@ export default function TravailDetailPage() {
           return;
         }
 
-        const travauxRes = await fetch(`/api/travaux?devoirId=${devoirId}`, { headers });
+        const [travauxRes, correctionsRes] = await Promise.all([
+          fetch(`/api/travaux?devoirId=${devoirId}`, { headers }),
+          fetch(`/api/corrections?devoirId=${devoirId}`, { headers }),
+        ]);
         const travauxJson = await travauxRes.json();
 
         if (travauxJson.success) {
           setTravaux(travauxJson.data);
+        }
+
+        const correctionsJson = await correctionsRes.json();
+        if (correctionsJson.success && Array.isArray(correctionsJson.data)) {
+          const map = new Map<string, Correction>();
+          for (const c of correctionsJson.data) map.set(c.travailId, c);
+          setCorrectionsCopies(map);
         }
       } catch (err) {
         console.error('Erreur fetch data:', err);
@@ -322,23 +340,57 @@ export default function TravailDetailPage() {
   }, [isAuthenticated, role, uid, devoirId, travailId, getAuthHeaders]);
 
   const handleBack = () => {
-    router.push(`/dashboard/travaux/${devoirId}`);
+    // ── Rendre au prof la classe d'où il vient ──
+    // Sans le paramètre `session`, la liste des copies rouvre sur l'écran de
+    // choix des classes : le prof qui vient de corriger doit re-sélectionner
+    // sa 4C à chaque copie (signalé le 2026-09-20). Une copie sans session
+    // vient forcément du panier « sans classe » — c'est ce qui le définit.
+    const session = travail ? (travail.sessionId ?? SANS_CLASSE) : null;
+    router.push(
+      `/dashboard/travaux/${devoirId}${session ? `?session=${encodeURIComponent(session)}` : ''}`
+    );
   };
 
-  const currentIndex = travaux.findIndex(t => t.id === travailId);
+  // ── Le menu des copies : celles de la MÊME classe, les non corrigées d'abord ──
+  // Une activité peut viser plusieurs classes : passer de la 4C à la 4D d'un
+  // coup de flèche n'avait aucun sens (demande JP, 2026-09-20). Une copie sans
+  // session vient du panier « sans classe » et n'y côtoie que ses pareilles.
+  const copiesTriees = useMemo(() => {
+    if (!travail) return travaux;
+    const session = travail.sessionId ?? null;
+    const memeClasse = travaux.filter((t) => (t.sessionId ?? null) === session);
+    // Les mêmes trois états que les colonnes de la liste des copies, pour que
+    // les symboles veuillent dire la même chose des deux côtés.
+    const rang = (t: Travail): number => {
+      if (t.nonRendu) return 2;
+      if (t.status === 'draft' && !t.content) return 1;
+      return copieCorrigee(devoir, t, correctionsCopies.get(t.id)) ? 2 : 0;
+    };
+    return [...memeClasse].sort(
+      (a, b) => rang(a) - rang(b) || a.studentName.localeCompare(b.studentName)
+    );
+  }, [travaux, travail, devoir, correctionsCopies]);
+
+  const puceCopie = (t: Travail): string => {
+    if (t.nonRendu) return '✅';
+    if (t.status === 'draft' && !t.content) return '🔒';
+    return copieCorrigee(devoir, t, correctionsCopies.get(t.id)) ? '✅' : '📝';
+  };
+
+  const currentIndex = copiesTriees.findIndex(t => t.id === travailId);
   const hasPrevious = currentIndex > 0;
-  const hasNext = currentIndex < travaux.length - 1;
+  const hasNext = currentIndex < copiesTriees.length - 1;
 
   const handlePrevious = () => {
     if (hasPrevious) {
-      const prevTravail = travaux[currentIndex - 1];
+      const prevTravail = copiesTriees[currentIndex - 1];
       router.push(`/dashboard/travaux/${devoirId}/${prevTravail.id}`);
     }
   };
 
   const handleNext = () => {
     if (hasNext) {
-      const nextTravail = travaux[currentIndex + 1];
+      const nextTravail = copiesTriees[currentIndex + 1];
       router.push(`/dashboard/travaux/${devoirId}/${nextTravail.id}`);
     }
   };
@@ -487,7 +539,7 @@ export default function TravailDetailPage() {
           </div>
         </div>
 
-        {travaux.length > 1 && (
+        {copiesTriees.length > 1 && (
           <div className={styles.navigation}>
             <button
               className={styles.navBtn}
@@ -503,9 +555,9 @@ export default function TravailDetailPage() {
               onChange={(e) => handleSelectTravail(e.target.value)}
               title="Sélectionner un élève"
             >
-              {travaux.map((t) => (
+              {copiesTriees.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.studentName} {t.status === 'submitted' ? '✓' : '📝'}
+                  {puceCopie(t)} {t.studentName}
                 </option>
               ))}
             </select>

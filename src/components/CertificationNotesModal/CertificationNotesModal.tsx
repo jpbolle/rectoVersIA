@@ -90,7 +90,11 @@ export default function CertificationNotesModal({
         data.lignes.forEach((l) => {
           const valeur = l.percent ?? l.percentAuto;
           init[l.eleveId] = valeur === null ? '' : String(valeur);
-          initFaits[l.eleveId] = l.fait;
+          // ⚠ Une case cochée AUTOMATIQUEMENT (copie corrigée) reste hors de
+          // cet état : sinon l'enregistrement écrirait en base ce que le
+          // serveur sait déjà déduire, et cette copie figée se périmerait à la
+          // première note retouchée. La copie fait foi (2026-09-20).
+          initFaits[l.eleveId] = l.faitAuto ? false : l.fait;
         });
         setSaisies(init);
         setFaits(initFaits);
@@ -120,7 +124,9 @@ export default function CertificationNotesModal({
 
   // La ceinture est-elle acquise ? Notée : 60 %. Non cotée : l'épreuve est faite.
   const gagnee = (ligne: LigneNoteCertification): boolean =>
-    cotee ? (retenue(ligne) ?? -1) >= SEUIL_CERTIFICATION : faits[ligne.eleveId] === true;
+    cotee
+      ? (retenue(ligne) ?? -1) >= SEUIL_CERTIFICATION
+      : ligne.faitAuto === true || faits[ligne.eleveId] === true;
 
   const enregistrer = async () => {
     if (!payload) return;
@@ -280,17 +286,29 @@ export default function CertificationNotesModal({
                             />
                           ) : (
                             /* Non cotée : il n'y a rien à noter, seulement à
-                               constater. Une case, pas un champ. */
-                            <input
-                              type="checkbox"
-                              className={styles.faitBox}
-                              checked={faits[l.eleveId] === true}
-                              aria-label={`Épreuve faite par ${l.nom} ${l.prenom}`}
-                              onChange={(e) => {
-                                setFaits((prev) => ({ ...prev, [l.eleveId]: e.target.checked }));
-                                setModifie(true);
-                              }}
-                            />
+                               constater. Une case, pas un champ.
+                               Quand la copie de l'élève est corrigée, elle se
+                               coche seule et se verrouille : c'est la copie qui
+                               fait foi, pas une saisie qu'il faudrait tenir à
+                               jour (2026-09-20). Restent saisissables les
+                               élèves sans copie dans l'application — jamais
+                               connectés, ou épreuve sur papier. */
+                            <span className={styles.faitCell}>
+                              <input
+                                type="checkbox"
+                                className={styles.faitBox}
+                                checked={l.faitAuto === true || faits[l.eleveId] === true}
+                                disabled={l.faitAuto === true}
+                                aria-label={`Épreuve faite par ${l.nom} ${l.prenom}`}
+                                onChange={(e) => {
+                                  setFaits((prev) => ({ ...prev, [l.eleveId]: e.target.checked }));
+                                  setModifie(true);
+                                }}
+                              />
+                              {l.faitAuto && (
+                                <span className={styles.faitAuto}>copie corrigée</span>
+                              )}
+                            </span>
                           )}
                         </td>
                         <td className={styles.tdBelt}>

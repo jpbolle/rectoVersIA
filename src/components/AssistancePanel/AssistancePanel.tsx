@@ -162,8 +162,12 @@ export default function AssistancePanel({
   oeuvreNav,
   oeuvreBilanVersion,
 }: AssistancePanelProps) {
-  // Mode contrôlé vs interne
-  const [internalTab, setInternalTab] = useState<TabType>('consignes');
+  // Mode contrôlé vs interne.
+  // ⚠ Le mode INTERNE n'est utilisé que par l'écran de correction du prof —
+  // l'élève, lui, pilote l'onglet depuis sa page. D'où le défaut sur
+  // « Évaluation » : le prof qui ouvre une copie vient la noter, pas relire la
+  // consigne qu'il a lui-même écrite (demande JP, 2026-09-20).
+  const [internalTab, setInternalTab] = useState<TabType>('grille');
   const currentTab = controlledTab ?? internalTab;
   // Activité de lecture avec questionnaire : l'évaluation passe par les
   // habiletés des questions, pas par une grille

@@ -43,6 +43,20 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const pendingUpdate = useRef<UpdateCorrectionData | null>(null);
 
+  // ── Le dernier état connu, lisible SANS updater de `setState` ──
+  // ⚠ Les fonctions qui modifient une carte de notes (`questionScores`,
+  // `rechercheScores`, `autoEvalProf`) appelaient l'enregistrement À
+  // L'INTÉRIEUR d'un updater de `setCorrection`. Or cette fonction doit être
+  // PURE (gotcha init.md) : React la rejoue, et la sauvegarde partait deux
+  // fois ou pas du tout — le prof devait cliquer ✔ / ✘ plusieurs fois avant
+  // que la note prenne (signalé le 2026-09-20).
+  // Le ref est remis à jour À LA MAIN dans ces fonctions : deux clics rapides
+  // doivent s'ajouter l'un à l'autre, pas s'écraser en attendant le rendu.
+  const correctionRef = useRef<Correction | null>(null);
+  useEffect(() => {
+    correctionRef.current = correction;
+  }, [correction]);
+
   // Fetch correction existante
   const fetchCorrection = useCallback(async () => {
     if (!travailId || role !== 'prof') {
@@ -71,36 +85,52 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
     }
   }, [travailId, role, getAuthHeaders]);
 
+  // ⚠ La création est DESTRUCTRICE côté serveur (`.set()` réécrit le document
+  // entier, notes comprises). Deux gestes rapprochés sur une copie encore
+  // vierge lanceraient deux créations, et la seconde effacerait la première.
+  // Ce verrou fait que tout le monde attend la MÊME création.
+  const creationEnCours = useRef<Promise<Correction | null> | null>(null);
+
   // Creer la correction si elle n'existe pas
   const ensureCorrection = useCallback(async (): Promise<Correction | null> => {
+    if (correctionRef.current) return correctionRef.current;
     if (correction) return correction;
     if (!travailId || !devoirId || !studentId) return null;
+    if (creationEnCours.current) return creationEnCours.current;
 
-    const headers = await getAuthHeaders();
-    if (!headers) return null;
+    const creer = async (): Promise<Correction | null> => {
+      const headers = await getAuthHeaders();
+      if (!headers) return null;
 
-    try {
-      const res = await fetch('/api/corrections', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ travailId, devoirId, studentId }),
-      });
-      const json = await res.json();
+      try {
+        const res = await fetch('/api/corrections', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ travailId, devoirId, studentId }),
+        });
+        const json = await res.json();
 
-      if (json.success) {
-        setCorrection(json.data);
-        return json.data;
+        if (json.success) {
+          correctionRef.current = json.data;
+          setCorrection(json.data);
+          return json.data;
+        }
+      } catch (err) {
+        console.error('Erreur ensureCorrection:', err);
+        setError('Erreur lors de la creation de la correction');
       }
-    } catch (err) {
-      console.error('Erreur ensureCorrection:', err);
-      setError('Erreur lors de la creation de la correction');
-    }
-    return null;
+      return null;
+    };
+
+    creationEnCours.current = creer().finally(() => {
+      creationEnCours.current = null;
+    });
+    return creationEnCours.current;
   }, [correction, travailId, devoirId, studentId, getAuthHeaders]);
 
   // Sauvegarde immediate
   const saveNow = useCallback(async (data: UpdateCorrectionData) => {
-    let corr = correction;
+    let corr = correctionRef.current ?? correction;
     if (!corr) {
       corr = await ensureCorrection();
       if (!corr) return false;
@@ -162,8 +192,14 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
   // Mettre a jour l'evaluation du prof (avec recalcul du score)
   const updateEvaluation = useCallback((evaluation: Record<string, number>) => {
     const score = calculateScore(evaluation, grille);
-    saveWithDebounce({ evaluation, score });
-  }, [saveWithDebounce, grille]);
+    if (correctionRef.current) {
+      correctionRef.current = { ...correctionRef.current, evaluation, score };
+      saveWithDebounce({ evaluation, score });
+      return;
+    }
+    // Premier niveau coché sur cette copie : voir `updateQuestionScore`.
+    void saveNow({ evaluation, score });
+  }, [saveWithDebounce, saveNow, grille]);
 
   // Sauvegarde du contenu annote (debounce)
   const updateAnnotatedContent = useCallback((html: string) => {
@@ -183,14 +219,24 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
   // Points d'une question ouverte d'un questionnaire de lecture (debounce :
   // le prof tape au clavier). null = note retirée.
   const updateQuestionScore = useCallback((questionId: string, points: number | null) => {
-    setCorrection((prev) => {
-      const next = { ...(prev?.questionScores ?? {}) };
-      if (points === null) delete next[questionId];
-      else next[questionId] = points;
+    const next = { ...(correctionRef.current?.questionScores ?? {}) };
+    if (points === null) delete next[questionId];
+    else next[questionId] = points;
+    if (correctionRef.current) {
+      correctionRef.current = { ...correctionRef.current, questionScores: next };
+      // `saveWithDebounce` pose lui-même la mise à jour locale.
       saveWithDebounce({ questionScores: next });
-      return prev ? { ...prev, questionScores: next } : prev;
-    });
-  }, [saveWithDebounce]);
+      return;
+    }
+    // ── Premier geste sur cette copie ──
+    // Aucun document n'existe encore : la mise à jour locale de
+    // `saveWithDebounce` n'aurait rien où s'accrocher et serait jetée en
+    // silence, donc le ✔ resterait invisible. Pire, chaque nouveau clic
+    // relançait la temporisation de 2 s, repoussant la sauvegarde d'autant —
+    // le prof cliquait dix fois et attendait vingt secondes (2026-09-20).
+    // On crée donc le document et on note dans la foulée.
+    void saveNow({ questionScores: next });
+  }, [saveWithDebounce, saveNow]);
 
   // Correction d'une question de recherche : note et/ou remarque, sur la
   // réponse ou sur la démarche (debounce — le prof tape au clavier).
@@ -198,22 +244,25 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
   // absente (question ouverte, démarche).
   const updateRechercheScore = useCallback(
     (questionIndex: number, patch: Partial<RechercheQuestionScore>) => {
-      setCorrection((prev) => {
-        const next = { ...(prev?.rechercheScores ?? {}) };
-        const cle = String(questionIndex);
-        const entry: RechercheQuestionScore = { ...(next[cle] ?? {}) };
-        (Object.keys(patch) as (keyof RechercheQuestionScore)[]).forEach((champ) => {
-          const valeur = patch[champ];
-          if (valeur === null || valeur === undefined || valeur === '') delete entry[champ];
-          else (entry as Record<string, unknown>)[champ] = valeur;
-        });
-        if (Object.keys(entry).length === 0) delete next[cle];
-        else next[cle] = entry;
-        saveWithDebounce({ rechercheScores: next });
-        return prev ? { ...prev, rechercheScores: next } : prev;
+      const next = { ...(correctionRef.current?.rechercheScores ?? {}) };
+      const cle = String(questionIndex);
+      const entry: RechercheQuestionScore = { ...(next[cle] ?? {}) };
+      (Object.keys(patch) as (keyof RechercheQuestionScore)[]).forEach((champ) => {
+        const valeur = patch[champ];
+        if (valeur === null || valeur === undefined || valeur === '') delete entry[champ];
+        else (entry as Record<string, unknown>)[champ] = valeur;
       });
+      if (Object.keys(entry).length === 0) delete next[cle];
+      else next[cle] = entry;
+      if (correctionRef.current) {
+        correctionRef.current = { ...correctionRef.current, rechercheScores: next };
+        saveWithDebounce({ rechercheScores: next });
+        return;
+      }
+      // Premier geste sur cette copie : voir `updateQuestionScore`.
+      void saveNow({ rechercheScores: next });
     },
-    [saveWithDebounce]
+    [saveWithDebounce, saveNow]
   );
 
   // Regard du PROF sur une question d'auto-évaluation. Ce n'est pas une note :
@@ -222,16 +271,17 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
   // frappe, et c'est elle qui déverrouille la réponse de l'élève à l'écran.
   const updateAutoEvalProf = useCallback(
     (questionId: string, answer: AutoEvalAnswer) => {
-      setCorrection((prev) => {
-        const next = { ...(prev?.autoEvalProf ?? {}) };
-        const vide =
-          (answer.echelon === null || answer.echelon === undefined) &&
-          (answer.likert === null || answer.likert === undefined);
-        if (vide) delete next[questionId];
-        else next[questionId] = { ...next[questionId], ...answer };
-        saveNow({ autoEvalProf: next });
-        return prev ? { ...prev, autoEvalProf: next } : prev;
-      });
+      const next = { ...(correctionRef.current?.autoEvalProf ?? {}) };
+      const vide =
+        (answer.echelon === null || answer.echelon === undefined) &&
+        (answer.likert === null || answer.likert === undefined);
+      if (vide) delete next[questionId];
+      else next[questionId] = { ...next[questionId], ...answer };
+      if (correctionRef.current) correctionRef.current = { ...correctionRef.current, autoEvalProf: next };
+      // `saveNow` n'affiche rien avant la réponse du serveur : on pose la mise
+      // à jour locale nous-mêmes, sinon le clic reste sans effet visible.
+      setCorrection((prev) => (prev ? { ...prev, autoEvalProf: next } : prev));
+      saveNow({ autoEvalProf: next });
     },
     [saveNow]
   );

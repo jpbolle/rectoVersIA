@@ -40,6 +40,10 @@ export interface LigneNoteCertification {
   percent: number | null;
   // Certification non cotée : l'épreuve a-t-elle été faite ?
   fait: boolean;
+  // `fait` vient-il de la COPIE CORRIGÉE plutôt que d'une saisie du prof ?
+  // Dans ce cas la case se coche seule et ne se décoche pas : la copie fait
+  // foi (décision du 2026-09-20).
+  faitAuto?: boolean;
   commentaire?: string;
   // Note lue dans la correction de l'activité rattachée, quand il y en a une.
   // La saisie manuelle PRIME sur elle : le prof garde le dernier mot.
