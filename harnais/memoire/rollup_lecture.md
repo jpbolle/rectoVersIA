@@ -1,5 +1,42 @@
 # Rollup — Questionnaire de lecture (type « lire »)
 
+## 2026-09-21 — le total d'un questionnaire est désormais ÉCRIT (`corrections.scoreLecture`)
+
+**Ce qui l'a révélé** : KitSchool importe les notes d'une activité dans son bulletin. Sur
+un diagnostic de lecture (39 copies, 33 points), il ramenait **0 % pour tout le monde** —
+élèves correctement appariés, activité reconnue, aucune erreur. Cause : il lisait
+`corrections.score`, **qui n'appartient qu'aux activités à grille** et reste à **0** pour
+un questionnaire de lecture. Le total, lui, n'existait **nulle part en base** :
+`scoreLectureQuiz` le recalcule à chaque affichage (c'est voulu — il reste juste si le
+prof retouche le questionnaire), et seules les questions **ouvertes** notées à la main
+étaient stockées (`questionScores`).
+
+**Décision (JP, trois options posées)** : le calcul reste **là où la règle vit**, et on
+écrit son résultat.
+
+- `src/lib/lecture-score-persistance.ts` — `calculerScoreLecture()` (devoir + copie +
+  `questionScores` → `scoreLectureQuiz`) et `ecrireScoreLecture()`, appelée par
+  `PATCH /api/corrections/[id]` **et** `POST /api/corrections` : une des deux sources du
+  total ne passe pas par le prof (les questions auto-corrigées sont acquises dès la
+  remise), donc un questionnaire **entièrement automatique** a sa note avant qu'il y touche.
+- Champ **`corrections.scoreLecture`** = `{ percent, points, max, aNoter, calculeLe }`.
+  ⚠ **Distinct de `score`** : les confondre ferait passer un pourcentage de lecture pour
+  un score de grille dans tous les écrans qui lisent déjà `score`.
+  ⚠ `aNoter` = questions ouvertes encore sans note du prof — **hors total**, au numérateur
+  comme au dénominateur (règle inchangée de `lecture-scoring.ts`) ; KitSchool l'affiche
+  (« n questions pas encore notées — total sur la partie corrigée »).
+- ⚠ **C'est une trace, pas une source** : l'affichage continue de recalculer. Retoucher le
+  corrigé d'un QCM après coup laisse la valeur écrite en arrière — elle se réécrit au
+  prochain enregistrement de la correction, ou en masse avec le script ci-dessous.
+- `scripts/backfill-score-lecture.ts` — reprise des corrections antérieures, simulation par
+  défaut, `--apply` pour écrire, `--devoir <id>` pour une seule activité. Idempotent, ne
+  touche que `scoreLecture`. **Passé le 2026-09-21 : 39 corrections écrites**, moyenne 45 %,
+  étendue 3 → 64 %.
+- ⚠ **Reste à DÉPLOYER** (VPS, `/deploy`) : jusque-là, une nouvelle correction de lecture
+  n'écrit pas son total — seul le script le pose.
+- ⚠ `travaux.content` est une **chaîne JSON**, pas un objet (`parseLectureAnswers`).
+
+
 ## État actuel (session du 2026-08-11 soir)
 
 **Testé par l'utilisateur (v1 ok) puis largement enrichi le 2026-08-11 soir — les

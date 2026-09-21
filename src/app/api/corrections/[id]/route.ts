@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { ecrireScoreLecture } from '@/lib/lecture-score-persistance';
 import type { UpdateCorrectionData } from '@/types/correction';
 
 // PATCH - Mettre a jour une correction
@@ -143,6 +144,12 @@ export async function PATCH(
     }
 
     await docRef.update(updateData);
+
+    // Le total d'un questionnaire de lecture n'existe nulle part ailleurs :
+    // `score` ne vaut que pour les grilles. On l'écrit ici, à chaque
+    // enregistrement — sans quoi KitSchool importe 0 % (vécu le 2026-09-21).
+    // Sur une activité qui n'est pas de la lecture, l'appel ne fait rien.
+    await ecrireScoreLecture(adminDb, id);
 
     return NextResponse.json({
       success: true,

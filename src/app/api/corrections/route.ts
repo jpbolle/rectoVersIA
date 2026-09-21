@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { ecrireScoreLecture } from '@/lib/lecture-score-persistance';
 import type { Correction } from '@/types/correction';
 
 // GET - Recuperer la correction d'un travail
@@ -182,6 +183,11 @@ export async function POST(request: NextRequest) {
     };
 
     await adminDb.collection('corrections').doc(correctionId).set(correction);
+
+    // Un questionnaire entièrement auto-corrigé a déjà sa note à la création :
+    // rien n'attend le prof. Sans cet appel, sa correction resterait sans
+    // total tant qu'il ne toucherait pas une question ouverte — qu'elle n'a pas.
+    await ecrireScoreLecture(adminDb, correctionId);
 
     return NextResponse.json({
       success: true,

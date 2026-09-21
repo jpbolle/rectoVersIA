@@ -38,7 +38,19 @@ export interface Correction {
   // Clé = AutoEvalQuestion.id. Le prof ne se prononce que sur les questions
   // ordonnées (sentiment de compétence, échelle 1-5) : une émotion ne s'évalue pas.
   autoEvalProf?: Record<string, AutoEvalAnswer>;
-  score: number;                                 // Score total calcule
+  score: number;                                 // Score total calcule (GRILLE seulement)
+  // Questionnaire de lecture : le total, ÉCRIT au moment de la correction.
+  // `score` ci-dessus reste à 0 pour ces activités — il appartient aux grilles.
+  // L'affichage continue de recalculer (lib/lecture-scoring.ts) ; ce champ est
+  // la trace de la note donnée, lue par KitSchool à l'import. Voir
+  // lib/lecture-score-persistance.ts.
+  scoreLecture?: {
+    percent: number | null;
+    points: number;
+    max: number;
+    aNoter: number;
+    calculeLe: string;
+  };
   status: CorrectionStatus;
   visibleParEleve: boolean;
   annotatedContent?: string;                     // HTML annote par le prof
