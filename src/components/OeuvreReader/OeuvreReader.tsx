@@ -47,6 +47,12 @@ interface OeuvreReaderProps {
   /** L'élève a répondu : la section compte dans son total de vérifications */
   onVerificationTerminee: (sectionId: string, reponses: Record<string, unknown>) => void;
   /**
+   * L'élève a répondu à UNE question — on retient son travail en cours.
+   * Rien d'autre : ce n'est pas « Terminer », la vérification reste ouverte.
+   * Absent en aperçu professeur (rien à sauvegarder).
+   */
+  onReponsesChange?: (sectionId: string, reponses: Record<string, unknown>) => void;
+  /**
    * L'élève a FAIT quelque chose sur cette scène — consulté le verso, ouvert
    * un commentaire du professeur. Le clic dictionnaire, lui, est signalé
    * depuis la page (la couche du dictionnaire enveloppe toute la colonne).
@@ -78,6 +84,7 @@ export default function OeuvreReader({
   onReculer,
   onAvancer,
   onVerificationTerminee,
+  onReponsesChange,
   onSectionVue,
   onCommentaireOuvert,
   onActivite,
@@ -176,9 +183,25 @@ export default function OeuvreReader({
   const dejaTerminee = !!(sectionId && progression?.sections[sectionId]?.termineLe);
   const questions = useMemo(() => section?.questions ?? [], [section]);
 
-  const repondre = useCallback((questionId: string, valeur: unknown) => {
-    setReponses((r) => ({ ...r, [questionId]: valeur }));
-  }, []);
+  // Les réponses en cours, hors du cycle de rendu : `repondre` doit
+  // construire l'objet COMPLET à envoyer à la sauvegarde, et ne peut donc pas
+  // se contenter de l'updater de `setReponses` — un effet de bord dans un
+  // updater se rejoue deux fois en mode strict.
+  const reponsesRef = useRef(reponses);
+  reponsesRef.current = reponses;
+
+  const repondre = useCallback(
+    (questionId: string, valeur: unknown) => {
+      const suite = { ...reponsesRef.current, [questionId]: valeur };
+      reponsesRef.current = suite;
+      setReponses(suite);
+      // Enregistrement au fil de l'eau : ne PAS attendre « Terminer ».
+      // `useTravail` retarde l'écriture réelle, il n'y a donc pas une requête
+      // par clic. Voir `enregistrerReponses` dans useOeuvreLecture.
+      if (sectionId) onReponsesChange?.(sectionId, suite);
+    },
+    [sectionId, onReponsesChange]
+  );
 
   // « Terminer » ne ferme plus la popup : il OUVRE le corrigé. L'élève vient
   // de répondre, c'est le moment où il veut voir — le refermer sous son nez
@@ -191,6 +214,18 @@ export default function OeuvreReader({
     if (sectionId) onVerificationTerminee(sectionId, reponses);
     setCorrigeOuvert(true);
   }, [corrigeOuvert, sectionId, reponses, onVerificationTerminee]);
+
+  /**
+   * L'élève rouvre une vérification déjà terminée.
+   *
+   * On referme le corrigé : les champs redeviennent saisissables et les
+   * verdicts vert/rouge disparaissent — sans quoi il corrigerait en recopiant
+   * les réponses affichées juste au-dessus. Ses réponses précédentes restent
+   * en place ; il ajuste ce qu'il veut, puis « Terminer » les remplace.
+   */
+  const refaire = useCallback(() => {
+    setCorrigeOuvert(false);
+  }, []);
 
   // ── Le commentaire ouvert ──
   // Un seul à la fois, et sa lecture est un signal d'activité : c'est le 3ᵉ
@@ -416,6 +451,7 @@ export default function OeuvreReader({
           questions={questions}
           reponses={reponses}
           corrigeOuvert={corrigeOuvert}
+          onRefaire={refaire}
           lectureSeule={lectureSeule}
           onRepondre={repondre}
           onFermer={() => setQuestionnaireOuvert(false)}
@@ -442,6 +478,8 @@ interface PopupProps {
   onRepondre: (questionId: string, valeur: unknown) => void;
   onFermer: () => void;
   onTerminer: () => void;
+  /** Rouvrir la saisie d'une vérification déjà terminée */
+  onRefaire: () => void;
   /** Identifiant de l'élève — son ordre de propositions (ordreAffichage) */
   graine?: string | null;
 }
@@ -455,6 +493,7 @@ function QuestionnairePopup({
   onRepondre,
   onFermer,
   onTerminer,
+  onRefaire,
   graine,
 }: PopupProps) {
   return (
@@ -523,6 +562,14 @@ function QuestionnairePopup({
                     let classe = styles.choixItem;
                     if (devoile && juste) classe += ` ${styles.choixJuste}`;
                     else if (devoile && choisi) classe += ` ${styles.choixFaux}`;
+                    // ── LA MARQUE DE SÉLECTION, corrigé fermé ──
+                    // Elle manquait : avant « Terminer », rien ne distinguait
+                    // la réponse choisie des autres. Le seul écart visible
+                    // était le SURVOL, qui suit la souris — l'élève croyait
+                    // avoir coché, puis voyait la marque « partir » dès qu'il
+                    // répondait à la question suivante, et concluait que sa
+                    // première réponse avait changé (signalé le 2026-09-22).
+                    else if (choisi) classe += ` ${styles.choixChoisi}`;
                     return (
                       <button
                         key={i}
@@ -542,6 +589,12 @@ function QuestionnairePopup({
                         {devoile && (juste || choisi) && (
                           <span className={styles.choixMarque}>{juste ? '✓' : '✕'}</span>
                         )}
+                        {/* Corrigé fermé : la marque dit « c'est ton choix »,
+                            elle ne dit PAS s'il est juste. Sur un QCM à
+                            réponses multiples, plusieurs la portent en même
+                            temps — ce qui montre au passage qu'on peut en
+                            cocher plusieurs. */}
+                        {!devoile && choisi && <span className={styles.choixMarque}>✓</span>}
                       </button>
                     );
                   })}
@@ -630,14 +683,30 @@ function QuestionnairePopup({
               ? 'Corrigé · aucune note'
               : 'Réponds à tout, puis termine pour voir le corrigé'}
           </span>
-          <button
-            type="button"
-            className={styles.actionBtn}
-            onClick={onTerminer}
-            disabled={lectureSeule && !corrigeOuvert}
-          >
-            {corrigeOuvert ? 'Fermer' : 'Terminer'}
-          </button>
+          <div className={styles.popupBoutons}>
+            {/* ── REFAIRE ──
+                Une scène terminée se rouvrait sur son corrigé, tous les
+                champs désactivés, sans aucun moyen de revenir en arrière :
+                un « Terminer » cliqué par erreur verrouillait la
+                vérification pour de bon (signalé le 2026-09-22).
+                Les réponses ne sont PAS effacées — l'élève rouvre son
+                travail et corrige ce qu'il veut. La date de première
+                réalisation, elle, ne bouge pas (`marquerTerminee` garde le
+                `termineLe` existant) : la scène reste faite. */}
+            {corrigeOuvert && !lectureSeule && (
+              <button type="button" className={styles.navBtn} onClick={onRefaire}>
+                ↺ Refaire
+              </button>
+            )}
+            <button
+              type="button"
+              className={styles.actionBtn}
+              onClick={onTerminer}
+              disabled={lectureSeule && !corrigeOuvert}
+            >
+              {corrigeOuvert ? 'Fermer' : 'Terminer'}
+            </button>
+          </div>
         </footer>
       </div>
     </div>

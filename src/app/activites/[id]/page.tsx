@@ -748,6 +748,9 @@ export default function TravailPage() {
             <div className={styles.editorHeader}>
               <h2>{oeuvreLecture.oeuvre?.titre || 'Lecture'}</h2>
             </div>
+            {/* `onReponsesChange` enregistre les réponses au fil de l'eau ;
+                `onVerificationTerminee` ne sert plus qu'à CLORE la
+                vérification. En aperçu professeur, rien n'est sauvegardé. */}
             <OeuvreReader
               oeuvreId={devoir.oeuvreId!}
               sectionId={oeuvreLecture.sectionId}
@@ -765,6 +768,7 @@ export default function TravailPage() {
               onActivite={oeuvreLecture.marquerActivite}
               onCommentaireOuvert={oeuvreLecture.marquerCommentaireOuvert}
               onVerificationTerminee={oeuvreLecture.marquerTerminee}
+              onReponsesChange={isPreviewMode ? undefined : oeuvreLecture.enregistrerReponses}
               lectureSeule={isPreviewMode}
             />
           </div>

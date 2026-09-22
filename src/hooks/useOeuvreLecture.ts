@@ -221,6 +221,40 @@ export function useOeuvreLecture({ devoir, content, onProgression }: Options) {
     [ecrire]
   );
 
+  /**
+   * L'ÉLÈVE VIENT DE RÉPONDRE À UNE QUESTION — on enregistre, sans plus.
+   *
+   * ⚠ Ne pose NI `termineLe` ni quoi que ce soit qui ferme la vérification :
+   * c'est « Terminer » qui la termine, et lui seul. Ici, on ne fait que
+   * retenir le travail en cours.
+   *
+   * Pourquoi c'est nécessaire : jusqu'au 2026-09-22, les réponses ne
+   * quittaient le navigateur qu'au clic sur « Terminer ». Un élève qui
+   * fermait la popup par la croix, changeait de scène ou voyait son
+   * Chromebook se mettre en veille perdait tout, sans un mot. La sauvegarde
+   * est déjà retardée (debounce) par `useTravail` : appeler ceci à chaque
+   * réponse n'écrit pas à chaque clic.
+   *
+   * Une scène DÉJÀ terminée ne se réécrit pas : son corrigé est ouvert, il
+   * n'y a plus rien à saisir — et l'appelant n'appelle d'ailleurs plus.
+   */
+  const enregistrerReponses = useCallback(
+    (id: string, reponses: Record<string, unknown>) => {
+      ecrire((prev) => ({
+        ...prev,
+        sections: {
+          ...prev.sections,
+          [id]: {
+            ...prev.sections[id],
+            vueLe: prev.sections[id]?.vueLe || new Date().toISOString(),
+            reponses,
+          },
+        },
+      }));
+    },
+    [ecrire]
+  );
+
   const marquerTerminee = useCallback(
     (id: string, reponses: Record<string, unknown>) => {
       ecrire((prev) => ({
@@ -255,6 +289,7 @@ export function useOeuvreLecture({ devoir, content, onProgression }: Options) {
     marquerVue,
     marquerActivite,
     marquerCommentaireOuvert,
+    enregistrerReponses,
     marquerTerminee,
     // La couverture n'est pas une scène : elle ne compte pas dans le parcours
     nbSections: parcours.filter(({ section }) => !estCouverture(section.id)).length,

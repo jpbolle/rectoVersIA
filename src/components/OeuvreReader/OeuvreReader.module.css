@@ -487,6 +487,14 @@
   gap: 12px;
 }
 
+/* « Refaire » et « Terminer / Fermer » vont ensemble, à droite du pied. */
+.popupBoutons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .popupNote {
   font-size: 12px;
   color: var(--c-text-muted);
@@ -548,6 +556,22 @@
 .choixLettre {
   font-weight: 600;
   color: var(--c-text-muted);
+}
+
+/* ── LA RÉPONSE CHOISIE, corrigé encore fermé ──
+   Trois signaux plutôt qu'un — bordure, fond et coche : sur les écrans mats
+   des Chromebooks de l'école, une nuance de bordure seule ne se voit pas.
+   ⚠ Ne JAMAIS colorer ceci en vert ou en rouge : à ce stade l'élève n'a pas
+   le droit de savoir s'il a juste. */
+.choixChoisi {
+  border-color: var(--c-accent);
+  background: #fdf4e9;
+  box-shadow: inset 3px 0 0 var(--c-accent);
+}
+
+.choixChoisi .choixLettre,
+.choixChoisi .choixMarque {
+  color: var(--c-accent-dark);
 }
 
 /* Corrigé ouvert : la bonne réponse s'affiche dès le clic. Comportement
