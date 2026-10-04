@@ -34,6 +34,7 @@ import HabiletesPicker from '@/components/HabiletesPicker/HabiletesPicker';
 import { useOeuvres } from '@/hooks/useOeuvres';
 import { ATELIERS, findAtelier, TYPES_MODAUX, ATELIER_SONDAGE } from '@/types/didactique';
 import type { TypeModal } from '@/types/didactique';
+import { DIAGRAM_TYPES, DIAGRAM_TYPE_LABELS, type DiagramType } from '@/types/diagram';
 import styles from './CreationForm.module.css';
 import FlipChoice from '@/components/FlipChoice/FlipChoice';
 
@@ -47,6 +48,7 @@ const RESSOURCE_LABELS: Record<TypeTravail, string> = {
   vocabulaire: '📄 Documents (facultatif)',
   autoevaluation: '📄 Travail à commenter (facultatif)',
   sequence: '📄 Ressources de la séquence (facultatif)',
+  schematiser: '📄 Base documentaire',
 };
 
 function createEmptyPlanDraft(): DraftContent {
@@ -215,6 +217,11 @@ export default function CreationForm({
   // Questionnaire d'auto-évaluation (type autoevaluation) — composé au verso
   const [autoEvalQuiz, setAutoEvalQuiz] = useState<AutoEvalQuestionnaire | null>(null);
 
+  // Atelier de conceptualisation (type schematiser) : type de schéma de départ,
+  // et liberté d'en changer (décision JP 2026-10-04 : libre par défaut)
+  const [schemaType, setSchemaType] = useState<DiagramType>('conceptmap');
+  const [schemaTypeLibre, setSchemaTypeLibre] = useState(true);
+
   // Vocabulaire (type vocabulaire) — les callbacks servent à l'outil de listes
   // au verso (même outil que Mes Ressources : les listes créées ici y apparaissent)
   const {
@@ -269,7 +276,9 @@ export default function CreationForm({
   // un seul groupe s'affiche, ils répètent le titre du verso et n'apportent
   // rien (« Ajouter des contenus » suivi de « Contenus de l'activité »).
   const aRessources = typeTravail !== 'vocabulaire' && typeTravail !== 'autoevaluation';
-  const aContenus = atelier !== 'lecture-oeuvre';
+  // Pas de constructeur pour l'atelier de conceptualisation : l'élève fait le
+  // schéma, le prof ne donne que la base documentaire (les ressources).
+  const aContenus = atelier !== 'lecture-oeuvre' && typeTravail !== 'schematiser';
   const aDeuxGroupes = aRessources && aContenus;
 
   const grilleValid = !usesGrille || grille;
@@ -427,6 +436,10 @@ export default function CreationForm({
 
     if (typeTravail === 'sequence') {
       data.sequenceFle = sequenceFle;
+    }
+
+    if (typeTravail === 'schematiser') {
+      data.schema = { typeDepart: schemaType, typeLibre: schemaTypeLibre };
     }
 
     if (atelier === 'lecture-oeuvre' && oeuvreId) {
@@ -734,6 +747,36 @@ export default function CreationForm({
       {/* Ligne 3 : les habiletés (hors écriture), l'œuvre à lire — ce qui
           dépend du type d'activité */}
       <div className={styles.formRow}>
+        {typeTravail === 'schematiser' && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Schéma de départ</label>
+            <select
+              className={styles.select}
+              value={schemaType}
+              onChange={(e) => setSchemaType(e.target.value as DiagramType)}
+              disabled={isSubmitting}
+            >
+              {DIAGRAM_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {DIAGRAM_TYPE_LABELS[t]}
+                </option>
+              ))}
+            </select>
+            <label className={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={schemaTypeLibre}
+                onChange={(e) => setSchemaTypeLibre(e.target.checked)}
+                disabled={isSubmitting}
+              />
+              L’élève peut changer de type de schéma en cours de route
+            </label>
+            <p className={styles.modeNote}>
+              La base documentaire se joint au verso (ressources) ; l’élève la lit dans sa colonne de droite.
+            </p>
+          </div>
+        )}
+
         {!usesGrille && typeTravail !== 'sequence' && !modeFle && (
           <div className={styles.formGroup}>
             <label className={styles.label}>Habiletés travaillées</label>
@@ -936,6 +979,7 @@ export default function CreationForm({
           {typeTravail === 'vocabulaire' && 'Vocabulaire'}
           {typeTravail === 'autoevaluation' && 'Auto-évaluation'}
           {typeTravail === 'sequence' && 'Séquence FLE'}
+          {typeTravail === 'schematiser' && 'Schématiser'}
         </span>
       </div>
 

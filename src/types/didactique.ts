@@ -39,7 +39,11 @@ export type TypeModal = 'lire' | 'ecrire' | 'parler' | 'reflexif' | 'lexique' | 
 // « sequence » (2026-09-14) : la SÉQUENCE FLE — un parcours de modules (théorie
 // + activités existantes) donné à une classe DASPA. Pas de copie à rendre : le
 // dispositif affiche le parcours et ouvre les activités qu'il contient.
-export type Dispositif = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation' | 'sequence';
+// « schematiser » (2026-10-04) : l'ATELIER DE CONCEPTUALISATION — l'élève construit
+// un schéma (carte conceptuelle, schéma libre, carte mentale, hiérarchie, ligne du
+// temps) à partir d'une base documentaire (les ressources de l'activité, dans le
+// rail de droite). Le schéma vit dans `travail.content` (JSON `Diagram`).
+export type Dispositif = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation' | 'sequence' | 'schematiser';
 
 export interface Atelier {
   id: string;
@@ -49,10 +53,14 @@ export interface Atelier {
   // Mode principal proposé quand le prof choisit cet atelier. L'atelier de
   // recherche propose « lire » : chercher, c'est lire. Le prof peut changer.
   modeParDefaut: TypeModal;
+  // Une ligne, pas plus : ce que l'élève y fait. Affichée sur la carte de
+  // choix du type d'activité (popup de création, 2026-10-04).
+  description: string;
 }
 
 export const ATELIER_SONDAGE = 'sondage';
 export const ATELIER_SEQUENCE_FLE = 'sequence-fle';
+export const ATELIER_CONCEPTUALISATION = 'conceptualisation';
 
 export const ATELIERS: Atelier[] = [
   {
@@ -61,6 +69,7 @@ export const ATELIERS: Atelier[] = [
     court: 'Écriture',
     dispositif: 'ecrire',
     modeParDefaut: 'ecrire',
+    description: 'L’élève rédige un texte, évalué avec une grille de critères.',
   },
   {
     id: 'lecture',
@@ -68,6 +77,7 @@ export const ATELIERS: Atelier[] = [
     court: 'Lecture',
     dispositif: 'lire',
     modeParDefaut: 'lire',
+    description: 'Un questionnaire sur un texte ou un document : questions ouvertes, QCM, glisser-déposer…',
   },
   {
     // Même dispositif que l'atelier de lecture — c'est le MÊME questionnaire,
@@ -80,6 +90,7 @@ export const ATELIERS: Atelier[] = [
     court: 'Œuvre',
     dispositif: 'lire',
     modeParDefaut: 'lire',
+    description: 'Un parcours paginé dans une œuvre, avec des questions au fil des chapitres.',
   },
   {
     id: 'recherche',
@@ -87,6 +98,7 @@ export const ATELIERS: Atelier[] = [
     court: 'Recherche',
     dispositif: 'rechercher',
     modeParDefaut: 'lire',
+    description: 'Une recherche guidée sur le web, suivie par l’extension NavigKid.',
   },
   {
     id: 'vocabulaire',
@@ -94,6 +106,7 @@ export const ATELIERS: Atelier[] = [
     court: 'Vocabulaire',
     dispositif: 'vocabulaire',
     modeParDefaut: 'lexique',
+    description: 'Une liste de mots à apprendre, avec révision et mots personnels.',
   },
   {
     // L'élève porte un regard sur son propre travail ou sur son attitude :
@@ -104,6 +117,7 @@ export const ATELIERS: Atelier[] = [
     court: 'Auto-évaluation',
     dispositif: 'autoevaluation',
     modeParDefaut: 'reflexif',
+    description: 'L’élève se prononce sur son travail ou son attitude : rien n’y est juste ou faux.',
   },
   {
     // Le SONDAGE : les questions de l'auto-évaluation (rien n'y est juste ou
@@ -118,6 +132,7 @@ export const ATELIERS: Atelier[] = [
     court: 'Sondage',
     dispositif: 'autoevaluation',
     modeParDefaut: 'parler',
+    description: 'Des questions posées en direct, au rythme du prof, avec réponses anonymes.',
   },
   {
     // La SÉQUENCE FLE : une activité qui en CONTIENT d'autres. Le prof y
@@ -131,8 +146,28 @@ export const ATELIERS: Atelier[] = [
     court: 'Séquence',
     dispositif: 'sequence',
     modeParDefaut: 'lire',
+    description: 'Un parcours de modules FLE (théorie + activités) donné à une classe DASPA.',
+  },
+  {
+    // L'ATELIER DE CONCEPTUALISATION (plan du 2026-10-04) : à partir d'une base
+    // documentaire, l'élève schématise — et peut changer de type de schéma en
+    // cours de route. JP : « lire-écrire » ; le mode retenu est « écrire » (on
+    // produit un schéma), le prof peut passer en « lire ».
+    id: ATELIER_CONCEPTUALISATION,
+    label: 'Atelier de conceptualisation',
+    court: 'Schéma',
+    dispositif: 'schematiser',
+    modeParDefaut: 'ecrire',
+    description: 'À partir d’une base documentaire, l’élève construit un schéma : carte conceptuelle, mentale, ligne du temps…',
   },
 ];
+
+/** Un atelier de conceptualisation — repère des aiguillages (comme `estSondage`). */
+export function estSchema(
+  devoir: { typeTravail?: string | null; atelier?: string | null } | null | undefined
+): boolean {
+  return devoir?.typeTravail === 'schematiser' || devoir?.atelier === ATELIER_CONCEPTUALISATION;
+}
 
 /** L'identifiant de l'atelier « Sondage en direct » — repère des aiguillages. */
 export function estSondage(devoir: { atelier?: string | null } | null | undefined): boolean {

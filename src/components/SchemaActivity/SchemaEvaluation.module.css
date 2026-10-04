@@ -1,0 +1,52 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 2px;
+}
+
+.note {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+  line-height: 1.5;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--c-text-muted);
+  font-style: italic;
+}
+
+.commentaire {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-border);
+  border-left: 3px solid var(--c-accent);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg-element);
+}
+
+.titre {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.audio {
+  height: 32px;
+  max-width: 100%;
+}
+
+.texte {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  color: var(--c-text);
+}

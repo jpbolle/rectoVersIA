@@ -30,6 +30,7 @@ import OeuvreReader from '@/components/OeuvreReader/OeuvreReader';
 import OeuvreSommaire from '@/components/OeuvreReader/OeuvreSommaire';
 import { useOeuvreLecture } from '@/hooks/useOeuvreLecture';
 import AutoEvalActivity from '@/components/AutoEvalActivity/AutoEvalActivity';
+import SchemaActivity from '@/components/SchemaActivity/SchemaActivity';
 import { parseLectureAnswers } from '@/types/lecture';
 import WorkspaceRail, { type RailTab } from '@/components/WorkspaceRail';
 import DictionaryClickLayer from '@/components/DictionaryClickLayer';
@@ -531,6 +532,9 @@ export default function TravailPage() {
   const isSondage = estSondage(devoir);
   // Auto-évaluation : l'élève se prononce sur son travail ou son attitude
   const isAutoEval = !isSondage && devoir?.typeTravail === 'autoevaluation' && !!devoir?.autoEvalQuiz;
+  // Atelier de conceptualisation : la colonne de gauche devient l'éditeur de
+  // schéma ; la base documentaire est dans le rail (onglet Ressources).
+  const isSchema = devoir?.typeTravail === 'schematiser';
 
   // ── Configuration du rail : icones + visibilite par type d'activite ──
   const hasAiSuggestions = aiSuggestions
@@ -547,7 +551,7 @@ export default function TravailPage() {
   // dans la gouttière de correction, question par question), auto-évaluation
   // (il n'y a pas de copie ; le regard du prof se lit dans l'onglet Évaluation,
   // en face de celui de l'élève).
-  const showRemarques = !isVocabulaire && !isRecherche && !isLecture && !isAutoEval && !isSondage;
+  const showRemarques = !isVocabulaire && !isRecherche && !isLecture && !isAutoEval && !isSondage && !isSchema;
 
   // Ordre : Consignes → Ressources → Aide IA → Remarques → Recherche → Évaluation
   const railTabs: RailTab[] = [];
@@ -780,6 +784,22 @@ export default function TravailPage() {
             {/* L'élève ne connaît aucun identifiant de partie : c'est sa CLASSE
                 qui désigne la session, à partir du seul numéro d'activité. */}
             <CompetitionActivity devoirId={devoir.id} intitule={devoir.intitule} />
+          </div>
+        ) : isSchema ? (
+          <div className={styles.editorSection}>
+            <div className={styles.editorHeader}>
+              <h2>Mon schéma</h2>
+            </div>
+            <div className={styles.editorWrapper}>
+              {/* Le schéma vit dans `travail.content` (JSON) : même patron que
+                  le vocabulaire et le questionnaire de lecture. */}
+              <SchemaActivity
+                devoir={devoir}
+                content={isPreviewMode ? null : travail?.content}
+                onChange={isDisabled ? undefined : (json) => updateContent(json)}
+                readOnly={isDisabled}
+              />
+            </div>
           </div>
         ) : isLectureQuiz ? (
           <div className={styles.editorSection}>

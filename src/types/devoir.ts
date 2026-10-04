@@ -1,4 +1,5 @@
 import type { PlanItem } from './travail';
+import type { DiagramType } from './diagram';
 import type { LectureQuizMode, LectureQuiz, LectureResume } from './lecture';
 import type { AutoEvalQuestionnaire } from './autoevaluation';
 import type { TypeModal } from './didactique';
@@ -9,7 +10,7 @@ export type Classe = string;
 // « autoevaluation » depuis le 2026-08-14 — l'élève se prononce sur son
 // propre travail (cf. src/types/autoevaluation.ts).
 // « sequence » depuis le 2026-09-14 : la séquence FLE (cf. src/types/sequence-fle.ts).
-export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation' | 'sequence';
+export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation' | 'sequence' | 'schematiser';
 // formatif : entraînement, ne compte pas — certificatif : compte pour la note
 export type EvaluationType = 'formatif' | 'certificatif';
 
@@ -240,10 +241,21 @@ export interface Devoir {
   // aux élèves (`ouvertParSequence`). Absent = activité classique.
   // (Plan 2026-09-19-fle-theorie-et-activites.)
   referentiel?: 'fle' | null;
+  // ATELIER DE CONCEPTUALISATION (type schematiser, 2026-10-04) : le type de
+  // schéma proposé au départ, et si l'élève peut en changer (métamorphose).
+  // Le schéma lui-même vit dans `travail.content` (JSON `Diagram`).
+  schema?: SchemaConfig | null;
   // Passerelle en retour vers la scénarisation didactique : posée par
   // /api/scenarisations/[id] quand l'activité est rattachée à un module,
   // effacée quand le lien est rompu. Jamais écrite depuis les formulaires.
   scenarisationRef?: { scenarisationId: string; nom: string } | null;
+}
+
+/** Réglages d'un atelier de conceptualisation (voir `Devoir.schema`). */
+export interface SchemaConfig {
+  typeDepart: DiagramType;
+  // true (défaut) : l'élève peut transformer son schéma en un autre type
+  typeLibre: boolean;
 }
 
 export interface CreateDevoirData {
@@ -298,6 +310,8 @@ export interface CreateDevoirData {
   sequenceFle?: SequenceFleContenu | null;
   // Activité FLE (voir `Devoir.referentiel`)
   referentiel?: 'fle' | null;
+  // Atelier de conceptualisation (type schematiser uniquement)
+  schema?: SchemaConfig | null;
   // AUTO-ÉVALUATION INTÉGRÉE — l'élève se prononce sur son propre travail
   // avant d'en connaître la note. Ce qu'elle recouvre dépend du dispositif :
   //  - écriture  : il s'auto-évalue sur la grille ;

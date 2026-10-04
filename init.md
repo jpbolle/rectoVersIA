@@ -18,7 +18,9 @@
   `src/lib/version.ts` (géré à la main, jamais incrémenté automatiquement).
 - **Stack** : Next.js 16 (App Router) + React 19 + TypeScript 5 + Firestore (Blaze) +
   Tiptap 3 — CSS Modules, design system Classica — icônes `lucide-react` (ajoutée le
-  2026-09-19 avec l'accord de JP ; d'abord pour les cases du QCM de compétition)
+  2026-09-19 avec l'accord de JP ; d'abord pour les cases du QCM de compétition) —
+  **`@xyflow/react` (React Flow) + `html-to-image`** (ajoutés le 2026-10-04 avec l'accord
+  de JP : l'éditeur de schémas, moteur repris de la maquette SchémaKit)
 - **Branche** : `main` → le push ne déploie pas ; déploiement manuel sur VPS (skill `/deploy`)
 - **Harnais** : né de la matrice `harnais` v1.2.0, taille L.
   Règles impératives dans `AGENTS.md` (source unique, `CLAUDE.md` est un symlink).
@@ -114,7 +116,7 @@ d'une année sur l'autre.
 | Nouvelle façon d'évaluer une activité | **Grille pour l'écriture, habiletés partout ailleurs** — jamais les deux. La grille n'est exigée que pour `typeTravail === 'ecrire'`, client ET serveur | `usesGrille` dans `CreationForm` / `EditDevoirModal` |
 | Demander une saisie ou une confirmation | **Jamais** `prompt()` / `confirm()` / `alert()` : popup de l'application, centrée, sur fond assombri, en-tête et pied d'actions. Consigne durable (dépôt `harnais`, `0-moi/consignes.md`) | `ScenarisationFormModal`, `CertificationNotesModal` |
 | Nouvelle carte dans **Mes Ressources** | Gabarit de `GrilleCard` : dégradé vert, contenu centré, icône 32 px, titre 17 px vert, boutons d'action 40 × 36 (dupliquer · ✏️ ouvrir · 🗑️ rouge au survol). Tous les onglets forment une famille — un gabarit divergent se voit (harmonisation du 2026-09-19 : questionnaires réalignés, activités et séquences FLE sorties de la carte du tableau de bord). **Nouvelle carte = styles d'`OeuvreCard.module.css`** (rangée d'actions) ; **carte « + » = `CreateOeuvreCard libelle="…"`**, jamais recopiée | `GrilleCard`, `OeuvreCard`, `ScenarisationCard`, `ModuleFleCard`, `ActiviteRessourceCard` |
-| Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) — 7 ateliers, 6 dispositifs (`sequence` depuis le 2026-09-14 : une activité qui en contient d'autres, sans copie ni remise) : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
+| Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) — 9 ateliers, 7 dispositifs (`sequence` depuis le 2026-09-14 : une activité qui en contient d'autres, sans copie ni remise ; `schematiser` depuis le 2026-10-04 : l'élève construit un schéma, JSON `Diagram` dans `travail.content`). Chaque atelier porte une `description` d'une ligne pour la **popup de choix** (`AtelierChoiceModal`) qui précède désormais le formulaire de création : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
 | Activité où **rien ne se remet** (recherche, questionnaire de lecture, auto-évaluation, lecture d'une œuvre) | `hideSubmit` sur `WorkTopBar` ; la remise, quand elle existe, vit **au bas de la colonne de gauche**, dans la ligne d'actions | `hideSubmit` dans `/activites/[id]` |
 | Nouvelle façon d'afficher des propositions à l'élève (QCM, matrice, appariement, tri) | **Mélangées par élève**, jamais dans l'ordre du prof — `ordreAffichage(taille, graine, melanger)`, graine = `uid + id de question`. ⚠️ **C'est un ORDRE D'AFFICHAGE** : la réponse reste enregistrée dans l'ordre du PROF, sinon tous les corrigés déjà en base désignent la mauvaise case. Case `pasDeMelange` pour une chronologie ou une gradation | `ordreAffichage` dans `src/types/lecture.ts` ; `LectureQuizActivity`, `OeuvreReader`, `QuestionInteractions/` |
 | Ajouter un élément au milieu d'une liste qu'on compose (question, bloc de scène) | **Trait d'insertion** : un trait discret entre deux éléments, qui s'éclaire au survol avec un `+` ; le clic déplie les types **à cet endroit**. Hauteur RÉSERVÉE en permanence, sinon la liste saute sous la souris. Pas de ligne de boutons en bas de page | `TraitInsertion` dans `LectureQuizBuilder`, `Trait` dans `OeuvreBuilder` |
@@ -179,7 +181,8 @@ interface Devoir {
   profId: string;
   anneeScolaire: string;         // "2025-2026" (calcul auto)
   createdAt: Timestamp;
-  typeTravail: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation'; // DISPOSITIF
+  typeTravail: 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation' | 'sequence' | 'schematiser'; // DISPOSITIF
+  schema?: { typeDepart: DiagramType; typeLibre: boolean }; // (type schematiser) schéma de départ, métamorphose permise
   modePrincipal?: TypeModal;     // compétence en jeu (lire/ecrire/parler/reflexif/lexique)
   atelier?: string;              // type d'activité — id de ATELIERS
   habiletes?: string[] | null;   // null = toutes celles de l'atelier
@@ -322,6 +325,7 @@ interface Questionnaire {
 ```
 
 ### Autres collections
+- `schemasPersonnels/{id}` — schémas personnels (2026-10-04) : `uid`, `titre`, `type`, `diagram` (JSON `Diagram`), `thumbnail` (data URL PNG ou null), `createdAt`, `updatedAt`. Jamais lu côté client : routes `/api/schemas/personnel*`.
 - `manches` + `manches/{id}/reponses` : **une partie jouée en direct** (mode Compétition
   du questionnaire de lecture). `id = MAN-{sessionId}` — déterministe, une manche par
   session (activité × classe). Le document porte la phase (`salle → question →
@@ -491,7 +495,8 @@ interface Questionnaire {
 | `/rgpd` | tous | Données personnelles : quelles données, protection (chiffrement), services IA, droits RGPD — statique, menu avatar |
 | `/accueil` | élève | **Page d'ouverture** (`/` y renvoie) : 3 blocs (travaux et lectures en retard · échéances à venir · derniers résultats) + **roue des ceintures** (`CeinturesRoue`) |
 | `/activites` | élève | 3 blocs : devoirs disponibles / travaux corrigés (correction rendue) / travaux non rendus (cochés par le prof, badge justifié ou « Non fait — 0 ») |
-| `/mes-ressources` | élève | Mes ressources personnelles : onglet Liste de vocabulaire (mots dont il a demandé la définition) + onglet À venir (vide) |
+| `/mes-ressources` | élève | Mes ressources personnelles : onglet Liste de vocabulaire (mots dont il a demandé la définition) + onglet **Mes schémas** (`MesSchemasPanel`, 2026-10-04 : cartes personnelles sans activité, collection `schemasPersonnels`) |
+| `/mes-ressources/schemas/[id]` | élève | Un schéma personnel en plein écran (`DiagramWorkspace` avec sa colonne de gauche, enregistrement différé 0,8 s, vignette PNG) |
 | `/activites/[id]` | élève | Rédaction + auto-évaluation + remise (`WorkspaceRail`) |
 | `/mes-classes` | élève | Classes + rejoindre une classe |
 | `/profil` | élève | Profil d'écrilecteur en 7 onglets (Général / Lire / Écrire / Parler / Rechercher / Vocabulaire / **🪞 Me connaître**), un appel API par onglet chargé à la première ouverture |
@@ -513,6 +518,7 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
 | Route | Méthodes | Description |
 |---|---|---|
 | `/api/devoirs`, `/api/devoirs/[id]`, `/api/devoirs/upload` | CRUD | Devoirs + upload fichiers |
+| `/api/schemas/personnel`, `/api/schemas/personnel/[id]` | GET POST / GET PUT DELETE | Schémas personnels (`schemasPersonnels`, propriétaire = uid ; POST `{type,titre}` ou `{duplicateOf}` ; PUT `{diagram?, thumbnail?}`, vignette ≤ 200 Ko). Pas d'index : tri en mémoire |
 | `/api/travaux`, `/api/travaux/[id]`, `/api/travaux/mine` | CRUD | GET prof déclenche `ensureTravaux()` |
 | `/api/corrections`, `/api/corrections/[id]`, `/api/corrections/mine` | CRUD | `mine` filtre `visibleParEleve` |
 | `/api/classes`, `/api/classes/[id]`, `/api/classes/student`, `/api/classes/join`, `/api/classes/by-code` | CRUD | Classes + rejoindre par code |
@@ -550,6 +556,21 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
 | `/api/vocabulaire/*` | — | Thèmes, mots, génération/validation exercices IA, suggestions |
 
 ### Composants clés
+
+- **Atelier de conceptualisation** (2026-10-04, dispositif `schematiser`, atelier `conceptualisation`) :
+  `src/components/Diagram/` = le moteur SchémaKit transposé (`DiagramWorkspace` : sélecteur de type,
+  éditeurs `ConceptMapEditor` / `TreeEditor` / `TimelineEditor`, volet du bas Outils · Markdown · À placer,
+  PNG/PDF ; props `embedded` et `lockType`), `src/lib/diagram/` (conversion React Flow, Markdown
+  bidirectionnel, transformations, dispositions, dates, export), `src/types/diagram.ts` (5 types :
+  `conceptmap`, **`libre`** = formes/tailles/tracés façon draw.io, `mindmap`, `hierarchy`, `timeline`).
+  `SchemaActivity` = l'espace de travail posé dans la colonne de gauche de `/activites/[id]` (et en
+  lecture seule dans la correction), `SchemaEvaluation` = l'onglet Évaluation (pas de note : le
+  commentaire général). La base documentaire = `Devoir.ressources` (verso, `aContenus = false`).
+  ⚠ `archives/schemakit/` est la maquette d'origine, exclue de `tsc` et d'eslint : on y lit, on n'y code pas.
+- **Popup de choix du type d'activité** (`AtelierChoiceModal`, 2026-10-04) : grande grille de cartes
+  (pictogramme SVG `AtelierPicto`, titre, `description`) avant `CreationForm` (`atelierInitial`) —
+  tableau de bord, Modules FLE › Activités (`modeFle`), chemin « Créer » de `ModuleActivitesModal`
+  (`AtelierChoiceGrid` inline).
 
 - **Espace FLE** (2026-09-14) : `RadarFle` (SVG maison, N branches horaires depuis le haut, anneaux = niveaux visibles, aire bleue `#4a7ba7` — angles d'ÉCRAN, à l'inverse de `CeinturesRoue`), `NiveauFlePanel` (radar + une ligne par compétence : libellé, niveau en gras, curseur `range` côté prof / crans pleins côté élève ; objectifs du mois ; enregistrement différé 500 ms), `DidactiqueFlePanel` (référentiel dans /admin). La fiche élève (`EleveProfilModal`) reçoit `classeType` et place `NiveauFlePanel` avant `ProfilPanel` pour une classe FLE. **Séquences** : `SequenceFleBuilder` au **verso** (création et popup ✏️) pour une activité de type `sequence` : **ligne du temps en serpentin** (rangées mesurées, `row-reverse` une fois sur deux), un « + » (cercle pointillé ; séquence vide = grand « + » et début de serpentin) qui demande la **nature** (point de théorie / activité) puis ne propose que **l'existant** (activités en deux groupes : FLE puis Mes Activités) — créer = lien vers Mes Ressources › Modules FLE en **nouvel onglet**, la liste se relit au retour (`focus`) — 2026-09-19 ; « tous / n élèves » par étape ; côté élève `SequenceFleActivity` (rendu par `/activites/[id]` **avant** les gardes sur le travail : ligne de progression, modules dépliables avec théorie « À lire d'abord » et activités à pastille d'état). `/fle` › « Mon travail à faire » liste les séquences de l'élève depuis `/api/devoirs`. **Bibliothèque** : `ModuleFlePanel` (paniers + carte « + » qui ouvre **directement** l'éditeur sur un point vierge — créé en base au premier « Enregistrer », 2026-09-19 — + popup d'archivage), `ModuleFleCard` (réutilise les styles d'`OeuvreCard` et de `CreateOeuvreCard`), `ModuleFleEditor` (pleine page, deux colonnes : fiche + « Je peux… » du référentiel à gauche, `DocumentEditor` Tiptap + activités ordonnées ▲▼ à droite ; enregistrement EXPLICITE, bouton ambre tant qu'il reste à enregistrer ; popup « Rattacher une activité » qui lit `/api/devoirs`).
 - Éditeurs Tiptap : `WorkEditor` (élève — collage externe bloqué, seul le texte copié

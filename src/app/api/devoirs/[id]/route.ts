@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { schemaPourFirestore } from '@/lib/schema-devoir';
 import { adminDb } from '@/lib/firebase/admin';
 import { quizDuDevoir } from '@/lib/questionnaire-lecture-server';
 import {
@@ -258,6 +259,8 @@ export async function GET(
       oeuvreId: data.oeuvreId || null,
       oeuvreChapitres: Array.isArray(data.oeuvreChapitres) ? data.oeuvreChapitres : null,
       oeuvreMinimum: typeof data.oeuvreMinimum === 'number' ? data.oeuvreMinimum : null,
+      // Atelier de conceptualisation : ses réglages (absent = défauts)
+      schema: data.typeTravail === 'schematiser' ? schemaPourFirestore(data.schema) : null,
       // Enrichi à la lecture, jamais stocké (comme `uaa` et `submittedCount`)
       lectureResume,
       // Activité d'un autre prof (coprofesseur) : ce que JE peux en faire et
@@ -457,6 +460,10 @@ export async function PATCH(
     }
 
     // Séquence FLE : modules du parcours
+    // Atelier de conceptualisation : ses réglages
+    if (body.schema !== undefined) {
+      updateData.schema = body.schema === null ? null : schemaPourFirestore(body.schema);
+    }
     if (body.sequenceFle !== undefined) {
       updateData.sequenceFle = body.sequenceFle === null ? null : sequenceFlePourFirestore(body.sequenceFle);
     }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { schemaPourFirestore } from '@/lib/schema-devoir';
 import { adminDb } from '@/lib/firebase/admin';
 import { lireQuestionnaire } from '@/lib/questionnaire-lecture-server';
 import { generateQuestionnaireLectureId } from '@/types/questionnaire-lecture';
@@ -426,6 +427,7 @@ export async function POST(request: NextRequest) {
       sequenceFle,
       eleves,
       referentiel,
+      schema,
     } = body;
 
     // ACTIVITÉ FLE (Mes Ressources › Modules FLE) : jamais de classe, et née FERMÉE.
@@ -587,6 +589,11 @@ export async function POST(request: NextRequest) {
     // Séquence FLE : son parcours (recopié à la duplication)
     if (typeTravail === 'sequence') {
       devoirData.sequenceFle = sequenceFlePourFirestore(sequenceFle ?? {});
+    }
+
+    // Atelier de conceptualisation : type de départ + liberté de transformer
+    if (typeTravail === 'schematiser') {
+      devoirData.schema = schemaPourFirestore(schema);
     }
 
     if (typeTravail === 'autoevaluation' && autoEvalQuiz) {

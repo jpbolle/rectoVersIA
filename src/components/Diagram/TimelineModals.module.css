@@ -1,0 +1,64 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--c-muted);
+}
+
+.input {
+  padding: 8px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--c-text);
+  background: #fff;
+}
+
+.error {
+  font-size: 13px;
+  color: #c0392b;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  align-self: flex-start;
+}
+
+.segment {
+  min-height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-right: 1px solid var(--c-border);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+.segment:last-child {
+  border-right: none;
+}
+
+.segment[data-active] {
+  background: var(--c-primary);
+  color: #fff;
+}

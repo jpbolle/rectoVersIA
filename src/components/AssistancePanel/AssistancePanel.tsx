@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import SchemaEvaluation from '@/components/SchemaActivity/SchemaEvaluation';
 import ConsignesTab from '@/components/ConsignesTab';
 import RessourcesTab from '@/components/RessourcesTab';
 import type { DrawShape } from '@/types/draw';
@@ -180,6 +181,8 @@ export default function AssistancePanel({
   const isAutoEval = devoir.typeTravail === 'autoevaluation' && !!devoir.autoEvalQuiz;
   // Lecture d'une œuvre : ni grille ni score — des compteurs de lecture
   const isOeuvre = devoir.typeTravail === 'lire' && !!devoir.oeuvreId;
+  // Atelier de conceptualisation : ni grille ni note — un commentaire
+  const isSchema = devoir.typeTravail === 'schematiser';
   const handleTabChange = (tab: TabType) => {
     if (onTabChange) {
       onTabChange(tab);
@@ -349,12 +352,16 @@ export default function AssistancePanel({
         {currentTab === 'grille' && isOeuvre && (
           <OeuvreEvaluation devoirId={devoir.id} version={oeuvreBilanVersion} />
         )}
+        {currentTab === 'grille' && isSchema && (
+          <SchemaEvaluation correction={correction} isProfessorView={isProfessorView} />
+        )}
         {currentTab === 'grille' &&
           devoir.typeTravail !== 'vocabulaire' &&
           !isLectureQuiz &&
           !isRecherche &&
           !isAutoEval &&
-          !isOeuvre && (
+          !isOeuvre &&
+          !isSchema && (
           <GrilleTab
             grille={grille}
             hiddenCriteria={devoir.hiddenCriteria}

@@ -2,7 +2,9 @@
 
 // Page élève « Mes ressources personnelles » — pendant élève de la page
 // Mes Ressources du prof. Onglet 1 : liste de vocabulaire personnelle (mots
-// dont l'élève a demandé la définition, app ou NavigKid). Onglet 2 : à venir.
+// dont l'élève a demandé la définition, app ou NavigKid). Onglet 2 : Mes schémas
+// (cartes conceptuelles, mentales, lignes du temps… construites pour soi, sans
+// activité — plan du 2026-10-04).
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,9 +13,10 @@ import Header from '@/components/Header/Header';
 import { aUneClasseFle, espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
 import Footer from '@/components/Footer/Footer';
 import EmptyState from '@/components/EmptyState/EmptyState';
+import MesSchemasPanel from '@/components/MesSchemasPanel/MesSchemasPanel';
 import styles from './mes-ressources.module.css';
 
-type Tab = 'vocabulaire' | 'avenir';
+type Tab = 'vocabulaire' | 'schemas';
 
 interface PersoWord {
   word: string;
@@ -105,10 +108,10 @@ export default function MesRessourcesPage() {
             Liste de vocabulaire
           </button>
           <button
-            className={`${styles.tabButton} ${activeTab === 'avenir' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('avenir')}
+            className={`${styles.tabButton} ${activeTab === 'schemas' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('schemas')}
           >
-            À venir
+            Mes schémas
           </button>
         </div>
 
@@ -142,9 +145,9 @@ export default function MesRessourcesPage() {
           </section>
         )}
 
-        {activeTab === 'avenir' && (
+        {activeTab === 'schemas' && (
           <section className={styles.section}>
-            <EmptyState icon="🕓" message="Rien ici pour le moment." />
+            <MesSchemasPanel />
           </section>
         )}
       </main>

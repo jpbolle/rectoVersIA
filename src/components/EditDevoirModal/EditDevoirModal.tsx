@@ -28,6 +28,8 @@ import { classesPartageesPourActivite, useClasses } from '@/hooks/useClasses';
 import { estClasseFle } from '@/types/classe';
 import type { SequenceFleContenu } from '@/types/sequence-fle';
 import type { TypeModal } from '@/types/didactique';
+import { DIAGRAM_TYPES, DIAGRAM_TYPE_LABELS, type DiagramType } from '@/types/diagram';
+import { schemaDuDevoir } from '@/lib/schema-devoir';
 import styles from './EditDevoirModal.module.css';
 import FlipChoice from '@/components/FlipChoice/FlipChoice';
 
@@ -41,6 +43,7 @@ const RESSOURCE_LABELS: Record<TypeTravail, string> = {
   vocabulaire: '📄 Documents (facultatif)',
   autoevaluation: '📄 Travail à commenter (facultatif)',
   sequence: '📄 Ressources de la séquence (facultatif)',
+  schematiser: '📄 Base documentaire',
 };
 
 const TYPE_LABELS: Record<TypeTravail, string> = {
@@ -50,6 +53,7 @@ const TYPE_LABELS: Record<TypeTravail, string> = {
   vocabulaire: 'Vocabulaire',
   autoevaluation: 'Auto-évaluation',
   sequence: 'Séquence FLE',
+  schematiser: 'Schématiser',
 };
 
 function createEmptyPlanDraft(): DraftContent {
@@ -135,6 +139,9 @@ export default function EditDevoirModal({
 
   // Questionnaire d'auto-évaluation (type autoevaluation)
   const [autoEvalQuiz, setAutoEvalQuiz] = useState<AutoEvalQuestionnaire | null>(null);
+  // Atelier de conceptualisation : type de départ + liberté de transformer
+  const [schemaType, setSchemaType] = useState<DiagramType>('conceptmap');
+  const [schemaTypeLibre, setSchemaTypeLibre] = useState(true);
   // Élèves concernés : null = toute la classe (toutes activités)
   const [eleves, setEleves] = useState<string[] | null>(null);
   const [elevesDesClasses, setElevesDesClasses] = useState<EleveAvecClasse[]>([]);
@@ -179,6 +186,9 @@ export default function EditDevoirModal({
       setHiddenQuestions(devoir.hiddenQuestions || []);
       setAutoEvalQuiz(devoir.autoEvalQuiz || null);
       setSequenceFle(devoir.sequenceFle ?? null);
+      const sc = schemaDuDevoir(devoir);
+      setSchemaType(sc.typeDepart);
+      setSchemaTypeLibre(sc.typeLibre);
       setEleves(devoir.eleves ?? null);
 
       // Corrigé de référence existant (type ecrire)
@@ -234,7 +244,7 @@ export default function EditDevoirModal({
   // Deux groupes : les ressources DONNÉES à l'élève, et le contenu de
   // l'activité elle-même. Les intertitres ne servent qu'à les séparer.
   const aRessources = typeTravail !== 'vocabulaire' && typeTravail !== 'autoevaluation';
-  const aContenus = typeTravail !== 'vocabulaire' && !isOeuvre;
+  const aContenus = typeTravail !== 'vocabulaire' && !isOeuvre && typeTravail !== 'schematiser';
   const isSequence = typeTravail === 'sequence';
   // Une séquence FLE ne se donne qu'à des classes FLE
   const { classes: toutesMesClasses, classesPartagees } = useClasses();
@@ -340,6 +350,11 @@ export default function EditDevoirModal({
     // Séquence FLE : le parcours et les élèves choisis
     if (devoir.typeTravail === 'sequence') {
       data.sequenceFle = sequenceFle ?? SEQUENCE_FLE_VIDE;
+    }
+
+    // Atelier de conceptualisation : ses réglages
+    if (devoir.typeTravail === 'schematiser') {
+      data.schema = { typeDepart: schemaType, typeLibre: schemaTypeLibre };
     }
 
     // Auto-évaluation intégrée (écriture, lecture, recherche)
@@ -626,6 +641,33 @@ export default function EditDevoirModal({
           </div>
         )}
       </div>
+
+      {typeTravail === 'schematiser' && (
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Schéma de départ</label>
+          <select
+            className={styles.select}
+            value={schemaType}
+            onChange={(e) => setSchemaType(e.target.value as DiagramType)}
+            disabled={isSaving}
+          >
+            {DIAGRAM_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {DIAGRAM_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+          <label className={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={schemaTypeLibre}
+              onChange={(e) => setSchemaTypeLibre(e.target.checked)}
+              disabled={isSaving}
+            />
+            L’élève peut changer de type de schéma en cours de route
+          </label>
+        </div>
+      )}
 
       {/* Recto / Verso de l'espace élève (uniquement pour type ecrire) */}
       {typeTravail === 'ecrire' && (

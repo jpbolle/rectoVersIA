@@ -1,0 +1,13 @@
+/* L'espace de travail du schéma remplit la colonne de travail de l'activité. */
+.cadre {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.cadre > * {
+  flex: 1;
+  min-height: 0;
+}

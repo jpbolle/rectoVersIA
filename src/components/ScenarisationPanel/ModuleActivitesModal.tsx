@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useClasses } from '@/hooks/useClasses';
 import { useGrilleTypes } from '@/hooks/useEvaluations';
 import CreationForm from '@/components/CreationForm/CreationForm';
+import { AtelierChoiceGrid } from '@/components/AtelierChoiceModal/AtelierChoiceModal';
 import { atelierLabel } from '@/types/didactique';
 import { nouvelleActivite } from '@/types/scenarisation';
 import type { ModuleActivite, ModuleDidactique } from '@/types/scenarisation';
@@ -38,6 +39,9 @@ export default function ModuleActivitesModal({ module, onClose, onAjouter }: Pro
   const { grilleTypes, grilles } = useGrilleTypes();
 
   const [chemin, setChemin] = useState<Chemin>(null);
+  // Chemin « créer » : d'abord le choix du type d'activité (grille de cartes),
+  // puis le formulaire ouvert sur ce type (2026-10-04).
+  const [atelierChoisi, setAtelierChoisi] = useState<string | null>(null);
   const [titreHorsApp, setTitreHorsApp] = useState('');
   const [devoirs, setDevoirs] = useState<Devoir[]>([]);
   const [chargement, setChargement] = useState(false);
@@ -224,19 +228,33 @@ export default function ModuleActivitesModal({ module, onClose, onAjouter }: Pro
           )}
 
           {/* ── 3. Créer : le formulaire habituel, ouvert ici ── */}
-          {chemin === 'creer' && (
+          {chemin === 'creer' && atelierChoisi === null && (
+            <div className={styles.creationWrap}>
+              <p className={styles.dim}>Quel type d’activité ?</p>
+              <AtelierChoiceGrid onChoose={(id) => setAtelierChoisi(id)} />
+              <div className={styles.mActions}>
+                <button type="button" className={styles.btn} onClick={() => setChemin(null)}>
+                  ← Retour
+                </button>
+              </div>
+            </div>
+          )}
+
+          {chemin === 'creer' && atelierChoisi !== null && (
             <div className={styles.creationWrap}>
               <p className={styles.dim}>
                 Le formulaire est le même que celui de Mes Activités. L’activité créée y apparaîtra.
               </p>
               <CreationForm
+                key={atelierChoisi}
+                atelierInitial={atelierChoisi}
                 classeNames={classeNames}
                 grilleTypes={grilleTypes}
                 grilles={grilles}
                 isVisible
                 onSubmit={creerActivite}
                 isSubmitting={enCreation}
-                onClose={() => setChemin(null)}
+                onClose={() => setAtelierChoisi(null)}
                 getAuthHeaders={getAuthHeaders}
               />
             </div>

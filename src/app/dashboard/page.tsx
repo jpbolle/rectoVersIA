@@ -11,6 +11,7 @@ import Footer from '@/components/Footer/Footer';
 import CreationForm from '@/components/CreationForm/CreationForm';
 import DevoirCard from '@/components/DevoirCard/DevoirCard';
 import CreateDevoirCard from '@/components/CreateDevoirCard/CreateDevoirCard';
+import AtelierChoiceModal from '@/components/AtelierChoiceModal/AtelierChoiceModal';
 import EditDevoirModal from '@/components/EditDevoirModal/EditDevoirModal';
 import LoadingOverlay from '@/components/LoadingOverlay/LoadingOverlay';
 import MessageBox from '@/components/MessageBox/MessageBox';
@@ -60,6 +61,10 @@ export default function DashboardPage() {
 
   const [isReady, setIsReady] = useState(false);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  // Créer une activité : d'abord la popup de choix du type (2026-10-04), puis
+  // le formulaire ouvert sur l'atelier choisi.
+  const [choixAtelierVisible, setChoixAtelierVisible] = useState(false);
+  const [atelierChoisi, setAtelierChoisi] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
@@ -367,9 +372,22 @@ export default function DashboardPage() {
           onDismiss={() => setMessage(null)}
         />
 
+        {choixAtelierVisible && (
+          <AtelierChoiceModal
+            onClose={() => setChoixAtelierVisible(false)}
+            onChoose={(id) => {
+              setAtelierChoisi(id);
+              setChoixAtelierVisible(false);
+              setIsFormVisible(true);
+            }}
+          />
+        )}
+
         {isFormVisible && (
           <section className={styles.creationSection}>
             <CreationForm
+              key={atelierChoisi ?? 'ecriture'}
+              atelierInitial={atelierChoisi}
               classeNames={activeClasseNames}
               grilleTypes={grilleTypes}
               grilles={grilles}
@@ -468,7 +486,7 @@ export default function DashboardPage() {
                   <EmptyState icon="hourglass" message="En cours de chargement" />
                 ) : (
                   <>
-                    <CreateDevoirCard onClick={() => setIsFormVisible(true)} />
+                    <CreateDevoirCard onClick={() => setChoixAtelierVisible(true)} />
                     {devoirsActuels.length === 0 && devoirsCorreges.length === 0 ? null : devoirsActuels.length === 0 ? (
                       <p className={styles.emptySubSection}>Aucun travail en cours</p>
                     ) : (

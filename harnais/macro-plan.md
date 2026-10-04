@@ -38,6 +38,14 @@ entre les sessions, souvent sur l'autre poste : **lui demander plutôt que dédu
 
 ### 1. Activité de schématisation / conceptualisation
 
+> **2026-10-04 — ÉCRIT, rien vu.** La maquette était sur GitHub (`jpbolle/schemakit`,
+> copiée dans `archives/schemakit/`). Plan `harnais/plans/2026-10-04-atelier-conceptualisation.md`
+> validé et **les 4 étapes écrites le jour même** (popup de choix d'atelier · moteur +
+> Mes schémas élève · dispositif `schematiser` · correction en lecture seule). Tranché :
+> **dispositif** (pas type de question), formes libres dès la v1, pas de notation en v1.
+> Détail : `memoire/rollup_conceptualisation.md`. ⚠ **JP n'a encore rien vu à l'écran.**
+> Le texte ci-dessous est l'état du 20/09, gardé comme trace.
+
 **Aucun plan n'existe** — cherché le 20/09 dans `harnais/plans/`, dans tout le harnais du
 projet, dans le dépôt `harnais`, dans celui de KitSchool et dans la roadmap Firestore de
 l'app. C'est resté une conversation.
@@ -61,6 +69,9 @@ un **type de question** (donc un dépôt dans n'importe quelle activité) ? Les 
 défendent ; la réponse commande tout le reste.
 
 ### 2. Terminer les types de questions — dont les questions à image
+
+> **2026-10-04 — « semble réglé » (JP)** : le fix3 du 21/09 a été vu en classe/à l'écran
+> d'après JP. Reste « ouvrir les types jamais essayés », non recensé.
 
 Le moins cher des quatre, et il **débloque le portfolio** (étape 1.2 de Molière, les
 questions liées aux images).
@@ -98,8 +109,8 @@ extension Chrome. Deux conséquences :
 
 | Ordre | Chantier | Pourquoi là |
 |---|---|---|
-| **1** | Finir les **questions à image** | Le moins cher, débloque le portfolio, et referme une dette déjà ouverte |
-| **2** | Écrire le plan de la **schématisation**, puis le construire | Bloquant pour le portfolio, utile partout ailleurs |
+| ~~1~~ | ~~Finir les **questions à image**~~ | **réglé** d'après JP (2026-10-04) |
+| ~~2~~ | ~~Écrire le plan de la **schématisation**, puis le construire~~ | **écrit le 2026-10-04, à VOIR À L'ÉCRAN** avant d'aller plus loin (règle ci-dessus) |
 | **3** | **Portfolio**, étapes 1 à 7 | Le gros morceau ; ses deux dépendances sont levées |
 | **4** | **TRACES** | Purement mécanique : à faire quand le code ne bouge plus |
 

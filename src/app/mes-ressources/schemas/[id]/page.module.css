@@ -1,0 +1,27 @@
+/* Schéma personnel en plein écran : l'espace de travail occupe toute la fenêtre. */
+
+.page {
+  height: 100vh;
+  overflow: hidden;
+  background: var(--c-bg);
+}
+
+.missing {
+  max-width: 640px;
+  margin: 80px auto;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--c-text-secondary);
+}
+
+.missing h1 {
+  font-family: var(--c-font-title);
+  color: var(--c-primary);
+  margin: 0;
+}
+
+.missing a {
+  color: var(--c-primary);
+}

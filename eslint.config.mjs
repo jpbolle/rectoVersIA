@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Maquette SchémaKit copiée telle quelle (trace, pas du code de l'app)
+    "archives/**",
   ]),
 ]);
 

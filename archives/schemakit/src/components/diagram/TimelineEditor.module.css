@@ -1,0 +1,82 @@
+/* Tout est positionné dans le repère du schéma (ViewportPortal) : left/top en pixels.
+   z-index négatif : les bandeaux, l'axe et les graduations passent DERRIÈRE les boîtes
+   (le portail se dessine sinon par-dessus les événements). */
+.band {
+  position: absolute;
+  z-index: -1;
+  border-radius: 10px;
+  border: 1px dashed transparent;
+  box-sizing: border-box;
+}
+
+.band[data-axis] {
+  background: transparent;
+}
+
+.band[data-dropping] {
+  border-color: var(--c-accent);
+  background: color-mix(in srgb, var(--c-accent) 18%, transparent) !important;
+}
+
+.laneLabel {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  padding: 2px 8px;
+  border: 1px solid rgb(0 0 0 / 0.12);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.85);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-text);
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.laneLabel:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.axis {
+  position: absolute;
+  z-index: -1;
+  height: 3px;
+  background: var(--c-text);
+  border-radius: 2px;
+}
+
+.tick {
+  position: absolute;
+  z-index: -1;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--c-text);
+  opacity: 0.55;
+}
+
+.tick[data-major] {
+  opacity: 1;
+}
+
+.tickLabel {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--c-text);
+}
+
+.emptyHint {
+  position: absolute;
+  z-index: -1;
+  transform: translateX(-50%);
+  font-size: 15px;
+  color: var(--c-muted);
+  white-space: nowrap;
+}

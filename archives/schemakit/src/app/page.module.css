@@ -1,0 +1,175 @@
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.brand {
+  font-size: 32px;
+  color: var(--c-primary);
+}
+
+.tagline {
+  color: var(--c-muted);
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+}
+
+.headerActions a {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.empty {
+  padding: 48px 24px;
+  border: 1px dashed var(--c-border-strong);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--c-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-surface);
+  overflow: hidden;
+  transition: box-shadow 120ms, transform 120ms;
+}
+
+.card:hover {
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.1);
+  transform: translateY(-1px);
+}
+
+.thumbLink {
+  display: block;
+  aspect-ratio: 16 / 10;
+  background: var(--c-canvas);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.thumbEmpty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--c-muted);
+}
+
+.cardBody {
+  padding: 10px 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cardTitle {
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--c-text);
+}
+
+.cardMeta {
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.cardActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 8px 10px 10px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--c-muted);
+}
+
+.input {
+  padding: 8px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--c-text);
+}
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.typeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  color: var(--c-muted);
+  cursor: pointer;
+}
+
+.typeCard strong {
+  color: var(--c-text);
+}
+
+.typeCard[data-active] {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-primary) 30%, transparent);
+}
+
+.typeCard:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

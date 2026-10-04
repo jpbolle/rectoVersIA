@@ -1,0 +1,167 @@
+.page {
+  display: grid;
+  grid-template-columns: 1fr 4fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Posé dans une page de Recto-versIA : une seule colonne, la hauteur du conteneur. */
+.page[data-embedded] {
+  grid-template-columns: 1fr;
+  height: 100%;
+  min-height: 520px;
+}
+
+.side {
+  padding: 16px 18px;
+  overflow-y: auto;
+  border-right: 1px solid var(--c-border);
+  background: var(--c-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.back {
+  font-size: 13px;
+  text-decoration: none;
+  color: var(--c-muted);
+}
+
+.back:hover {
+  color: var(--c-primary);
+}
+
+.kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-accent);
+}
+
+.title {
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--c-primary);
+}
+
+.titleInput {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  resize: none;
+  field-sizing: content;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--c-primary);
+}
+
+.titleInput:hover,
+.titleInput:focus {
+  border-color: var(--c-border);
+  background: var(--c-bg);
+  outline: none;
+}
+
+.status {
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.instructions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.sectionLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  margin-top: 8px;
+}
+
+.tips {
+  padding-left: 18px;
+  color: var(--c-muted);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.typeBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+
+.typeButton {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+.typeButton[data-active] {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.typeHint {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--c-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor {
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 800px) {
+  .page {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .side {
+    border-right: none;
+    border-bottom: 1px solid var(--c-border);
+  }
+
+  .editor {
+    min-height: 60vh;
+  }
+}

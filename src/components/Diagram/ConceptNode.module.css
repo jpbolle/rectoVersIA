@@ -1,0 +1,165 @@
+.node {
+  position: relative;
+  min-width: 120px;
+  max-width: 260px;
+  padding: 10px 14px;
+  border: 2px solid var(--c-border-strong); /* épaisseur, couleur et coins pilotés en ligne */
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--c-text);
+  cursor: grab;
+}
+
+.node[data-selected] {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 45%, transparent);
+}
+
+.node[data-dropping] {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-accent) 60%, transparent);
+}
+
+.label {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  min-width: 100px;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: center;
+  field-sizing: content;
+  cursor: text;
+}
+
+/* Points d'accroche : visibles au survol et quand la boîte est sélectionnée,
+   assez gros pour un pavé tactile. */
+.handle {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  background: var(--c-primary);
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.node:hover .handle,
+.node[data-selected] .handle {
+  opacity: 1;
+}
+
+.toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+}
+
+.toolButton {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  margin-left: 4px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.toolButton:hover {
+  background: var(--c-bg);
+}
+
+/* ── Schéma libre : formes et poignées ─────────────────────────────────────── */
+/* La boîte remplit la taille fixée par l'élève (React Flow la pose sur le conteneur). */
+.node[data-free] {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.node[data-shape='text'] {
+  box-shadow: none;
+}
+
+.node[data-shape='text'][data-selected] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-primary) 35%, transparent);
+}
+
+.node[data-shape='ellipse'] {
+  padding: 10px 22px;
+}
+
+.node[data-shape='diamond'] {
+  padding: 14px 30px;
+  box-shadow: none;
+}
+
+.diamond {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.15));
+}
+
+/* Note : un coin replié en haut à droite */
+.node[data-shape='note'] {
+  border-radius: 2px;
+  align-items: flex-start;
+  padding-top: 14px;
+}
+
+.noteCorner {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 16px 16px 0;
+  border-color: var(--c-bg) var(--c-bg) var(--c-border-strong) var(--c-border-strong);
+  border-right-color: var(--c-bg);
+  border-top-color: var(--c-bg);
+}
+
+.resizeLine {
+  border-color: var(--c-primary) !important;
+}
+
+.resizeHandle {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 3px !important;
+  background: var(--c-primary) !important;
+  border: 2px solid #fff !important;
+}
+
+.shapeSelect {
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  color: var(--c-text);
+}

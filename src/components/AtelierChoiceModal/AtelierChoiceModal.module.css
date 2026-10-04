@@ -1,0 +1,133 @@
+/* Popup de choix du type d'activité — grande, centrée, fond assombri.
+   Les cartes : pictogramme, titre, une ligne. Trois colonnes sur un écran de
+   Chromebook (1366 px), deux en dessous. */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(61, 56, 50, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal {
+  width: min(1080px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg-card);
+  border-radius: 14px;
+  box-shadow: var(--c-shadow-popup, 0 18px 50px rgba(61, 56, 50, 0.3));
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 16px 22px;
+  background: var(--c-bg-element);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.headTitre {
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--c-text);
+}
+
+.headSous {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+.fermer {
+  margin-left: auto;
+  border: none;
+  background: none;
+  font-size: 16px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  align-self: center;
+}
+
+.fermer:hover {
+  color: var(--c-text);
+}
+
+.corps {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 22px 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.carte {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  border: 1.5px solid var(--c-border);
+  border-radius: 12px;
+  padding: 16px 16px 14px;
+  background: var(--c-bg-card);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--c-text);
+  transition: border-color 0.15s, background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.carte:hover,
+.carte:focus-visible {
+  border-color: var(--c-primary);
+  background: var(--c-bg-element);
+  transform: translateY(-2px);
+  box-shadow: var(--c-shadow-card);
+  outline: none;
+}
+
+.picto {
+  display: block;
+  color: var(--c-text-secondary);
+  margin-bottom: 4px;
+}
+
+.picto svg {
+  width: 72px;
+  height: 54px;
+  display: block;
+}
+
+.carte:hover .picto {
+  color: var(--c-primary);
+}
+
+.titre {
+  font-family: var(--c-font-title);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.desc {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--c-text-secondary);
+}

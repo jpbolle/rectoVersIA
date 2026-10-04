@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDevoirs } from '@/hooks/useDevoirs';
 import { useGrilleTypes } from '@/hooks/useEvaluations';
 import CreationForm from '@/components/CreationForm/CreationForm';
+import AtelierChoiceModal from '@/components/AtelierChoiceModal/AtelierChoiceModal';
 import ActiviteRessourceCard from '@/components/ActiviteRessourceCard/ActiviteRessourceCard';
 import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
 import EditDevoirModal from '@/components/EditDevoirModal/EditDevoirModal';
@@ -37,6 +38,9 @@ export default function ActiviteFlePanel() {
   const { grilleTypes, grilles } = useGrilleTypes();
 
   const [creation, setCreation] = useState(false);
+  // Popup de choix du type avant le formulaire (2026-10-04)
+  const [choixAtelier, setChoixAtelier] = useState(false);
+  const [atelierChoisi, setAtelierChoisi] = useState<string | undefined>(undefined);
   const [envoi, setEnvoi] = useState(false);
   const [enEdition, setEnEdition] = useState<Devoir | null>(null);
   const [enregistrement, setEnregistrement] = useState(false);
@@ -129,6 +133,8 @@ export default function ActiviteFlePanel() {
   if (creation) {
     return (
       <CreationForm
+        key={atelierChoisi ?? 'ecriture'}
+        atelierInitial={atelierChoisi}
         modeFle
         classeNames={[]}
         grilleTypes={grilleTypes}
@@ -178,7 +184,18 @@ export default function ActiviteFlePanel() {
               </p>
             </div>
             <div className={styles.grille}>
-              <CreateOeuvreCard onClick={() => setCreation(true)} libelle="Créer une activité FLE" />
+              <CreateOeuvreCard onClick={() => setChoixAtelier(true)} libelle="Créer une activité FLE" />
+              {choixAtelier && (
+                <AtelierChoiceModal
+                  modeFle
+                  onClose={() => setChoixAtelier(false)}
+                  onChoose={(id) => {
+                    setAtelierChoisi(id);
+                    setChoixAtelier(false);
+                    setCreation(true);
+                  }}
+                />
+              )}
               {cartes(actives)}
             </div>
           </section>

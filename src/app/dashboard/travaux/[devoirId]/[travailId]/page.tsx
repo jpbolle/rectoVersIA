@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import SchemaActivity from '@/components/SchemaActivity/SchemaActivity';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -658,6 +659,30 @@ export default function TravailDetailPage() {
                   profAnswers={correction?.autoEvalProf}
                   onProfAnswerChange={updateAutoEvalProf}
                 />
+              </div>
+            ) : devoir.typeTravail === 'schematiser' ? (
+              <div className={styles.contentSection}>
+                <div className={styles.sectionHeader}>
+                  <h2>Schéma de l’élève</h2>
+                  <div className={styles.statusBadge}>
+                    {travail.status === 'submitted' ? (
+                      <>
+                        <span className={styles.statusIcon}>✓</span>
+                        <span>Remis le {new Date(travail.submittedAt!).toLocaleDateString('fr-BE')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className={styles.statusIcon}>📝</span>
+                        <span>Brouillon</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* Lecture seule : le prof zoome, déplace la vue, exporte ;
+                    il commente dans le commentaire général (O5-A du plan). */}
+                <div style={{ flex: 1, minHeight: 520, display: 'flex', flexDirection: 'column' }}>
+                  <SchemaActivity devoir={devoir} content={travail.content} readOnly />
+                </div>
               </div>
             ) : devoir.typeTravail === 'lire' && devoir.lectureQuiz ? (
               <div className={styles.contentSection}>

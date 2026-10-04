@@ -47,6 +47,14 @@
   /* Fonts */
   --c-font-title: 'Playfair Display', Georgia, serif;
   --c-font-body: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* Éditeur de schéma (moteur repris de la maquette SchémaKit, 2026-10-04) :
+     ses feuilles de style parlent ces cinq tokens-là. */
+  --c-surface: #ffffff;
+  --c-canvas: #fbfaf6;
+  --c-grid: #e2ded3;
+  --c-muted: #7a766c;
+  --c-edge: #8a857a;
 }
 
 /* ── Reset ──────────────────────────────────────── */

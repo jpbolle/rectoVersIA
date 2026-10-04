@@ -1,0 +1,43 @@
+/* Palette SchémaKit — tokens globaux. Thème clair uniquement (Chromebook, salle de classe). */
+:root {
+  --c-bg: #f6f4ee;
+  --c-surface: #ffffff;
+  --c-canvas: #fbfaf6;
+  --c-grid: #e2ded3;
+  --c-text: #2b2a26;
+  --c-muted: #7a766c;
+  --c-border: #dcd8cc;
+  --c-border-strong: #b9b4a5;
+  --c-primary: #2d6a5a;
+  --c-primary-dark: #22523f;
+  --c-accent: #d4944c;
+  --c-edge: #8a857a;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  color: var(--c-text);
+  background: var(--c-bg);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--c-primary);
+}
+
+button {
+  font-family: inherit;
+}
