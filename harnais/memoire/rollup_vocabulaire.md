@@ -39,6 +39,16 @@ Session 2026-08-09 (retours de test JP, **livré non déployé**) :
   console pour les erreurs de parsing ; ajouter des logs de validation dans
   `src/hooks/useVocabulaireExercises.ts` si besoin.
 
+## Diagnostic « bloqué » (2026-10-04) — pas un bug, corrections déclinées
+
+Signalé : des élèves « refont sans arrêt le diagnostic ». La copie d'eleve07 montrait
+4 exercices sur 5 validés à chaque passage : le bouton « Début de l'apprentissage »
+n'apparaît que quand les 5 le sont. **L'élève avait oublié de valider un exercice**
+(confirmé par JP). Le texte à trous de l'IA est bien formé (vérifié par 3 appels réels).
+Proposé puis **abandonné par JP** (« laissons tomber ») : points de navigation distincts
+fait / à faire, ligne « il reste : Exercice X », reprise du diagnostic après
+rechargement. Ne pas reproposer sans nouvelle demande.
+
 ## Gotchas actifs
 
 - Soumission évaluation élève : ne pas remettre `key={evaluationScores.length}` sur le
