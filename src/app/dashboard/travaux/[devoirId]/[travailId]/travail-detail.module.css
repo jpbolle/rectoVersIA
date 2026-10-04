@@ -169,6 +169,18 @@
   gap: 16px;
 }
 
+/* Coprofesseur en lecture : rien ne s'enregistre, et c'est dit */
+.lectureSeuleBadge {
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--c-accent);
+  color: var(--c-text);
+  background: var(--c-bg-element);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .returnBtn {
   background: #ff9800;
   color: white;

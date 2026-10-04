@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const {
     devoirs: tousLesDevoirs,
+    devoirsPartages,
     isLoading: devoirsLoading,
     createDevoir,
     updateDevoir,
@@ -140,6 +141,25 @@ export default function DashboardPage() {
       return a.dateRemise.localeCompare(b.dateRemise);
     });
   }, [devoirsAnnee, typeFiltre, evalFiltre]);
+
+  // ── Les activités d'un collègue sur mes classes partagées (2026-10-04) ──
+  // Mêmes filtres que les miennes, rangées à part : je n'en suis pas l'auteur.
+  // Leur `archive` est celui de MES sessions (calculé par le serveur).
+  const partagesTries = useMemo(
+    () =>
+      devoirsPartages
+        .filter(
+          (d) =>
+            d.referentiel !== 'fle' &&
+            (anneeFiltre === TOUTES || (d.anneeScolaire || SANS_ANNEE) === anneeFiltre) &&
+            (typeFiltre === TOUS || atelierDe(d) === typeFiltre) &&
+            (evalFiltre === TOUS || (d.evaluation || SANS_EVAL) === evalFiltre)
+        )
+        .sort((a, b) => a.intitule.localeCompare(b.intitule)),
+    [devoirsPartages, anneeFiltre, typeFiltre, evalFiltre]
+  );
+  const partagesActuels = partagesTries.filter((d) => !d.archive);
+  const partagesArchives = partagesTries.filter((d) => d.archive);
 
   // Devoirs non archivés, séparés en "en cours" et "corrigés"
   const devoirsActuels = devoirsTries.filter((d) => !d.archive && !d.corrige);
@@ -493,16 +513,33 @@ export default function DashboardPage() {
                   </div>
                 </>
               )}
+
+              {/* Activités d'un collègue sur mes classes partagées */}
+              {partagesActuels.length > 0 && (
+                <>
+                  <h3 className={styles.subSectionTitle}>👥 Activités de mes classes partagées</h3>
+                  <div className={styles.evaluationsGrid}>
+                    {partagesActuels.map((devoir) => (
+                      <DevoirCard
+                        key={devoir.id}
+                        devoir={devoir}
+                        variant="prof"
+                        onDuplicate={handleDuplicateDevoir}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           ) : (
             /* Onglet Archives */
             <div className={styles.evaluationsGrid}>
               {devoirsLoading ? (
                 <EmptyState icon="hourglass" message="En cours de chargement" />
-              ) : devoirsArchives.length === 0 ? (
+              ) : devoirsArchives.length === 0 && partagesArchives.length === 0 ? (
                 <EmptyState icon="🗃️" message="Aucun devoir archivé" />
               ) : (
-                devoirsArchives.map((devoir) => (
+                [...devoirsArchives, ...partagesArchives].map((devoir) => (
                   <DevoirCard
                     key={devoir.id}
                     devoir={devoir}

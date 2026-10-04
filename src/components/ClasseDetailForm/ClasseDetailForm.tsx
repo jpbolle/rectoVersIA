@@ -33,6 +33,10 @@ export default function ClasseDetailForm({
   onDeleteEleve,
 }: ClasseDetailFormProps) {
   const { eleves, isLoading, refetch } = useEleves(isVisible ? classe.id : undefined);
+  // Classe partagée par un collègue (coprofesseur, 2026-10-04) : on regarde
+  // ses élèves, on ne les gère pas — ajouter, importer, modifier, supprimer
+  // restent au titulaire, quel que soit le mode du partage.
+  const titulaire = !classe.monAcces || classe.monAcces === 'titulaire';
 
   useEffect(() => {
     if (refreshKey && refreshKey > 0) {
@@ -58,6 +62,15 @@ export default function ClasseDetailForm({
           </h2>
           {classe.description && (
             <p className={styles.description}>{classe.description}</p>
+          )}
+          {!titulaire && (
+            <p className={styles.coprofBandeau}>
+              Classe de <strong>{classe.titulaireNom || 'un collègue'}</strong> — tu en es
+              coprofesseur{' '}
+              {classe.monAcces === 'edition'
+                ? 'en écriture : tu corriges, publies, ouvres les activités et en crées pour elle.'
+                : 'en lecture : tu vois ses élèves, ses activités et ses copies.'}
+            </p>
           )}
         </div>
         <button
@@ -91,11 +104,14 @@ export default function ClasseDetailForm({
           l'épreuve. Les deux sont des VUES sur ce qui se pilote ailleurs. */}
       {isVisible && <ClasseActivites classeId={classe.id} />}
 
-      {isVisible && <ClasseCertifications classeId={classe.id} />}
+      {isVisible && (
+        <ClasseCertifications classeId={classe.id} lectureSeule={classe.monAcces === 'lecture'} />
+      )}
 
       <div className={styles.elevesSection}>
         <div className={styles.elevesSectionHeader}>
           <h3 className={styles.sectionTitle}>Liste des élèves</h3>
+          {titulaire && (
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               className={styles.addEleveBtn}
@@ -110,6 +126,7 @@ export default function ClasseDetailForm({
               📋 Import en masse
             </button>
           </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -118,12 +135,14 @@ export default function ClasseDetailForm({
           <div className={styles.emptyState}>
             <p className={styles.emptyIcon}>👤</p>
             <p className={styles.emptyText}>Aucun élève dans cette classe</p>
-            <button
-              className={styles.emptyBtn}
-              onClick={() => onAddEleve(classe.id)}
-            >
-              Ajouter le premier élève
-            </button>
+            {titulaire && (
+              <button
+                className={styles.emptyBtn}
+                onClick={() => onAddEleve(classe.id)}
+              >
+                Ajouter le premier élève
+              </button>
+            )}
           </div>
         ) : (
           <div className={styles.elevesList}>
@@ -148,6 +167,7 @@ export default function ClasseDetailForm({
                     <span className={styles.eleveEmail}>{eleve.email}</span>
                   </div>
                 </div>
+                {titulaire && (
                 <div className={styles.eleveActions} onClick={(e) => e.stopPropagation()}>
                   <button
                     className={styles.actionBtn}
@@ -164,6 +184,7 @@ export default function ClasseDetailForm({
                     🗑️
                   </button>
                 </div>
+                )}
               </div>
             ))}
           </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { classesAccessibles } from '@/lib/classe-acces';
 import { decrypt } from '@/lib/crypto';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 
@@ -121,7 +122,7 @@ async function fetchDevoirs(ids: string[]): Promise<Map<string, FirebaseFirestor
 }
 
 // Copies remises récemment sur les devoirs du prof
-async function profNotifications(uid: string, cutoffIso: string): Promise<NotifItem[]> {
+async function profNotifications(uid: string, email: string, cutoffIso: string): Promise<NotifItem[]> {
   const snap = await adminDb
     .collection('travaux')
     .where('submittedAt', '>', cutoffIso)
@@ -130,15 +131,49 @@ async function profNotifications(uid: string, cutoffIso: string): Promise<NotifI
     .get();
 
   const travaux = snap.docs
-    .map((d) => ({ id: d.id, ...d.data() } as { id: string; devoirId: string; submittedAt: string; studentName?: string; status?: string }))
+    .map((d) => ({ id: d.id, ...d.data() } as { id: string; devoirId: string; submittedAt: string; studentName?: string; status?: string; sessionId?: string | null }))
     .filter((t) => t.status === 'submitted');
   if (travaux.length === 0) return [];
 
   const devoirs = await fetchDevoirs(travaux.map((t) => t.devoirId));
+
+  // ── Coprofesseurs (2026-10-04) : c'est la CLASSE de la copie qui décide ──
+  // Le remplaçant est prévenu des remises de la classe qu'on lui a partagée, le
+  // titulaire de celles des activités du remplaçant — et un auteur ne l'est
+  // plus pour la classe d'un collègue qui lui a retiré l'accès.
+  // La classe se lit dans l'identifiant de session (`SES-{devoirId}-{classeId}`,
+  // déterministe) : aucune lecture de session à chaque relève.
+  const accessibles = await classesAccessibles({ uid, email });
+  const classeDe = (t: { devoirId: string; sessionId?: string | null }) =>
+    t.sessionId ? String(t.sessionId).slice(`SES-${t.devoirId}-`.length) : '';
+  // Pour MES activités : une classe que je n'ai plus — supprimée (comme avant)
+  // ou retirée par son titulaire (plus de notification)
+  const inconnues = [
+    ...new Set(
+      travaux
+        .filter((t) => devoirs.get(t.devoirId)?.profId === uid)
+        .map(classeDe)
+        .filter((c) => c && !accessibles.has(c))
+    ),
+  ];
+  const existantes = new Set<string>();
+  if (inconnues.length > 0) {
+    const docs = await adminDb.getAll(...inconnues.map((id) => adminDb.collection('classes').doc(id)));
+    docs.forEach((d) => {
+      if (d.exists) existantes.add(d.id);
+    });
+  }
+
   const notifs: NotifItem[] = [];
   for (const t of travaux) {
     const devoir = devoirs.get(t.devoirId);
-    if (!devoir || devoir.profId !== uid) continue;
+    if (!devoir) continue;
+    const c = classeDe(t);
+    const permise =
+      devoir.profId === uid
+        ? !c || accessibles.has(c) || !existantes.has(c)
+        : !!c && accessibles.has(c);
+    if (!permise) continue;
     notifs.push({
       id: `trav-${t.id}`,
       type: 'remise',
@@ -256,7 +291,7 @@ export async function GET(request: NextRequest) {
     const role = auth.role === 'prof' ? 'prof' : 'eleve';
     const [evenements, annonces] = await Promise.all([
       role === 'prof'
-        ? profNotifications(auth.uid, cutoffIso)
+        ? profNotifications(auth.uid, auth.email, cutoffIso)
         : eleveNotifications(auth.uid, auth.email, cutoffIso),
       annonceNotifications(role, auth.uid, auth.email, cutoffIso),
     ]);

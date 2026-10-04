@@ -1118,6 +1118,19 @@ Toujours lancer `NODE_OPTIONS=--max-old-space-size=4096 npm run build` (skill `/
 Le VPS a 8 Go de RAM, pas de swap. Un build échoué après « Creating an optimized production
 build » laisse le site **cassé** jusqu'au build suivant : relancer sans attendre.
 
+### Coprofesseurs : JAMAIS de comparaison `profId === uid` à la main
+Depuis le 2026-10-04, une classe peut être partagée avec un collègue (`classes.partages[]`
++ `partageEmails[]`, mode `lecture` / `edition`, plan `harnais/plans/2026-10-04-coprofesseur-classe.md`).
+Toute décision « ce prof peut-il voir / agir sur cette classe, activité, session, copie ? »
+passe par **`src/lib/classe-acces.ts`** (`accesClasse`, `accesDevoir`, `accesSession`,
+`accesTravail`, `copieVisible`, `peutAgir`). Une route qui recompare `profId` à la main
+rouvre l'un des deux pièges : le coprofesseur refusé partout, ou — pire — l'auteur
+d'une activité qui garde les copies d'une classe dont on lui a retiré l'accès.
+Règles : le coprofesseur ne voit que les sessions de SA classe ; personne ne modifie une
+activité qu'il n'a pas créée ; une correction garde le `profId` de l'AUTEUR de l'activité
+(`correcteurUid` dit qui l'a écrite). Les noms de classes d'une activité se résolvent par
+**`classesDeLActivite`** (auteur, puis classes partagées avec lui en écriture).
+
 ### Une activité peut être réservée à certains élèves de la classe
 `Devoir.eleves` (2026-09-14) : toute route qui liste ou ouvre une activité pour un élève
 doit appliquer `eleveExclu(devoir.eleves, identite.eleveIds)` — les listes existantes le
@@ -1268,6 +1281,8 @@ prof.
   principal. N'ajoute jamais un 2ᵉ atelier, n'en retire aucun.
 
 ### Fichiers clés
+- `src/lib/classe-acces.ts` — **coprofesseurs** : la seule porte « qui peut quoi » sur
+  une classe, une activité, une session, une copie (voir le gotcha §7).
 - `src/lib/integration.ts` — contenus interactifs embarqués : `DOMAINES_INTEGRATION`
   (liste blanche), `urlDepuisIntegration` (extrait le `src` d'un bloc `<iframe>`
   collé), `proportionsDepuisIntegration`, `integrationAutorisee`, `TAILLE_MAX_CODE`.

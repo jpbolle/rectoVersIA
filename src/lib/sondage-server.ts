@@ -346,8 +346,11 @@ export async function vueDuSondage(
  * Même geste que la compétition (`ouvrirManche` : identifiant déduit de la
  * session, accès ouvert à la classe au passage), marqué de son genre.
  */
-export async function ouvrirSondage(sessionId: string, profId: string): Promise<Manche | null> {
-  const manche = await ouvrirManche(sessionId, profId);
+export async function ouvrirSondage(
+  sessionId: string,
+  auth: { uid: string; email?: string | null }
+): Promise<Manche | null> {
+  const manche = await ouvrirManche(sessionId, auth);
   if (!manche) return null;
   // `ouvrirManche` a vidé le cache : la prochaine lecture relit la base, où le
   // genre est désormais posé.

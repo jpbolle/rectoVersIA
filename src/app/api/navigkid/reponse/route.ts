@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { accesTravail } from '@/lib/classe-acces';
 import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
 import { generateTravailId } from '@/lib/travail-utils';
 import { computeRechercheResume } from '@/lib/navigkid-server';
@@ -49,6 +50,34 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Un prof ne lit que la réponse d'un élève dont il a la COPIE : auteur de
+    // l'activité, titulaire ou coprofesseur de sa classe (2026-10-04). Avant,
+    // n'importe quel compte prof lisait n'importe quelle réponse.
+    if (auth.role === 'prof') {
+      const qSnap = await adminDb.collection('questionnaires').doc(questionnaireId).get();
+      const q = qSnap.data();
+      if (!q) {
+        return NextResponse.json({ success: true, data: null });
+      }
+      if (q.profId !== auth.uid) {
+        // ⚠ Par `studentId`, pas par l'identifiant du document : une copie
+        // pré-créée porte l'id de la FICHE élève, et ne reçoit l'UID qu'au
+        // moment où l'élève la réclame
+        const copies = q.devoirId
+          ? await adminDb
+              .collection('travaux')
+              .where('devoirId', '==', q.devoirId)
+              .where('studentId', '==', eleveId)
+              .limit(1)
+              .get()
+          : null;
+        const acces = copies && !copies.empty ? await accesTravail(copies.docs[0].data(), auth) : null;
+        if (!acces) {
+          return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
+        }
+      }
+    }
+
     const doc = await adminDb
       .collection('questionnaires')
       .doc(questionnaireId)

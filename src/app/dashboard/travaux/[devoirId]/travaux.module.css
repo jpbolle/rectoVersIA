@@ -182,6 +182,18 @@
   margin-bottom: 14px;
 }
 
+/* Activité d'un collègue (coprofesseur) : de qui, et ce qu'on y peut */
+.coprofBandeau {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--c-accent);
+  background: var(--c-bg-element);
+  border-radius: var(--c-radius);
+  color: var(--c-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .corrigeToggle {
   margin-left: auto;
 }

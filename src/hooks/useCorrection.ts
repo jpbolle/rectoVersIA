@@ -33,7 +33,17 @@ export function calculateScore(
   return Math.round((totalPoints / maxPoints) * 100);
 }
 
-export function useCorrection(travailId: string | null, devoirId: string | null, studentId: string | null, grille: Grille | null) {
+export function useCorrection(
+  travailId: string | null,
+  devoirId: string | null,
+  studentId: string | null,
+  grille: Grille | null,
+  // Coprofesseur EN LECTURE d'une classe partagée (2026-10-04) : la copie et
+  // sa correction se lisent, rien ne s'écrit — pas même la création de la
+  // correction au premier geste. Le serveur refuserait de toute façon ; ici,
+  // l'écran ne fait pas semblant d'avoir enregistré.
+  lectureSeule = false
+) {
   const { role, getAuthHeaders } = useAuth();
   const [correction, setCorrection] = useState<Correction | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -321,21 +331,25 @@ export function useCorrection(travailId: string | null, devoirId: string | null,
     }
   }, [travailId, role, fetchCorrection]);
 
+  // En lecture seule, chaque geste d'écriture devient sans effet
+  const garde = <T extends (...args: never[]) => unknown>(fn: T): T =>
+    lectureSeule ? ((async () => {}) as unknown as T) : fn;
+
   return {
     correction,
     isLoading,
     isSaving,
     error,
-    updateEvaluation,
-    updateAnnotatedContent,
-    updateAudioAnnotations,
-    updateDraftAnnotations,
-    updateCommentaireGeneral,
-    updateCommentaireGeneralAudio,
-    updateQuestionScore,
-    updateRechercheScore,
-    updateAutoEvalProf,
-    toggleVisibility,
+    updateEvaluation: garde(updateEvaluation),
+    updateAnnotatedContent: garde(updateAnnotatedContent),
+    updateAudioAnnotations: garde(updateAudioAnnotations),
+    updateDraftAnnotations: garde(updateDraftAnnotations),
+    updateCommentaireGeneral: garde(updateCommentaireGeneral),
+    updateCommentaireGeneralAudio: garde(updateCommentaireGeneralAudio),
+    updateQuestionScore: garde(updateQuestionScore),
+    updateRechercheScore: garde(updateRechercheScore),
+    updateAutoEvalProf: garde(updateAutoEvalProf),
+    toggleVisibility: garde(toggleVisibility),
     refetch: fetchCorrection,
   };
 }

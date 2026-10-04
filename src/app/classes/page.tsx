@@ -7,6 +7,7 @@ import { useClasses } from '@/hooks/useClasses';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import ClasseCard from '@/components/ClasseCard/ClasseCard';
+import ClassePartageModal from '@/components/ClasseCard/ClassePartageModal';
 import CreateClasseCard from '@/components/CreateClasseCard/CreateClasseCard';
 import ClasseCreationForm from '@/components/ClasseCreationForm/ClasseCreationForm';
 import ClasseDetailForm from '@/components/ClasseDetailForm/ClasseDetailForm';
@@ -25,6 +26,7 @@ export default function ClassesPage() {
   const router = useRouter();
   const {
     classes,
+    classesPartagees,
     isLoading: classesLoading,
     createClasse,
     updateClasse,
@@ -64,6 +66,14 @@ export default function ClassesPage() {
 
   // Fiche élève ouverte en grande popup (profil d'écrilecteur complet)
   const [ficheEleve, setFicheEleve] = useState<Eleve | null>(null);
+
+  // Popup des coprofesseurs d'une classe (2026-10-04)
+  const [partageClasse, setPartageClasse] = useState<Classe | null>(null);
+
+  // La fiche d'un élève peut venir d'une classe partagée : on la cherche
+  // dans les deux paniers
+  const toutesClasses = [...classes, ...classesPartagees];
+  const partageesActives = classesPartagees.filter((c) => !c.archive);
 
   // Filtrer les classes selon l'onglet
   const filteredClasses = classes.filter((c) =>
@@ -419,6 +429,7 @@ export default function ClassesPage() {
                     onEdit={handleEditClasse}
                     onDelete={handleDeleteClasse}
                     onToggleArchive={handleToggleArchive}
+                    onPartager={setPartageClasse}
                     onClick={() => handleClasseClick(classe)}
                   />
                 ))}
@@ -426,6 +437,26 @@ export default function ClassesPage() {
             )}
           </div>
         </section>
+        )}
+
+        {/* ── Les classes qu'un collègue m'a partagées (coprofesseur) ──
+            À part : ce ne sont pas les miennes. On y entre comme dans une
+            classe à soi — le détail sait ce qu'on peut y faire. */}
+        {!selectedClasse && partageesActives.length > 0 && (
+          <section className={styles.classesSection}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Classes partagées avec moi</h2>
+            </div>
+            <div className={styles.classesGrid}>
+              {partageesActives.map((classe) => (
+                <ClasseCard
+                  key={classe.id}
+                  classe={classe}
+                  onClick={() => handleClasseClick(classe)}
+                />
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Tous les élèves du prof, filtre actifs / archivés, clic = fiche */}
@@ -445,9 +476,20 @@ export default function ClassesPage() {
         <EleveProfilModal
           eleveId={ficheEleve.id}
           eleveName={`${ficheEleve.prenom} ${ficheEleve.nom}`}
-          classeName={classes.find((c) => c.id === ficheEleve.classeId)?.nom}
-          classeType={classes.find((c) => c.id === ficheEleve.classeId)?.type}
+          classeName={toutesClasses.find((c) => c.id === ficheEleve.classeId)?.nom}
+          classeType={toutesClasses.find((c) => c.id === ficheEleve.classeId)?.type}
           onClose={() => setFicheEleve(null)}
+        />
+      )}
+
+      {partageClasse && (
+        <ClassePartageModal
+          classe={partageClasse}
+          onFermer={() => setPartageClasse(null)}
+          onEnregistre={() => {
+            refetchClasses();
+            setMessage({ text: 'Coprofesseurs enregistrés', type: 'success' });
+          }}
         />
       )}
 

@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { generateClasseId, generateClasseCode, getCurrentAnneeScolaire } from '@/lib/classe-utils';
 import { isClasseType } from '@/types/classe';
+import { accesClasseDepuisDoc, classesPartageesAvecMoi, normaliserPartagesClasse } from '@/lib/classe-acces';
 import type { Classe, CreateClasseData } from '@/types/classe';
 
 // GET - Liste des classes du prof
@@ -65,13 +66,41 @@ export async function GET(request: NextRequest) {
           archive: data.archive || false,
           code: data.code || generatedCodes.get(doc.id) || '',
           googleClassroomId: data.googleClassroomId,
+          // Le titulaire voit avec qui il partage sa classe
+          partages: normaliserPartagesClasse(data.partages),
+          monAcces: 'titulaire' as const,
           createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || '',
           updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt || '',
         };
       })
       .sort((a, b) => a.nom.localeCompare(b.nom));
 
-    return NextResponse.json({ success: true, data: classes });
+    // ── Les classes qu'un collègue m'a partagées (coprofesseur, 2026-10-04) ──
+    // Panier À PART : `data` reste « mes classes », et tous les écrans qui s'en
+    // servent (menus de création d'activité, Mes Élèves…) ne voient pas
+    // arriver des classes qui ne sont pas les leurs sans l'avoir demandé.
+    // On n'y renvoie ni le code d'inscription ni la liste des partages : ce
+    // sont des réglages du titulaire.
+    const partagees: Classe[] = (await classesPartageesAvecMoi(auth))
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          nom: data.nom || '',
+          description: data.description || '',
+          type: isClasseType(data.type) ? data.type : 'francais',
+          profId: data.profId || '',
+          anneeScolaire: data.anneeScolaire || '',
+          archive: data.archive || false,
+          titulaireNom: data.titulaireNom || '',
+          monAcces: accesClasseDepuisDoc(data, auth) ?? 'lecture',
+          createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || '',
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt || '',
+        };
+      })
+      .sort((a, b) => a.nom.localeCompare(b.nom));
+
+    return NextResponse.json({ success: true, data: classes, partagees });
   } catch (error) {
     console.error('Erreur GET classes:', error);
     return NextResponse.json(

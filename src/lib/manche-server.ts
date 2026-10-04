@@ -14,6 +14,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { quizDuDevoir } from '@/lib/questionnaire-lecture-server';
 import { lectureQuizForEleve } from '@/lib/lecture-server';
 import { classesDeLEleve } from '@/lib/session-server';
+import { accesSession, peutAgir } from '@/lib/classe-acces';
 import { decrypt, decryptFields, encrypt, hashEmail, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
 import { generateTravailId } from '@/lib/travail-utils';
 import {
@@ -570,7 +571,11 @@ export async function accesManche(
   const e = await entree(id);
   if (!e) return 'aucune';
   if (auth.role === 'prof') {
-    return e.manche.profId === auth.uid ? { manche: e.manche, estProf: true } : 'refuse';
+    // L'auteur de l'activité, ou le titulaire / coprofesseur EN ÉCRITURE de la
+    // classe qui joue (2026-10-04) : il pilote la partie de sa classe, même
+    // lancée par l'autre — et ne la pilote plus si l'accès lui est retiré
+    const a = await accesSession(e.manche.sessionId, auth);
+    return a && peutAgir(a.acces) ? { manche: e.manche, estProf: true } : 'refuse';
   }
   const classes = await classesDeLEleve(auth.uid, auth.email);
   return classes.includes(e.manche.classeId) ? { manche: e.manche, estProf: false } : 'refuse';
@@ -895,8 +900,9 @@ export async function vueDeLaManche(
  */
 export async function ouvrirManche(
   sessionId: string,
-  profId: string
+  auth: { uid: string; email?: string | null }
 ): Promise<Manche | null> {
+  const profId = auth.uid;
   const snap = await adminDb.collection('sessions').doc(sessionId).get();
   if (!snap.exists) return null;
   const s = snap.data() as {
@@ -905,7 +911,10 @@ export async function ouvrirManche(
     profId?: string;
     disponible?: boolean;
   };
-  if (s.profId !== profId) return null;
+  // L'auteur de l'activité, ou le titulaire / coprofesseur EN ÉCRITURE de la
+  // classe de cette session (2026-10-04)
+  const acces = await accesSession(sessionId, auth);
+  if (!acces || !peutAgir(acces.acces)) return null;
 
   const now = new Date().toISOString();
   const id = mancheId(sessionId);

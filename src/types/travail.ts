@@ -73,6 +73,12 @@ export interface Travail {
   createdAt: string;
   updatedAt: string;
   submittedAt: string | null;
+  /**
+   * Ce que le prof qui lit peut faire de CETTE copie — servi par le serveur
+   * (GET /api/travaux/[id]), jamais stocké. 'lecture' = coprofesseur en
+   * lecture, ou auteur à qui le titulaire de la classe a retiré l'écriture.
+   */
+  monAcces?: 'auteur' | 'titulaire' | 'edition' | 'lecture';
 }
 
 export type NonRenduStatus = 'justifie' | 'nonJustifie';

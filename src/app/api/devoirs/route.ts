@@ -11,6 +11,7 @@ import {
 } from '@/lib/session-server';
 import { eleveExclu, lireSequenceFle, restrictionElevesPourFirestore, sequenceFlePourFirestore } from '@/lib/sequence-server';
 import { verifyAuth } from '@/lib/api-auth';
+import { classesAccessibles, nomDuProf } from '@/lib/classe-acces';
 import { sanitizeRessources } from '@/lib/ressources-server';
 import { calculateSchoolYear } from '@/lib/auth-utils';
 import { generateDevoirId } from '@/lib/devoir-utils';
@@ -57,8 +58,8 @@ export async function GET(request: NextRequest) {
       throw queryError;
     }
 
-    let devoirs = snapshot.docs.map((doc) => {
-      const data = doc.data();
+    const versDevoir = (doc: FirebaseFirestore.DocumentSnapshot) => {
+      const data = doc.data() ?? {};
       return {
         id: data.id || doc.id,
         classes: data.classes || [],
@@ -115,8 +116,77 @@ export async function GET(request: NextRequest) {
         // Activité FLE : rangée dans Mes Ressources › Modules FLE, pas au tableau de bord
         referentiel: data.referentiel === 'fle' ? ('fle' as const) : null,
         submittedCount: undefined as number | undefined,
+        monAcces: undefined as 'titulaire' | 'edition' | 'lecture' | undefined,
+        auteurNom: undefined as string | undefined,
+        mesClasses: undefined as string[] | undefined,
       };
-    });
+    };
+
+    let devoirs = snapshot.docs.map(versDevoir);
+
+    // ── LES ACTIVITÉS DES AUTRES SUR MES CLASSES (coprofesseur, 2026-10-04) ──
+    // Celles du titulaire pour le remplaçant, celles du remplaçant pour le
+    // titulaire. Elles passent par les mêmes enrichissements que les miennes,
+    // puis repartent dans un panier À PART (`partagees`) : `data` ne change
+    // pas, et aucun écran existant ne les reçoit sans l'avoir demandé.
+    // Le compte des copies remises s'y limite à MES sessions.
+    const idsPartagees = new Set<string>();
+    const mesSessionsParDevoir = new Map<string, string[]>();
+    // L'état que JE vois d'une activité partagée : celui de MES sessions —
+    // archivée quand elles le sont toutes, ouverte dès que l'une l'est
+    const etatDeMesSessions = new Map<string, { archive: boolean; disponible: boolean }>();
+    if (auth.role === 'prof') {
+      const accessibles = await classesAccessibles(auth);
+      const accesParDevoir = new Map<string, Set<string>>();
+      // Seules les classes PARTAGÉES (avec moi, ou par moi) peuvent porter
+      // l'activité d'un autre : inutile de relire les sessions des autres
+      const classeIds = [...accessibles.entries()].filter(([, c]) => c.partagee).map(([id]) => id);
+      for (let i = 0; i < classeIds.length; i += 30) {
+        const sessionsSnap = await adminDb
+          .collection('sessions')
+          .where('classeId', 'in', classeIds.slice(i, i + 30))
+          .get();
+        sessionsSnap.docs.forEach((d) => {
+          const s = d.data();
+          if (s.profId === auth.uid) return; // une activité à moi : déjà listée
+          const devoirId = String(s.devoirId || '');
+          const classeId = String(s.classeId || '');
+          if (!devoirId) return;
+          mesSessionsParDevoir.set(devoirId, [...(mesSessionsParDevoir.get(devoirId) ?? []), d.id]);
+          const etat = etatDeMesSessions.get(devoirId) ?? { archive: true, disponible: false };
+          etatDeMesSessions.set(devoirId, {
+            archive: etat.archive && s.archive === true,
+            disponible: etat.disponible || s.disponible === true,
+          });
+          accesParDevoir.set(devoirId, new Set([...(accesParDevoir.get(devoirId) ?? []), classeId]));
+        });
+      }
+      const autres = await Promise.all(
+        [...accesParDevoir.keys()].map((id) => adminDb.collection('devoirs').doc(id).get())
+      );
+      const noms = new Map<string, string>();
+      for (const doc of autres) {
+        if (!doc.exists) continue;
+        const d = versDevoir(doc);
+        const classes = [...(accesParDevoir.get(doc.id) ?? [])]
+          .map((c) => accessibles.get(c))
+          .filter((c): c is { acces: 'titulaire' | 'edition' | 'lecture'; nom: string; partagee: boolean } => !!c);
+        if (!noms.has(d.profId)) noms.set(d.profId, await nomDuProf(d.profId));
+        idsPartagees.add(d.id);
+        devoirs.push({
+          ...d,
+          ...(etatDeMesSessions.get(doc.id) ?? {}),
+          // Le meilleur de mes accès sur ses classes : agir dans l'une suffit
+          // à pouvoir ouvrir la page des copies en écriture (chaque session
+          // garde, elle, son propre droit — cf. /api/sessions)
+          monAcces: classes.some((c) => c.acces !== 'lecture')
+            ? classes.some((c) => c.acces === 'titulaire') ? 'titulaire' : 'edition'
+            : 'lecture',
+          auteurNom: noms.get(d.profId),
+          mesClasses: classes.map((c) => c.nom).sort(),
+        });
+      }
+    }
 
     // ── Les questionnaires de la BIBLIOTHÈQUE ──
     // Une activité qui y renvoie doit servir le questionnaire de la
@@ -161,6 +231,20 @@ export async function GET(request: NextRequest) {
                 .count()
                 .get();
               return { ...d, submittedCount: agg.data().count };
+            }
+            // Activité d'un autre : seulement les copies de MES sessions
+            if (idsPartagees.has(d.id)) {
+              const counts = await Promise.all(
+                (mesSessionsParDevoir.get(d.id) ?? []).map((sid) =>
+                  adminDb
+                    .collection('travaux')
+                    .where('sessionId', '==', sid)
+                    .where('status', '==', 'submitted')
+                    .count()
+                    .get()
+                )
+              );
+              return { ...d, submittedCount: counts.reduce((n, a) => n + a.data().count, 0) };
             }
             const agg = await adminDb
               .collection('travaux')
@@ -274,6 +358,13 @@ export async function GET(request: NextRequest) {
       devoirs = devoirs.filter((d) => !eleveExclu(d.eleves, mesFiches));
     }
 
+    if (idsPartagees.size > 0) {
+      return NextResponse.json({
+        success: true,
+        data: devoirs.filter((d) => !idsPartagees.has(d.id)),
+        partagees: devoirs.filter((d) => idsPartagees.has(d.id)),
+      });
+    }
     return NextResponse.json({ success: true, data: devoirs });
   } catch (error) {
     console.error('Erreur GET /api/devoirs:', error);

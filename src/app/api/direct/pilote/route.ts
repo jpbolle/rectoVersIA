@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     // si elle existe déjà. L'identifiant étant déduit de la session, deux clics
     // ne font pas deux parties.
     if (action === 'ouvrir') {
-      const manche = await ouvrirManche(sessionId, auth.uid);
+      const manche = await ouvrirManche(sessionId, auth);
       if (!manche) {
         return NextResponse.json({ success: false, message: 'Session introuvable' }, { status: 404 });
       }

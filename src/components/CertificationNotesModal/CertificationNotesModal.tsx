@@ -27,6 +27,9 @@ interface Props {
   onClose: () => void;
   // Prévient le parent qu'au moins une note a bougé (rafraîchir un compteur)
   onEnregistre?: () => void;
+  // Coprofesseur EN LECTURE d'une classe partagée : il voit les notes, ne les
+  // saisit pas (le serveur le refuserait de toute façon)
+  lectureSeule?: boolean;
 }
 
 export default function CertificationNotesModal({
@@ -34,6 +37,7 @@ export default function CertificationNotesModal({
   classeId,
   onClose,
   onEnregistre,
+  lectureSeule = false,
 }: Props) {
   const { getAuthHeaders } = useAuth();
   const [payload, setPayload] = useState<CertificationNotesPayload | null>(null);
@@ -140,6 +144,8 @@ export default function CertificationNotesModal({
         headers,
         body: JSON.stringify({
           moduleId,
+          // Depuis une classe : c'est elle qui autorise un coprofesseur
+          ...(classeId ? { classeId } : {}),
           date,
           notes: payload.lignes.map((l) => ({
             eleveId: l.eleveId,
@@ -277,6 +283,7 @@ export default function CertificationNotesModal({
                               min={0}
                               max={100}
                               className={styles.noteInput}
+                              disabled={lectureSeule}
                               value={saisies[l.eleveId] ?? ''}
                               placeholder={l.percentAuto !== null ? String(l.percentAuto) : '—'}
                               onChange={(e) => {
@@ -298,7 +305,7 @@ export default function CertificationNotesModal({
                                 type="checkbox"
                                 className={styles.faitBox}
                                 checked={l.faitAuto === true || faits[l.eleveId] === true}
-                                disabled={l.faitAuto === true}
+                                disabled={l.faitAuto === true || lectureSeule}
                                 aria-label={`Épreuve faite par ${l.nom} ${l.prenom}`}
                                 onChange={(e) => {
                                   setFaits((prev) => ({ ...prev, [l.eleveId]: e.target.checked }));
@@ -342,16 +349,18 @@ export default function CertificationNotesModal({
             {obtenues > 1 ? 's' : ''}
           </span>
           <button type="button" className={styles.btnGhost} onClick={fermer}>
-            Annuler
+            {lectureSeule ? 'Fermer' : 'Annuler'}
           </button>
-          <button
-            type="button"
-            className={styles.btnPrimary}
-            onClick={enregistrer}
-            disabled={envoi || chargement || !payload?.lignes.length}
-          >
-            {envoi ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
+          {!lectureSeule && (
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              onClick={enregistrer}
+              disabled={envoi || chargement || !payload?.lignes.length}
+            >
+              {envoi ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          )}
         </div>
       </div>
     </div>,

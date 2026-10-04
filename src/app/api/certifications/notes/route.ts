@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { calculateSchoolYear } from '@/lib/auth-utils';
+import { accesClasse, peutAgir } from '@/lib/classe-acces';
 import {
   COLLECTION_NOTES,
   buildLignes,
@@ -21,6 +22,25 @@ import type { CertificationNotesPayload, MajNoteCertification } from '@/types/ce
 // Accès prof uniquement, et uniquement sur SES scénarisations — d'où le
 // passage systématique par trouverCertification(auth.uid, moduleId).
 
+// ── Coprofesseur (2026-10-04) ──
+// Les certifications vivent dans la scénarisation du TITULAIRE de la classe.
+// Quand la popup s'ouvre depuis une classe partagée (`classeId`), on les
+// cherche donc chez lui — et seulement pour CETTE classe. Sans classe, ou pour
+// une classe qui est la sienne : le prof appelant, comme avant.
+async function proprietaireDesNotes(
+  auth: { uid: string; email?: string | null },
+  classeId: string | null
+): Promise<{ profId: string; classeId: string | null; peutEcrire: boolean } | null> {
+  if (!classeId) return { profId: auth.uid, classeId: null, peutEcrire: true };
+  const c = await accesClasse(classeId, auth);
+  if (!c) return null;
+  return {
+    profId: c.acces === 'titulaire' ? auth.uid : String(c.data.profId || ''),
+    classeId,
+    peutEcrire: peutAgir(c.acces),
+  };
+}
+
 // GET ?moduleId=…&classeId=… — classeId restreint à une classe (Mes Classes)
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -35,7 +55,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const trouve = await trouverCertification(auth.uid, moduleId);
+    const proprio = await proprietaireDesNotes(auth, classeId);
+    if (!proprio) {
+      return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
+    }
+    const trouve = await trouverCertification(proprio.profId, moduleId);
     if (!trouve) {
       return NextResponse.json(
         { success: false, message: 'Certification introuvable' },
@@ -44,7 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { scenarisation, module } = trouve;
-    const eleves = await elevesConcernes(scenarisation, auth.uid, classeId);
+    const eleves = await elevesConcernes(scenarisation, proprio.profId, classeId);
     const devoirId = devoirCertificatif(module);
     const [saisies, autos, faitsAuto] = await Promise.all([
       notesSaisies(moduleId),
@@ -90,7 +114,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'moduleId requis' }, { status: 400 });
     }
 
-    const trouve = await trouverCertification(auth.uid, moduleId);
+    const classeId = typeof body.classeId === 'string' && body.classeId ? body.classeId : null;
+    const proprio = await proprietaireDesNotes(auth, classeId);
+    if (!proprio || !proprio.peutEcrire) {
+      return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
+    }
+
+    const trouve = await trouverCertification(proprio.profId, moduleId);
     if (!trouve) {
       return NextResponse.json(
         { success: false, message: 'Certification introuvable' },
@@ -99,9 +129,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // Les notes ne peuvent porter que sur des élèves du prof : sans ce filtre,
-    // un eleveId forgé écrirait dans la classe d'un collègue.
+    // un eleveId forgé écrirait dans la classe d'un collègue. Un coprofesseur
+    // est en plus borné à SA classe partagée.
     const autorises = new Set(
-      (await elevesConcernes(trouve.scenarisation, auth.uid)).map((e) => e.eleveId)
+      (await elevesConcernes(trouve.scenarisation, proprio.profId, proprio.classeId)).map((e) => e.eleveId)
     );
 
     // Notée ou « faite » : la nature de la certification décide de ce qu'une
@@ -130,7 +161,8 @@ export async function PUT(request: NextRequest) {
           chapitreId: trouve.chapitreId,
           moduleId,
           eleveId: maj.eleveId,
-          profId: auth.uid,
+          // Le titulaire, même quand c'est son remplaçant qui saisit
+          profId: proprio.profId,
           anneeScolaire: trouve.scenarisation.anneeScolaire || calculateSchoolYear(),
           // Un « fait » n'est pas un 100 % : le pourcentage reste nul, et c'est
           // `fait` qui porte l'information. Le document n'existe que si l'épreuve

@@ -31,11 +31,23 @@ interface Props {
 
 export default function ElevesChoix({ classesNoms, value, onChange, disabled = false, label, onEleves }: Props) {
   const { getAuthHeaders } = useAuth();
-  const { classes: mesClasses } = useClasses();
-  const classesChoisies = useMemo(
-    () => mesClasses.filter((c) => classesNoms.includes(c.nom)),
-    [mesClasses, classesNoms]
-  );
+  const { classes: mesClasses, classesPartagees } = useClasses();
+  // Une classe partagée EN ÉCRITURE peut recevoir mes activités (coprofesseur,
+  // 2026-10-04) : ses élèves se choisissent comme les miens. Jamais une
+  // homonyme d'une des miennes — le nom désignerait la mienne.
+  const classesChoisies = useMemo(() => {
+    const miennes = new Set(mesClasses.map((c) => c.nom));
+    const toutes = [
+      ...mesClasses,
+      ...classesPartagees.filter(
+        (c) =>
+          c.monAcces === 'edition' &&
+          !miennes.has(c.nom) &&
+          classesPartagees.filter((x) => x.monAcces === 'edition' && x.nom === c.nom).length === 1
+      ),
+    ];
+    return toutes.filter((c) => classesNoms.includes(c.nom));
+  }, [mesClasses, classesPartagees, classesNoms]);
   const [elevesParClasse, setElevesParClasse] = useState<Record<string, Eleve[]>>({});
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { decrypt } from '@/lib/crypto';
+import { accesTravail, peutAgir } from '@/lib/classe-acces';
 import type { Travail, UpdateTravailData } from '@/types/travail';
 
 // GET - Recuperer un travail par ID
@@ -36,6 +37,17 @@ export async function GET(
       );
     }
 
+    // Un prof : l'auteur de l'activité, ou le titulaire / coprofesseur de la
+    // classe de cette copie. Avant le 2026-10-04, n'importe quel compte prof
+    // ouvrait n'importe quelle copie par son adresse.
+    const accesProf = auth.role === 'prof' ? await accesTravail(data, auth) : null;
+    if (auth.role === 'prof' && !accesProf) {
+      return NextResponse.json(
+        { success: false, message: 'Acces refuse' },
+        { status: 403 }
+      );
+    }
+
     const travail: Travail = {
       id: data.id || docSnap.id,
       devoirId: data.devoirId,
@@ -58,6 +70,7 @@ export async function GET(
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       submittedAt: data.submittedAt || null,
+      ...(accesProf ? { monAcces: accesProf.acces } : {}),
     };
 
     return NextResponse.json({ success: true, data: travail });
@@ -102,6 +115,18 @@ export async function PATCH(
         { success: false, message: 'Acces refuse' },
         { status: 403 }
       );
+    }
+
+    // Un prof n'agit sur une copie (non rendu, renvoi en brouillon) que s'il en
+    // a le droit : auteur de l'activité, titulaire ou coprofesseur EN ÉCRITURE
+    if (auth.role === 'prof') {
+      const acces = await accesTravail(data, auth);
+      if (!acces || !peutAgir(acces.acces)) {
+        return NextResponse.json(
+          { success: false, message: 'Acces refuse' },
+          { status: 403 }
+        );
+      }
     }
 
     // Un travail soumis ne peut plus etre modifie par l'eleve

@@ -24,7 +24,7 @@ import SequenceFleBuilder from '@/components/SequenceFleBuilder/SequenceFleBuild
 import ElevesChoix from '@/components/ElevesChoix/ElevesChoix';
 import type { EleveAvecClasse } from '@/components/ElevesChoix/ElevesChoix';
 import { SEQUENCE_FLE_VIDE } from '@/types/sequence-fle';
-import { useClasses } from '@/hooks/useClasses';
+import { classesPartageesPourActivite, useClasses } from '@/hooks/useClasses';
 import { estClasseFle } from '@/types/classe';
 import type { SequenceFleContenu } from '@/types/sequence-fle';
 import type { TypeModal } from '@/types/didactique';
@@ -237,7 +237,10 @@ export default function EditDevoirModal({
   const aContenus = typeTravail !== 'vocabulaire' && !isOeuvre;
   const isSequence = typeTravail === 'sequence';
   // Une séquence FLE ne se donne qu'à des classes FLE
-  const { classes: toutesMesClasses } = useClasses();
+  const { classes: toutesMesClasses, classesPartagees } = useClasses();
+  // Classes qu'un collègue m'a partagées EN ÉCRITURE : je peux leur donner
+  // MES activités (coprofesseur, 2026-10-04). Pas pour une séquence FLE.
+  const partageesActivite = classesPartageesPourActivite(toutesMesClasses, classesPartagees);
   const classeNamesFle = toutesMesClasses.filter((c) => estClasseFle(c) && !c.archive).map((c) => c.nom);
   const aDeuxGroupes = aRessources && aContenus;
   const grillesDeLAtelier = grilles.length
@@ -447,7 +450,9 @@ export default function EditDevoirModal({
               Classe(s) <span className={styles.optional}>— facultatif</span>
             </label>
             <ClassesDropdown
-              options={isSequence ? classeNamesFle : classeNames}
+              options={isSequence ? classeNamesFle : [...classeNames, ...partageesActivite.noms]}
+              precisions={isSequence ? undefined : partageesActivite.precisions}
+              indisponibles={isSequence ? undefined : partageesActivite.indisponibles}
               selected={selectedClasses}
               onChange={setSelectedClasses}
               disabled={isSaving}

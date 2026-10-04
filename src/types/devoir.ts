@@ -152,6 +152,13 @@ export interface Devoir {
   ressourcesToIA?: boolean;
   // Nombre de copies remises (enrichi côté serveur, liste prof uniquement)
   submittedCount?: number;
+  // ── Activité d'un AUTRE prof, visible parce qu'elle vise une classe dont je
+  // suis titulaire ou coprofesseur (2026-10-04). Servi par GET /api/devoirs
+  // dans le panier `partagees`, jamais stocké.
+  monAcces?: 'titulaire' | 'edition' | 'lecture';
+  auteurNom?: string;
+  /** Les noms de MES classes (titulaire ou coprof) que vise cette activité */
+  mesClasses?: string[];
   // Questionnaire de lecture (type lire) — côté élève, correctIndex est filtré
   lectureQuiz?: LectureQuiz | null;
   // ─── Lecture d'une œuvre (atelier `lecture-oeuvre`) ───

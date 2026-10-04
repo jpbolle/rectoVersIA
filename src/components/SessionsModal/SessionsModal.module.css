@@ -172,3 +172,10 @@
 .jouer:hover {
   filter: brightness(1.06);
 }
+
+/* Coprofesseur en lecture : la ligne se lit, ne se règle pas */
+.lectureSeule {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--c-text-secondary);
+}

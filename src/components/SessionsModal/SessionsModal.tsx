@@ -35,6 +35,13 @@ interface Props {
   onClose: () => void;
   /** Prévient le parent qu'une classe a bougé (rafraîchir la card) */
   onChange?: () => void;
+  /**
+   * Activité d'un AUTRE prof, ouverte depuis une classe partagée (coprofesseur,
+   * 2026-10-04) : seules mes classes s'affichent (le serveur filtre), chacune
+   * avec ce que j'y peux, et l'archivage se fait ici — la carte n'a pas de
+   * bascules globales pour moi.
+   */
+  partagee?: boolean;
 }
 
 export default function SessionsModal({
@@ -44,6 +51,7 @@ export default function SessionsModal({
   sondage = false,
   onClose,
   onChange,
+  partagee = false,
 }: Props) {
   const { getAuthHeaders } = useAuth();
   const [sessions, setSessions] = useState<Session[] | null>(null);
@@ -75,7 +83,7 @@ export default function SessionsModal({
   }, [devoirId, getAuthHeaders]);
 
   const basculer = useCallback(
-    async (session: Session, champ: 'disponible' | 'corrigeDisponible', valeur: boolean) => {
+    async (session: Session, champ: 'disponible' | 'corrigeDisponible' | 'archive', valeur: boolean) => {
       setEnCours((s) => new Set(s).add(session.id));
       // Optimiste : la bascule doit répondre tout de suite, sinon on la
       // reclique. En cas d'échec, on remet la valeur d'avant.
@@ -136,11 +144,17 @@ export default function SessionsModal({
             </p>
           )}
 
-          {sessions?.map((s) => (
+          {sessions?.map((s) => {
+            // Coprofesseur en LECTURE : il voit l'état, il n'y touche pas
+            const lecture = s.monAcces === 'lecture';
+            return (
             <div key={s.id} className={styles.ligne}>
-              <span className={styles.classe}>🎓 {s.classeNom}</span>
+              <span className={styles.classe}>
+                🎓 {s.classeNom}
+                {lecture && <span className={styles.lectureSeule}> · lecture seule</span>}
+              </span>
               <div className={styles.bascules}>
-                {competition && (
+                {competition && !lecture && (
                   <a
                     href={`/direct/${s.id}`}
                     target="_blank"
@@ -151,7 +165,7 @@ export default function SessionsModal({
                     🏁 Jouer
                   </a>
                 )}
-                {sondage && (
+                {sondage && !lecture && (
                   <a
                     href={`/sondage/${s.id}`}
                     target="_blank"
@@ -167,7 +181,7 @@ export default function SessionsModal({
                   onChange={(v) => basculer(s, 'disponible', v)}
                   labelOn="Travail disponible"
                   labelOff="Travail non disponible"
-                  disabled={enCours.has(s.id)}
+                  disabled={enCours.has(s.id) || lecture}
                 />
                 {!sondage && (
                   <Toggle
@@ -175,17 +189,31 @@ export default function SessionsModal({
                     onChange={(v) => basculer(s, 'corrigeDisponible', v)}
                     labelOn="Corrigé disponible"
                     labelOff="Corrigé non disponible"
-                    disabled={enCours.has(s.id)}
+                    disabled={enCours.has(s.id) || lecture}
+                  />
+                )}
+                {partagee && (
+                  <Toggle
+                    checked={s.archive}
+                    onChange={(v) => basculer(s, 'archive', v)}
+                    labelOn="Archivé"
+                    labelOff="Archiver"
+                    disabled={enCours.has(s.id) || lecture}
                   />
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className={styles.foot}>
           <span className={styles.aide}>
-            Les bascules de la carte agissent sur <b>toutes</b> les classes à la fois.
+            {partagee ? (
+              <>Ces réglages ne valent que pour <b>ta</b> classe — l’activité, elle, reste à son auteur.</>
+            ) : (
+              <>Les bascules de la carte agissent sur <b>toutes</b> les classes à la fois.</>
+            )}
           </span>
           <button type="button" className={styles.btnPrimary} onClick={onClose}>
             Fermer

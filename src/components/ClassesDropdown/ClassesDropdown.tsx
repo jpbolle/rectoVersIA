@@ -9,6 +9,15 @@ interface ClassesDropdownProps {
   onChange: (selected: string[]) => void;
   disabled?: boolean;
   placeholder?: string;
+  /**
+   * Classes montrées mais non cochables, avec la raison — une classe partagée
+   * par un collègue qui porte le même nom qu'une des miennes (coprofesseur,
+   * 2026-10-04) : une activité nomme ses classes par leur nom, les deux
+   * seraient indiscernables. On la montre grisée plutôt que de la taire.
+   */
+  indisponibles?: { nom: string; raison: string }[];
+  /** Petite précision sous le nom d'une option (« classe de J. Dupont ») */
+  precisions?: Record<string, string>;
 }
 
 /**
@@ -21,6 +30,8 @@ export default function ClassesDropdown({
   onChange,
   disabled = false,
   placeholder = 'Sélectionnez...',
+  indisponibles = [],
+  precisions = {},
 }: ClassesDropdownProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -87,7 +98,25 @@ export default function ClassesDropdown({
                 checked={selected.includes(option)}
                 onChange={() => toggleOption(option)}
               />
-              <span className={styles.optionLabel}>{option}</span>
+              <span className={styles.optionLabel}>
+                {option}
+                {precisions[option] && (
+                  <span className={styles.optionPrecision}> — {precisions[option]}</span>
+                )}
+              </span>
+            </label>
+          ))}
+          {indisponibles.map((i) => (
+            <label
+              key={`indispo-${i.nom}`}
+              className={`${styles.option} ${styles.optionIndisponible}`}
+              title={i.raison}
+            >
+              <input type="checkbox" className={styles.checkbox} disabled checked={false} readOnly />
+              <span className={styles.optionLabel}>
+                {i.nom}
+                <span className={styles.optionPrecision}> — {i.raison}</span>
+              </span>
             </label>
           ))}
         </div>

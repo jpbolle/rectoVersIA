@@ -10,7 +10,7 @@ import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import SequenceFleBuilder from '@/components/SequenceFleBuilder/SequenceFleBuilder';
 import ElevesChoix from '@/components/ElevesChoix/ElevesChoix';
 import type { EleveAvecClasse } from '@/components/ElevesChoix/ElevesChoix';
-import { useClasses } from '@/hooks/useClasses';
+import { classesPartageesPourActivite, useClasses } from '@/hooks/useClasses';
 import { estClasseFle } from '@/types/classe';
 import type { SequenceFleContenu } from '@/types/sequence-fle';
 import PlanDraft from '@/components/DraftEditor/PlanDraft';
@@ -155,7 +155,10 @@ export default function CreationForm({
   const [sequenceFle, setSequenceFle] = useState<SequenceFleContenu | null>(null);
   // Une séquence FLE ne se donne qu'à des classes FLE : le menu des classes se
   // restreint (demande JP du 2026-09-14). Les noms viennent des classes du prof.
-  const { classes: toutesMesClasses } = useClasses();
+  const { classes: toutesMesClasses, classesPartagees } = useClasses();
+  // Classes qu'un collègue m'a partagées EN ÉCRITURE : je peux leur donner
+  // MES activités (coprofesseur, 2026-10-04). Pas pour une séquence FLE.
+  const partageesActivite = classesPartageesPourActivite(toutesMesClasses, classesPartagees);
   const classeNamesFle = toutesMesClasses.filter((c) => estClasseFle(c) && !c.archive).map((c) => c.nom);
 
   // Changer d'atelier change le dispositif : la sélection d'habiletés ne veut
@@ -616,7 +619,13 @@ export default function CreationForm({
             Classe(s) <span className={styles.optional}>— facultatif</span>
           </label>
           <ClassesDropdown
-            options={typeTravail === 'sequence' ? classeNamesFle : classeNames}
+            options={
+              typeTravail === 'sequence'
+                ? classeNamesFle
+                : [...classeNames, ...partageesActivite.noms]
+            }
+            precisions={typeTravail === 'sequence' ? undefined : partageesActivite.precisions}
+            indisponibles={typeTravail === 'sequence' ? undefined : partageesActivite.indisponibles}
             selected={selectedClasses}
             onChange={setSelectedClasses}
             disabled={isSubmitting}

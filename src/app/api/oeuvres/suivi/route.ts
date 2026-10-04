@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { accesDevoir, copieVisible } from '@/lib/classe-acces';
 import { decrypt } from '@/lib/crypto';
 import { docToSection } from '@/lib/oeuvre-server';
 import { calculerRythme, parseOeuvreProgression } from '@/types/oeuvre';
@@ -84,8 +85,14 @@ export async function GET(request: NextRequest) {
       disponibleAt?: unknown;
       createdAt?: unknown;
     };
-    if (devoir.profId !== auth.uid && !auth.isAdmin) {
-      return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
+    // L'auteur, l'admin, ou le titulaire / coprofesseur d'une classe visée —
+    // celui-ci ne voit que les copies de SES sessions (2026-10-04)
+    let accesProf: Awaited<ReturnType<typeof accesDevoir>> = null;
+    if (!auth.isAdmin) {
+      accesProf = await accesDevoir(devoirId, auth);
+      if (!accesProf) {
+        return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
+      }
     }
     if (!devoir.oeuvreId) {
       return NextResponse.json(
@@ -139,11 +146,12 @@ export async function GET(request: NextRequest) {
       .where('devoirId', '==', devoirId)
       .get();
 
-    const travauxDocs = !sessionDemandee
+    const travauxDocs = (!sessionDemandee
       ? travauxSnap.docs
       : sessionDemandee === SANS_CLASSE
         ? travauxSnap.docs.filter((d) => !d.data().sessionId)
-        : travauxSnap.docs.filter((d) => d.data().sessionId === sessionDemandee);
+        : travauxSnap.docs.filter((d) => d.data().sessionId === sessionDemandee)
+    ).filter((d) => !accesProf || copieVisible(accesProf, d.data().sessionId));
 
     // La fiche élève s'ouvre sur l'id du document `eleves`, jamais sur l'UID
     // Firebase. On fait la correspondance ici, en une passe, plutôt qu'une

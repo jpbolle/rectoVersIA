@@ -142,6 +142,61 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Partager avec un coprofesseur — même gabarit que ✏️ et 🗑️, à leur gauche */
+.shareButton {
+  position: absolute;
+  bottom: 12px;
+  right: 108px;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: var(--c-radius);
+  transition: all 0.2s ease;
+  box-shadow: var(--c-shadow-card);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shareButton:hover {
+  background: var(--c-bg-element);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Déjà partagée : la bordure le dit sans ouvrir la popup */
+.shareButtonActif {
+  border-color: var(--c-accent);
+}
+
+.shareCount {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-accent);
+}
+
+/* Classe d'un collègue : de qui, et dans quel mode */
+.coprof {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+  color: var(--c-text-secondary);
+  font-size: 13px;
+}
+
+.coprofMode {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--c-accent);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
 .deleteButton {
   position: absolute;
   bottom: 12px;
@@ -232,6 +287,13 @@
   .deleteButton {
     bottom: 10px;
     right: 10px;
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  .shareButton {
+    bottom: 10px;
+    right: 90px;
     padding: 6px 10px;
     font-size: 14px;
   }

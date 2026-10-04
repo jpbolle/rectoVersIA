@@ -2,6 +2,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { sessionId } from '@/types/session';
 import { generateTravailId } from '@/lib/travail-utils';
 import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
+import { classesDeLActivite } from '@/lib/classe-acces';
 
 /**
  * Pre-cree les travaux pour tous les eleves des classes assignees a un devoir.
@@ -9,7 +10,7 @@ import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
  *
  * @returns nombre de travaux nouvellement crees
  */
-export async function ensureTravaux(devoirId: string, profId: string): Promise<number> {
+export async function ensureTravaux(devoirId: string): Promise<number> {
   // 1. Recuperer le devoir
   const devoirSnap = await adminDb.collection('devoirs').doc(devoirId).get();
   if (!devoirSnap.exists) return 0;
@@ -17,14 +18,11 @@ export async function ensureTravaux(devoirId: string, profId: string): Promise<n
   const classNames: string[] = devoirData.classes || [];
   if (classNames.length === 0) return 0;
 
-  // 2. Resoudre noms de classes -> IDs (Firestore 'in' limite a 30)
-  const classesSnap = await adminDb
-    .collection('classes')
-    .where('profId', '==', profId)
-    .where('nom', 'in', classNames.slice(0, 30))
-    .get();
-
-  const classeIds = classesSnap.docs.map(doc => doc.id);
+  // 2. Resoudre noms de classes -> IDs, chez l'AUTEUR de l'activite (et parmi
+  // les classes qu'on lui a partagees en ecriture — coprofesseur, 2026-10-04).
+  // ⚠ Jamais chez l'appelant : un coprofesseur qui consulte l'activite du
+  // titulaire ne possede pas la classe, et aucune copie ne serait creee.
+  const classeIds = (await classesDeLActivite(devoirData)).map((c) => c.id);
   if (classeIds.length === 0) return 0;
 
   // 3. Recuperer tous les eleves de ces classes (chunked par 30)

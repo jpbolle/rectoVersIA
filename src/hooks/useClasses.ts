@@ -7,6 +7,9 @@ import type { Classe, Eleve, CreateClasseData, CreateEleveData } from '@/types/c
 export function useClasses() {
   const { isAuthenticated, getAuthHeaders } = useAuth();
   const [classes, setClasses] = useState<Classe[]>([]);
+  // Classes qu'un collègue m'a partagées (coprofesseur, 2026-10-04) — à part,
+  // pour qu'aucun écran ne les reçoive dans `classes` sans l'avoir voulu
+  const [classesPartagees, setClassesPartagees] = useState<Classe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +26,7 @@ export function useClasses() {
 
       if (json.success) {
         setClasses(json.data);
+        setClassesPartagees(Array.isArray(json.partagees) ? json.partagees : []);
       } else {
         setError(json.message || 'Erreur lors du chargement');
       }
@@ -137,6 +141,7 @@ export function useClasses() {
 
   return {
     classes,
+    classesPartagees,
     isLoading,
     error,
     createClasse,
@@ -299,4 +304,41 @@ export function useEleves(classeId?: string) {
     bulkCreateEleves,
     refetch: fetchEleves,
   };
+}
+
+/**
+ * Les classes partagées EN ÉCRITURE qu'on peut donner à une activité
+ * (coprofesseur, 2026-10-04), prêtes pour `ClassesDropdown`.
+ *
+ * Une activité nomme ses classes par leur NOM : une classe partagée qui porte
+ * le nom d'une des miennes serait indiscernable — elle part dans
+ * `indisponibles`, grisée avec la raison, au lieu d'être tue.
+ */
+export function classesPartageesPourActivite(
+  mesClasses: Classe[],
+  partagees: Classe[]
+): {
+  noms: string[];
+  precisions: Record<string, string>;
+  indisponibles: { nom: string; raison: string }[];
+} {
+  const miennes = new Set(mesClasses.map((c) => c.nom));
+  const enEcriture = partagees.filter((c) => c.monAcces === 'edition' && !c.archive);
+  const precisions: Record<string, string> = {};
+  const noms: string[] = [];
+  const indisponibles: { nom: string; raison: string }[] = [];
+  enEcriture.forEach((c) => {
+    const de = c.titulaireNom ? `classe de ${c.titulaireNom}` : 'classe partagée';
+    const homonymesPartagees = enEcriture.filter((x) => x.nom === c.nom).length;
+    if (miennes.has(c.nom)) {
+      indisponibles.push({ nom: c.nom, raison: `${de} — même nom qu’une de tes classes` });
+    } else if (homonymesPartagees > 1) {
+      // Deux collègues t'ont partagé une classe de ce nom : indiscernables
+      indisponibles.push({ nom: c.nom, raison: `${de} — un autre collègue t’a partagé une classe du même nom` });
+    } else if (!noms.includes(c.nom)) {
+      noms.push(c.nom);
+      precisions[c.nom] = de;
+    }
+  });
+  return { noms: noms.sort((a, b) => a.localeCompare(b)), precisions, indisponibles };
 }

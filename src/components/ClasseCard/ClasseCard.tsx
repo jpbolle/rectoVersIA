@@ -8,9 +8,11 @@ import styles from './ClasseCard.module.css';
 
 interface ClasseCardProps {
   classe: Classe;
-  onEdit: (classe: Classe) => void;
-  onDelete: (classe: Classe) => void;
-  onToggleArchive: (id: string, archive: boolean) => void;
+  onEdit?: (classe: Classe) => void;
+  onDelete?: (classe: Classe) => void;
+  onToggleArchive?: (id: string, archive: boolean) => void;
+  // Titulaire : partager la classe avec un coprofesseur (2026-10-04)
+  onPartager?: (classe: Classe) => void;
   onClick?: () => void;
 }
 
@@ -19,8 +21,12 @@ export default function ClasseCard({
   onEdit,
   onDelete,
   onToggleArchive,
+  onPartager,
   onClick,
 }: ClasseCardProps) {
+  // Classe d'un collègue : ni code, ni archivage, ni modification — on y entre
+  const partageeAvecMoi = !!classe.monAcces && classe.monAcces !== 'titulaire';
+  const nbCoprofs = classe.partages?.length ?? 0;
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = (e: React.MouseEvent) => {
@@ -33,17 +39,22 @@ export default function ClasseCard({
   };
 
   const handleToggleArchive = (value: boolean) => {
-    onToggleArchive(classe.id, value);
+    onToggleArchive?.(classe.id, value);
   };
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onEdit(classe);
+    onEdit?.(classe);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onDelete(classe);
+    onDelete?.(classe);
+  };
+
+  const handlePartager = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onPartager?.(classe);
   };
 
   const handleCardClick = () => {
@@ -66,7 +77,16 @@ export default function ClasseCard({
         {estClasseFle(classe) && <span className={styles.typeBadge}>FLE</span>}
       </h3>
 
-      {classe.code && (
+      {partageeAvecMoi && (
+        <p className={styles.coprof}>
+          Classe de <strong>{classe.titulaireNom || 'un collègue'}</strong>
+          <span className={styles.coprofMode}>
+            {classe.monAcces === 'edition' ? 'Écriture' : 'Lecture'}
+          </span>
+        </p>
+      )}
+
+      {!partageeAvecMoi && classe.code && (
         <div className={styles.codeRow} onClick={(e) => e.stopPropagation()}>
           <span className={styles.codeBadge}>{classe.code}</span>
           <button className={styles.copyBtn} onClick={handleCopyCode} title="Copier le code">
@@ -86,30 +106,48 @@ export default function ClasseCard({
         </span>
       </div>
 
-      <div className={styles.togglesSection} onClick={(e) => e.stopPropagation()}>
-        <Toggle
-          checked={classe.archive}
-          onChange={handleToggleArchive}
-          labelOn="Archivé"
-          labelOff="Archiver"
-        />
-      </div>
+      {!partageeAvecMoi && (
+        <>
+          <div className={styles.togglesSection} onClick={(e) => e.stopPropagation()}>
+            <Toggle
+              checked={classe.archive}
+              onChange={handleToggleArchive}
+              labelOn="Archivé"
+              labelOff="Archiver"
+            />
+          </div>
 
-      <button
-        className={styles.editButton}
-        onClick={handleEdit}
-        title="Modifier la classe"
-      >
-        ✏️
-      </button>
+          {onPartager && (
+            <button
+              className={`${styles.shareButton} ${nbCoprofs > 0 ? styles.shareButtonActif : ''}`}
+              onClick={handlePartager}
+              title={
+                nbCoprofs > 0
+                  ? `Partagée avec ${nbCoprofs} coprofesseur${nbCoprofs > 1 ? 's' : ''}`
+                  : 'Partager avec un coprofesseur'
+              }
+            >
+              👥{nbCoprofs > 0 && <span className={styles.shareCount}>{nbCoprofs}</span>}
+            </button>
+          )}
 
-      <button
-        className={styles.deleteButton}
-        onClick={handleDelete}
-        title="Supprimer la classe"
-      >
-        🗑️
-      </button>
+          <button
+            className={styles.editButton}
+            onClick={handleEdit}
+            title="Modifier la classe"
+          >
+            ✏️
+          </button>
+
+          <button
+            className={styles.deleteButton}
+            onClick={handleDelete}
+            title="Supprimer la classe"
+          >
+            🗑️
+          </button>
+        </>
+      )}
     </article>
   );
 }

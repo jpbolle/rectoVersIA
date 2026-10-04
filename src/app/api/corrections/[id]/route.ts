@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { ecrireScoreLecture } from '@/lib/lecture-score-persistance';
+import { accesTravail, peutAgir } from '@/lib/classe-acces';
 import type { UpdateCorrectionData } from '@/types/correction';
 
 // PATCH - Mettre a jour une correction
@@ -28,8 +29,18 @@ export async function PATCH(
       );
     }
 
-    // Verifier que la correction appartient au prof
-    if (docSnap.data()?.profId !== auth.uid) {
+    // Qui peut retoucher une correction : la COPIE en décide, plus le seul
+    // `profId` de la correction — l'auteur de l'activité (sur une classe qu'on
+    // ne lui a pas retirée), ou le titulaire / coprofesseur EN ÉCRITURE de la
+    // classe (2026-10-04). Copie disparue : l'ancienne porte, en repli.
+    const travailSnap = await adminDb
+      .collection('travaux')
+      .doc(String(docSnap.data()?.travailId || ''))
+      .get();
+    const autorise = travailSnap.exists
+      ? peutAgir((await accesTravail(travailSnap.data()!, auth))?.acces)
+      : docSnap.data()?.profId === auth.uid;
+    if (!autorise) {
       return NextResponse.json(
         { success: false, message: 'Acces refuse' },
         { status: 403 }

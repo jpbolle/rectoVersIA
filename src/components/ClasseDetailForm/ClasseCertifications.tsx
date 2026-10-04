@@ -18,7 +18,14 @@ import { periodeLabel } from '@/types/scenarisation';
 import type { CertificationDeClasse } from '@/types/certification';
 import styles from './ClasseCertifications.module.css';
 
-export default function ClasseCertifications({ classeId }: { classeId: string }) {
+export default function ClasseCertifications({
+  classeId,
+  lectureSeule = false,
+}: {
+  classeId: string;
+  // Coprofesseur en lecture : la popup montre les notes sans les saisir
+  lectureSeule?: boolean;
+}) {
   const { isAuthenticated, getAuthHeaders } = useAuth();
   const [certifs, setCertifs] = useState<CertificationDeClasse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -114,6 +121,7 @@ export default function ClasseCertifications({ classeId }: { classeId: string })
         <CertificationNotesModal
           moduleId={ouverte}
           classeId={classeId}
+          lectureSeule={lectureSeule}
           onClose={() => setOuverte(null)}
           onEnregistre={charger}
         />

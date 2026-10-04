@@ -86,6 +86,12 @@ export default function TravailDetailPage() {
     error: grilleError,
   } = useGrille(devoir?.grille || null);
 
+  // Copie vue EN LECTURE (coprofesseur, 2026-10-04) : la copie et la
+  // correction se lisent, rien ne s'enregistre. C'est le droit sur CETTE copie
+  // (sa classe) qui décide — une même activité peut viser une classe partagée
+  // en écriture et une autre en lecture.
+  const lectureSeule = travail?.monAcces === 'lecture';
+
   const {
     correction,
     isSaving: correctionSaving,
@@ -103,7 +109,8 @@ export default function TravailDetailPage() {
     travailId || null,
     devoirId || null,
     travail?.studentId || null,
-    grille
+    grille,
+    lectureSeule
   );
 
   // IA grille — charger l'évaluation IA (et permettre au prof de la déclencher si pas encore faite)
@@ -576,7 +583,13 @@ export default function TravailDetailPage() {
           <div className={styles.headerActions}>
             {/* Rien à corriger pour la lecture et la recherche : l'élève répond
                 à un questionnaire, il ne réécrit pas sa copie */}
-            {travail.status === 'submitted' &&
+            {lectureSeule && (
+              <span className={styles.lectureSeuleBadge}>
+                Lecture seule{devoir?.auteurNom ? ` — activité de ${devoir.auteurNom}` : ''}
+              </span>
+            )}
+            {!lectureSeule &&
+              travail.status === 'submitted' &&
               devoir?.typeTravail !== 'lire' &&
               devoir?.typeTravail !== 'rechercher' && (
               <button
@@ -589,6 +602,7 @@ export default function TravailDetailPage() {
               </button>
             )}
 
+            {!lectureSeule && (
             <label className={styles.visibilityToggleBox}>
               <span className={styles.visibilityLabel}>Rendre visible pour cet élève</span>
               <input
@@ -599,6 +613,7 @@ export default function TravailDetailPage() {
               />
               <span className={styles.toggleSwitch} />
             </label>
+            )}
           </div>
           <UserAvatar />
         </div>
@@ -808,7 +823,7 @@ export default function TravailDetailPage() {
                   showRemarquesTab={false}
                   isProfessorView={true}
                   nonRendu={travail.nonRendu ?? null}
-                  onNonRenduChange={handleNonRenduChange}
+                  onNonRenduChange={lectureSeule ? undefined : handleNonRenduChange}
                   accesIA={!!devoir.accesIA}
                   showAiData={!!devoir.accesIA}
                   aiGridResult={aiGridResult}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { accesClasseDepuisDoc } from '@/lib/classe-acces';
 import {
   COLLECTION_NOTES,
   faitsAutomatiques,
@@ -25,13 +26,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const classeDoc = await adminDb.collection('classes').doc(classeId).get();
-    if (!classeDoc.exists || classeDoc.data()?.profId !== auth.uid) {
+    // Titulaire ou coprofesseur ; les certifications sont celles du TITULAIRE
+    // (sa scénarisation), même quand c'est le remplaçant qui regarde
+    if (!classeDoc.exists || !accesClasseDepuisDoc(classeDoc.data(), auth)) {
       return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
     }
     const classeNom = classeDoc.data()?.nom as string;
+    const titulaire = String(classeDoc.data()?.profId || auth.uid);
 
     const [scenSnap, elevesSnap] = await Promise.all([
-      adminDb.collection('scenarisations').where('profId', '==', auth.uid).get(),
+      adminDb.collection('scenarisations').where('profId', '==', titulaire).get(),
       adminDb.collection('eleves').where('classeId', '==', classeId).get(),
     ]);
 

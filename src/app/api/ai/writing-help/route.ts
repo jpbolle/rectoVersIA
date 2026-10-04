@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { accesTravail } from '@/lib/classe-acces';
 import Anthropic from '@anthropic-ai/sdk';
 import type { AiSuggestion, AiSuggestionType, AiSuggestionItem } from '@/types/ai-suggestions';
 
@@ -189,6 +190,21 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Les suggestions IA d'une copie ne regardent que l'élève lui-même et les
+    // profs qui ont accès à cette copie (avant le 2026-10-04 : tout utilisateur
+    // connecté, par l'identifiant de la copie)
+    const travailSnap = await adminDb.collection('travaux').doc(travailId).get();
+    if (!travailSnap.exists) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+    const autorise =
+      auth.role === 'prof'
+        ? !!(await accesTravail(travailSnap.data()!, auth))
+        : travailSnap.data()!.studentId === auth.uid;
+    if (!autorise) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+    }
+
     const snapshot = await adminDb
       .collection('aiSuggestions')
       .where('travailId', '==', travailId)

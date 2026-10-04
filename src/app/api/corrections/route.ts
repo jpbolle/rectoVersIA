@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { ecrireScoreLecture } from '@/lib/lecture-score-persistance';
+import { accesDevoir, accesTravail, copieVisible, peutAgir } from '@/lib/classe-acces';
 import type { Correction } from '@/types/correction';
 
 // GET - Recuperer la correction d'un travail
@@ -29,10 +30,25 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
       }
 
-      // Verifier que le devoir appartient au prof
-      const devoirDoc = await adminDb.collection('devoirs').doc(devoirId).get();
-      if (!devoirDoc.exists || devoirDoc.data()?.profId !== auth.uid) {
+      // L'auteur de l'activité, ou le titulaire / coprofesseur d'une de ses
+      // classes — celui-ci ne reçoit que les corrections de SES copies
+      const acces = await accesDevoir(devoirId, auth);
+      if (!acces) {
         return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
+      }
+
+      let mesCopies: Set<string> | null = null;
+      if (acces.sessionIds) {
+        const copies = await adminDb
+          .collection('travaux')
+          .where('devoirId', '==', devoirId)
+          .select('sessionId')
+          .get();
+        mesCopies = new Set(
+          copies.docs
+            .filter((c) => copieVisible(acces, c.data().sessionId))
+            .map((c) => c.id)
+        );
       }
 
       const snapshot = await adminDb
@@ -40,7 +56,11 @@ export async function GET(request: NextRequest) {
         .where('devoirId', '==', devoirId)
         .get();
 
-      const corrections: Correction[] = snapshot.docs.map((doc) => {
+      const docs = mesCopies
+        ? snapshot.docs.filter((d) => mesCopies!.has(String(d.data().travailId || '')))
+        : snapshot.docs;
+
+      const corrections: Correction[] = docs.map((doc) => {
         const data = doc.data();
         return {
           id: data.id || doc.id,
@@ -72,7 +92,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: corrections });
     }
 
-    // Fetch par travailId — retourne une seule correction
+    // Fetch par travailId — retourne une seule correction.
+    // Un prof doit avoir accès à la COPIE (avant le 2026-10-04, n'importe quel
+    // compte prof lisait n'importe quelle correction par son adresse).
+    if (auth.role === 'prof') {
+      const travailSnap = await adminDb.collection('travaux').doc(travailId!).get();
+      if (!travailSnap.exists || !(await accesTravail(travailSnap.data()!, auth))) {
+        return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
+      }
+    }
+
     const correctionId = `CORR-${travailId}`;
     const docRef = adminDb.collection('corrections').doc(correctionId);
     const docSnap = await docRef.get();
@@ -155,6 +184,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Corriger : l'auteur de l'activité, ou le titulaire / coprofesseur EN
+    // ÉCRITURE de la classe de cette copie
+    const travailSnap = await adminDb.collection('travaux').doc(travailId).get();
+    if (!travailSnap.exists || travailSnap.data()!.devoirId !== devoirId) {
+      return NextResponse.json({ success: false, message: 'Copie introuvable' }, { status: 404 });
+    }
+    const acces = await accesTravail(travailSnap.data()!, auth);
+    if (!acces || !peutAgir(acces.acces)) {
+      return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
+    }
+
     const correctionId = `CORR-${travailId}`;
     const now = new Date().toISOString();
 
@@ -163,8 +203,13 @@ export async function POST(request: NextRequest) {
       travailId,
       devoirId,
       studentId,
-      profId: auth.uid,
+      // ⚠ La correction appartient à l'AUTEUR DE L'ACTIVITÉ, pas à qui la
+      // rédige : sinon un remplaçant qui corrige en deviendrait propriétaire,
+      // et le titulaire, à son retour, ne pourrait plus la retoucher (403).
+      // Qui l'a écrite est noté à part.
+      profId: acces.devoir.devoir.profId || auth.uid,
       profEmail: auth.email,
+      correcteurUid: auth.uid,
       evaluation: body.evaluation || {},
       commentaireGeneral: body.commentaireGeneral || '',
       commentairesCriteres: {},

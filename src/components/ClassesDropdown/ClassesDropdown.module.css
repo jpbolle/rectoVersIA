@@ -116,6 +116,22 @@
   color: var(--c-text);
 }
 
+/* Précision sous le nom (classe d'un collègue, raison d'une indisponibilité) */
+.optionPrecision {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+}
+
+/* Classe montrée mais non cochable (homonyme d'une des miennes) */
+.optionIndisponible {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.optionIndisponible:hover {
+  background: transparent;
+}
+
 .empty {
   margin: 0;
   padding: 10px;

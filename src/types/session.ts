@@ -36,6 +36,14 @@ export interface Session {
   corrigeDisponibleAt: string | null;
   archive: boolean;
 
+  /**
+   * Ce que le prof qui lit peut faire de CETTE session — servi par le serveur,
+   * jamais stocké (coprofesseur, 2026-10-04). 'auteur' = son activité ;
+   * 'titulaire' / 'edition' = il agit pour cette classe ; 'lecture' = il
+   * regarde. Absent = auteur (réponses d'avant le partage).
+   */
+  monAcces?: 'auteur' | 'titulaire' | 'edition' | 'lecture';
+
   createdAt: string;
   updatedAt: string;
 }

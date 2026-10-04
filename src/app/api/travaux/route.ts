@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { accesDevoir, copieVisible } from '@/lib/classe-acces';
 import { generateTravailId } from '@/lib/travail-utils';
 import { classesDeLEleve, etatEffectif, sessionsDeLEleve } from '@/lib/session-server';
 import { eleveExclu, identiteEleve, ouvertParSequence } from '@/lib/sequence-server';
@@ -139,31 +140,47 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const devoirId = searchParams.get('devoirId');
 
+    // ── L'activité est obligatoire, et doit être accessible ──
+    // Sans activité, la route listait TOUTES les copies de l'application à
+    // n'importe quel compte prof (aucun écran ne s'en servait). Désormais :
+    // l'auteur voit toutes les copies ; un titulaire ou coprofesseur de classe
+    // ne voit que celles de SES sessions (2026-10-04).
+    if (!devoirId) {
+      return NextResponse.json({ success: false, message: 'devoirId requis' }, { status: 400 });
+    }
+
+    // L'accès d'abord : un compte prof quelconque ne déclenche aucune écriture
+    // sur l'activité d'un autre en devinant son identifiant
+    let acces = await accesDevoir(devoirId, auth);
+    if (!acces) {
+      return NextResponse.json({ success: false, message: 'Accès refusé' }, { status: 403 });
+    }
+
     // Pre-creer les travaux manquants pour les eleves des classes du devoir.
     // Les sessions d'abord : c'est à l'une d'elles que chaque travail créé
     // s'attachera (une activité, une classe).
-    if (devoirId) {
-      try {
-        await syncSessions(devoirId);
-        await ensureTravaux(devoirId, auth.uid);
-      } catch (err) {
-        console.error('Erreur ensureTravaux:', err);
-      }
+    try {
+      await syncSessions(devoirId);
+      await ensureTravaux(devoirId);
+    } catch (err) {
+      console.error('Erreur ensureTravaux:', err);
     }
+    // Une session a pu naître ci-dessus (classe ajoutée à l'activité) : on
+    // relit l'accès pour qu'un coprofesseur en voie les copies tout de suite
+    if (acces.sessionIds) acces = (await accesDevoir(devoirId, auth)) ?? acces;
 
-    let query = adminDb.collection('travaux').orderBy('updatedAt', 'desc');
-
-    if (devoirId) {
-      query = adminDb.collection('travaux')
-        .where('devoirId', '==', devoirId)
-        .orderBy('updatedAt', 'desc');
-    }
+    const query = adminDb.collection('travaux')
+      .where('devoirId', '==', devoirId)
+      .orderBy('updatedAt', 'desc');
 
     const snapshot = await query.get();
     const travaux: Travail[] = [];
 
     snapshot.forEach((doc) => {
       const data = doc.data();
+      // Seulement les copies des sessions de MES classes (titulaire,
+      // coprofesseur, ou auteur sur une classe qu'on ne lui a pas retirée)
+      if (!copieVisible(acces, data.sessionId)) return;
       travaux.push({
         id: data.id || doc.id,
         devoirId: data.devoirId,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { figerQuizDeLaSession } from '@/lib/session-server';
+import { accesSession, peutAgir } from '@/lib/classe-acces';
 
 // PATCH /api/sessions/[id] — ouvrir, fermer, dater ou archiver UNE classe.
 //
@@ -28,7 +29,10 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: 'Session non trouvée' }, { status: 404 });
     }
     const session = snap.data()!;
-    if (session.profId !== auth.uid) {
+    // L'auteur de l'activité, ou le titulaire / coprofesseur EN ÉCRITURE de la
+    // classe de cette session (2026-10-04) — jamais au-delà de cette classe.
+    const acces = await accesSession(id, auth);
+    if (!acces || !peutAgir(acces.acces)) {
       return NextResponse.json({ success: false, message: 'Accès refusé' }, { status: 403 });
     }
 

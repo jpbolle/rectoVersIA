@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { accesDevoir } from '@/lib/classe-acces';
 import { sanitizeQuestionsForStudent } from '@/lib/navigkid-server';
 import { generateTravailId } from '@/lib/travail-utils';
 import type { NavigKidQuestion } from '@/types/navigkid';
@@ -63,6 +64,16 @@ export async function GET(request: NextRequest) {
 
     const data = doc.data()!;
     let questions: NavigKidQuestion[] = data.questions || [];
+
+    // Un prof : le sien, ou celui d'une activité qui vise une classe dont il
+    // est titulaire ou coprofesseur (2026-10-04). Avant, tout compte prof
+    // recevait n'importe quel questionnaire, corrigé compris.
+    if (auth.role === 'prof' && data.profId !== auth.uid) {
+      const acces = data.devoirId ? await accesDevoir(String(data.devoirId), auth) : null;
+      if (!acces) {
+        return NextResponse.json({ success: false, message: 'Acces refuse' }, { status: 403 });
+      }
+    }
 
     // Réglage porté par l'activité, pas par le questionnaire — absent = activé
     let autoEvalActivite = true;

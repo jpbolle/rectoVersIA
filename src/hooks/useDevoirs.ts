@@ -7,6 +7,9 @@ import type { Devoir, CreateDevoirData } from '@/types/devoir';
 export function useDevoirs() {
   const { isAuthenticated, getAuthHeaders } = useAuth();
   const [devoirs, setDevoirs] = useState<Devoir[]>([]);
+  // Activités d'autres profs sur mes classes partagées (coprofesseur,
+  // 2026-10-04) — à part : aucune bascule globale ne doit les toucher
+  const [devoirsPartages, setDevoirsPartages] = useState<Devoir[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +26,7 @@ export function useDevoirs() {
 
       if (json.success) {
         setDevoirs(json.data);
+        setDevoirsPartages(Array.isArray(json.partagees) ? json.partagees : []);
       } else {
         setError(json.message || 'Erreur lors du chargement');
       }
@@ -259,6 +263,7 @@ export function useDevoirs() {
 
   return {
     devoirs,
+    devoirsPartages,
     isLoading,
     error,
     createDevoir,

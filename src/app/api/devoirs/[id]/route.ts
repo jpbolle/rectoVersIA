@@ -13,6 +13,7 @@ import {
 } from '@/lib/session-server';
 import { eleveExclu, identiteEleve, ouvertParSequence, restrictionElevesPourFirestore, sequenceFlePourFirestore } from '@/lib/sequence-server';
 import { verifyAuth } from '@/lib/api-auth';
+import { accesDevoir, accesSessionDepuis, nomDuProf, peutAgir, type AccesDevoir } from '@/lib/classe-acces';
 import { sanitizeRessources } from '@/lib/ressources-server';
 import {
   avertissementQuestionsJetees,
@@ -51,12 +52,18 @@ export async function GET(
 
     const data = docSnap.data()!;
 
-    // Les profs ne voient que leurs propres devoirs
-    if (auth.role === 'prof' && data.profId !== auth.uid) {
-      return NextResponse.json(
-        { success: false, message: 'Acces refuse' },
-        { status: 403 }
-      );
+    // Un prof voit ses propres activités — et, depuis le 2026-10-04, celles
+    // d'un autre qui visent une classe dont il est titulaire ou coprofesseur
+    // (lecture seule : seul l'auteur modifie, cf. PATCH plus bas).
+    let accesProf: AccesDevoir | null = null;
+    if (auth.role === 'prof') {
+      accesProf = await accesDevoir(data.id || docSnap.id, auth);
+      if (!accesProf) {
+        return NextResponse.json(
+          { success: false, message: 'Acces refuse' },
+          { status: 403 }
+        );
+      }
     }
 
     // ── L'ÉTAT DÉPEND DE SA CLASSE ──
@@ -96,8 +103,10 @@ export async function GET(
       // `sessionId`. Sans ce paramètre il corrigeait sur la version courante
       // de la bibliothèque, où une question a pu être ajoutée depuis.
       const sessionDemandee = request.nextUrl.searchParams.get('sessionId');
-      if (sessionDemandee) {
-        quizFige = await quizFigeDeSession(sessionDemandee, auth.uid);
+      // La session doit être l'une des siennes ; la copie figée se lit au nom
+      // de l'AUTEUR de l'activité, à qui appartiennent ses sessions.
+      if (sessionDemandee && (!accesProf?.sessionIds || accesProf.sessionIds.has(sessionDemandee))) {
+        quizFige = await quizFigeDeSession(sessionDemandee, data.profId || auth.uid);
       }
     }
 
@@ -251,6 +260,16 @@ export async function GET(
       oeuvreMinimum: typeof data.oeuvreMinimum === 'number' ? data.oeuvreMinimum : null,
       // Enrichi à la lecture, jamais stocké (comme `uaa` et `submittedCount`)
       lectureResume,
+      // Activité d'un autre prof (coprofesseur) : ce que JE peux en faire et
+      // de qui elle est. Absent = c'est la mienne.
+      ...(accesProf && !accesProf.auteur
+        ? {
+            monAcces: [...accesProf.classes.values()].some((a) => a !== 'lecture')
+              ? ([...accesProf.classes.values()].includes('titulaire') ? 'titulaire' : 'edition')
+              : 'lecture',
+            auteurNom: await nomDuProf(String(data.profId || '')),
+          }
+        : {}),
     };
 
     return NextResponse.json({ success: true, data: devoir });
@@ -479,9 +498,18 @@ export async function PATCH(
     if (body.dateRemise !== undefined) {
       versSessions.dateRemise = body.dateRemise ? new Date(body.dateRemise) : null;
     }
+    // ⚠ Coprofesseur (2026-10-04) : « toutes ses classes » s'arrête aux classes
+    // que l'auteur contrôle encore. La classe d'un collègue qui lui a retiré
+    // l'accès (ou l'a repassé en lecture) ne bouge plus d'un geste global.
+    const accesAuteur =
+      Object.keys(versSessions).length > 0 || body.corrigeDisponible !== undefined
+        ? await accesDevoir(id, auth)
+        : null;
+    const sessionPilotable = (s: { classeId?: unknown }) =>
+      !accesAuteur || accesAuteur.sessionIds === null || peutAgir(accesSessionDepuis(accesAuteur, s));
     if (Object.keys(versSessions).length > 0) {
       try {
-        const sessions = await sessionsDuDevoir(id);
+        const sessions = (await sessionsDuDevoir(id)).filter(sessionPilotable);
         if (sessions.length > 0) {
           const batch = adminDb.batch();
           sessions.forEach((s) =>
@@ -511,9 +539,26 @@ export async function PATCH(
         .where('devoirId', '==', id)
         .get();
 
-      if (!correctionsSnap.empty) {
+      // Mêmes bornes que les sessions : seulement les copies des classes que
+      // l'auteur contrôle encore
+      let permises: Set<string> | null = null;
+      if (accesAuteur && accesAuteur.sessionIds !== null) {
+        const pilotables = new Set(
+          (await sessionsDuDevoir(id)).filter(sessionPilotable).map((x) => x.id)
+        );
+        const copies = await adminDb.collection('travaux').where('devoirId', '==', id).select('sessionId').get();
+        permises = new Set(
+          copies.docs
+            .filter((c) => !c.data().sessionId || pilotables.has(String(c.data().sessionId)))
+            .map((c) => c.id)
+        );
+      }
+      const aBasculer = correctionsSnap.docs.filter(
+        (d) => !permises || permises.has(String(d.data().travailId || ''))
+      );
+      if (aBasculer.length > 0) {
         const batch = adminDb.batch();
-        for (const doc of correctionsSnap.docs) {
+        for (const doc of aBasculer) {
           batch.update(doc.ref, { visibleParEleve: body.corrigeDisponible });
         }
         await batch.commit();

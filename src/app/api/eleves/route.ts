@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { accesClasseDepuisDoc } from '@/lib/classe-acces';
 import { generateEleveId } from '@/lib/classe-utils';
 import { decryptFields, encryptFields, hashEmail, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
 import type { Eleve, CreateEleveData } from '@/types/classe';
@@ -35,8 +36,10 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
-      const classeData = classeDoc.data();
-      if (classeData?.profId !== auth.uid) {
+      // Le titulaire, ou un coprofesseur de la classe (lecture comme écriture :
+      // voir les élèves n'est pas les modifier — POST, PATCH et DELETE
+      // restent au seul titulaire)
+      if (!accesClasseDepuisDoc(classeDoc.data(), auth)) {
         return NextResponse.json(
           { success: false, message: 'Non autorisé' },
           { status: 403 }

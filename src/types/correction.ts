@@ -21,6 +21,9 @@ export interface Correction {
   studentId: string;
   profId: string;
   profEmail: string;
+  // Qui a rédigé la correction, quand ce n'est pas l'auteur de l'activité
+  // (coprofesseur d'une classe, 2026-10-04). `profId` reste l'auteur.
+  correcteurUid?: string;
   evaluation: Record<string, number>;            // {criterionId: level}
   commentaireGeneral: string;
   commentaireGeneralAudio?: string;              // base64 data URL (commentaire vocal)

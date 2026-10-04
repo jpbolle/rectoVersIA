@@ -43,6 +43,11 @@ export default function DevoirCard({
   // Activité FLE : sans classe et toujours fermée — seule une séquence FLE
   // l'ouvre. « Disponible » n'a donc pas de sens sur sa carte.
   const fle = devoir.referentiel === 'fle';
+  // Activité d'un AUTRE prof, sur une classe dont je suis titulaire ou
+  // coprofesseur (2026-10-04) : je ne la modifie pas, je n'actionne pas ses
+  // bascules globales (elles toucheraient ses autres classes). Tout passe
+  // par « ma classe » — la popup des sessions, filtrée par le serveur.
+  const partagee = !!devoir.monAcces;
 
   // Le type d'activité, en un mot. Un sondage et une compétition sont deux
   // usages d'un même atelier : ils se nomment eux-mêmes, sinon ils passeraient
@@ -161,11 +166,22 @@ export default function DevoirCard({
           <span>
             {fle
               ? 'ouverte par les séquences FLE'
-              : devoir.classes.length
-                ? devoir.classes.join(', ')
-                : 'aucune classe'}
+              : partagee && devoir.mesClasses?.length
+                ? devoir.mesClasses.join(', ')
+                : devoir.classes.length
+                  ? devoir.classes.join(', ')
+                  : 'aucune classe'}
           </span>
         </span>
+        {partagee && (
+          <span className={styles.metaItem} title="Activité créée par un collègue">
+            <span className={styles.metaIcon}>👤</span>
+            <span>
+              {devoir.auteurNom || 'Un collègue'}
+              {devoir.monAcces === 'lecture' ? ' · lecture seule' : ''}
+            </span>
+          </span>
+        )}
         {/* Rien ne se « remet » en compétition : les réponses vivent dans la
             manche, et le compteur afficherait 0 pour toujours. Ce qu'on veut
             voir — qui a joué, qui a répondu — est le sujet de l'onglet
@@ -180,7 +196,27 @@ export default function DevoirCard({
         )}
       </div>
 
-      {variant === 'prof' && (
+      {variant === 'prof' && partagee && (
+        <div className={styles.togglesSection} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.toggleRow}>
+            <button
+              type="button"
+              className={styles.sessionsLink}
+              onClick={() => setSessionsOuvertes(true)}
+            >
+              {devoir.monAcces === 'lecture'
+                ? '🎓 État pour ma classe'
+                : sondage
+                  ? '📊 Lancer le sondage'
+                  : estCompetition
+                    ? '🏁 Lancer une partie'
+                    : '🎓 Ouvrir, publier, archiver pour ma classe'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {variant === 'prof' && !partagee && (
         <div className={styles.togglesSection} onClick={(e) => e.stopPropagation()}>
           <div className={styles.toggleRow}>
             {/* En COMPÉTITION, « Travail disponible » disparaît : c'est
@@ -278,11 +314,12 @@ export default function DevoirCard({
           // sur la session, jamais sur la carte.
           competition={estCompetition}
           sondage={sondage}
+          partagee={partagee}
           onClose={() => setSessionsOuvertes(false)}
         />
       )}
 
-      {variant === 'prof' && (
+      {variant === 'prof' && !partagee && (
         <button
           className={styles.editButton}
           onClick={handleEdit}
@@ -305,7 +342,7 @@ export default function DevoirCard({
         </button>
       )}
 
-      {variant === 'prof' && (
+      {variant === 'prof' && !partagee && (
         <button
           className={styles.deleteButton}
           onClick={handleDelete}

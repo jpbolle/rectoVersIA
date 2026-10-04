@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const id = mancheId(sessionId);
 
     if (action === 'ouvrir') {
-      const manche = await ouvrirSondage(sessionId, auth.uid);
+      const manche = await ouvrirSondage(sessionId, auth);
       if (!manche) {
         return NextResponse.json({ success: false, message: 'Session introuvable' }, { status: 404 });
       }

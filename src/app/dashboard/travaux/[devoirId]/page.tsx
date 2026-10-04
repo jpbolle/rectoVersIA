@@ -590,12 +590,25 @@ export default function TravauxPage() {
               de la carte. Il est ici parce que c'est ici qu'on vient de
               corriger : on ouvre le corrigé de la classe qu'on vient de finir,
               pas des autres (demande JP, 2026-09-20). */}
+          {/* Activité d'un collègue, vue depuis une classe partagée
+              (coprofesseur, 2026-10-04) : on dit de qui elle est et ce qu'on
+              y peut — le reste de la page est le même pour tous */}
+          {devoir?.monAcces && (
+            <p className={styles.coprofBandeau}>
+              Activité de <strong>{devoir.auteurNom || 'un collègue'}</strong> —{' '}
+              {devoir.monAcces === 'lecture'
+                ? 'tu la consultes en lecture seule.'
+                : 'tu corriges et publies pour ta classe ; l’activité elle-même reste à son auteur.'}
+            </p>
+          )}
+
           {sessionOuverte && (
             <div className={styles.corrigeToggle}>
               <Toggle
                 checked={sessionOuverte.corrigeDisponible}
                 onChange={basculerCorrige}
-                disabled={corrigeEnCours}
+                // Coprofesseur en lecture : il voit l'état, ne le change pas
+                disabled={corrigeEnCours || sessionOuverte.monAcces === 'lecture'}
                 labelOn={`Corrigé visible pour ${sessionOuverte.classeNom}`}
                 labelOff={`Corrigé caché pour ${sessionOuverte.classeNom}`}
               />

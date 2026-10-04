@@ -3,6 +3,8 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { isClasseType } from '@/types/classe';
 import type { Classe } from '@/types/classe';
+import { accesClasseDepuisDoc, nomDuProf, normaliserPartagesClasse } from '@/lib/classe-acces';
+import { poserAnnonce } from '@/lib/annonce-server';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -38,8 +40,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const data = doc.data()!;
 
-    // Vérifier que le prof est propriétaire
-    if (data.profId !== auth.uid) {
+    // Le titulaire, ou un coprofesseur à qui la classe est partagée
+    const monAcces = accesClasseDepuisDoc(data, auth);
+    if (!monAcces) {
       return NextResponse.json(
         { success: false, message: 'Non autorisé' },
         { status: 403 }
@@ -55,6 +58,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       anneeScolaire: data.anneeScolaire || '',
       archive: data.archive || false,
       googleClassroomId: data.googleClassroomId,
+      monAcces,
+      ...(monAcces === 'titulaire'
+        ? { partages: normaliserPartagesClasse(data.partages) }
+        : { titulaireNom: data.titulaireNom || '' }),
       createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || '',
       updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt || '',
     };
@@ -119,7 +126,50 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // contenus déjà créés ne bougent pas
     if (body.type !== undefined && isClasseType(body.type)) updates.type = body.type;
 
+    // ── COPROFESSEURS (2026-10-04) ──
+    // Seul le titulaire décide (la garde ci-dessus l'assure : cette route
+    // reste réservée au propriétaire de la classe). `partageEmails` double la
+    // liste à plat — c'est par lui que le collègue retrouve la classe.
+    // `titulaireNom` est recopié pour que le collègue sache de qui elle est,
+    // sans jointure à chaque affichage.
+    let nouveauxPartages: ReturnType<typeof normaliserPartagesClasse> = [];
+    if (Array.isArray(body.partages)) {
+      const moi = (auth.email || '').toLowerCase();
+      const partages = normaliserPartagesClasse(body.partages).filter((p) => p.email !== moi);
+      const avant = normaliserPartagesClasse(data.partages);
+      updates.partages = partages;
+      updates.partageEmails = partages.map((p) => p.email);
+      // Une classe qui a eu un coprofesseur peut porter SES activités, même
+      // une fois l'accès retiré : c'est tout l'objet du retour du titulaire.
+      // Le marqueur ne redescend jamais (cf. `classesAccessibles`).
+      if (partages.length > 0) updates.aEuDesCoprofs = true;
+      updates.titulaireNom = (await nomDuProf(auth.uid)) || auth.email || '';
+      // Ne prévenir que les nouveaux, ou ceux dont le mode change
+      nouveauxPartages = partages.filter((q) => {
+        const a = avant.find((x) => x.email === q.email);
+        return !a || a.mode !== q.mode;
+      });
+    }
+
     await adminDb.collection('classes').doc(id).update(updates);
+
+    // Après l'écriture seulement : prévenir d'un partage qui aurait échoué
+    // serait mentir. `poserAnnonce` n'échoue jamais bruyamment.
+    const nomClasse = (updates.nom as string) || data.nom || '';
+    await Promise.all(
+      nouveauxPartages.map((q) =>
+        poserAnnonce({
+          message:
+            q.mode === 'edition'
+              ? `${updates.titulaireNom} t’a ajouté comme coprofesseur de la classe « ${nomClasse} » : tu peux corriger, publier, ouvrir les activités et en créer pour elle.`
+              : `${updates.titulaireNom} t’a ajouté comme coprofesseur de la classe « ${nomClasse} », en lecture : tu vois ses élèves, ses activités et ses copies.`,
+          cible: 'collegue',
+          destinataireEmail: q.email,
+          auteurUid: auth.uid,
+          lien: '/classes',
+        })
+      )
+    );
 
     // Les devoirs référencent les classes par NOM : un renommage doit se
     // propager, sinon les devoirs existants deviennent invisibles pour les
@@ -135,6 +185,26 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       const toUpdate = devoirsSnap.docs.filter((d) =>
         Array.isArray(d.data().classes) && d.data().classes.includes(data.nom)
       );
+      // Les activités d'un AUTRE prof sur cette classe (coprofesseur,
+      // 2026-10-04) la nomment aussi : on les retrouve par leurs sessions,
+      // sans quoi elles disparaîtraient de chez les élèves au renommage
+      if (data.aEuDesCoprofs === true) {
+        const sessionsSnap = await adminDb.collection('sessions').where('classeId', '==', id).get();
+        const autres = [...new Set(
+          sessionsSnap.docs
+            .filter((d) => d.data().profId !== auth.uid)
+            .map((d) => String(d.data().devoirId || ''))
+            .filter(Boolean)
+        )];
+        const docs = autres.length
+          ? await adminDb.getAll(...autres.map((d) => adminDb.collection('devoirs').doc(d)))
+          : [];
+        docs.forEach((d) => {
+          if (d.exists && Array.isArray(d.data()!.classes) && d.data()!.classes.includes(data.nom)) {
+            toUpdate.push(d as FirebaseFirestore.QueryDocumentSnapshot);
+          }
+        });
+      }
       if (toUpdate.length > 0) {
         const batch = adminDb.batch();
         for (const devoirDoc of toUpdate) {
@@ -160,6 +230,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       anneeScolaire: data.anneeScolaire,
       archive: (updates.archive as boolean) ?? data.archive ?? false,
       googleClassroomId: data.googleClassroomId,
+      partages: Array.isArray(updates.partages)
+        ? (updates.partages as ReturnType<typeof normaliserPartagesClasse>)
+        : normaliserPartagesClasse(data.partages),
+      monAcces: 'titulaire',
       createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || '',
       updatedAt: now.toISOString(),
     };

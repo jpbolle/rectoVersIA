@@ -9,6 +9,7 @@ import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { decrypt } from '@/lib/crypto';
 import { uidParEmail } from '@/lib/eleve-lookup';
+import { accesClasseDepuisDoc } from '@/lib/classe-acces';
 
 interface AuthInfo {
   uid: string;
@@ -46,11 +47,12 @@ export async function resolveProfilTarget(
     firebaseUid?: string;
   };
 
-  // L'élève doit appartenir à une classe du prof
+  // L'élève doit appartenir à une classe du prof — dont il est titulaire ou,
+  // depuis le 2026-10-04, coprofesseur (en lecture comme en écriture)
   const classeDoc = eleve.classeId
     ? await adminDb.collection('classes').doc(eleve.classeId).get()
     : null;
-  if (!classeDoc?.exists || classeDoc.data()?.profId !== auth.uid) {
+  if (!classeDoc?.exists || !accesClasseDepuisDoc(classeDoc.data(), auth)) {
     return { errorStatus: 403, errorMessage: 'Cet élève n’est pas dans vos classes' };
   }
 

@@ -14,6 +14,7 @@ import { calculateSchoolYear } from '@/lib/auth-utils';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import { sessionId } from '@/types/session';
 import type { Session } from '@/types/session';
+import { classesDeLActivite } from '@/lib/classe-acces';
 
 interface DocSession {
   [k: string]: unknown;
@@ -77,22 +78,9 @@ export async function syncSessions(devoirId: string): Promise<number> {
   const noms: string[] = Array.isArray(devoir.classes) ? devoir.classes : [];
   if (!profId || noms.length === 0) return 0;
 
-  // Noms de classes -> documents. Firestore limite `in` à 30 valeurs.
-  const classes: Array<{ id: string; nom: string; anneeScolaire: string }> = [];
-  for (let i = 0; i < noms.length; i += 30) {
-    const snap = await adminDb
-      .collection('classes')
-      .where('profId', '==', profId)
-      .where('nom', 'in', noms.slice(i, i + 30))
-      .get();
-    snap.docs.forEach((d) =>
-      classes.push({
-        id: d.id,
-        nom: d.data().nom || '',
-        anneeScolaire: d.data().anneeScolaire || '',
-      })
-    );
-  }
+  // Noms de classes -> documents : chez l'auteur, puis parmi les classes qu'on
+  // lui a partagées en écriture (coprofesseur, 2026-10-04) — `classesDeLActivite`.
+  const classes = await classesDeLActivite(devoir);
   if (classes.length === 0) return 0;
 
   const existantes = await sessionsDuDevoir(devoirId);

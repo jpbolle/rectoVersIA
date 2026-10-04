@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
+import { accesClasseDepuisDoc, peutAgir } from '@/lib/classe-acces';
 import { decryptFields, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import { DEFAULT_DIDACTIQUE_FLE } from '@/types/didactique-fle';
@@ -35,13 +36,20 @@ function vide(eleveId: string): NiveauxFle {
 }
 
 // L'élève appartient-il à une classe de ce prof ? Renvoie la classe ou null.
-async function classeDuProf(eleveId: string, profUid: string) {
+// Depuis le 2026-10-04 : titulaire, ou coprofesseur — en écriture seulement
+// quand `ecrire` est demandé (régler les curseurs).
+async function classeDuProf(
+  eleveId: string,
+  auth: { uid: string; email?: string | null },
+  ecrire = false
+) {
   const eleveDoc = await adminDb.collection('eleves').doc(eleveId).get();
   if (!eleveDoc.exists) return null;
   const classeId = eleveDoc.data()?.classeId as string | undefined;
   if (!classeId) return null;
   const classeDoc = await adminDb.collection('classes').doc(classeId).get();
-  if (!classeDoc.exists || classeDoc.data()?.profId !== profUid) return null;
+  const acces = classeDoc.exists ? accesClasseDepuisDoc(classeDoc.data(), auth) : null;
+  if (!acces || (ecrire && !peutAgir(acces))) return null;
   return classeDoc;
 }
 
@@ -69,7 +77,7 @@ export async function GET(request: NextRequest) {
       if (auth.role !== 'prof') {
         return NextResponse.json({ success: false, message: 'Accès réservé aux professeurs' }, { status: 403 });
       }
-      const classe = await classeDuProf(eleveId, auth.uid);
+      const classe = await classeDuProf(eleveId, auth);
       if (!classe) {
         return NextResponse.json({ success: false, message: 'Cet élève n’est pas dans vos classes' }, { status: 403 });
       }
@@ -138,7 +146,7 @@ export async function PUT(request: NextRequest) {
     if (!eleveId) {
       return NextResponse.json({ success: false, message: 'eleveId requis' }, { status: 400 });
     }
-    const classe = await classeDuProf(eleveId, auth.uid);
+    const classe = await classeDuProf(eleveId, auth, true);
     if (!classe) {
       return NextResponse.json({ success: false, message: 'Cet élève n’est pas dans vos classes' }, { status: 403 });
     }
