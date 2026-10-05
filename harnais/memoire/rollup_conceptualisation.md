@@ -105,6 +105,27 @@ commentaire général existant (texte + audio) et « Rendre visible ». Pas de n
   chose que l'agent (un « s » devant `'use client'` dans `SchemaActivity.tsx`, le CSS
   tronqué) — corrigés. Si ça se reproduit : formatteur ou extension de l'éditeur ?
 
+## 2026-10-05 — premiers retours de JP à l'écran, corrigés (rien commité)
+
+- **Saisie coupée dans la carte mentale** (« comédie de car ») : `TreeEditor` et
+  `TimelineEditor` recréent leurs nœuds à chaque rendu ; sans `measured`, React Flow
+  repasse la boîte en `visibility: hidden` → le champ perd le focus → validé à moitié.
+  ⚠ **Toujours passer `measured: sizes.get(id)`** aux nœuds recréés.
+- **Nouvelle boîte sans curseur** (les espaces retapaient « Ajouter », d'où des « Idée »
+  en série) : focus réessayé image par image (`ConceptNode`, `TreeNode`).
+- **Schéma libre** : une boîte sans taille fixée (venue d'une carte) n'avait plus de
+  largeur max → une seule ligne. `data-sized` ne lève la limite que pour une boîte
+  dimensionnée.
+- **Schéma vide → carte mentale** refusé (« la carte forme une boucle ») : `emptyOf()`
+  dans `diagram-transform.ts`.
+- **Volet du bas** : hauteur au contenu (250 px fixes seulement pour Markdown).
+- **Liens de la carte conceptuelle déplaçables** (`onReconnect`, pastilles aux bouts du
+  lien sélectionné) — interprétation « rattacher le bout à une autre boîte », à confirmer.
+- ⚠ Piège de test : l'onglet Chrome piloté par l'agent était en arrière-plan
+  (`visibilityState: hidden`) → ni `requestAnimationFrame` ni mesures : essais trompeurs.
+- Ce Mac n'avait pas `@xyflow/react` / `html-to-image` dans `node_modules` :
+  `npm install` (lockfile inchangé).
+
 ## En suspens à la fin de la session (2026-10-04, soir)
 
 - JP a créé l'activité « Fable? » (`DEV-20261004-9555`, mindmap, type libre) et l'a

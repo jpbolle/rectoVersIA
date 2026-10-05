@@ -5,7 +5,13 @@
   flex-direction: column;
 }
 
+/* Outils, À placer : le volet épouse son contenu (le canevas garde la place).
+   Markdown : hauteur fixe, la zone de texte s'étire dedans. */
 .panel[data-open] {
+  max-height: 250px;
+}
+
+.panel[data-open][data-tab='markdown'] {
   height: 250px;
 }
 
@@ -87,12 +93,12 @@
 .body {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
   display: flex;
   flex-direction: column;
 }
 
-.body > * {
+.panel[data-tab='markdown'] .body > * {
   flex: 1;
   min-height: 0;
 }

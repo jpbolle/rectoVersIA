@@ -28,7 +28,7 @@ export interface ConceptContext {
 }
 export const ConceptContextValue = createContext<ConceptContext>({ defaults: undefined, dropTag: () => {}, openTools: () => {}, free: false });
 
-export function ConceptNode({ id, data, selected }: NodeProps<ConceptNodeType>) {
+export function ConceptNode({ id, data, selected, width, height }: NodeProps<ConceptNodeType>) {
   const { updateNodeData, deleteElements } = useReactFlow();
   const ctx = useContext(ConceptContextValue);
   // Un concept créé vide s'ouvre directement en saisie.
@@ -38,10 +38,20 @@ export function ConceptNode({ id, data, selected }: NodeProps<ConceptNodeType>) 
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (editing) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
+    if (!editing) return;
+    // React Flow garde une boîte neuve invisible tant qu'il ne l'a pas mesurée, et un
+    // élément invisible refuse le focus : on réessaie quelques images de suite.
+    let frame = 0;
+    let tries = 0;
+    const focus = () => {
+      const input = inputRef.current;
+      if (!input) return;
+      input.focus();
+      if (document.activeElement === input) input.select();
+      else if (++tries < 20) frame = requestAnimationFrame(focus);
+    };
+    focus();
+    return () => cancelAnimationFrame(frame);
   }, [editing]);
 
   const startEdit = () => {
@@ -112,6 +122,9 @@ export function ConceptNode({ id, data, selected }: NodeProps<ConceptNodeType>) 
       data-dropping={dropping || undefined}
       data-shape={shape}
       data-free={ctx.free || undefined}
+      // Taille fixée (forme posée ou redimensionnée) : la boîte remplit ce cadre.
+      // Sinon (boîte venue d'une carte conceptuelle) : largeur plafonnée, le texte revient à la ligne.
+      data-sized={(ctx.free && width && height) || undefined}
       style={style}
       onDoubleClick={startEdit}
       onDragOver={onDragOver}

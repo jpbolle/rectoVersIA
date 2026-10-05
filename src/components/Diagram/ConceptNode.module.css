@@ -86,13 +86,17 @@
 /* ── Schéma libre : formes et poignées ─────────────────────────────────────── */
 /* La boîte remplit la taille fixée par l'élève (React Flow la pose sur le conteneur). */
 .node[data-free] {
-  max-width: none;
-  width: 100%;
-  height: 100%;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Taille fixée par l'élève : la boîte remplit son cadre, et grandit si le texte déborde. */
+.node[data-free][data-sized] {
+  max-width: none;
+  width: 100%;
+  min-height: 100%;
 }
 
 .node[data-shape='text'] {

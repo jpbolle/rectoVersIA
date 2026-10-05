@@ -76,6 +76,8 @@ function Editor({ diagram, onChange, grid, readOnly = false, onSelectionChange, 
             id: n.id,
             type: 'event',
             position: { x: p.x, y: p.y },
+            // Sans sa mesure, une boîte recréée redevient invisible pour React Flow.
+            measured: sizes.get(n.id),
             selected: n.id === selectedId,
             draggable: false,
             data: {
@@ -88,7 +90,7 @@ function Editor({ diagram, onChange, grid, readOnly = false, onSelectionChange, 
             },
           };
         }),
-    [diagram.nodes, layout, selectedId],
+    [diagram.nodes, layout, selectedId, sizes],
   );
 
   // Recadrer sur toute la frise (axe et étages compris) quand sa forme change, une fois

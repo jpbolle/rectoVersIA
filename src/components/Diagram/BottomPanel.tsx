@@ -33,7 +33,7 @@ export function BottomPanel({ open, onToggle, tab, onTab, pendingCount, message,
     { id: 'pending', label: `À placer (${pendingCount})`, hidden: pendingCount === 0 },
   ];
   return (
-    <div className={styles.panel} data-open={open || undefined}>
+    <div className={styles.panel} data-open={open || undefined} data-tab={tab}>
       <div className={styles.bar}>
         <button type="button" className={styles.toggle} onClick={onToggle} aria-expanded={open} title={open ? 'Replier' : 'Déplier'}>
           {open ? '▾' : '▴'}

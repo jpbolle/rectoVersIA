@@ -16,6 +16,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   addEdge,
+  reconnectEdge,
   useEdgesState,
   useNodesState,
   useReactFlow,
@@ -127,6 +128,16 @@ function Editor({ diagram, revision, onChange, grid, readOnly = false, onSelecti
     [setEdges],
   );
 
+  // Déplacer un lien : on saisit une de ses extrémités et on la lâche sur une autre
+  // boîte (ou un autre côté de la même). Le lien garde son mot de liaison et son style.
+  const onReconnect = useCallback(
+    (oldEdge: LabeledEdgeType, connection: Connection) => {
+      if (connection.source === connection.target) return; // pas de lien sur soi-même
+      setEdges((current) => reconnectEdge(oldEdge, connection, current, { shouldReplaceId: false }));
+    },
+    [setEdges],
+  );
+
   const addConcept = useCallback(
     (shape?: ShapeKind) => {
       const rect = containerRef.current?.getBoundingClientRect();
@@ -196,6 +207,7 @@ function Editor({ diagram, revision, onChange, grid, readOnly = false, onSelecti
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onReconnect={readOnly ? undefined : onReconnect}
           connectionMode={ConnectionMode.Loose}
           fitView
           fitViewOptions={FIT_OPTIONS}

@@ -66,6 +66,9 @@ function Editor({ diagram, onChange, grid, readOnly = false, onSelectionChange, 
         id: n.id,
         type: 'idea',
         position: { x: p?.x ?? 0, y: p?.y ?? 0 },
+        // Les boîtes sont recréées à chaque rendu : sans leur mesure, React Flow les
+        // repasse en invisible (et la saisie en cours perd le focus).
+        measured: sizes.get(n.id),
         selected: n.id === selectedId,
         draggable: false,
         data: {

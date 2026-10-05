@@ -27,6 +27,9 @@ export interface TransformResult {
 
 export function transformDiagram(diagram: Diagram, target: DiagramType): TransformResult {
   if (diagram.type === target) return { diagram, warnings: [] };
+  // Schéma encore vide : rien à transformer, on repart du schéma vierge du type voulu
+  // (sinon la carte conceptuelle vide, sans « concept de départ », était refusée).
+  if (diagram.nodes.length === 0 && !diagram.lanes?.length) return { diagram: emptyOf(diagram, target), warnings: [] };
   // Schéma libre : une carte conceptuelle avec des formes. Vers la carte, les formes
   // s'oublient ; vers le reste, on passe par la carte. Depuis n'importe quoi vers le
   // libre : on fait d'abord une carte, puis on la déclare libre (formes par défaut).
@@ -54,6 +57,15 @@ export function transformDiagram(diagram: Diagram, target: DiagramType): Transfo
   // Les éléments à placer et les réglages par défaut survivent à toute transformation.
   if (isTreeType(diagram.type) && target === 'conceptmap') return treeToConceptMap(diagram);
   return conceptMapToTree(diagram, target);
+}
+
+/** Le schéma vierge d'un type, qui garde le titre, les réglages et les éléments à placer. */
+function emptyOf(diagram: Diagram, target: DiagramType): Diagram {
+  const result: Diagram = { type: target, title: diagram.title, nodes: [], edges: [], defaults: diagram.defaults, pending: diagram.pending };
+  // Un arbre a toujours son idée centrale : le titre du schéma.
+  if (isTreeType(target)) result.nodes = [{ id: newId('n'), label: diagram.title || 'Sujet', x: 0, y: 0 }];
+  if (target === 'timeline') result.lanes = [];
+  return result;
 }
 
 function freeToConceptMap(diagram: Diagram): TransformResult {

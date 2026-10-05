@@ -32,3 +32,10 @@
   background: var(--c-bg);
   border-color: var(--c-primary);
 }
+
+/* Lien sélectionné : une pastille à chaque bout, à saisir pour le rattacher ailleurs. */
+.editor :global(.react-flow__edge.selected .react-flow__edgeupdater) {
+  fill: #fff;
+  stroke: var(--c-primary);
+  stroke-width: 2px;
+}

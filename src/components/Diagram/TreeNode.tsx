@@ -46,10 +46,20 @@ export function TreeNode({ id, data, selected }: NodeProps<TreeNodeType>) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (editing) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
+    if (!editing) return;
+    // React Flow garde une boîte neuve invisible tant qu'il ne l'a pas mesurée, et un
+    // élément invisible refuse le focus : on réessaie quelques images de suite.
+    let frame = 0;
+    let tries = 0;
+    const focus = () => {
+      const input = inputRef.current;
+      if (!input) return;
+      input.focus();
+      if (document.activeElement === input) input.select();
+      else if (++tries < 20) frame = requestAnimationFrame(focus);
+    };
+    focus();
+    return () => cancelAnimationFrame(frame);
   }, [editing]);
 
   const startEdit = () => {
