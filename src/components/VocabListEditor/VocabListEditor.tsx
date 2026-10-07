@@ -1,11 +1,55 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useVocabulaireWords } from '@/hooks/useVocabulaireWords';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import type { VocabulaireThemeSummary } from '@/hooks/useVocabulaireThemes';
 import type { VocabulaireWord } from '@/types/vocabulaire';
 import styles from './VocabListEditor.module.css';
+
+// Sheets modèle public (Drive de JP) — l'URL en /copy en crée une copie chez le prof.
+// Si le fichier est déplacé, supprimé ou rendu privé, le bouton casse en silence.
+const TEMPLATE_COPY_URL =
+  'https://docs.google.com/spreadsheets/d/1mW2_YHOQVZQ5GHgXsD-GbaqmbrSSuCgcXOLB8M-Qk7E/copy';
+
+// Champs que l'IA peut compléter (tout sauf le terme lui-même), dans l'ordre du modèle
+const OPTIONAL_FIELDS: (keyof VocabulaireWord)[] = ['definition', 'example', 'synonyms', 'antonyms', 'wordFamily'];
+
+// Sauvegarde automatique : délai après la dernière modification, et après un échec
+const AUTOSAVE_DELAY_MS = 1500;
+const AUTOSAVE_RETRY_MS = 5000;
+
+// Mots envoyés par appel à l'IA : au-delà, la réponse risque d'être tronquée
+const ENRICH_BATCH_SIZE = 15;
+
+function normalizeWord(word: string): string {
+  return word.toLowerCase().trim();
+}
+
+function hasEmptyFields(word: VocabulaireWord): boolean {
+  return OPTIONAL_FIELDS.some((field) => !(word[field] || '').trim());
+}
+
+// Liste collée : un mot par ligne (puces et numéros retirés). Des lignes copiées
+// depuis un tableur (cellules séparées par des tabulations) sont lues dans
+// l'ordre des colonnes du modèle ; une ligne d'en-tête « Terme » est ignorée.
+function parsePastedList(text: string): VocabulaireWord[] {
+  const words: VocabulaireWord[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const cells = line.split('\t').map((c) => c.trim());
+    const term = cells[0].replace(/^(?:[-•*–]|\d+[.)])\s+/, '').trim();
+    if (!term || normalizeWord(term) === 'terme') continue;
+    words.push({
+      word: term,
+      definition: cells[1] || '',
+      example: cells[2] || '',
+      synonyms: cells[3] || '',
+      antonyms: cells[4] || '',
+      wordFamily: cells[5] || '',
+    });
+  }
+  return words;
+}
 
 // Outil de création/édition d'une liste de vocabulaire — utilisé par la page
 // Mes Ressources (onglet Listes de vocabulaire) et par le verso du formulaire
@@ -48,6 +92,7 @@ export default function VocabListEditor({
   const [editingWords, setEditingWords] = useState<VocabulaireWord[]>([]);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   // Popup ajout de mot
   const [showAddWordModal, setShowAddWordModal] = useState(false);
@@ -61,6 +106,49 @@ export default function VocabListEditor({
   const [aiSelectedWords, setAiSelectedWords] = useState<Set<string>>(new Set());
   const [aiLoading, setAiLoading] = useState(false);
   const [aiEnriching, setAiEnriching] = useState(false);
+
+  // Import : liste collée ou Google Sheets public
+  const [showImport, setShowImport] = useState(false);
+  const [importTab, setImportTab] = useState<'list' | 'sheet'>('list');
+  const [importText, setImportText] = useState('');
+  const [importUrl, setImportUrl] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<{ added: number; skipped: number } | null>(null);
+  // Aides IA cochées avant l'import, lancées dans la foulée
+  const [importComplete, setImportComplete] = useState(true);
+  const [importEnrich, setImportEnrich] = useState(false);
+  // IA : complétion des champs vides (progression par lots)
+  const [completing, setCompleting] = useState<{ done: number; total: number } | null>(null);
+
+  // Sauvegarde automatique : refs lues par les timers et au démontage
+  const themeId = theme?.id;
+  const editingWordsRef = useRef(editingWords);
+  const dirtyRef = useRef(dirty);
+  const updateWordsRef = useRef(updateWords);
+  useEffect(() => {
+    editingWordsRef.current = editingWords;
+    dirtyRef.current = dirty;
+    updateWordsRef.current = updateWords;
+  });
+
+  // Changement de liste (même composant réutilisé) : on repart d'un tableau vide
+  // pour ne jamais enregistrer les mots de l'ancienne liste dans la nouvelle.
+  // Au départ (changement de liste, fermeture, navigation), ce qui attendait
+  // encore le délai de sauvegarde est enregistré immédiatement.
+  useEffect(() => {
+    setEditingWords([]);
+    setDirty(false);
+    dirtyRef.current = false;
+    setSaveStatus('idle');
+    if (!themeId || readOnly) return;
+    return () => {
+      if (dirtyRef.current) {
+        updateWordsRef.current(themeId, editingWordsRef.current.filter((w) => w.word.trim()))
+          .catch((err) => console.error('VocabListEditor: sauvegarde au départ échouée', err));
+      }
+    };
+  }, [themeId, readOnly]);
 
   // Charger les mots quand la liste est disponible
   useEffect(() => {
@@ -118,25 +206,40 @@ export default function VocabListEditor({
     setDirty(true);
   }, []);
 
-  const handleSaveWords = useCallback(async () => {
-    if (!theme) return;
+  const saveWords = useCallback(async () => {
+    if (!themeId || !dirtyRef.current) return;
+    const snapshot = editingWordsRef.current;
     setSaving(true);
+    setSaveStatus('saving');
     try {
-      const cleaned = editingWords.filter((w) => w.word.trim());
-      await updateWords(theme.id, cleaned);
-      setDirty(false);
-      onMessage?.('Liste sauvegardée !', 'success');
+      await updateWords(themeId, snapshot.filter((w) => w.word.trim()));
+      // Modifié pendant l'enregistrement → reste à enregistrer, le cycle suivant s'en charge
+      if (editingWordsRef.current === snapshot) setDirty(false);
+      setSaveStatus('saved');
     } catch (err) {
-      onMessage?.(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde', 'error');
+      console.error('VocabListEditor: sauvegarde automatique échouée', err);
+      setSaveStatus('error');
     } finally {
       setSaving(false);
     }
-  }, [theme, editingWords, updateWords, onMessage]);
+  }, [themeId, updateWords]);
 
-  const handleAiSuggest = useCallback(async () => {
+  // Sauvegarde automatique : AUTOSAVE_DELAY_MS après la dernière modification
+  // (nouvel essai plus espacé après un échec). Une seule requête à la fois.
+  useEffect(() => {
+    if (!dirty || saving || readOnly || !themeId) return;
+    const timer = setTimeout(saveWords, saveStatus === 'error' ? AUTOSAVE_RETRY_MS : AUTOSAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [editingWords, dirty, saving, readOnly, themeId, saveWords, saveStatus]);
+
+  // `baseWords` : la liste à jour quand l'appel suit un import (le state n'a pas
+  // encore été relu) — sinon la liste affichée
+  const handleAiSuggest = useCallback(async (baseWords?: VocabulaireWord[]) => {
     if (!theme || !getAuthHeaders) return;
+    const listWords = baseWords ?? editingWords;
     setAiLoading(true);
     setShowAiSuggestions(true);
+    setShowImport(false);
     setAiSuggestions([]);
     setAiSelectedWords(new Set());
 
@@ -149,13 +252,13 @@ export default function VocabListEditor({
         body: JSON.stringify({
           action: 'suggest',
           themeName: theme.name,
-          existingWords: editingWords.map((w) => w.word),
+          existingWords: listWords.map((w) => w.word),
         }),
       });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         // Filtrer les mots deja dans la liste
-        const existingWords = new Set(editingWords.map((w) => w.word.toLowerCase().trim()));
+        const existingWords = new Set(listWords.map((w) => w.word.toLowerCase().trim()));
         const filtered = json.data.filter((w: string) => !existingWords.has(w.toLowerCase().trim()));
         setAiSuggestions(filtered);
       } else {
@@ -219,10 +322,146 @@ export default function VocabListEditor({
     }
   }, [aiSelectedWords, getAuthHeaders, onMessage]);
 
+  const resetImport = useCallback(() => {
+    setImportText('');
+    setImportUrl('');
+    setImportError(null);
+    setImportResult(null);
+  }, []);
+
+  const handleToggleImport = useCallback(() => {
+    setShowImport((prev) => !prev);
+    setShowAiSuggestions(false);
+    resetImport();
+  }, [resetImport]);
+
+  // IA : remplit uniquement les cases vides — ce que le prof a écrit n'est
+  // jamais écrasé. Par lots, pour qu'une longue liste importée passe.
+  const completeEmptyFields = useCallback(async (targets: string[]) => {
+    if (!getAuthHeaders || targets.length === 0) return;
+
+    setCompleting({ done: 0, total: targets.length });
+    let completed = 0;
+    let failed = false;
+    try {
+      for (let i = 0; i < targets.length; i += ENRICH_BATCH_SIZE) {
+        const batch = targets.slice(i, i + ENRICH_BATCH_SIZE);
+        const headers = await getAuthHeaders();
+        if (!headers) { failed = true; break; }
+        const res = await fetch('/api/vocabulaire/suggest', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'enrich', words: batch }),
+        });
+        const json = await res.json();
+        if (!json.success || !Array.isArray(json.data)) { failed = true; break; }
+
+        // L'IA renvoie les mots dans l'ordre demandé : appariement par position,
+        // ou par le mot lui-même si elle en a sauté ou ajouté
+        const data = json.data as VocabulaireWord[];
+        const byWord = new Map<string, VocabulaireWord>(
+          data.length === batch.length
+            ? batch.map((w, idx) => [normalizeWord(w), data[idx]])
+            : data.map((w) => [normalizeWord(w.word || ''), w])
+        );
+        setEditingWords((prev) => prev.map((w) => {
+          const enriched = byWord.get(normalizeWord(w.word));
+          if (!enriched) return w;
+          const merged = { ...w };
+          for (const field of OPTIONAL_FIELDS) {
+            if (!(merged[field] || '').trim() && enriched[field]) merged[field] = enriched[field];
+          }
+          return merged;
+        }));
+        setDirty(true);
+        completed += batch.length;
+        setCompleting({ done: completed, total: targets.length });
+      }
+    } catch {
+      failed = true;
+    } finally {
+      setCompleting(null);
+    }
+
+    if (failed) {
+      onMessage?.(
+        completed > 0
+          ? `Complétion interrompue après ${completed} mot${completed > 1 ? 's' : ''} — les champs restants sont à remplir à la main.`
+          : 'Erreur lors de la complétion IA',
+        'error'
+      );
+    }
+  }, [getAuthHeaders, onMessage]);
+
+  // Ajoute les mots importés en fin de tableau, sans doublon (ni avec la liste,
+  // ni entre eux), puis lance les aides IA cochées : complétion des champs vides
+  // des mots importés, puis suggestions de mots en plus (panneau IA).
+  const addImportedWords = useCallback(async (incoming: VocabulaireWord[]) => {
+    const seen = new Set(editingWords.map((w) => normalizeWord(w.word)));
+    const fresh: VocabulaireWord[] = [];
+    for (const w of incoming) {
+      const key = normalizeWord(w.word);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      fresh.push(w);
+    }
+    if (fresh.length > 0) {
+      setEditingWords((prev) => [...prev, ...fresh]);
+      setDirty(true);
+    }
+    setImportResult({ added: fresh.length, skipped: incoming.length - fresh.length });
+
+    if (importComplete) {
+      await completeEmptyFields(fresh.filter(hasEmptyFields).map((w) => w.word));
+    }
+    if (importEnrich) {
+      resetImport();
+      handleAiSuggest([...editingWords, ...fresh]);
+    }
+  }, [editingWords, importComplete, importEnrich, completeEmptyFields, resetImport, handleAiSuggest]);
+
+  const handleImport = useCallback(async () => {
+    setImportError(null);
+
+    if (importTab === 'list') {
+      const parsed = parsePastedList(importText);
+      if (parsed.length === 0) {
+        setImportError('Aucun mot à importer.');
+        return;
+      }
+      await addImportedWords(parsed);
+      return;
+    }
+
+    if (!getAuthHeaders || !importUrl.trim()) return;
+    setImporting(true);
+    let sheetWords: VocabulaireWord[] | null = null;
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      const res = await fetch('/api/vocabulaire/import', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl.trim() }),
+      });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        sheetWords = json.data;
+      } else {
+        setImportError(json.message || 'Erreur lors de l\'import');
+      }
+    } catch {
+      setImportError('Erreur lors de l\'import du Sheet');
+    } finally {
+      setImporting(false);
+    }
+    if (sheetWords) await addImportedWords(sheetWords);
+  }, [importTab, importText, importUrl, getAuthHeaders, addImportedWords]);
+
+  // Plus de confirmation : ce qui reste en attente est enregistré au démontage
   const handleClose = useCallback(() => {
-    if (!readOnly && dirty && !confirm('Vous avez des modifications non sauvegardées. Fermer quand même ?')) return;
     onClose?.();
-  }, [readOnly, dirty, onClose]);
+  }, [onClose]);
 
   // ── Mode création : saisie du nom ──
   if (!theme) {
@@ -310,23 +549,208 @@ export default function VocabListEditor({
               <button className={styles.vocabAddWordBtn} onClick={handleAddWord}>
                 + Ajouter un mot
               </button>
+              <button
+                className={`${styles.vocabAddWordBtn} ${showImport ? styles.vocabImportBtnActive : ''}`}
+                onClick={handleToggleImport}
+              >
+                ⤓ Importer
+              </button>
               {getAuthHeaders && (
                 <button
                   className={styles.vocabAiBtn}
-                  onClick={handleAiSuggest}
+                  onClick={() => handleAiSuggest()}
                   disabled={aiLoading}
                 >
                   {aiLoading ? 'Génération...' : '✨ Créer avec l\'IA'}
                 </button>
               )}
-              {dirty && (
-                <button
-                  className={styles.vocabSaveBtn}
-                  onClick={handleSaveWords}
-                  disabled={saving}
+              {(dirty || saveStatus !== 'idle') && (
+                <span
+                  className={`${styles.saveStatus} ${saveStatus === 'error' ? styles.saveStatusError : ''}`}
+                  role="status"
                 >
-                  {saving ? 'Sauvegarde...' : 'Sauvegarder les modifications'}
+                  {saveStatus === 'error'
+                    ? '⚠ Non enregistré — nouvel essai…'
+                    : dirty || saving
+                      ? 'Enregistrement…'
+                      : 'Enregistré ✓'}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Panneau import : liste collée ou Google Sheets */}
+          {showImport && !readOnly && (
+            <div className={styles.importPanel}>
+              <div className={styles.aiPanelHeader}>
+                <h4 className={styles.importPanelTitle}>Importer des mots</h4>
+                <button className={styles.vocabEditorClose} onClick={handleToggleImport}>
+                  ✕
                 </button>
+              </div>
+
+              {importResult ? (
+                // Étape 2 : résultat (+ progression de la complétion IA)
+                <>
+                  <p className={styles.importSummary}>
+                    {importResult.added > 0
+                      ? `✓ ${importResult.added} mot${importResult.added > 1 ? 's' : ''} ajouté${importResult.added > 1 ? 's' : ''} au tableau`
+                      : 'Aucun mot ajouté'}
+                    {importResult.skipped > 0 &&
+                      ` (${importResult.skipped} déjà présent${importResult.skipped > 1 ? 's' : ''}, ignoré${importResult.skipped > 1 ? 's' : ''})`}
+                    .
+                  </p>
+                  {completing && (
+                    <p className={styles.aiLoading}>
+                      ✨ L&apos;IA complète les champs vides… {completing.done}/{completing.total}
+                    </p>
+                  )}
+                  <div className={styles.aiActions}>
+                    <button className={styles.modalCancelBtn} onClick={resetImport} disabled={!!completing}>
+                      Importer d&apos;autres mots
+                    </button>
+                  </div>
+                </>
+              ) : (
+                // Étape 1 : saisie de la source
+                <>
+                  {getAuthHeaders && (
+                    <div className={styles.importTabs}>
+                      <button
+                        className={`${styles.importTab} ${importTab === 'list' ? styles.importTabActive : ''}`}
+                        onClick={() => { setImportTab('list'); setImportError(null); }}
+                      >
+                        Liste de mots
+                      </button>
+                      <button
+                        className={`${styles.importTab} ${importTab === 'sheet' ? styles.importTabActive : ''}`}
+                        onClick={() => { setImportTab('sheet'); setImportError(null); }}
+                      >
+                        Google Sheets
+                      </button>
+                    </div>
+                  )}
+
+                  {importTab === 'list' || !getAuthHeaders ? (
+                    <>
+                      <textarea
+                        className={styles.importTextarea}
+                        value={importText}
+                        onChange={(e) => setImportText(e.target.value)}
+                        placeholder={'Un mot ou une expression par ligne :\nmélancolie\ns\'émerveiller\nprendre son envol'}
+                        rows={8}
+                        autoFocus
+                      />
+                      <p className={styles.importHint}>
+                        Vous pouvez aussi coller des lignes copiées depuis un tableur : les colonnes sont
+                        lues dans l&apos;ordre du modèle (Terme, Définition, Exemple, Synonymes, Antonymes, Proxémie).
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <label className={styles.modalLabel} htmlFor="vocab-import-url">
+                        Lien du Google Sheets
+                      </label>
+                      <input
+                        id="vocab-import-url"
+                        className={styles.vocabCreateInput}
+                        type="url"
+                        value={importUrl}
+                        onChange={(e) => setImportUrl(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleImport()}
+                        placeholder="https://docs.google.com/spreadsheets/d/…"
+                        autoFocus
+                      />
+                      <p className={styles.importHint}>
+                        ⓘ Le Sheet doit être partagé en « Tous les utilisateurs disposant du lien ».
+                        Copiez l&apos;URL depuis la barre d&apos;adresse, avec le bon onglet ouvert.
+                      </p>
+
+                      <div className={styles.sheetSampleWrapper}>
+                        <table className={styles.sheetSample}>
+                          <thead>
+                            <tr>
+                              <th className={styles.sheetSampleRequired}>Terme</th>
+                              <th>Définition</th>
+                              <th>Exemple</th>
+                              <th>Synonymes</th>
+                              <th>Antonymes</th>
+                              <th>Proxémie</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>mélancolie</td>
+                              <td>Tristesse vague et douce…</td>
+                              <td>Un dimanche de pluie…</td>
+                              <td>nostalgie, spleen</td>
+                              <td>gaieté</td>
+                              <td>mélancolique</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className={styles.sheetSampleFooter}>
+                        <span className={styles.importHint}>
+                          Seule la colonne <strong>Terme</strong> est obligatoire. Les autres peuvent rester
+                          vides : l&apos;IA pourra les compléter.
+                        </span>
+                        <a
+                          className={styles.templateLink}
+                          href={TEMPLATE_COPY_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Copier le modèle
+                        </a>
+                      </div>
+                    </>
+                  )}
+
+                  {getAuthHeaders && (
+                    <fieldset className={styles.importAiOptions}>
+                      <legend className={styles.aiHint}>Aide de l&apos;IA, dans la foulée de l&apos;import :</legend>
+                      <label className={styles.importAiOption}>
+                        <input
+                          type="checkbox"
+                          checked={importComplete}
+                          onChange={(e) => setImportComplete(e.target.checked)}
+                        />
+                        <span>
+                          <strong>Compléter les champs vides</strong> des mots importés (définition,
+                          exemple…) — ce que vous avez écrit n&apos;est jamais remplacé
+                        </span>
+                      </label>
+                      <label className={styles.importAiOption}>
+                        <input
+                          type="checkbox"
+                          checked={importEnrich}
+                          onChange={(e) => setImportEnrich(e.target.checked)}
+                        />
+                        <span>
+                          <strong>Enrichir la liste</strong> : l&apos;IA propose des mots en plus, vous
+                          cochez ceux à garder
+                        </span>
+                      </label>
+                    </fieldset>
+                  )}
+
+                  {importError && <p className={styles.importError}>{importError}</p>}
+
+                  <div className={styles.aiActions}>
+                    <span />
+                    <button
+                      className={styles.vocabCreateBtn}
+                      onClick={handleImport}
+                      disabled={
+                        importing ||
+                        (importTab === 'list' || !getAuthHeaders ? !importText.trim() : !importUrl.trim())
+                      }
+                    >
+                      {importing ? 'Import...' : 'Importer'}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -399,7 +823,7 @@ export default function VocabListEditor({
                 {editingWords.length === 0 ? (
                   <tr>
                     <td colSpan={readOnly ? 6 : 7} className={styles.vocabEmptyRow}>
-                      {readOnly ? 'Cette liste est vide.' : 'Aucun mot — cliquez sur « Ajouter un mot » pour commencer.'}
+                      {readOnly ? 'Cette liste est vide.' : 'Aucun mot — cliquez sur « Ajouter un mot » ou « Importer » pour commencer.'}
                     </td>
                   </tr>
                 ) : editingWords.map((word, idx) => (

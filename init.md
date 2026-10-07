@@ -702,7 +702,11 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
   coordonnées en %, porté de romantismesam) — utilisé par les questions à image **et**
   par les images de l'onglet Ressources élève (`travail.ressourceImageShapes`)
 - `VocabListEditor` : outil de listes de vocabulaire partagé entre Mes Ressources et
-  le verso de la création d'activité vocabulaire (option « ➕ Nouvelle liste… » au recto)
+  le verso de la création d'activité vocabulaire (option « ➕ Nouvelle liste… » au recto).
+  **Sauvegarde automatique** (1,5 s, plus de bouton « Sauvegarder ») ; **import** d'une
+  liste collée ou d'un **Google Sheets public** (`/api/vocabulaire/import`, méthode
+  KitSchool : export CSV, `src/lib/sheet-url.ts` + `src/lib/csv.ts`), avec complétion IA
+  des champs vides cochable. Modèle Sheets : Drive de JP, id dans `TEMPLATE_COPY_URL`
 - Création/édition d'activité : verso « 📚 Ajout de contenus » en deux groupes
   (« Ressources pour l'élève » / « Contenus de l'activité ») dans `CreationForm` **et**
   `EditDevoirModal` (refondu recto/verso) ; bouton « 👁 Prévisualiser l'espace élève »

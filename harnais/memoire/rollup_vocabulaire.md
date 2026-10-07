@@ -29,7 +29,47 @@ Session 2026-08-09 (retours de test JP, **livré non déployé**) :
   vides. Bouton « i » supprimé, `getFirstSyllable` supprimé de `types/vocabulaire.ts`.
   Demi-point conservé : trou trouvé à partir de la 2ᵉ vérification → `credit: 0.5`.
 
+Session 2026-10-07 (**testé et validé par JP le jour même, non déployé**) — import de listes
+dans `VocabListEditor` (bouton « ⤓ Importer », panneau en ligne comme le panneau IA,
+pas de popup) :
+- Onglet **Liste de mots** : un mot par ligne (puces/numéros retirés) ; des lignes
+  collées depuis un tableur (tabulations) sont lues dans l'ordre du modèle.
+- Onglet **Google Sheets** : méthode KitSchool — Sheet **public**, le serveur lit
+  l'export CSV (`/api/vocabulaire/import`, `src/lib/sheet-url.ts`, `src/lib/csv.ts`,
+  aucune dépendance). Colonnes reconnues par en-tête (seul « Terme » obligatoire).
+  Un Sheet privé renvoie du HTML (401) → message « partagez en public » (pas
+  « colonne manquante » comme dans KitSchool).
+- **Modèle** : Sheets « Modèle — Import liste de vocabulaire (Recto-versIA) » créé
+  dans le Drive de JP (id `1mW2_YHOQVZQ5GHgXsD-GbaqmbrSSuCgcXOLB8M-Qk7E`), bouton
+  « Copier le modèle » en `/copy`. **Doit être rendu public**, sinon le bouton échoue.
+- Doublons ignorés. Deux aides IA **cochées avant l'import** (demande de JP : dans le
+  panneau, pas en étape séparée), lancées dans la foulée du clic « Importer » :
+  « Compléter les champs vides » des mots importés (cochée par défaut ; action
+  `enrich` par lots de 15, ne remplit que les cases vides) puis « Enrichir la liste »
+  (= panneau IA existant, validé par JP).
+
+Même session — **sauvegarde automatique** de `VocabListEditor` (choix de JP) :
+déclenchée par un signalement (un collègue a perdu une liste : les mots n'étaient
+enregistrés qu'avec le bouton « Sauvegarder », sans avertissement en quittant).
+- Enregistrement 1,5 s après la dernière modification (nouvel essai à 5 s après un
+  échec), une requête à la fois ; indicateur « Enregistrement… / Enregistré ✓ /
+  ⚠ Non enregistré » à la place du bouton « Sauvegarder » (supprimé).
+- Au départ (changement de liste, fermeture, navigation dans l'app), ce qui attendait
+  le délai est enregistré immédiatement. Fermer l'onglet du navigateur dans les 1,5 s
+  peut encore perdre la dernière frappe (accepté).
+- ⚠ Gotcha : la page Mes Ressources **réutilise le même composant** quand on change de
+  liste → le tableau est vidé au changement d'`id`, sinon la sauvegarde automatique
+  écrirait les mots de l'ancienne liste dans la nouvelle.
+
 ## TODOs
+
+- [ ] **Tester la sauvegarde automatique** : modifier puis changer de liste aussitôt
+  (les mots doivent rester sur la bonne liste), fermer l'éditeur, recharger la page.
+
+- [ ] **Rendre public le Sheet modèle** (Partager → « Tous les utilisateurs disposant
+  du lien », Lecteur) — sinon « Copier le modèle » échoue chez les autres profs.
+- [ ] Idée en attente de décision de JP : bouton « ✨ Compléter les champs vides » dans
+  la barre du tableau (aujourd'hui la complétion n'existe qu'à l'import).
 
 - [ ] **Finir de tester la session d'apprentissage** : injection des mots personnels,
   demi-points en stats (les ex. 1 et 5 ont été testés le 2026-08-09, corrections faites).
