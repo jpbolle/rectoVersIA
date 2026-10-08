@@ -5,7 +5,7 @@ import { encrypt } from '@/lib/crypto';
 
 // ── Vocabulaire personnel de l'élève ──
 // vocabulairePersonnel/{uid} : mots dont l'élève a demandé la définition
-// (app Recto-versIA via /api/dictionary, extension NavigKid via POST ici).
+// (app RectoVerso via /api/dictionary, extension NavigKid via POST ici).
 
 interface MotRecu {
   word?: string;
@@ -28,10 +28,13 @@ export async function GET(request: NextRequest) {
   try {
     const doc = await adminDb.collection('vocabulairePersonnel').doc(uid).get();
     const data = doc.exists ? doc.data() : null;
+    // Espace classique : les mots Daspalecte vivent dans `vocabulaireFle`
+    // (2026-10-08) — ceux qui resteraient ici n'y sont plus montrés
+    const words = ((data?.words || []) as { source?: string }[]).filter((w) => w.source !== 'daspalecte');
     return NextResponse.json({
       success: true,
       data: {
-        words: data?.words || [],
+        words,
         updatedAt: data?.updatedAt || null,
       },
     });

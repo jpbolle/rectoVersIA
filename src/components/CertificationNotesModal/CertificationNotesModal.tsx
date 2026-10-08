@@ -6,7 +6,7 @@
 //  - la ligne ⭐ Certification de la scénarisation (toutes les classes du parcours) ;
 //  - le bloc « Certifications » du détail d'une classe (`classeId` la restreint).
 //
-// Quand la certification est rattachée à une activité Recto-versIA, la note de
+// Quand la certification est rattachée à une activité RectoVerso, la note de
 // la correction est PROPOSÉE en gris ; ce que le prof tape prime toujours sur
 // elle. Une case laissée vide reprend donc la note de l'activité.
 //

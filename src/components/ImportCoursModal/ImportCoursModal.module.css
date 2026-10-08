@@ -1,0 +1,194 @@
+/* Popup « Importer un cours » — même armature que les popups de l'app
+   (AddEleveModal), palette de l'espace FLE */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(61, 56, 50, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  width: 100%;
+  max-width: 560px;
+  box-shadow: var(--c-shadow-popup);
+  border: 1px solid var(--c-border);
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.headerPicto {
+  font-size: 26px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 22px;
+  font-weight: 700;
+  color: #345d85;
+}
+
+.closeBtn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.closeBtn:hover {
+  color: #345d85;
+}
+
+.form {
+  padding: 20px 24px 24px;
+}
+
+.modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.modeBtn {
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 12px 8px;
+  border: 1.5px solid rgba(74, 123, 167, 0.35);
+  border-radius: 12px;
+  background: rgba(74, 123, 167, 0.06);
+  color: #345d85;
+  cursor: pointer;
+}
+
+.modeActive {
+  background: #4a7ba7;
+  border-color: #4a7ba7;
+  color: #fff;
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.label {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin-bottom: 8px;
+}
+
+.optionnel {
+  font-weight: 400;
+  color: var(--c-text-muted);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 16px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font-family: inherit;
+  color: var(--c-text);
+  background: var(--c-bg, #fff);
+}
+
+.textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: #4a7ba7;
+  box-shadow: 0 0 0 3px rgba(74, 123, 167, 0.15);
+}
+
+.inputFile {
+  font: inherit;
+  font-size: 15px;
+}
+
+.aide {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--c-text-secondary);
+}
+
+.erreur {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(200, 60, 60, 0.08);
+  color: var(--c-danger);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btnSecondaire,
+.btnPrimaire {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btnSecondaire {
+  border: 1.5px solid var(--c-border);
+  background: none;
+  color: var(--c-text-secondary);
+}
+
+.btnPrimaire {
+  border: 1.5px solid #4a7ba7;
+  background: #4a7ba7;
+  color: #fff;
+}
+
+.btnPrimaire:disabled,
+.btnSecondaire:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

@@ -419,7 +419,13 @@ export default function TravauxPage() {
   // Une activité FLE vit dans Mes Ressources › Modules FLE, pas au tableau de bord :
   // le retour ramène là d'où le prof est venu
   const handleBack = () =>
-    router.push(devoir?.referentiel === 'fle' ? '/grilles?onglet=fle&section=activites' : '/dashboard');
+    router.push(
+      devoir?.referentiel === 'fle'
+        ? '/parcours-fle?section=activites'
+        : devoir?.typeTravail === 'sequence'
+          ? '/parcours-fle?section=sequences'
+          : '/dashboard'
+    );
 
   if ((authLoading && !isAuthenticated) || isLoading) {
     return (
@@ -519,7 +525,7 @@ export default function TravauxPage() {
       <header className={styles.header}>
         <div className={styles.headerLeft}>
           <Link href="/" className={styles.logoLink}>
-            <img src="/logoRecto.png" alt="Recto-VersIA" className={styles.logoImg} />
+            <img src="/logoRecto.png" alt="RectoVerso" className={styles.logoImg} />
           </Link>
           <button className={styles.backBtn} onClick={handleBack}>←</button>
           <div className={styles.headerContent}>

@@ -2,7 +2,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase/admin';
 import { encrypt } from '@/lib/crypto';
 import {
-  COLL_ATTENTE, COLL_PERSO, fusionnerMots, normaliserMot, type MotPersonnel,
+  COLL_ATTENTE, COLL_FLE, fusionnerMots, normaliserMot, type MotPersonnel,
 } from './mots';
 import type { IngestBody, IngestEvent } from './schema';
 
@@ -22,7 +22,7 @@ export const COLL_RESULTATS = 'resultatsDaspalecte';
 export interface IngestTarget {
   email: string;
   emailHash: string;
-  /** null = l'élève ne s'est jamais connecté à Recto-versIA */
+  /** null = l'élève ne s'est jamais connecté à RectoVerso */
   uid: string | null;
 }
 
@@ -47,7 +47,8 @@ export async function ingestBatch(target: IngestTarget, body: IngestBody): Promi
   const eventsRef = sessionRef.collection('events');
   const eventRefs = events.map((e) => eventsRef.doc(e.id));
   const attenteRef = adminDb.collection(COLL_ATTENTE).doc(emailHash);
-  const vocabRef = uid ? adminDb.collection(COLL_PERSO).doc(uid) : attenteRef;
+  // Les mots cliqués dans Daspalecte vont dans la liste FLE de l'élève (2026-10-08)
+  const vocabRef = uid ? adminDb.collection(COLL_FLE).doc(uid) : attenteRef;
 
   return adminDb.runTransaction(async (tx) => {
     // Toutes les lectures avant la moindre écriture (règle des transactions)

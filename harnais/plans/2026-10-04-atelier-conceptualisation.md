@@ -4,7 +4,7 @@
 > Il n'est pas mis à jour : depuis, la décision a **peut-être été dépassée**.
 > Ce qui existe réellement se lit dans `init.md` et dans `harnais/memoire/`.
 
-- **Statut** : proposé → **validé le 2026-10-04** (O1 = SchémaKit **et** formes libres dès la v1 ; O3 = pas de maquette, code direct ; O4 = l'élève change de type à tout moment, encadré « À placer » conservé ; O5 = A ; libellé « Atelier de conceptualisation », mode lire-écrire ; ordre popup puis moteur) — JP : « tu fais toutes les étapes sans mon accord et je testerai ensuite » → **étapes 1 à 4 écrites le 2026-10-04, rien vu à l'écran** (voir `memoire/rollup_conceptualisation.md`)
+- **Statut** : proposé → **validé le 2026-10-04** (O1 = SchémaKit **et** formes libres dès la v1 ; O3 = pas de maquette, code direct ; O4 = l'élève change de type à tout moment, encadré « À placer » conservé ; O5 = A ; libellé « Atelier de conceptualisation », mode lire-écrire ; ordre popup puis moteur) — JP : « tu fais toutes les étapes sans mon accord et je testerai ensuite » → **livré le 2026-10-04** : étapes 1 à 4 écrites, testées par JP et déployées le jour même (voir `memoire/rollup_conceptualisation.md`)
 - **Demande initiale** (JP, 2026-10-04) : une nouvelle activité de français, l'**Atelier de
   conceptualisation** — à partir d'une **base documentaire** (colonne de droite, dans
   l'esprit de la lecture d'une œuvre), les élèves construisent un **schéma** avec un outil

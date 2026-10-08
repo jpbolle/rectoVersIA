@@ -145,7 +145,7 @@ export async function notesSaisies(moduleId: string): Promise<Map<string, NoteCe
 
 // ─── Les notes que l'application connaît déjà ───
 //
-// Quand la certification est rattachée à une activité Recto-versIA, sa note est
+// Quand la certification est rattachée à une activité RectoVerso, sa note est
 // déjà dans la correction : la ressaisir serait absurde. Elle ne sert que de
 // valeur proposée — une saisie manuelle prime toujours (voir buildLignes).
 export async function notesAutomatiques(

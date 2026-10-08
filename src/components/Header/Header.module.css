@@ -309,3 +309,44 @@
     transform: translateX(50%);
   }
 }
+
+/* Double bouton « Espace classique | Espace FLE » (JP, 2026-10-08) — sur le
+   fond vert du header : capsule claire, texte blanc, l'espace actif en ambre */
+.espaces {
+  display: inline-flex;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+  margin-right: 6px;
+}
+
+.espaceBtn {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.espaceBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.espaceBtn + .espaceBtn {
+  border-left: 1.5px solid rgba(255, 255, 255, 0.45);
+}
+
+.espaceActif {
+  background: #d4944c;
+  color: #fff;
+}
+
+.espaceActif:hover {
+  background: #d4944c;
+}

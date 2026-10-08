@@ -22,13 +22,15 @@ import styles from './AtelierChoiceModal.module.css';
 
 interface AtelierChoiceGridProps {
   onChoose: (atelierId: string) => void;
-  // Activité FLE (Mes Ressources › Modules FLE) : pas de séquence — une
-  // séquence ne s'emboîte pas dans une autre.
+  // Conservé pour les appelants ; la séquence FLE n'est plus proposée NULLE
+  // PART ici depuis le 2026-10-08 : elle se crée depuis « Mes parcours FLE »
+  // (une séquence ne s'emboîte pas dans une autre, et elle n'est pas une
+  // activité classique).
   modeFle?: boolean;
 }
 
-export function AtelierChoiceGrid({ onChoose, modeFle = false }: AtelierChoiceGridProps) {
-  const ateliers = ATELIERS.filter((a) => !modeFle || a.dispositif !== 'sequence');
+export function AtelierChoiceGrid({ onChoose }: AtelierChoiceGridProps) {
+  const ateliers = ATELIERS.filter((a) => a.dispositif !== 'sequence');
   return (
     <div className={styles.grid}>
       {ateliers.map((a) => (

@@ -2,7 +2,7 @@
 //
 //   Parcours (= une scénarisation, un cours) > Chapitres > Modules > Activités
 //
-// Une activité de module n'est PAS forcément une activité Recto-versIA : un
+// Une activité de module n'est PAS forcément une activité RectoVerso : un
 // débat, une lecture à voix haute comptent dans le module sans passer par
 // l'app. Quand elle en est une, `devoirId` fait la passerelle vers Mes
 // Activités — dans les deux sens (le devoir porte `moduleRef` en retour).
@@ -52,7 +52,7 @@ export interface ObjectifsModule {
 export interface ModuleActivite {
   id: string;
   titre: string;
-  // Activité Recto-versIA rattachée. null = activité hors application.
+  // Activité RectoVerso rattachée. null = activité hors application.
   devoirId?: string | null;
   typeTravail?: string | null; // mémorisé pour l'affichage (pastille)
   periodes: number;            // en périodes de cours, jamais en heures
@@ -305,7 +305,7 @@ export function ponderationUaa(scen: Scenarisation, uaa: string): number {
     .reduce((s, c) => s + ponderationDe(c.module), 0);
 }
 
-// L'activité Recto-versIA dont une certification tire sa note, s'il y en a une
+// L'activité RectoVerso dont une certification tire sa note, s'il y en a une
 export function devoirCertificatif(m: ModuleDidactique): string | null {
   return m.activites.find((a) => a.devoirId)?.devoirId ?? null;
 }
@@ -471,7 +471,7 @@ export function anneesVoisines(reference: string): string[] {
 //  - les IDENTIFIANTS, tous régénérés. Une note de certification est classée
 //    par `moduleId` seul : deux parcours portant le même id de module verraient
 //    leurs notes d'élèves se confondre.
-//  - les LIENS vers les activités Recto-versIA (`devoirId`) et les CLASSES.
+//  - les LIENS vers les activités RectoVerso (`devoirId`) et les CLASSES.
 //    Un devoir n'appartient qu'à un parcours (`devoir.scenarisationRef` est
 //    unique) et une classe ne repasse pas les mêmes certifications deux fois.
 export function dupliquerScenarisation(

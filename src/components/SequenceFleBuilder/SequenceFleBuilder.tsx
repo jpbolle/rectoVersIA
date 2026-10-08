@@ -206,10 +206,13 @@ export default function SequenceFleBuilder({
   const candidatsDevoirs = (devoirs ?? []).filter((d) => !q || d.intitule.toLowerCase().includes(q));
   const candidatsModules = (modules ?? []).filter((m) => !q || m.titre.toLowerCase().includes(q));
   // Deux groupes : les activités FLE d'abord, puis les classiques
-  const activitesFle = candidatsDevoirs.filter((d) => d.referentiel === 'fle');
-  const activitesClassiques = candidatsDevoirs.filter((d) => d.referentiel !== 'fle');
+  // Deux groupes : les activités FLE (sans classe) ET celles que le prof a
+  // marquées « utilisable en FLE » (2026-10-08) ; puis tout le reste
+  const estPourFle = (d: Devoir) => d.referentiel === 'fle' || d.fle === true;
+  const activitesFle = candidatsDevoirs.filter(estPourFle);
+  const activitesClassiques = candidatsDevoirs.filter((d) => !estPourFle(d));
   const lienCreer =
-    nature === 'theorie' ? '/grilles?onglet=fle&section=theorie' : '/grilles?onglet=fle&section=activites';
+    nature === 'theorie' ? '/parcours-fle?section=theorie' : '/parcours-fle?section=activites';
 
   // ── La ligne, découpée en rangées ──
   type Element = { kind: 'plus'; index: number } | { kind: 'etape'; etape: SequenceFleEtape; index: number };

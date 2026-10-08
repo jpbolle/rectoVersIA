@@ -1220,7 +1220,7 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
             bibliothèque. */}
         <Link href="/dashboard" className={styles.logoLien} title="Retour à l’accueil">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logoRecto.png" alt="Recto-VersIA" className={styles.logo} />
+          <img src="/logoRecto.png" alt="RectoVerso" className={styles.logo} />
         </Link>
 
         <button

@@ -161,3 +161,127 @@
   font-size: 24px;
   color: #4a7ba7;
 }
+
+/* Le niveau global, à côté du bonjour : « Bonjour Ahmed · A2 » */
+.helloNiveau {
+  margin-left: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  vertical-align: middle;
+  color: #345d85;
+  background: rgba(74, 123, 167, 0.14);
+}
+
+/* ── Les deux cards d'entrée : parcours · lectures ── */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 760px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Une card d'évaluation peut être un bouton (PDF) : même apparence */
+button.sequence {
+  width: 100%;
+  font: inherit;
+  cursor: pointer;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 22px 24px;
+  border: 1.5px solid rgba(74, 123, 167, 0.35);
+  border-radius: 14px;
+  background: var(--c-bg-card);
+  font: inherit;
+  text-align: left;
+  color: var(--c-text);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: #4a7ba7;
+  box-shadow: 0 6px 18px rgba(74, 123, 167, 0.15);
+}
+
+.cardPicto {
+  font-size: 38px;
+  line-height: 1;
+}
+
+.cardTitre {
+  font-family: var(--c-font-title);
+  font-size: 22px;
+  font-weight: 700;
+  color: #345d85;
+}
+
+.cardSous {
+  font-size: 15px;
+  color: var(--c-text-secondary);
+}
+
+.cardCompte {
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #345d85;
+  background: rgba(74, 123, 167, 0.14);
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+.retour {
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  color: #345d85;
+  background: none;
+  border: none;
+  padding: 0 0 16px;
+  cursor: pointer;
+}
+
+.retour:hover {
+  text-decoration: underline;
+}
+
+.blocAction {
+  margin-left: auto;
+}
+
+.importBtn {
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 10px 18px;
+  border: 1.5px solid #4a7ba7;
+  border-radius: 999px;
+  background: #4a7ba7;
+  color: #fff;
+  cursor: pointer;
+}
+
+.importBtn:hover {
+  background: #345d85;
+}
+
+.lecturesVide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}

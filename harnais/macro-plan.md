@@ -25,7 +25,7 @@ entre les sessions, souvent sur l'autre poste : **lui demander plutôt que dédu
 | Chantier | Où il en est | Ce qui reste |
 |---|---|---|
 | **Types de questions manipulées** | 7 types écrits, socle `QuestionInteractions/` (2 moteurs). Les QCM et le glisser-déposer ont été joués en classe le 19/09 | **Image à annoter : les 3 jeux sont écrits** (bulles et marqueurs ajoutés le 20/09) — ⚠ **rien vu à l'écran**. Plusieurs types jamais ouverts à l'écran |
-| **Espace FLE** (modules, activités, séquences) | Écrit les 14, 15 et 19/09. **Testé par JP** (confirmé le 20/09) | Copies « sans classe » d'un élève venu par une séquence |
+| **Espace FLE** (modules, activités, séquences, lecture de cours) | **Validé à l'écran par JP le 2026-10-08**, lecture de cours écrite, testée et ajustée le jour même | **Deux espaces classique/FLE + accueil prof + renommage RectoVerso** écrits le soir, **à voir à l'écran** (plan `2026-10-08-deux-espaces-et-renommage.md`) ; appliquer la migration du vocabulaire ; copies « sans classe » d'un élève venu par une séquence |
 | **Daspalecte** (ingestion) | Mots cliqués : déployé et validé le 19/09. Extension 2.0.2 au Web Store | Exercices et tests de lecture **jamais essayés** ; politique de confidentialité à relire |
 | **Correction d'une copie** | Vu à l'écran et validé le 20/09 | Quand une **recherche** et une **auto-évaluation** sont-elles « corrigées » ? |
 | **Compétition en direct** | Jouée en classe le 19/09 (QCM parfaits) | Les corrections du 19/09 (glisser-déposer, compteur, symboles) **pas revues à l'écran** |
@@ -38,13 +38,14 @@ entre les sessions, souvent sur l'autre poste : **lui demander plutôt que dédu
 
 ### 1. Activité de schématisation / conceptualisation
 
-> **2026-10-04 — ÉCRIT, rien vu.** La maquette était sur GitHub (`jpbolle/schemakit`,
+> **2026-10-04 — ÉCRIT, TESTÉ par JP et DÉPLOYÉ le jour même.** La maquette était sur GitHub (`jpbolle/schemakit`,
 > copiée dans `archives/schemakit/`). Plan `harnais/plans/2026-10-04-atelier-conceptualisation.md`
 > validé et **les 4 étapes écrites le jour même** (popup de choix d'atelier · moteur +
 > Mes schémas élève · dispositif `schematiser` · correction en lecture seule). Tranché :
 > **dispositif** (pas type de question), formes libres dès la v1, pas de notation en v1.
-> Détail : `memoire/rollup_conceptualisation.md`. ⚠ **JP n'a encore rien vu à l'écran.**
-> Le texte ci-dessous est l'état du 20/09, gardé comme trace.
+> Détail : `memoire/rollup_conceptualisation.md`. Reste : notation (O5-B), schéma modèle,
+> schéma comme type de question, vignette des copies. Le texte ci-dessous est l'état du
+> 20/09, gardé comme trace.
 
 **Aucun plan n'existe** — cherché le 20/09 dans `harnais/plans/`, dans tout le harnais du
 projet, dans le dépôt `harnais`, dans celui de KitSchool et dans la roadmap Firestore de
@@ -110,8 +111,8 @@ extension Chrome. Deux conséquences :
 | Ordre | Chantier | Pourquoi là |
 |---|---|---|
 | ~~1~~ | ~~Finir les **questions à image**~~ | **réglé** d'après JP (2026-10-04) |
-| ~~2~~ | ~~Écrire le plan de la **schématisation**, puis le construire~~ | **écrit le 2026-10-04, à VOIR À L'ÉCRAN** avant d'aller plus loin (règle ci-dessus) |
-| **3** | **Portfolio**, étapes 1 à 7 | Le gros morceau ; ses deux dépendances sont levées |
+| ~~2~~ | ~~Écrire le plan de la **schématisation**, puis le construire~~ | **écrit, testé et déployé le 2026-10-04** |
+| **3 → prochain** | **Portfolio**, étapes 1 à 7 | Le gros morceau ; ses deux dépendances sont levées (depuis le 2026-10-04) |
 | **4** | **TRACES** | Purement mécanique : à faire quand le code ne bouge plus |
 
 Entre deux, **faire voir** ce qui dort : le sondage en direct, les corrections de la

@@ -4,9 +4,11 @@
 // le profil d'écrilecteur complet de l'élève (5 onglets), équivalent de la
 // page « Mon Profil » côté élève — données servies par /api/profil/*?eleveId=.
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import ProfilPanel from '@/components/ProfilPanel/ProfilPanel';
+import EleveActivitesPanel from '@/components/EleveActivitesPanel/EleveActivitesPanel';
 import NiveauFlePanel from '@/components/NiveauFlePanel/NiveauFlePanel';
+import LecturesCoursEleve from '@/components/LecturesCoursEleve/LecturesCoursEleve';
 import type { ClasseType } from '@/types/classe';
 import styles from './EleveProfilModal.module.css';
 
@@ -26,6 +28,10 @@ export default function EleveProfilModal({
   classeType,
   onClose,
 }: EleveProfilModalProps) {
+  // Deux vues (JP, 2026-10-08) : la GLOBALE (niveaux CECR, profil d'écrilecteur)
+  // et les ACTIVITÉS (ses activités, parcours, lectures de cours, évaluations)
+  const [vue, setVue] = useState<'globale' | 'activites'>('globale');
+
   // Fermeture avec Échap + blocage du scroll de la page derrière
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -56,12 +62,35 @@ export default function EleveProfilModal({
               {classeType === 'fle' ? 'niveaux CECR et profil d’écrilecteur' : 'profil d’écrilecteur'}
             </p>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={onClose} title="Fermer">
-            ✕
-          </button>
+          <div className={styles.headDroite}>
+            <div className={styles.bascule} role="tablist" aria-label="Vue de la fiche">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={vue === 'globale'}
+                className={`${styles.basculeBtn} ${vue === 'globale' ? styles.basculeActive : ''}`}
+                onClick={() => setVue('globale')}
+              >
+                Vue globale
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={vue === 'activites'}
+                className={`${styles.basculeBtn} ${vue === 'activites' ? styles.basculeActive : ''}`}
+                onClick={() => setVue('activites')}
+              >
+                Activités
+              </button>
+            </div>
+            <button type="button" className={styles.closeBtn} onClick={onClose} title="Fermer">
+              ✕
+            </button>
+          </div>
         </div>
         <div className={styles.body}>
-          {classeType === 'fle' && (
+          {vue === 'activites' && <EleveActivitesPanel key={`act-${eleveId}`} eleveId={eleveId} />}
+          {vue === 'globale' && classeType === 'fle' && (
             <section className={styles.fle}>
               <h3 className={styles.fleTitre}>Niveaux CECR</h3>
               <p className={styles.fleSub}>
@@ -71,8 +100,18 @@ export default function EleveProfilModal({
               <NiveauFlePanel key={`fle-${eleveId}`} eleveId={eleveId} />
             </section>
           )}
+          {vue === 'globale' && classeType === 'fle' && (
+            <section className={styles.fle}>
+              <h3 className={styles.fleTitre}>Lectures de cours</h3>
+              <p className={styles.fleSub}>
+                Les cours que l’élève a importés et fait expliquer à son niveau. Un clic ouvre la
+                lecture telle qu’il la voit, avec ses réponses.
+              </p>
+              <LecturesCoursEleve key={`lectures-${eleveId}`} eleveId={eleveId} />
+            </section>
+          )}
           {/* key : remonte le panneau (et son état d'onglets) quand on change d'élève */}
-          <ProfilPanel key={eleveId} eleveId={eleveId} />
+          {vue === 'globale' && <ProfilPanel key={eleveId} eleveId={eleveId} />}
         </div>
       </div>
     </div>

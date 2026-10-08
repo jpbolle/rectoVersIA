@@ -1,0 +1,57 @@
+/* Carte à retourner — mêmes réglages que les flashcards du vocabulaire */
+.carte {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  perspective: 1000px;
+}
+
+.carteLarge {
+  height: 220px;
+}
+
+.flip {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+.inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s ease;
+  transform-style: preserve-3d;
+}
+
+.retournee .inner {
+  transform: rotateY(180deg);
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  border: 1.5px solid rgba(74, 123, 167, 0.3);
+  background: var(--c-bg-card, #fff);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.dos {
+  transform: rotateY(180deg);
+  background: linear-gradient(135deg, #eef3f8 0%, #e3eaf2 100%);
+}

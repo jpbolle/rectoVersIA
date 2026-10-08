@@ -103,7 +103,7 @@ export default function ScenarisationFormModal({
               </p>
               <strong>Ce qu’elle laisse</strong>
               <p>
-                Les classes, et les liens vers les activités Recto-versIA — une activité
+                Les classes, et les liens vers les activités RectoVerso — une activité
                 n’appartient qu’à un seul parcours.
               </p>
             </div>

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useEspace } from '@/context/EspaceContext';
+import { estClasseFle } from '@/types/classe';
 import { useClasses } from '@/hooks/useClasses';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
@@ -13,6 +15,7 @@ import ClasseCreationForm from '@/components/ClasseCreationForm/ClasseCreationFo
 import ClasseDetailForm from '@/components/ClasseDetailForm/ClasseDetailForm';
 import AddClasseModal from '@/components/AddClasseModal/AddClasseModal';
 import AddEleveModal from '@/components/AddEleveModal/AddEleveModal';
+import type { EleveFormData } from '@/components/AddEleveModal/AddEleveModal';
 import BulkImportEleveModal from '@/components/BulkImportEleveModal/BulkImportEleveModal';
 import MesElevesSection from '@/components/MesElevesSection/MesElevesSection';
 import EleveProfilModal from '@/components/EleveProfilModal/EleveProfilModal';
@@ -24,9 +27,11 @@ import styles from './classes.module.css';
 export default function ClassesPage() {
   const { isAuthenticated, isLoading: authLoading, role, user, getAuthHeaders } = useAuth();
   const router = useRouter();
+  // Deux espaces (2026-10-08) : en classique, aucune classe FLE ; en FLE, elles seules
+  const { espace } = useEspace();
   const {
-    classes,
-    classesPartagees,
+    classes: toutesMesClasses,
+    classesPartagees: toutesPartagees,
     isLoading: classesLoading,
     createClasse,
     updateClasse,
@@ -72,7 +77,10 @@ export default function ClassesPage() {
 
   // La fiche d'un élève peut venir d'une classe partagée : on la cherche
   // dans les deux paniers
-  const toutesClasses = [...classes, ...classesPartagees];
+  // (tous espaces confondus : une fiche ouverte depuis Mes Élèves peut venir de l'autre)
+  const toutesClasses = [...toutesMesClasses, ...toutesPartagees];
+  const classes = toutesMesClasses.filter((c) => estClasseFle(c) === (espace === 'fle'));
+  const classesPartagees = toutesPartagees.filter((c) => estClasseFle(c) === (espace === 'fle'));
   const partageesActives = classesPartagees.filter((c) => !c.archive);
 
   // Filtrer les classes selon l'onglet
@@ -291,14 +299,17 @@ export default function ClassesPage() {
     }
   };
 
-  const handleSubmitEleve = async (data: { nom: string; prenom: string; email: string }) => {
+  const handleSubmitEleve = async (data: EleveFormData) => {
     setIsSavingEleve(true);
     try {
       const method = editingEleve ? 'PATCH' : 'POST';
       const url = editingEleve ? `/api/eleves/${editingEleve.id}` : '/api/eleves';
+      // La langue maternelle ne va pas dans la fiche `eleves` : elle vit dans
+      // `niveauxFle` (PUT ci-dessous, une fois l'id connu)
+      const { langueMaternelle, ...identite } = data;
       const body = editingEleve
-        ? data
-        : { ...data, classeId: selectedClasseId };
+        ? identite
+        : { ...identite, classeId: selectedClasseId };
 
       const res = await fetch(url, {
         method,
@@ -311,6 +322,18 @@ export default function ClassesPage() {
 
       const json = await res.json();
       if (json.success) {
+        // Classe FLE : la langue, dans le positionnement de l'élève
+        const eleveId: string | undefined = editingEleve?.id ?? json.data?.id;
+        if (langueMaternelle !== undefined && eleveId) {
+          const headers = await getAuthHeaders();
+          if (headers) {
+            await fetch('/api/niveaux-fle', {
+              method: 'PUT',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ eleveId, langueMaternelle }),
+            });
+          }
+        }
         setMessage({
           text: editingEleve ? 'Élève modifié' : 'Élève ajouté',
           type: 'success',
@@ -397,7 +420,7 @@ export default function ClassesPage() {
         {!selectedClasse && (
         <section className={styles.classesSection}>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Mes Classes</h2>
+            <h2 className={styles.sectionTitle}>{espace === 'fle' ? 'Mes classes FLE' : 'Mes Classes'}</h2>
             <div className={styles.tabs}>
               <button
                 type="button"
@@ -514,6 +537,15 @@ export default function ClassesPage() {
         editingEleve={editingEleve}
         isSaving={isSavingEleve}
         classeName={classes.find((c) => c.id === selectedClasseId)?.nom}
+        classeType={classes.find((c) => c.id === selectedClasseId)?.type}
+        // Passerelle : de « Modifier l'élève » à la grande fiche (radar CECR)
+        onOuvrirFiche={() => {
+          if (!editingEleve) return;
+          const eleve = editingEleve;
+          setIsEleveModalOpen(false);
+          setEditingEleve(null);
+          setFicheEleve(eleve);
+        }}
       />
 
       <BulkImportEleveModal

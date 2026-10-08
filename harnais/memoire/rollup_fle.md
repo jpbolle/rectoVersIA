@@ -3,7 +3,92 @@
 > Plan validé : [`../plans/2026-09-14-espace-fle.md`](../plans/2026-09-14-espace-fle.md).
 > Ce rollup porte l'état réel du chantier ; le plan reste une trace datée.
 
-## État actuel (2026-09-19, soir — 2e session)
+## État actuel (2026-10-08, soir — après les tests de JP)
+
+JP a testé la lecture de cours **à l'écran** dans la journée et dicté les ajustements, tous
+écrits (`tsc` passe) :
+- page de lecture **sur l'espace de travail de l'app** (`WorkTopBar` + colonne de travail +
+  `WorkspaceRail` : onglets « Le cours » avec dictionnaire au clic, « Consignes », et
+  **« Évaluation » pour le prof** — tuiles, questions par partie, exercices, passerelle, résumé) ;
+- **verrouillage en chaîne** : chaque section ne s'ouvre que si la précédente est faite ; un
+  bouton « J'ai lu / J'ai vu, je continue » **à droite** dans chaque section ; là où c'est
+  vérifiable, le script décide (7 exercices + test de lecture, toutes les questions, réponse
+  corrigée) ; dans « partie par partie », la suite est **floue** tant que les questions de la
+  partie précédente ne sont pas répondues ;
+- **« Et dans mon pays ? »** nomme le pays (dari → Afghanistan…) et ancre chaque passerelle ;
+  bouton **« Corriger mes phrases »** (tableau phrase · grammaire/lexique · phrase bien dite) ;
+- **7ᵉ section « Mon résumé »** : l'élève écrit, « Demander l'avis de Claude » compare au
+  cours (avis positif/mitigé/à reprendre, idées vues/manquantes, tableau des phrases) ;
+  route `POST /api/fle/lectures/[id]/corriger` ;
+- associations : colonnes étroites, large espace au milieu ; traduction au clic même sans
+  langue (définition simple) ; la langue de la fiche vaut aussi pour les lectures importées avant ;
+- **fiche élève** : langue maternelle + niveau global aussi dans la petite popup « Modifier
+  l'élève » (classe FLE), passerelle vers la grande fiche ; double bouton ambre **« Vue
+  globale | Activités »** (`EleveActivitesPanel`, `/api/profil/activites`) ;
+- **évaluations FLE** (`evaluationsFle`, PDF ≤ 700 Ko dans `fichiersFle`) : bloc dans la
+  classe FLE, card « Mes évaluations » côté élève ;
+- liseré ambre sur les classes FLE ; sessions d'activités supprimées masquées ; C1/C2 visibles
+  par défaut ;
+- **vocabulaire séparé** : Daspalecte → `vocabulaireFle`, page `/fle/ressources` ; migration
+  `scripts/migrate-vocabulaire-fle.ts` (simulation : 63 mots, 2 listes) — ⚠ **JP n'a pas
+  confirmé l'avoir appliquée** (`--apply`).
+
+Puis le **chantier « deux espaces »** (plan `2026-10-08-deux-espaces-et-renommage.md`, écrit
+d'un bloc, **rien vu à l'écran sauf le double bouton**) : voir `MEMORY.md` et `init.md` TL;DR.
+Règle retenue en fin de soirée : **une classe FLE suffit** pour qu'une activité soit FLE
+(elle disparaît de l'espace classique, même donnée aussi à la 4C).
+
+## État du matin (2026-10-08 — 3e session : la lecture de cours)
+
+JP a **tout testé** de l'espace FLE le 2026-10-08 (étapes 1-5 du plan du 14/09 + mots
+cliqués Daspalecte) → le chantier du 14/09 est **validé à l'écran**, sauf exercices et
+tests de lecture de l'extension (jamais essayés, et sans objet depuis : ils sont portés
+dans l'app, voir ci-dessous).
+
+Trois corrections du matin (vues et validées par JP) : « Mon travail à faire » de `/fle`
+listait les seules séquences (un élève FLE-only ne voyait pas une « Lecture du cours »
+donnée à sa classe) → **toutes** les activités de ses classes FLE, et **rien** d'une
+autre classe ; bouton **« Accueil »** dans le header FLE pour un élève à classes mixtes.
+
+**Plan du jour validé et ÉCRIT d'un bloc** (JP : « on fait tout ») :
+[`../plans/2026-10-08-lecture-sequence-de-cours-fle.md`](../plans/2026-10-08-lecture-sequence-de-cours-fle.md)
+— les 7 étapes, `tsc` et lint passent, **RIEN VU À L'ÉCRAN** (JP teste ensuite) :
+
+1. Fiche élève : `langueMaternelle` (chiffrée, 11 langues de l'extension, suggestion d'après
+   ses mots Daspalecte) + **niveau global déduit du radar** (médiane basse) ; « Bonjour X · A2 ».
+2. `/parcours-fle` + bouton « Mes parcours FLE » (header prof) ; Modules FLE quitte Mes
+   Ressources (redirection) ; séquences retirées du tableau de bord et de la popup d'atelier ;
+   `Devoir.fle` (case « Utilisable dans un parcours FLE ») + filtre du constructeur.
+3. Import (lien Google partagé / page web / PDF ≤ 5 pages lu par Claude / texte collé),
+   `lecturesCours`, helper `src/lib/claude.ts` (Sonnet 5.5, cache de prompt), page à deux
+   colonnes, accordéon, génération section par section avec reprise.
+4. Sections 2, 4, 5, 6 interactives (questions corrigées sur place, exemple de réponse,
+   arbre de phrase = `Diagram` hierarchy rendu en lecture seule, réponse à la passerelle).
+5. Fiche prof (classe FLE) › « Lectures de cours » → lecture en lecture seule (`?eleveId=`).
+6. Fiches à retourner (`Flashcard` partagé) + exercices associations / écoute / étiquettes /
+   texte à trous.
+7. Famille de mots, lecture à voix haute (voix + micro + alignement), phrase vérifiée par
+   Claude (`/api/fle/verifier-phrase`), **test de lecture** (10 QCM + appariement) ;
+   traduction au clic (`/api/fle/traduire`, Google non officiel + repli Claude).
+
+**Écarts assumés avec l'extension** : « Régénérer l'exercice » → « Recommencer » ;
+`chrome.tts` → `speechSynthesis` ; pas d'envoi de score vers Google Sheets.
+
+**Scénario de test** (compte élève de FLE 4, langue + niveau posés dans la fiche par JP) :
+`/fle` → card Lectures → Importer (un Docs partagé « tous les utilisateurs disposant du
+lien », puis un PDF de 3 pages, puis un PDF de 8 pages = refus) → les sections arrivent
+une à une → répondre aux questions, ouvrir un arbre, faire les 7 exercices et le test →
+fiche prof : la lecture apparaît, s'ouvre en lecture seule avec les réponses.
+
+**Reste** : `Flashcard` de `VocabulaireActivity` à faire converger ; résultats d'exercices
+→ profil ; coûts affichés dans /admin (l'`usage` est stocké par section) ; mots du
+vocabulaire de la lecture → `vocabulairePersonnel` (prévu au plan, pas fait).
+
+⚠ Dépôt `daspalecte` : le local était en 1.9, le pull du 2026-10-08 l'a mis à jour
+(`daspa-extension/` 2.0.1, `daspa-app/`) ; la 2.0.2 n'existe que dans Chrome et au Web
+Store. Le backend Cloud Function (prompts) n'est sur aucun disque.
+
+## État précédent (2026-09-19, soir — 2e session)
 
 - **Étape 6 (Daspalecte) : étapes 1 et 2 ÉCRITES, rien vu à l'écran** — plan
   [`2026-09-19-daspalecte-ingestion.md`](../plans/2026-09-19-daspalecte-ingestion.md).
@@ -374,7 +459,8 @@ la variable `ALLOWED_AUDIENCES` sur le VPS (`.env` de PM2).
 3. ~~Bibliothèque de modules FLE~~ — écrit le 2026-09-14, à tester
 4. ~~Séquences FLE + voie d'autorisation~~ — écrit le 2026-09-14 en **option B**, à tester
 5. ~~Séquence côté élève~~ — écrit avec l'étape 4 (`SequenceFleActivity`, `/fle`), à tester
-6. Daspalecte branché — étapes 1-2 écrites le 2026-09-19 (route `/api/ingest`), bascule à faire
+6. Daspalecte branché — mots cliqués validés le 19/09 ; exercices et tests **portés dans l'app** le 2026-10-08 (lecture de cours)
+7. **Lecture d'une séquence de cours** — écrit d'un bloc le 2026-10-08, **à voir à l'écran**
 
 ## Historique
 

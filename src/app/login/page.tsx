@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useEspace } from '@/context/EspaceContext';
 import { espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
 import GoogleSignInButton from '@/components/GoogleSignInButton/GoogleSignInButton';
 import JoinClasseModal from '@/components/JoinClasseModal/JoinClasseModal';
@@ -12,6 +13,7 @@ const MAX_FAILED_ATTEMPTS = 3;
 
 export default function LoginPage() {
   const { isAuthenticated, isLoading, role, signIn, signOut } = useAuth();
+  const { initialiserSiVide } = useEspace();
   const router = useRouter();
   const { classes, isLoading: classesLoading, joinClasse } = useStudentClasses();
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -29,6 +31,7 @@ export default function LoginPage() {
     if (!isAuthenticated) return;
 
     if (role === 'prof') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- garde de redirection imposée par AGENTS.md (state `redirecting`)
       setRedirecting(true);
       router.replace('/dashboard');
       return;
@@ -40,9 +43,12 @@ export default function LoginPage() {
     // Élève avec des classes → rediriger vers SA page d'accueil (retards,
     // échéances, ceintures) — pas vers la liste de ses activités.
     if (role === 'eleve' && classes.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- garde de redirection imposée par AGENTS.md (state `redirecting`)
       setRedirecting(true);
       // Toutes ses classes sont FLE → son espace de cours ; sinon l'accueil
-      router.replace(espaceFleSeulement(classes) ? '/fle' : '/accueil');
+      const fleSeulement = espaceFleSeulement(classes);
+      initialiserSiVide(fleSeulement ? 'fle' : 'classique');
+      router.replace(fleSeulement ? '/fle' : '/accueil');
       return;
     }
 
@@ -139,8 +145,8 @@ export default function LoginPage() {
       <div className={styles.loginContainer}>
         <div className={styles.mainContent}>
           <div className={styles.logoSection}>
-            <img src="/logoRecto.png" alt="Recto-VersIA Logo" className={styles.appIcon} />
-            <h1 className={styles.title}>Recto-VersIA</h1>
+            <img src="/logoRecto.png" alt="RectoVerso Logo" className={styles.appIcon} />
+            <h1 className={styles.title}>RectoVerso</h1>
             <p className={styles.subtitle}>Aide à l&#39;écrilecture</p>
           </div>
 

@@ -1,10 +1,12 @@
 'use client';
 
-// Mes Ressources › Modules FLE — deux sous-sections (demande JP, 2026-09-19) :
+// « Mes parcours FLE » (page /parcours-fle depuis le 2026-10-08 ; auparavant
+// Mes Ressources › Modules FLE) — trois sous-sections (demande JP, 2026-09-19) :
 //   · POINTS DE THÉORIE : la bibliothèque `modulesFle` (introduction + ressources) ;
 //   · ACTIVITÉS : les activités FLE, qui vivent ICI et non au tableau de bord ;
 //   · SÉQUENCES DE COURS : l'atelier des séquences FLE, serpentin en grand
-//     (elles restent aussi au tableau de bord).
+//     (depuis le 2026-10-08 elles ne sont PLUS au tableau de bord : « parcours »
+//     à l'écran, `sequence` dans le code).
 // Les deux premières sont les deux natures d'étape d'une séquence : le « + »
 // de la ligne du temps y renvoie (nouvel onglet) quand il faut créer.
 

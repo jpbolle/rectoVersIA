@@ -1,5 +1,9 @@
 # Recto-versIA — Instructions pour les agents IA
 
+> **Nom affiché depuis le 2026-10-08 : « RectoVerso »** (strings d'interface seulement — URL,
+> VPS, dépôt, extension et clés techniques gardent `rectoversia`). Le dépôt et les documents
+> du harnais gardent leur nom.
+
 > **Source unique des règles impératives du projet.**
 > Lu par Cursor (nativement) et par Claude Code (via le symlink `CLAUDE.md` → `AGENTS.md`).
 > Carte complète du harnais : [`harnais/README.md`](./harnais/README.md).
@@ -112,7 +116,9 @@ l'échelle** — toutes les corrections existantes en dépendent.
 
 ### Appels IA côté serveur uniquement
 Claude API et Whisper API : **jamais côté client** (clés exposées). Toujours via les API
-Routes. Modèle : `claude-sonnet-4-5-20250929`.
+Routes. Modèle : `claude-sonnet-4-5-20250929` sur les routes existantes ; **tout nouvel
+appel passe par le helper `src/lib/claude.ts`** (client unique, cache de prompt, usage) sur
+`claude-sonnet-5-5` (décision JP, 2026-10-08).
 
 ### VPS — jamais de SSH direct
 Ne **jamais** tenter de SSH sur le VPS Hostinger : fournir les commandes à l'utilisateur,

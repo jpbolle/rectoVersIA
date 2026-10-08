@@ -260,7 +260,7 @@ export function sanitizeScenarisation(
   };
 }
 
-// Les activités Recto-versIA rattachées, tous chapitres confondus
+// Les activités RectoVerso rattachées, tous chapitres confondus
 export function devoirsRattaches(scen: { chapitres: ChapitreDidactique[] }): string[] {
   const out = new Set<string>();
   scen.chapitres.forEach((c) => {

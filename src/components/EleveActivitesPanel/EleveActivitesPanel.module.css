@@ -1,0 +1,228 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  font-size: 14px;
+}
+
+.vide {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--c-text-secondary);
+}
+
+.tuiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 700px) {
+  .tuiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.tuile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(212, 148, 76, 0.1);
+  border: 1px solid rgba(212, 148, 76, 0.3);
+}
+
+.chiffre {
+  font-family: var(--c-font-title);
+  font-size: 24px;
+  font-weight: 700;
+  color: #8a5a1e;
+}
+
+.libelle {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+}
+
+.bloc {
+  background: var(--c-bg-card, #fff);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 16px 20px 18px;
+}
+
+.titre {
+  margin: 0 0 12px;
+  font-family: var(--c-font-title);
+  font-size: 17px;
+  color: var(--c-primary);
+}
+
+.tableau {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tableau th,
+.tableau td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--c-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.tableau th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-text-secondary);
+}
+
+.archivee {
+  opacity: 0.55;
+}
+
+.lien {
+  color: var(--c-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.lien:hover {
+  text-decoration: underline;
+}
+
+.sous {
+  display: block;
+  font-size: 12px;
+  color: var(--c-text-secondary);
+}
+
+.score {
+  font-weight: 700;
+  color: var(--c-primary);
+}
+
+.pastille {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.sNon {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--c-text-secondary);
+}
+
+.sEnCours {
+  background: rgba(212, 148, 76, 0.18);
+  color: #8a5a1e;
+}
+
+.sRemis {
+  background: rgba(74, 123, 167, 0.15);
+  color: #345d85;
+}
+
+.sCorrige {
+  background: rgba(60, 150, 90, 0.16);
+  color: #2f7a4a;
+}
+
+.parcours {
+  padding: 10px 0;
+  border-top: 1px solid var(--c-border);
+}
+
+.parcours:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.parcoursTete {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.parcoursTitre {
+  font-weight: 700;
+}
+
+.parcoursAvancee {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+.etapes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.etape {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.etapeFaite {
+  background: rgba(60, 150, 90, 0.08);
+}
+
+.etapePicto {
+  font-size: 14px;
+}
+
+.etapeTitre {
+  flex: 1;
+}
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.evaluation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.type {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+.type_diagnostic {
+  background: rgba(74, 123, 167, 0.15);
+  color: #345d85;
+}
+
+.type_regulative {
+  background: rgba(212, 148, 76, 0.18);
+  color: #8a5a1e;
+}
+
+.type_certificative {
+  background: rgba(196, 68, 68, 0.12);
+  color: #a03030;
+}

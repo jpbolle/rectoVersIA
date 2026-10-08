@@ -239,7 +239,7 @@ export default function ScenarisationPanel() {
 
   const supprimerChapitre = (chId: string) => {
     if (!scen) return;
-    if (!confirm('Supprimer ce chapitre et tous ses modules ? Les activités Recto-versIA sont conservées.')) return;
+    if (!confirm('Supprimer ce chapitre et tous ses modules ? Les activités RectoVerso sont conservées.')) return;
     majChapitres(scen.chapitres.filter((c) => c.id !== chId), true);
   };
 
@@ -355,7 +355,7 @@ export default function ScenarisationPanel() {
         {scenarisations.length === 0 && (
           <p className={styles.libIntro}>
             Un parcours décrit un cours : ses chapitres, ses modules, leurs objectifs et le
-            temps qu’ils prennent. Les activités Recto-versIA viennent s’y accrocher.
+            temps qu’ils prennent. Les activités RectoVerso viennent s’y accrocher.
           </p>
         )}
         <div className={styles.libGrid}>
@@ -827,7 +827,7 @@ export default function ScenarisationPanel() {
                   0
                 )}
               </span>
-              <span className={styles.kpiLbl}>activités Recto-versIA reliées</span>
+              <span className={styles.kpiLbl}>activités RectoVerso reliées</span>
             </div>
             <div className={styles.kpi}>
               <span className={styles.kpiVal}>
@@ -1304,7 +1304,7 @@ export default function ScenarisationPanel() {
 
                                             <div className={styles.certField}>
                                               <span className={styles.certLabel}>
-                                                Activité Recto-versIA rattachée
+                                                Activité RectoVerso rattachée
                                               </span>
                                               {m.activites.length === 0 ? (
                                                 <button

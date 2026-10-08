@@ -241,6 +241,8 @@ export default function CreationForm({
   // Auto-évaluation intégrée — activée par défaut : c'est le geste qu'on
   // veut voir posé, le prof la retire quand elle n'a pas lieu d'être.
   const [autoEvaluation, setAutoEvaluation] = useState(true);
+  // Utilisable dans un parcours FLE — cochée d'office dès qu'une classe FLE est cochée
+  const [fle, setFle] = useState(false);
   // Questionnaire choisi dans la bibliothèque, ou « sur mesure » (écrit ici)
   const [lectureQuizId, setLectureQuizId] = useState<string>(QUESTIONNAIRE_SUR_MESURE);
   // COMMENT le questionnaire se joue. Porté par l'activité et non par le
@@ -368,6 +370,7 @@ export default function CreationForm({
       disponible: modeFle ? false : disponible,
       typeTravail,
       ...(modeFle ? { referentiel: 'fle' as const } : {}),
+      fle: modeFle || fle,
       // Toujours transmis : « absent = activé » ne vaut que pour les activités
       // antérieures au réglage, pas pour celles qu'on crée maintenant.
       autoEvaluation: supporteAutoEval ? autoEvaluation : false,
@@ -525,7 +528,10 @@ export default function CreationForm({
             value={atelier}
             onChange={(e) => changeAtelier(e.target.value)}
           >
-            {ATELIERS.filter((a) => !modeFle || a.dispositif !== 'sequence').map((a) => (
+            {/* La séquence FLE ne se crée que depuis « Mes parcours FLE » :
+                elle reste dans la liste seulement si le formulaire s'est
+                ouvert pour elle */}
+            {ATELIERS.filter((a) => a.dispositif !== 'sequence' || typeTravail === 'sequence').map((a) => (
               <option key={a.id} value={a.id}>
                 {a.label}
               </option>
@@ -741,6 +747,24 @@ export default function CreationForm({
           onEleves={setElevesDesClasses}
           disabled={isSubmitting}
         />
+      )}
+
+      {/* Utilisable en FLE : une activité ordinaire qu'on insérera dans un
+          parcours FLE. Cochée d'office avec une classe FLE, décochable. */}
+      {!modeFle && typeTravail !== 'sequence' && (
+        <label
+          className={styles.autoEvalToggle}
+          title="Cette activité apparaîtra dans le groupe « Activités FLE » du constructeur de parcours."
+        >
+          <input
+            type="checkbox"
+            checked={fle || selectedClasses.some((nom) => classeNamesFle.includes(nom))}
+            onChange={(e) => setFle(e.target.checked)}
+            disabled={isSubmitting || selectedClasses.some((nom) => classeNamesFle.includes(nom))}
+          />
+          <span className={styles.autoEvalSwitch} />
+          <span className={styles.autoEvalText}>🎓 Utilisable dans un parcours FLE</span>
+        </label>
       )}
 
 

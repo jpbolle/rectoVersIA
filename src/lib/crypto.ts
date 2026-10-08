@@ -3,7 +3,7 @@
  * Ne jamais importer ce module côté client (composants React, hooks).
  * Utilise AES-256-GCM avec un IV aléatoire par chiffrement.
  *
- * Périmètre Recto-versIA (décision 2026-08-10) : pseudonymisation — on chiffre les
+ * Périmètre RectoVerso (décision 2026-08-10) : pseudonymisation — on chiffre les
  * champs d'IDENTITÉ des élèves (nom, prénom, email), pas les contenus (productions,
  * audio). Les requêtes Firestore qui filtraient sur l'email passent par une empreinte
  * HMAC-SHA256 (hashEmail) stockée à côté du champ chiffré.

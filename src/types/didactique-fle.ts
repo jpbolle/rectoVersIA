@@ -70,9 +70,10 @@ export const DEFAULT_NIVEAUX_CECR: NiveauCecr[] = [
   { id: 'a2', label: 'A2', rang: 2, visible: true },
   { id: 'b1', label: 'B1', rang: 3, visible: true },
   { id: 'b2', label: 'B2', rang: 4, visible: true },
-  // Au-delà de B2, le dispositif DASPA n'a plus d'élève : masqués, pas supprimés
-  { id: 'c1', label: 'C1', rang: 5, visible: false },
-  { id: 'c2', label: 'C2', rang: 6, visible: false },
+  // C1 et C2 existent dans le CECR : visibles depuis le 2026-10-08 (JP). Un
+  // référentiel déjà enregistré dans /admin garde son propre réglage (œil).
+  { id: 'c1', label: 'C1', rang: 5, visible: true },
+  { id: 'c2', label: 'C2', rang: 6, visible: true },
 ];
 
 export const DEFAULT_TYPES_MODULE_FLE: DidactiqueItem[] = [

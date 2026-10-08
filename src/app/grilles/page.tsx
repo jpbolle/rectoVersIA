@@ -12,8 +12,6 @@ import CreateGrilleCard from '@/components/CreateGrilleCard/CreateGrilleCard';
 import GrilleBuilder from '@/components/GrilleBuilder/GrilleBuilder';
 import ScenarisationPanel from '@/components/ScenarisationPanel/ScenarisationPanel';
 import OeuvrePanel from '@/components/OeuvrePanel/OeuvrePanel';
-import RessourcesFlePanel from '@/components/RessourcesFlePanel/RessourcesFlePanel';
-import type { SectionFle } from '@/components/RessourcesFlePanel/RessourcesFlePanel';
 import QuestionnaireLecturePanel from '@/components/QuestionnaireLecturePanel/QuestionnaireLecturePanel';
 import GrilleViewer from '@/components/GrilleViewer/GrilleViewer';
 import VocabCard from '@/components/VocabCard/VocabCard';
@@ -24,7 +22,7 @@ import EmptyState from '@/components/EmptyState/EmptyState';
 import type { Grille, GrilleCriterion } from '@/types/grille';
 import styles from './grilles.module.css';
 
-type Tab = 'grilles' | 'vocabulaire' | 'questionnaires' | 'oeuvres' | 'scenarisation' | 'modulesFle';
+type Tab = 'grilles' | 'vocabulaire' | 'questionnaires' | 'oeuvres' | 'scenarisation';
 
 export default function GrillesPage() {
   const { isAuthenticated, isLoading: authLoading, role, isAdmin: userIsAdmin, getAuthHeaders } = useAuth();
@@ -41,20 +39,14 @@ export default function GrillesPage() {
 
   // Onglet actif
   const [activeTab, setActiveTab] = useState<Tab>('grilles');
-  // Sous-section FLE demandée par l'URL (lien « Créer dans Mes Ressources ›
-  // FLE » du constructeur de séquence, ouvert dans un nouvel onglet)
-  const [sectionFle, setSectionFle] = useState<SectionFle>('theorie');
-
-  // `?onglet=fle&section=theorie|activites|sequences` — lu une fois, au montage : la
-  // page n'a pas d'autre état dans l'URL, `useSearchParams` imposerait une
-  // frontière Suspense pour rien.
+  // L'onglet « Modules FLE » a déménagé dans « Mes parcours FLE » (2026-10-08) :
+  // les anciens liens `?onglet=fle&section=…` y sont renvoyés.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('onglet') !== 'fle') return;
-    setActiveTab('modulesFle');
     const section = params.get('section');
-    if (section === 'activites' || section === 'sequences') setSectionFle(section);
-  }, []);
+    router.replace(`/parcours-fle${section ? `?section=${section}` : ''}`);
+  }, [router]);
 
   const [isReady, setIsReady] = useState(false);
   // Garde de redirection — motif imposé par le projet (AGENTS.md) : sans ce
@@ -324,16 +316,7 @@ export default function GrillesPage() {
           >
             Design &amp; scénarisation didactique
           </button>
-          <button
-            className={`${styles.tabButton} ${activeTab === 'modulesFle' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('modulesFle')}
-          >
-            Modules FLE
-          </button>
         </div>
-
-        {/* ===== TAB FLE (bibliothèque des classes DASPA) : points de théorie et activités ===== */}
-        {activeTab === 'modulesFle' && <RessourcesFlePanel key={sectionFle} sectionInitiale={sectionFle} />}
 
         {/* ===== TAB QUESTIONNAIRES DE LECTURE ===== */}
         {activeTab === 'questionnaires' && <QuestionnaireLecturePanel />}

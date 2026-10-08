@@ -65,7 +65,7 @@ export default function ClasseCard({
 
   return (
     <article
-      className={`${styles.card} ${styles.cardClickable}`}
+      className={`${styles.card} ${styles.cardClickable} ${estClasseFle(classe) ? styles.cardFle : ''}`}
       onClick={handleCardClick}
       role="button"
       tabIndex={0}

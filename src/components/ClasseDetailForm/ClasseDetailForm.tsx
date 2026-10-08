@@ -5,6 +5,7 @@ import { useEleves } from '@/hooks/useClasses';
 import ClasseCertifications from './ClasseCertifications';
 import ClasseActivites from './ClasseActivites';
 import { estClasseFle } from '@/types/classe';
+import ClasseEvaluationsFle from '@/components/ClasseEvaluationsFle/ClasseEvaluationsFle';
 import type { Classe, Eleve } from '@/types/classe';
 import styles from './ClasseDetailForm.module.css';
 
@@ -103,6 +104,11 @@ export default function ClasseDetailForm({
       {/* Les activités avant les certifications : le quotidien passe devant
           l'épreuve. Les deux sont des VUES sur ce qui se pilote ailleurs. */}
       {isVisible && <ClasseActivites classeId={classe.id} />}
+
+      {/* Classe FLE : les évaluations que le prof y glisse (lien, PDF, activité) */}
+      {isVisible && estClasseFle(classe) && (
+        <ClasseEvaluationsFle classeId={classe.id} lectureSeule={classe.monAcces === 'lecture'} />
+      )}
 
       {isVisible && (
         <ClasseCertifications classeId={classe.id} lectureSeule={classe.monAcces === 'lecture'} />

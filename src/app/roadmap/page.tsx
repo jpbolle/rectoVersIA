@@ -78,7 +78,7 @@ const DEFAULT_DATA: RoadmapData = {
     {
       date: '20 mars 2026',
       items: [
-        'Intégration NavigKid : recherche guidée web dans Recto-versIA',
+        'Intégration NavigKid : recherche guidée web dans RectoVerso',
         'Type de travail : Écrire, Lire ou Rechercher',
         'Constructeur de questionnaire avec génération IA',
         'Extension Chrome NavigKid avec authentification Google',
@@ -418,7 +418,7 @@ export default function RoadmapPage() {
 
       <main className={styles.mainContent}>
         <h1 className={styles.pageTitle}>Roadmap</h1>
-        <p className={styles.pageSubtitle}>Suivez l&apos;évolution de Recto-versIA</p>
+        <p className={styles.pageSubtitle}>Suivez l&apos;évolution de RectoVerso</p>
 
         <div className={styles.columns}>
           {/* ── Colonne gauche : Nouveautés ── */}

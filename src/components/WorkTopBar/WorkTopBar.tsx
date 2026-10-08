@@ -22,6 +22,9 @@ interface WorkTopBarProps {
   // Recherche uniquement : rien n'est saisi dans l'app, donc rien à sauvegarder
   // — l'indicateur annonce l'attente des réponses au lieu de « Brouillon »
   submitOutsideApp?: boolean;
+  // Où ramène la flèche (défaut : tableau de bord ; liste des activités en
+  // prévisualisation). La lecture de cours FLE renvoie vers « Mes lectures ».
+  backHref?: string;
 }
 
 export default function WorkTopBar({
@@ -35,13 +38,14 @@ export default function WorkTopBar({
   submissionClosed = false,
   hideSubmit = false,
   submitOutsideApp = false,
+  backHref,
 }: WorkTopBarProps) {
   const router = useRouter();
 
   const handleBack = () => {
     // En mode preview, la fleche retourne a la liste des devoirs (vue eleve)
     // Pour les eleves, retourne au dashboard
-    router.push(isPreviewMode ? '/activites' : '/dashboard');
+    router.push(backHref ?? (isPreviewMode ? '/activites' : '/dashboard'));
   };
 
   const formatLastSaved = (date: Date) => {
@@ -65,7 +69,7 @@ export default function WorkTopBar({
     <header className={styles.container}>
       <div className={styles.left}>
         <Link href="/" className={styles.logoLink}>
-          <img src="/logoRecto.png" alt="Recto-VersIA" className={styles.logoImg} />
+          <img src="/logoRecto.png" alt="RectoVerso" className={styles.logoImg} />
         </Link>
         <button
           type="button"

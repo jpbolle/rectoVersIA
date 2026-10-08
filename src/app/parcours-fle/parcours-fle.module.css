@@ -1,0 +1,61 @@
+/* Mes parcours FLE — même gabarit de page que Mes Ressources */
+.pageWrapper {
+  min-height: 100vh;
+  background: var(--c-bg);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.ready {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mainContent {
+  flex: 1;
+  margin-top: 180px;
+  padding: 40px 20px 60px;
+  max-width: 1200px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pageTitle {
+  font-family: var(--c-font-title);
+  color: var(--c-primary);
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 24px;
+}
+
+/* Bascule des ressources FLE (théorie / activités) */
+.bascule {
+  display: inline-flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 4px;
+  border: 1.5px solid rgba(212, 148, 76, 0.5);
+  border-radius: 999px;
+  background: rgba(212, 148, 76, 0.08);
+}
+
+.basculeBtn {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: #8a5a1e;
+  cursor: pointer;
+}
+
+.basculeActive {
+  background: #d4944c;
+  color: #fff;
+}

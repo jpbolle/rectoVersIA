@@ -1,0 +1,699 @@
+/* Les six sections d'une lecture de cours — palette de l'espace FLE */
+
+.ligne {
+  margin: 0 0 10px;
+}
+
+/* ── 2. Points importants ── */
+.points {
+  margin: 0;
+  padding-left: 28px;
+}
+
+.point {
+  margin-bottom: 10px;
+}
+
+/* ── 3. Vocabulaire : fiches à retourner + exercices ── */
+.vocabulaire {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fichesBarre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fichesTitre {
+  font-size: 14px;
+  color: var(--c-text-secondary);
+}
+
+.fichesOrdre {
+  display: inline-flex;
+  border: 1.5px solid rgba(74, 123, 167, 0.45);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.fichesOrdreBtn {
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border: none;
+  background: none;
+  color: #345d85;
+  cursor: pointer;
+}
+
+.fichesOrdreActif {
+  background: #4a7ba7;
+  color: #fff;
+}
+
+.fiches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.ficheMot {
+  font-family: var(--c-font-title);
+  font-size: 22px;
+  font-weight: 700;
+  color: #345d85;
+}
+
+.ficheEcouter {
+  font: inherit;
+  font-size: 18px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.ficheTraduction {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.ficheDef {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--c-text-secondary);
+}
+
+.ficheExemple {
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--c-text-secondary);
+}
+
+.exercices {
+  margin-top: 4px;
+}
+
+.exercicesBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 10px 18px;
+  border: 1.5px solid #4a7ba7;
+  border-radius: 999px;
+  background: #4a7ba7;
+  color: #fff;
+  cursor: pointer;
+}
+
+.exercicesBoutons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.exercicesBtnSecondaire {
+  background: var(--c-bg-card);
+  color: #345d85;
+}
+
+.exercicesBtnSecondaire .exercicesCompte {
+  background: rgba(74, 123, 167, 0.14);
+}
+
+.exercicesCompte {
+  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* (anciennes fiches simples, gardées pour le mode sans exercices) */
+.mots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.mot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(74, 123, 167, 0.3);
+  border-radius: 12px;
+  background: rgba(74, 123, 167, 0.05);
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+
+.motMot {
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  font-weight: 700;
+  color: #345d85;
+}
+
+.motTraduction {
+  font-size: 17px;
+  color: var(--c-text);
+}
+
+.motDef {
+  color: var(--c-text-secondary);
+}
+
+.motExemple {
+  font-style: italic;
+  color: var(--c-text-secondary);
+}
+
+/* ── 4. Reformulation + questions ── */
+.parties {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+/* La suite du texte, floue tant que la partie précédente n'est pas répondue */
+.partieFloue {
+  position: relative;
+  min-height: 120px;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.partieFlouContenu {
+  filter: blur(6px);
+  user-select: none;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.partieVerrou {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  font-weight: 700;
+  color: #345d85;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.partieTitre {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-family: var(--c-font-title);
+  font-size: 20px;
+  color: #345d85;
+}
+
+.partieNumero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #4a7ba7;
+  color: #fff;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.partieScore {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: #345d85;
+  background: rgba(74, 123, 167, 0.14);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.questions {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-left: 3px solid #4a7ba7;
+  background: rgba(74, 123, 167, 0.06);
+  border-radius: 0 10px 10px 0;
+}
+
+.questionEnonce {
+  font-weight: 600;
+}
+
+.questionAide {
+  font-size: 14px;
+  color: var(--c-text-secondary);
+}
+
+.choix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choixBtn {
+  font: inherit;
+  font-size: 15.5px;
+  padding: 8px 14px;
+  border: 1.5px solid rgba(74, 123, 167, 0.45);
+  border-radius: 10px;
+  background: var(--c-bg-card);
+  color: var(--c-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.choixBtn:hover:not(:disabled) {
+  border-color: #4a7ba7;
+}
+
+.choixBtn:disabled {
+  cursor: default;
+}
+
+.choixJuste {
+  background: rgba(60, 150, 90, 0.14);
+  border-color: #3c965a;
+  font-weight: 700;
+}
+
+.choixFaux {
+  background: rgba(200, 60, 60, 0.1);
+  border-color: var(--c-danger);
+}
+
+.verdict {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.verdictJuste {
+  color: #2f7a4a;
+}
+
+.verdictFaux {
+  color: var(--c-danger);
+}
+
+.reponseLibre {
+  width: 100%;
+  font: inherit;
+  font-size: 15.5px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border: 1.5px solid rgba(74, 123, 167, 0.45);
+  border-radius: 10px;
+  background: var(--c-bg-card);
+  color: var(--c-text);
+  resize: vertical;
+}
+
+.reponseLibre:focus {
+  outline: none;
+  border-color: #4a7ba7;
+}
+
+.lienExemple {
+  align-self: flex-start;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #345d85;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.lienExemple:disabled {
+  color: var(--c-text-muted);
+  text-decoration: none;
+  cursor: default;
+}
+
+.exemple {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(217, 164, 65, 0.12);
+  font-size: 15px;
+}
+
+/* ── 5. Phrases à la loupe ── */
+.phrases {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.phraseTexte {
+  margin: 0 0 10px;
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  color: #345d85;
+}
+
+.segments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.segment {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 130px minmax(0, 2fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(74, 123, 167, 0.06);
+  font-size: 15.5px;
+}
+
+@media (max-width: 600px) {
+  .segment {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+.segmentTexte {
+  font-weight: 700;
+}
+
+.segmentFonction {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #345d85;
+}
+
+.segmentExplication {
+  color: var(--c-text-secondary);
+}
+
+.phraseExplication {
+  margin: 10px 0 0;
+  padding: 10px 14px;
+  border-left: 3px solid #d9a441;
+  background: rgba(217, 164, 65, 0.1);
+  border-radius: 0 10px 10px 0;
+}
+
+.arbreToggle {
+  margin-top: 10px;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: 1.5px solid #4a7ba7;
+  border-radius: 999px;
+  background: none;
+  color: #345d85;
+  cursor: pointer;
+}
+
+/* L'espace de travail du moteur de schémas, en lecture seule, dans un cadre */
+.arbre {
+  margin-top: 10px;
+  height: 340px;
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid rgba(74, 123, 167, 0.3);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.arbre > * {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── 6. Passerelle ── */
+.passerelle {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.paralleleTitre {
+  margin: 0 0 6px;
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  color: #345d85;
+}
+
+.passerelleQuestion {
+  margin: 6px 0 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(74, 123, 167, 0.1);
+  font-weight: 600;
+}
+
+.enregistre {
+  font-size: 13px;
+  color: var(--c-text-muted);
+}
+
+/* ── Passerelle : le pays ── */
+.pays {
+  margin: 0;
+  font-weight: 700;
+  color: #345d85;
+}
+
+/* ── Boutons IA et verdicts ── */
+.actionsIA {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btnIA {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 9px 18px;
+  border: 1.5px solid #4a7ba7;
+  border-radius: 999px;
+  background: #4a7ba7;
+  color: #fff;
+  cursor: pointer;
+}
+
+.btnIA:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.echecIA {
+  font-size: 14px;
+  color: var(--c-danger);
+}
+
+.verdictBloc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(74, 123, 167, 0.06);
+  border: 1.5px solid rgba(74, 123, 167, 0.25);
+}
+
+.verdictCommentaire {
+  margin: 0;
+  font-weight: 600;
+}
+
+.tableau {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  line-height: 1.5;
+  background: var(--c-bg-card);
+}
+
+.tableau th,
+.tableau td {
+  padding: 8px 10px;
+  border: 1px solid rgba(74, 123, 167, 0.3);
+  vertical-align: top;
+  text-align: left;
+}
+
+.tableau th {
+  background: rgba(74, 123, 167, 0.12);
+  color: #345d85;
+  font-size: 13.5px;
+}
+
+.tableauBon {
+  background: rgba(60, 150, 90, 0.08);
+}
+
+.avisBadge {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.avisPositif {
+  background: rgba(60, 150, 90, 0.16);
+  color: #2f7a4a;
+}
+
+.avisMitige {
+  background: rgba(217, 164, 65, 0.2);
+  color: #8a6414;
+}
+
+.avisNegatif {
+  background: rgba(200, 60, 60, 0.12);
+  color: var(--c-danger);
+}
+
+.idees {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 600px) {
+  .idees {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ideesTitre {
+  margin: 0 0 6px;
+  font-size: 14.5px;
+  color: #345d85;
+}
+
+.ideesListe {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 15px;
+}
+
+.ideesVide {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--c-text-secondary);
+}
+
+.resumeEleve {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Vue prof : évaluation ── */
+.evaluation {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 15px;
+}
+
+.evalTuiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.evalTuile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(74, 123, 167, 0.08);
+}
+
+.evalChiffre {
+  font-family: var(--c-font-title);
+  font-size: 22px;
+  font-weight: 700;
+  color: #345d85;
+}
+
+.evalLibelle {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+.evalTitre {
+  margin: 8px 0 0;
+  font-family: var(--c-font-title);
+  font-size: 17px;
+  color: #345d85;
+}
+
+.evalCitation {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid #4a7ba7;
+  background: rgba(74, 123, 167, 0.06);
+  border-radius: 0 10px 10px 0;
+  white-space: pre-wrap;
+}
+
+.luFait {
+  margin: 0;
+  font-weight: 700;
+  color: #2f7a4a;
+}
+
+/* Le bouton « J'ai lu » : à droite de la section, sous son contenu */
+.actionsDroite {
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.luBloque {
+  font-size: 14px;
+  color: var(--c-text-secondary);
+}

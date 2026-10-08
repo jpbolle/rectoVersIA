@@ -148,7 +148,7 @@ async function fetchWiktionnaire(word: string): Promise<string | null> {
     'https://fr.wiktionary.org/w/api.php?action=parse&prop=wikitext&format=json&formatversion=2&redirects=1&page=' +
     encodeURIComponent(word);
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'RectoVersIA/1.0 (outil pedagogique; contact admin)' },
+    headers: { 'User-Agent': 'RectoVerso/1.0 (outil pedagogique; contact admin)' },
   });
   if (!res.ok) return null;
   const json = await res.json();

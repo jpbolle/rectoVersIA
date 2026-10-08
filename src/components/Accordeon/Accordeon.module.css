@@ -1,0 +1,166 @@
+/* Accordéon — palette de l'espace FLE (bleu #4a7ba7 / #345d85) */
+.accordeon {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.volet {
+  border: 1.5px solid rgba(74, 123, 167, 0.3);
+  border-radius: 14px;
+  background: var(--c-bg-card);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.voletOuvert {
+  border-color: #4a7ba7;
+}
+
+.etat_a_faire {
+  opacity: 0.6;
+}
+
+.entete {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.entete:disabled {
+  cursor: default;
+}
+
+.entete:not(:disabled):hover {
+  background: rgba(74, 123, 167, 0.06);
+}
+
+.picto {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.titres {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.titre {
+  font-family: var(--c-font-title);
+  font-size: 19px;
+  font-weight: 700;
+  color: #345d85;
+}
+
+.sousTitre {
+  font-size: 14px;
+  color: var(--c-text-secondary);
+}
+
+.etat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.badgeAttente,
+.badgeEnCours,
+.badgeErreur,
+.badgeVerrou,
+.badgeFait {
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.badgeAttente {
+  color: var(--c-text-muted);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.badgeEnCours {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #345d85;
+  background: rgba(74, 123, 167, 0.14);
+}
+
+.badgeErreur {
+  color: var(--c-danger);
+  background: rgba(200, 60, 60, 0.1);
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(74, 123, 167, 0.3);
+  border-top-color: #4a7ba7;
+  border-radius: 50%;
+  animation: tourne 0.8s linear infinite;
+}
+
+@keyframes tourne {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.chevron {
+  font-size: 20px;
+  color: #4a7ba7;
+}
+
+.corps {
+  padding: 4px 22px 24px;
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--c-text);
+  border-top: 1px dashed rgba(74, 123, 167, 0.3);
+  padding-top: 18px;
+}
+
+.erreur {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 20px 16px;
+  font-size: 14px;
+  color: var(--c-danger);
+}
+
+.reessayer {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: 1.5px solid #4a7ba7;
+  border-radius: 999px;
+  background: none;
+  color: #345d85;
+  cursor: pointer;
+}
+
+.badgeVerrou {
+  color: var(--c-text-secondary);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.badgeFait {
+  color: #2f7a4a;
+  background: rgba(60, 150, 90, 0.14);
+}

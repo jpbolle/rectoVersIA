@@ -150,14 +150,14 @@
 
 @keyframes flipOutAnim {
   0% {
-    transform: perspective(1200px) rotateY(0deg);
+    transform: none;
     opacity: 1;
   }
   80% {
     opacity: 0.5;
   }
   100% {
-    transform: perspective(1200px) rotateY(90deg);
+    transform: none;
     opacity: 0;
   }
 }
@@ -169,14 +169,14 @@
 
 @keyframes flipInAnim {
   0% {
-    transform: perspective(1200px) rotateY(-90deg);
+    transform: none;
     opacity: 0;
   }
   20% {
     opacity: 0.5;
   }
   100% {
-    transform: perspective(1200px) rotateY(0deg);
+    transform: none;
     opacity: 1;
   }
 }

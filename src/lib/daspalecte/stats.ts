@@ -1,6 +1,6 @@
 import { adminDb } from '@/lib/firebase/admin';
 import { hashEmail } from '@/lib/crypto';
-import { COLL_ATTENTE, COLL_PERSO, fusionnerMots, type MotPersonnel } from './mots';
+import { COLL_ATTENTE, COLL_FLE, fusionnerMots, type MotPersonnel } from './mots';
 import { COLL_RESULTATS, COLL_TRACES } from './write';
 import type { DaspalecteStats } from '@/types/daspalecte';
 
@@ -20,7 +20,7 @@ export async function chargerStatsDaspalecte(
   const [sessions, resultats, perso, attente] = await Promise.all([
     adminDb.collection(COLL_TRACES).where('studentEmailHash', '==', emailHash).get(),
     adminDb.collection(COLL_RESULTATS).where('studentEmailHash', '==', emailHash).get(),
-    uid ? adminDb.collection(COLL_PERSO).doc(uid).get() : null,
+    uid ? adminDb.collection(COLL_FLE).doc(uid).get() : null,
     adminDb.collection(COLL_ATTENTE).doc(emailHash).get(),
   ]);
 

@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import { AuthProvider } from '@/context/AuthContext';
 import { PreferencesProvider } from '@/context/PreferencesContext';
+import { EspaceProvider } from '@/context/EspaceContext';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Recto-VersIA',
+  title: 'RectoVerso',
   description: 'Aide à l\'écrilecture avec assistance IA',
   icons: {
     icon: [
@@ -41,7 +42,9 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <AuthProvider>
-          <PreferencesProvider>{children}</PreferencesProvider>
+          <PreferencesProvider>
+            <EspaceProvider>{children}</EspaceProvider>
+          </PreferencesProvider>
         </AuthProvider>
       </body>
     </html>

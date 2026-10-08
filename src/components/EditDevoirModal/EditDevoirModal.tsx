@@ -108,6 +108,8 @@ export default function EditDevoirModal({
   const [flipInverted, setFlipInverted] = useState(false);
   // Auto-évaluation intégrée — absent = activé (activités antérieures)
   const [autoEvaluation, setAutoEvaluation] = useState(true);
+  // Utilisable dans un parcours FLE (case du prof)
+  const [fle, setFle] = useState(false);
   const [evaluation, setEvaluation] = useState<EvaluationType>('formatif');
   // Didactique : le mode principal et les habiletés se modifient ; l'atelier
   // non — il commande le dispositif, le changer transformerait l'activité
@@ -173,6 +175,7 @@ export default function EditDevoirModal({
       setDisponible(devoir.disponible || false);
       setFlipInverted(devoir.flipInverted ?? false);
       setAutoEvaluation(devoir.autoEvaluation !== false);
+      setFle(devoir.fle === true);
       setEvaluation(devoir.evaluation ?? 'formatif');
       setModePrincipal(
         devoir.modePrincipal ??
@@ -362,6 +365,11 @@ export default function EditDevoirModal({
       data.autoEvaluation = autoEvaluation;
     }
 
+    // Utilisable dans un parcours FLE (une classe FLE cochée l'impose)
+    if (devoir.referentiel !== 'fle' && !isSequence) {
+      data.fle = fle || selectedClasses.some((nom) => classeNamesFle.includes(nom));
+    }
+
     const ok = await onSave(devoir.id, data, silencieux);
     if (ok && fermer) onClose();
     return ok;
@@ -482,6 +490,23 @@ export default function EditDevoirModal({
             onEleves={setElevesDesClasses}
             disabled={isSaving}
           />
+
+          {/* Utilisable en FLE — cf. CreationForm */}
+          {!isSequence && (
+            <label
+              className={styles.autoEvalToggle}
+              title="Cette activité apparaîtra dans le groupe « Activités FLE » du constructeur de parcours."
+            >
+              <input
+                type="checkbox"
+                checked={fle || selectedClasses.some((nom) => classeNamesFle.includes(nom))}
+                onChange={(e) => setFle(e.target.checked)}
+                disabled={isSaving || selectedClasses.some((nom) => classeNamesFle.includes(nom))}
+              />
+              <span className={styles.autoEvalSwitch} />
+              <span className={styles.autoEvalText}>🎓 Utilisable dans un parcours FLE</span>
+            </label>
+          )}
         </>
       )}
 

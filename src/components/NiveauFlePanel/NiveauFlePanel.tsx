@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDidactiqueFle } from '@/hooks/useDidactiqueFle';
 import { competencesVisibles, niveauxVisibles } from '@/types/didactique-fle';
-import { libelleMois, moisCourant } from '@/types/niveaux-fle';
+import { LANGUES_MATERNELLES, langueLabel, libelleMois, moisCourant, niveauGlobal } from '@/types/niveaux-fle';
 import type { NiveauxFle, ObjectifMois } from '@/types/niveaux-fle';
 import RadarFle from '@/components/RadarFle/RadarFle';
 import EmptyState from '@/components/EmptyState/EmptyState';
@@ -38,6 +38,8 @@ export default function NiveauFlePanel({ eleveId, compact }: Props) {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
   const [enregistrement, setEnregistrement] = useState(false);
+  // Langue la plus fréquente de ses mots Daspalecte, proposée tant que rien n'est posé
+  const [langueSuggeree, setLangueSuggeree] = useState('');
 
   const competences = useMemo(() => competencesVisibles(config), [config]);
   const crans = useMemo(() => niveauxVisibles(config), [config]);
@@ -55,9 +57,11 @@ export default function NiveauFlePanel({ eleveId, compact }: Props) {
         const json = await res.json();
         if (annule) return;
         if (json.success) {
+          setLangueSuggeree(json.data.langueSuggeree || '');
           setNiveaux(
             json.data.niveaux ?? {
               eleveId: eleveId ?? '',
+              langueMaternelle: '',
               positionnement: {},
               objectifsMois: [],
               historique: [],
@@ -134,6 +138,12 @@ export default function NiveauFlePanel({ eleveId, compact }: Props) {
     programmer({ positionnement });
   };
 
+  const choisirLangue = (code: string) => {
+    if (!niveaux || !modeProf) return;
+    setNiveaux({ ...niveaux, langueMaternelle: code });
+    programmer({ langueMaternelle: code });
+  };
+
   const ecrireObjectif = (mois: string, texte: string) => {
     if (!niveaux || !modeProf) return;
     const autres = niveaux.objectifsMois.filter((o) => o.mois !== mois);
@@ -152,6 +162,9 @@ export default function NiveauFlePanel({ eleveId, compact }: Props) {
     return i < 0 ? 0 : i;
   };
 
+  // Déduit du radar — médiane basse des compétences positionnées
+  const global = niveauGlobal(niveaux.positionnement, crans);
+
   const mois = moisCourant();
   const objectifCourant = niveaux.objectifsMois.find((o) => o.mois === mois)?.texte ?? '';
   const objectifsPasses = niveaux.objectifsMois.filter((o) => o.mois !== mois);
@@ -159,6 +172,47 @@ export default function NiveauFlePanel({ eleveId, compact }: Props) {
   return (
     <div className={`${styles.panel} ${compact ? styles.panelCompact : ''}`}>
       {erreur && <p className={styles.erreur}>{erreur}</p>}
+
+      {/* Identité linguistique : la langue (posée par le prof) et le niveau
+          global (déduit du radar). Les deux pilotent la lecture de cours. */}
+      <div className={styles.identite}>
+        <div className={styles.identiteBloc}>
+          <span className={styles.identiteLibelle}>Langue maternelle</span>
+          {modeProf ? (
+            <select
+              className={styles.identiteSelect}
+              value={niveaux.langueMaternelle}
+              onChange={(e) => choisirLangue(e.target.value)}
+              aria-label="Langue maternelle"
+            >
+              <option value="">— à préciser —</option>
+              {LANGUES_MATERNELLES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <b className={styles.identiteValeur}>
+              {niveaux.langueMaternelle ? langueLabel(niveaux.langueMaternelle) : '—'}
+            </b>
+          )}
+          {modeProf && !niveaux.langueMaternelle && langueSuggeree && (
+            <button type="button" className={styles.identiteSuggestion} onClick={() => choisirLangue(langueSuggeree)}>
+              D’après ses mots Daspalecte : {langueLabel(langueSuggeree)} — appliquer
+            </button>
+          )}
+        </div>
+        <div className={styles.identiteBloc}>
+          <span className={styles.identiteLibelle}>{modeProf ? 'Niveau global' : 'Mon niveau'}</span>
+          <b className={styles.identiteValeur}>{global?.label ?? '—'}</b>
+          {modeProf && (
+            <span className={styles.identiteNote}>
+              {global ? 'déduit des curseurs ci-dessous' : 'positionne au moins une compétence'}
+            </span>
+          )}
+        </div>
+      </div>
 
       <div className={styles.deuxColonnes}>
         <div className={styles.colRadar}>

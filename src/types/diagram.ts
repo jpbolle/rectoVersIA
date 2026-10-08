@@ -9,7 +9,7 @@ export type DiagramType = 'timeline' | 'mindmap' | 'hierarchy' | 'conceptmap' | 
 /** Les types dans l'ordre où l'app les propose. */
 export const DIAGRAM_TYPES: DiagramType[] = ['conceptmap', 'libre', 'mindmap', 'hierarchy', 'timeline'];
 
-// ── Schéma LIBRE (ajout Recto-versIA, 2026-10-04 — repris de la card « Schéma »
+// ── Schéma LIBRE (ajout RectoVerso, 2026-10-04 — repris de la card « Schéma »
 // de VibeCoding) : une carte conceptuelle où chaque boîte a une FORME et une
 // TAILLE, et chaque flèche un tracé et un sens. C'est le « petit draw.io »
 // demandé par JP ; il se transforme vers les autres types en passant par la

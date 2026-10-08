@@ -3,11 +3,12 @@
 > Rollup du chantier « schématisation » (macro-plan, chantier 2). Plan :
 > `harnais/plans/2026-10-04-atelier-conceptualisation.md`.
 
-## 2026-10-04 — les quatre étapes ÉCRITES d'un bloc, RIEN VU À L'ÉCRAN
+## 2026-10-04 — les quatre étapes écrites d'un bloc, puis **TESTÉES ET VALIDÉES par JP le soir même, DÉPLOYÉES**
 
 JP est parti faire du vélo après avoir validé le plan (« tu fais toutes les étapes
-sans mon accord et je testerai ensuite »). `tsc` passe, les routes et pages neuves
-compilent sur le serveur de dev (curl 401/200), **aucun écran n'a été regardé**.
+sans mon accord et je testerai ensuite »). À son retour : « j'ai vu et testé », « tout
+est ok, version bien déployée ». Déploiement VPS le 2026-10-04 (après un build OOM :
+`NODE_OPTIONS` manquait dans le skill `/deploy`, corrigé).
 
 ### Ce qui a été retrouvé (et où)
 
@@ -76,7 +77,7 @@ Page de correction : branche `schematiser` → `SchemaActivity readOnly` (zoom, 
 commentaire général existant (texte + audio) et « Rendre visible ». Pas de notation
 (O5-A), le `AssistancePanel` prof affiche `SchemaEvaluation`.
 
-## À tester (JP, au retour)
+## Scénario de test (déroulé par JP le 2026-10-04 : tout OK)
 
 1. Tableau de bord → « Créer un nouveau travail » : la popup à 9 cartes ; choisir
    « Atelier de conceptualisation » → formulaire réglé dessus, bloc « Schéma de
@@ -126,10 +127,9 @@ commentaire général existant (texte + audio) et « Rendre visible ». Pas de n
 - Ce Mac n'avait pas `@xyflow/react` / `html-to-image` dans `node_modules` :
   `npm install` (lockfile inchangé).
 
-## En suspens à la fin de la session (2026-10-04, soir)
+## Fin de session (2026-10-04, soir)
 
-- JP a créé l'activité « Fable? » (`DEV-20261004-9555`, mindmap, type libre) et l'a
-  ouverte, mais elle est en base avec **`classes: []`** : aucun élève ne la voit. Cause
-  non établie (classe non cochée au recto, ou choix de classe perdu — à reproduire).
-  Correction proposée : ✏️ → cocher 4C → enregistrer. **Pas de retour de JP.**
-- Aucune des quatre étapes n'a encore été vue à l'écran par JP.
+- L'activité « Fable? » (`DEV-20261004-9555`) était en base avec **`classes: []`** (classe
+  non enregistrée à la création — cause non établie). JP a ensuite tout testé et déclaré
+  « tout est ok » : considérer le point clos, sauf récidive.
+- **Tout vu, testé et déployé** — d'après JP, sans détail par étape.

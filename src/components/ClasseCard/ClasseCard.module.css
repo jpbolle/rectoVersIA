@@ -298,3 +298,14 @@
     font-size: 14px;
   }
 }
+
+/* Classe FLE : un liseré ambre, reconnaissable dans la grille (JP, 2026-10-08) */
+.cardFle {
+  border-color: rgba(212, 148, 76, 0.75);
+  box-shadow: inset 0 0 0 1px rgba(212, 148, 76, 0.35);
+}
+
+.cardFle:hover {
+  border-color: #d4944c;
+  box-shadow: 0 8px 20px rgba(212, 148, 76, 0.2);
+}

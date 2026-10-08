@@ -1,0 +1,147 @@
+/* Lecture d'un cours — L'ESPACE DE TRAVAIL de Recto-versIA, tel que sur
+   /activites/[id] (travail.module.css) : barre du haut, colonne de travail à
+   gauche (carte à en-tête bleu-gris, corps qui défile), rail d'icônes et
+   panneau redimensionnable à droite. Les sections elles-mêmes :
+   LectureCoursSections.module.css. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--c-bg);
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  padding: 20px;
+  gap: 16px;
+  overflow: hidden;
+  min-height: 0; /* Important pour le scroll dans flexbox */
+}
+
+.colonneTravail {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.editorSection {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  box-shadow: var(--c-shadow-card);
+  overflow: hidden;
+}
+
+.editorHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #98adc4;
+  padding: 16px 20px;
+  border-bottom: 1px solid #8a9fb8;
+  flex-shrink: 0;
+}
+
+.editorHeader h2 {
+  margin: 0;
+  flex: 1;
+  font-size: 18px;
+  font-weight: 600;
+  font-family: var(--c-font-title);
+  color: #fff;
+}
+
+.headerMeta {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.22);
+  padding: 3px 12px;
+  border-radius: 999px;
+}
+
+.headerAvancement {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.editorContent {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* ── Le panneau de droite ── */
+.panneau {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--c-text);
+}
+
+.panneauSource {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}
+
+.panneauLien {
+  margin-left: auto;
+  font-size: 13px;
+  color: #345d85;
+}
+
+.ligne {
+  margin: 0 0 10px;
+}
+
+.consigneListe {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.consigneItem {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.consignePicto {
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.consigneTitre {
+  display: block;
+  font-weight: 700;
+  color: #345d85;
+}
+
+.consigneSous {
+  font-size: 14px;
+  color: var(--c-text-secondary);
+}
+
+.vide {
+  margin: 0;
+  color: var(--c-text-secondary);
+}

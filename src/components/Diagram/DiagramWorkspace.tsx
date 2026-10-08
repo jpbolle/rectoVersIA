@@ -4,7 +4,7 @@
  * L'espace de travail complet d'un schéma : colonne de gauche (1/5 : titre, consignes),
  * à droite (4/5) le sélecteur de type, l'éditeur du type courant et le volet du bas
  * (Outils · Markdown · À placer, quadrillage, PNG, PDF).
- * Il tient l'état d'édition ; la persistance (stockage local, plus tard Recto-versIA)
+ * Il tient l'état d'édition ; la persistance (stockage local, plus tard RectoVerso)
  * est l'affaire du parent via `onChange`.
  */
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react';
@@ -69,7 +69,7 @@ interface Props {
   /** Pour que le parent puisse produire une vignette. */
   exportRef?: RefObject<DiagramExportHandle | null>;
   /**
-   * Recto-versIA : l'éditeur est posé DANS une page qui a déjà son titre et ses
+   * RectoVerso : l'éditeur est posé DANS une page qui a déjà son titre et ses
    * consignes (la colonne de travail d'une activité, le rail à droite). Pas de
    * colonne de gauche, hauteur de son conteneur plutôt que de l'écran.
    */

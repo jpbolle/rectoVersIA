@@ -3,7 +3,7 @@
 // Ajouter une activité à un module — trois chemins qui mènent au même endroit :
 //
 //  1. hors application  : un débat, une lecture à voix haute. Elle compte dans
-//     le module sans passer par Recto-versIA.
+//     le module sans passer par RectoVerso.
 //  2. rattacher         : une activité déjà créée dans Mes Activités.
 //  3. créer             : le FORMULAIRE DE CRÉATION HABITUEL, ouvert ici.
 //     L'activité créée est une activité normale — elle apparaît dans Mes
@@ -140,7 +140,7 @@ export default function ModuleActivitesModal({ module, onClose, onAjouter }: Pro
                 <span className={styles.pathTitle}>🗣 Une activité hors application</span>
                 <span className={styles.pathDesc}>
                   Un débat, une lecture à voix haute, une visite. Elle compte dans le module sans
-                  passer par Recto-versIA.
+                  passer par RectoVerso.
                 </span>
               </button>
 
@@ -152,7 +152,7 @@ export default function ModuleActivitesModal({ module, onClose, onAjouter }: Pro
               </button>
 
               <button type="button" className={styles.path} onClick={() => setChemin('creer')}>
-                <span className={styles.pathTitle}>➕ Créer une activité Recto-versIA</span>
+                <span className={styles.pathTitle}>➕ Créer une activité RectoVerso</span>
                 <span className={styles.pathDesc}>
                   Ouvre le formulaire de création habituel. Une fois enregistrée, l’activité apparaît
                   dans Mes Activités <em>et</em> reste rattachée à ce module.

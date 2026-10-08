@@ -13,6 +13,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { useEspace } from '@/context/EspaceContext';
+import AccueilProf from '@/components/AccueilProf/AccueilProf';
 import { aUneClasseFle, espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
@@ -59,6 +61,7 @@ export default function AccueilPage() {
   const { isAuthenticated, isLoading: authLoading, role, getAuthHeaders } = useAuth();
   const router = useRouter();
   const { classes, isLoading: classesLoading } = useStudentClasses();
+  const { espace, pret: espacePret } = useEspace();
 
   const [data, setData] = useState<Accueil | null>(null);
   const [chargement, setChargement] = useState(true);
@@ -79,22 +82,19 @@ export default function AccueilPage() {
       router.replace('/login');
       return;
     }
-    if (role === 'prof') {
-      setRedirecting(true);
-      router.replace('/dashboard');
-      return;
-    }
+    // Le prof a désormais SON accueil ici (2026-10-08) : plus de renvoi
     if (role === 'eleve' && !classesLoading && classes.length === 0) {
       setRedirecting(true);
       router.replace('/login');
       return;
     }
-    // Un élève dont toutes les classes sont FLE entre par son espace de cours
-    if (role === 'eleve' && !classesLoading && espaceFleSeulement(classes)) {
+    // Un élève dont toutes les classes sont FLE entre par son espace de cours —
+    // sauf s'il a basculé lui-même en espace classique (double bouton)
+    if (role === 'eleve' && !classesLoading && espacePret && espace === 'fle' && espaceFleSeulement(classes)) {
       setRedirecting(true);
       router.replace('/fle');
     }
-  }, [isAuthenticated, authLoading, role, classes, classesLoading, router, redirecting]);
+  }, [isAuthenticated, authLoading, role, classes, classesLoading, router, redirecting, espace, espacePret]);
 
   useEffect(() => {
     if (!isAuthenticated || role !== 'eleve') return;
@@ -118,6 +118,9 @@ export default function AccueilPage() {
   }, [isAuthenticated, role, getAuthHeaders]);
 
   if ((authLoading && !isAuthenticated) || redirecting) return null;
+
+  // L'accueil du prof : à corriger, échéances à venir, élèves en retard
+  if (role === 'prof') return <AccueilProf />;
 
 
   return (

@@ -13,6 +13,15 @@
 
 ## Maintenant
 
+- [ ] **Espace FLE — lecture d'une séquence de cours** (écrit le 2026-10-08, plan
+  `harnais/plans/2026-10-08-lecture-sequence-de-cours-fle.md`) : l'élève DASPA importe un
+  cours et Claude le lui rend lisible en six sections (résumé traduit, points, vocabulaire
+  + les 7 exercices Daspalecte + test de lecture, reformulation + questions, phrases à la
+  loupe, passerelle vers son pays). Langue maternelle et niveau global dans la fiche ;
+  « Mes parcours FLE » dans l'en-tête prof ; case « Utilisable en FLE » sur les activités.
+  ⚠ **Tout est écrit, à voir à l'écran** — puis faire converger `Flashcard` (vocabulaire)
+  vers le composant partagé, et brancher les résultats d'exercices dans le profil.
+
 - [ ] **Question « image à annoter » — les trois jeux sont ÉCRITS, rien n'est vu**
   (étapes 2 et 3 écrites le 2026-09-20 ; plan
   `harnais/plans/2026-09-19-image-annotee-trois-jeux.md`). Le sélecteur de **jeu**

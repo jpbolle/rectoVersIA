@@ -101,8 +101,13 @@ async function activitesDeLaClasse(classeId: string) {
     })
   );
 
+  // Une activité SUPPRIMÉE laisse ses sessions en base (voir `syncSessions`,
+  // qui ne détruit jamais) : la classe n'a plus rien à en montrer
+  // (« (activité supprimée) » à l'écran, JP 2026-10-08).
+  const vivantes = sessions.filter((s) => devoirs.has(String(s.devoirId)));
+
   return Promise.all(
-    sessions.map(async (s) => {
+    vivantes.map(async (s) => {
       const copies = await adminDb
         .collection('travaux')
         .where('sessionId', '==', s.id)

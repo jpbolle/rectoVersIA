@@ -7,12 +7,18 @@ import { encrypt, hashEmail } from '@/lib/crypto';
 // Les mots rejoignent `vocabulairePersonnel/{uid}`, la liste où NavigKid et le
 // dictionnaire de l'app rangent déjà les leurs. Mais l'extension n'envoie que
 // l'adresse Google de l'élève : tant qu'il ne s'est jamais connecté à
-// Recto-versIA, il n'a pas d'uid. Ses mots attendent alors dans
+// RectoVerso, il n'a pas d'uid. Ses mots attendent alors dans
 // `vocabulaireEnAttente/{empreinte d'email}`, versés à sa première connexion
 // (/api/eleves/link) ou au premier lot reçu une fois l'uid connu.
 
 export const COLL_PERSO = 'vocabulairePersonnel';
 export const COLL_ATTENTE = 'vocabulaireEnAttente';
+// Depuis le 2026-10-08 (soir), les mots DASPALECTE ont leur propre liste :
+// `vocabulaireFle/{uid}` — l'espace FLE de l'élève (« Mes ressources
+// personnelles › Mon vocabulaire »). `vocabulairePersonnel` reste à l'espace
+// classique (NavigKid, dictionnaire de l'app). La file d'attente est commune.
+// Migration des mots déjà rangés : scripts/migrate-vocabulaire-fle.ts.
+export const COLL_FLE = 'vocabulaireFle';
 
 // Forme d'un mot de la liste personnelle. `definition`/`example` viennent de
 // NavigKid et du dictionnaire ; les champs suivants, de Daspalecte.
@@ -71,7 +77,8 @@ export async function verserMotsEnAttente(uid: string, email: string): Promise<n
   if (!uid || !emailHash) return 0;
 
   const attenteRef = adminDb.collection(COLL_ATTENTE).doc(emailHash);
-  const persoRef = adminDb.collection(COLL_PERSO).doc(uid);
+  // La file d'attente ne contient que des mots Daspalecte : ils vont dans la liste FLE
+  const persoRef = adminDb.collection(COLL_FLE).doc(uid);
 
   return adminDb.runTransaction(async (tx) => {
     const [attente, perso] = await tx.getAll(attenteRef, persoRef);

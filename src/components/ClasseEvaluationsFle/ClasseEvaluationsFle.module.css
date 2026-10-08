@@ -1,0 +1,324 @@
+/* Bloc Évaluations d'une classe FLE — complète les styles de ClasseActivites */
+.entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ajouter {
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border: 1.5px solid #d4944c;
+  border-radius: 999px;
+  background: rgba(212, 148, 76, 0.12);
+  color: #8a5a1e;
+  cursor: pointer;
+}
+
+.ajouter:hover {
+  background: rgba(212, 148, 76, 0.25);
+}
+
+.ligne {
+  cursor: default;
+}
+
+.intituleBtn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sous {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.type {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.type_diagnostic {
+  background: rgba(74, 123, 167, 0.15);
+  color: #345d85;
+}
+
+.type_regulative {
+  background: rgba(212, 148, 76, 0.18);
+  color: #8a5a1e;
+}
+
+.type_certificative {
+  background: rgba(196, 68, 68, 0.12);
+  color: #a03030;
+}
+
+.retirer {
+  border: none;
+  background: none;
+  font-size: 15px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.retirer:hover {
+  opacity: 1;
+}
+
+/* ── Popup d'ajout (popup de l'app, jamais native) ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(61, 56, 50, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  width: 100%;
+  max-width: 560px;
+  box-shadow: var(--c-shadow-popup);
+  border: 1px solid var(--c-border);
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.modalTitre {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 20px;
+  color: var(--c-primary);
+}
+
+.fermer {
+  border: none;
+  background: none;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.form {
+  padding: 18px 24px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.formeBtn {
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  padding: 10px 8px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 10px;
+  background: var(--c-bg-element);
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+.formeActive {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+}
+
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14.5px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  color: var(--c-text);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.liste {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1.5px solid var(--c-border);
+  border-radius: 10px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.choix {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--c-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.choix:hover {
+  background: var(--c-bg-element);
+}
+
+.choixActif {
+  background: rgba(45, 106, 90, 0.12);
+  font-weight: 600;
+}
+
+.dim {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+.types {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.typeChoix {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.typeChoixActif {
+  border-color: #d4944c;
+  background: rgba(212, 148, 76, 0.15);
+  font-weight: 600;
+}
+
+.erreur {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(200, 60, 60, 0.08);
+  color: var(--c-danger);
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btnSecondaire,
+.btnPrimaire {
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btnSecondaire {
+  border: 1.5px solid var(--c-border);
+  background: none;
+  color: var(--c-text-secondary);
+}
+
+.btnPrimaire {
+  border: 1.5px solid var(--c-primary);
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.btnPrimaire:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.confirmer {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.confirmerOui,
+.confirmerNon {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.confirmerOui {
+  border: 1.5px solid var(--c-danger);
+  background: rgba(200, 60, 60, 0.1);
+  color: var(--c-danger);
+}
+
+.confirmerNon {
+  border: 1.5px solid var(--c-border);
+  background: none;
+  color: var(--c-text-secondary);
+}

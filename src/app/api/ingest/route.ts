@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// L'uid Firebase de l'élève, s'il s'est déjà connecté à Recto-versIA : lié à sa
+// L'uid Firebase de l'élève, s'il s'est déjà connecté à RectoVerso : lié à sa
 // fiche à la connexion, sinon retrouvé dans Firebase Auth. null = jamais connecté.
 async function resoudreUid(
   docs: FirebaseFirestore.QueryDocumentSnapshot[],

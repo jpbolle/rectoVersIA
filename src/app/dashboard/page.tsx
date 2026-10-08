@@ -12,6 +12,9 @@ import CreationForm from '@/components/CreationForm/CreationForm';
 import DevoirCard from '@/components/DevoirCard/DevoirCard';
 import CreateDevoirCard from '@/components/CreateDevoirCard/CreateDevoirCard';
 import AtelierChoiceModal from '@/components/AtelierChoiceModal/AtelierChoiceModal';
+import SequencesFlePanel from '@/components/SequencesFlePanel/SequencesFlePanel';
+import { useEspace } from '@/context/EspaceContext';
+import { estClasseFle } from '@/types/classe';
 import EditDevoirModal from '@/components/EditDevoirModal/EditDevoirModal';
 import LoadingOverlay from '@/components/LoadingOverlay/LoadingOverlay';
 import MessageBox from '@/components/MessageBox/MessageBox';
@@ -49,9 +52,30 @@ export default function DashboardPage() {
   // de bord n'en montre que la séquence (décision JP, 2026-09-19). Filtré
   // AVANT tout le reste — années comprises, sinon une année ne contenant que
   // des activités FLE apparaîtrait vide dans le menu.
-  const devoirs = useMemo(() => tousLesDevoirs.filter((d) => d.referentiel !== 'fle'), [tousLesDevoirs]);
+  // Les SÉQUENCES FLE non plus : elles ont leur panneau, en tête du tableau de
+  // bord en espace FLE (2026-10-08, soir).
   const { grilleTypes, grilles } = useGrilleTypes();
-  const { classes } = useClasses();
+  const { classes, classesPartagees } = useClasses();
+  // DEUX ESPACES (2026-10-08) : une classe FLE suffit pour qu'une activité
+  // soit FLE — elle n'apparaît alors QUE dans l'espace FLE, même si elle est
+  // aussi donnée à une classe de français (« plus rien de FLE en classique »,
+  // JP). En classique : les activités sans aucune classe FLE.
+  const { espace } = useEspace();
+  const nomsFle = useMemo(
+    () => new Set([...classes, ...classesPartagees].filter((c) => estClasseFle(c)).map((c) => c.nom)),
+    [classes, classesPartagees]
+  );
+  const dansEspace = useCallback(
+    (d: Devoir) => {
+      const aUneClasseFle = d.classes.some((nom) => nomsFle.has(nom));
+      return espace === 'fle' ? aUneClasseFle : !aUneClasseFle;
+    },
+    [espace, nomsFle]
+  );
+  const devoirs = useMemo(
+    () => tousLesDevoirs.filter((d) => d.referentiel !== 'fle' && d.typeTravail !== 'sequence' && dansEspace(d)),
+    [tousLesDevoirs, dansEspace]
+  );
 
   // Noms des classes actives (non archivees), triees
   const activeClasseNames = classes
@@ -156,12 +180,14 @@ export default function DashboardPage() {
         .filter(
           (d) =>
             d.referentiel !== 'fle' &&
+            d.typeTravail !== 'sequence' &&
+            dansEspace(d) &&
             (anneeFiltre === TOUTES || (d.anneeScolaire || SANS_ANNEE) === anneeFiltre) &&
             (typeFiltre === TOUS || atelierDe(d) === typeFiltre) &&
             (evalFiltre === TOUS || (d.evaluation || SANS_EVAL) === evalFiltre)
         )
         .sort((a, b) => a.intitule.localeCompare(b.intitule)),
-    [devoirsPartages, anneeFiltre, typeFiltre, evalFiltre]
+    [devoirsPartages, anneeFiltre, typeFiltre, evalFiltre, dansEspace]
   );
   const partagesActuels = partagesTries.filter((d) => !d.archive);
   const partagesArchives = partagesTries.filter((d) => d.archive);
@@ -406,10 +432,17 @@ export default function DashboardPage() {
             (ou le formulaire fermé). Deux blocs empilés faisaient une interface
             lourde — demande JP du 2026-09-14. Même parti que le détail d'une
             classe dans Mes Classes. */}
+        {/* Espace FLE : les parcours (séquences) d'abord, les activités ensuite */}
+        {!isFormVisible && espace === 'fle' && (
+          <section className={styles.evaluationsSection}>
+            <SequencesFlePanel />
+          </section>
+        )}
+
         {!isFormVisible && (
         <section className={styles.evaluationsSection}>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Mes Activités</h2>
+            <h2 className={styles.sectionTitle}>{espace === 'fle' ? 'Mes activités FLE' : 'Mes Activités'}</h2>
             <div className={styles.headerActions}>
               {/* Le tableau de bord s'ouvre sur l'année en cours. Les années
                   passées restent accessibles, mais il faut aller les chercher. */}

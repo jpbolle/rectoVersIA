@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { aUneClasseFle, espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
+import { aUneClasseFle, useStudentClasses } from '@/hooks/useStudentClasses';
+import { useEspace } from '@/context/EspaceContext';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import StudentClasseCard from '@/components/StudentClasseCard/StudentClasseCard';
@@ -14,7 +15,11 @@ import styles from './mes-classes.module.css';
 export default function MesClassesPage() {
   const { isAuthenticated, isLoading: authLoading, role } = useAuth();
   const router = useRouter();
-  const { classes, isLoading, joinClasse } = useStudentClasses();
+  const { classes: toutesClasses, isLoading, joinClasse } = useStudentClasses();
+  // Deux espaces (2026-10-08) : en classique, aucune classe FLE ; en FLE, elles seules
+  const { espace } = useEspace();
+  const enFle = role !== 'prof' && espace === 'fle' && aUneClasseFle(toutesClasses);
+  const classes = role === 'prof' ? toutesClasses : toutesClasses.filter((c) => (c.type === 'fle') === enFle);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
@@ -39,14 +44,14 @@ export default function MesClassesPage() {
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
       <Header
-        variant={role === 'prof' ? 'prof' : espaceFleSeulement(classes) ? 'fle' : 'student'}
-        avecCoursFle={role !== 'prof' && aUneClasseFle(classes)}
+        variant={role === 'prof' ? 'prof' : enFle ? 'fle' : 'student'}
+        avecCoursFle={role !== 'prof' && aUneClasseFle(toutesClasses)}
       />
 
       <main className={styles.mainContent}>
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Mes Classes</h2>
+            <h2 className={styles.sectionTitle}>{enFle ? 'Mes classes FLE' : 'Mes Classes'}</h2>
             <button className={styles.joinBtn} onClick={() => setShowJoinModal(true)}>
               + Rejoindre une classe
             </button>

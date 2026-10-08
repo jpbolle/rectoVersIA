@@ -39,13 +39,13 @@ export default function RgpdPage() {
       <main className={styles.mainContent}>
         <h1 className={styles.pageTitle}>Données personnelles (RGPD)</h1>
         <p className={styles.pageSubtitle}>
-          Comment Recto-versIA collecte, protège et utilise tes données
+          Comment RectoVerso collecte, protège et utilise tes données
         </p>
 
         <section className={styles.card}>
           <h2 className={styles.cardTitle}>Pourquoi ces données ?</h2>
           <p>
-            Recto-versIA est un outil pédagogique du cours de français : il sert à rédiger,
+            RectoVerso est un outil pédagogique du cours de français : il sert à rédiger,
             corriger et suivre les progrès en écriture et en lecture. Les données collectées
             servent uniquement à cet accompagnement pédagogique — jamais à de la publicité,
             jamais à de la revente.

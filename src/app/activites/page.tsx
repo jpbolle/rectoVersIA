@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useDevoirs } from '@/hooks/useDevoirs';
-import { useStudentClasses } from '@/hooks/useStudentClasses';
+import { aUneClasseFle, useStudentClasses } from '@/hooks/useStudentClasses';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import DevoirCard from '@/components/DevoirCard/DevoirCard';
@@ -14,8 +14,15 @@ import styles from './activites.module.css';
 export default function ActivitesPage() {
   const { isAuthenticated, isLoading: authLoading, role, getAuthHeaders } = useAuth();
   const router = useRouter();
-  const { devoirs, isLoading: devoirsLoading } = useDevoirs();
+  const { devoirs: tousLesDevoirs, isLoading: devoirsLoading } = useDevoirs();
   const { classes, isLoading: classesLoading } = useStudentClasses();
+  // Espace classique (2026-10-08) : une activité donnée à une classe FLE est
+  // FLE — elle vit dans « Mon cours FLE », pas ici (même règle que chez le prof)
+  const nomsFle = new Set(classes.filter((c) => c.type === 'fle').map((c) => c.nom));
+  const devoirs =
+    role === 'eleve' && aUneClasseFle(classes)
+      ? tousLesDevoirs.filter((d) => !d.classes.some((nom) => nomsFle.has(nom)))
+      : tousLesDevoirs;
 
   const [isReady, setIsReady] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
@@ -88,7 +95,7 @@ export default function ActivitesPage() {
         </div>
       )}
 
-      <Header variant="student" topOffset={isPreviewMode ? 44 : 0} />
+      <Header variant="student" topOffset={isPreviewMode ? 44 : 0} avecCoursFle={role === 'eleve' && aUneClasseFle(classes)} />
 
       <main className={styles.mainContent}>
         {devoirsLoading || (role === 'eleve' && travauxStatus === null) ? (

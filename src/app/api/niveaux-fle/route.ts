@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { accesClasseDepuisDoc, peutAgir } from '@/lib/classe-acces';
-import { decryptFields, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
-import { queryElevesByEmail } from '@/lib/eleve-lookup';
-import { DEFAULT_DIDACTIQUE_FLE } from '@/types/didactique-fle';
-import type { DidactiqueFleConfig } from '@/types/didactique-fle';
-import { HISTORIQUE_MAX } from '@/types/niveaux-fle';
+import { decrypt, decryptFields, encrypt, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
+import {
+  COLL_NIVEAUX_FLE as COLL,
+  chargerReferentielFle as chargerReferentiel,
+  lireNiveauxFle as lire,
+  niveauGlobalDe as globalDe,
+  niveauxFleVides as vide,
+} from '@/lib/niveaux-fle-server';
+import { queryElevesByEmail, uidParEmail } from '@/lib/eleve-lookup';
+import { COLL_FLE } from '@/lib/daspalecte/mots';
+import type { MotPersonnel } from '@/lib/daspalecte/mots';
+import { HISTORIQUE_MAX, estLangueConnue } from '@/types/niveaux-fle';
 import type { NiveauxFle, ObjectifMois } from '@/types/niveaux-fle';
 
 // Positionnement CECR d'un élève FLE (document niveauxFle/{eleveId}).
@@ -17,22 +24,22 @@ import type { NiveauxFle, ObjectifMois } from '@/types/niveaux-fle';
 //
 // Même garde que /api/profil/* : l'élève doit appartenir à une classe du prof.
 
-const COLL = 'niveauxFle';
-
-function lire(id: string, data: FirebaseFirestore.DocumentData | undefined): NiveauxFle {
-  return {
-    eleveId: id,
-    positionnement:
-      data?.positionnement && typeof data.positionnement === 'object' ? data.positionnement : {},
-    objectifsMois: Array.isArray(data?.objectifsMois) ? data.objectifsMois : [],
-    historique: Array.isArray(data?.historique) ? data.historique : [],
-    updatedAt: data?.updatedAt?.toDate?.()?.toISOString?.() || data?.updatedAt || '',
-  };
-}
-
-// Le document vide d'un élève jamais positionné
-function vide(eleveId: string): NiveauxFle {
-  return { eleveId, positionnement: {}, objectifsMois: [], historique: [], updatedAt: '' };
+// Langue suggérée quand aucune n'est posée : la plus fréquente parmi les mots
+// que l'élève a cliqués dans l'extension Daspalecte (chacun porte sa langue)
+async function langueSuggeree(eleve: { firebaseUid?: string; email?: string }): Promise<string> {
+  try {
+    const uid = eleve.firebaseUid || (await uidParEmail(decrypt(eleve.email)));
+    if (!uid) return '';
+    const doc = await adminDb.collection(COLL_FLE).doc(uid).get();
+    const mots: MotPersonnel[] = Array.isArray(doc.data()?.words) ? doc.data()!.words : [];
+    const compte = new Map<string, number>();
+    mots.forEach((m) => {
+      if (estLangueConnue(m.langue)) compte.set(m.langue, (compte.get(m.langue) ?? 0) + 1);
+    });
+    return [...compte.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+  } catch {
+    return '';
+  }
 }
 
 // L'élève appartient-il à une classe de ce prof ? Renvoie la classe ou null.
@@ -53,18 +60,6 @@ async function classeDuProf(
   return classeDoc;
 }
 
-// Le référentiel FLE en vigueur — pour ne pas enregistrer un id inconnu
-async function chargerReferentiel(): Promise<DidactiqueFleConfig> {
-  const doc = await adminDb.collection('configuration').doc('didactique-fle').get();
-  const stored = doc.exists ? (doc.data() as Partial<DidactiqueFleConfig>) : {};
-  return {
-    competences: stored.competences?.length ? stored.competences : DEFAULT_DIDACTIQUE_FLE.competences,
-    niveaux: stored.niveaux?.length ? stored.niveaux : DEFAULT_DIDACTIQUE_FLE.niveaux,
-    descripteurs: stored.descripteurs ?? [],
-    typesModule: stored.typesModule ?? DEFAULT_DIDACTIQUE_FLE.typesModule,
-  };
-}
-
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
   if (!auth) return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 });
@@ -81,10 +76,21 @@ export async function GET(request: NextRequest) {
       if (!classe) {
         return NextResponse.json({ success: false, message: 'Cet élève n’est pas dans vos classes' }, { status: 403 });
       }
-      const doc = await adminDb.collection(COLL).doc(eleveId).get();
+      const [doc, referentiel, eleveDoc] = await Promise.all([
+        adminDb.collection(COLL).doc(eleveId).get(),
+        chargerReferentiel(),
+        adminDb.collection('eleves').doc(eleveId).get(),
+      ]);
+      const niveaux = doc.exists ? lire(eleveId, doc.data()) : vide(eleveId);
+      const suggestion = niveaux.langueMaternelle ? '' : await langueSuggeree(eleveDoc.data() ?? {});
       return NextResponse.json({
         success: true,
-        data: { niveaux: doc.exists ? lire(eleveId, doc.data()) : vide(eleveId), prenom: '' },
+        data: {
+          niveaux,
+          niveauGlobal: globalDe(niveaux, referentiel),
+          langueSuggeree: suggestion,
+          prenom: '',
+        },
       });
     }
 
@@ -107,8 +113,12 @@ export async function GET(request: NextRequest) {
     const existants = docs.filter((d) => d.exists).map((d) => lire(d.id, d.data()));
     existants.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
     const niveaux = existants[0] ?? vide([...uniques.keys()][0]);
+    const referentiel = await chargerReferentiel();
 
-    return NextResponse.json({ success: true, data: { niveaux, prenom } });
+    return NextResponse.json({
+      success: true,
+      data: { niveaux, niveauGlobal: globalDe(niveaux, referentiel), prenom },
+    });
   } catch (error) {
     console.error('Erreur GET /api/niveaux-fle:', error);
     return NextResponse.json({ success: false, message: 'Erreur serveur' }, { status: 500 });
@@ -171,6 +181,12 @@ export async function PUT(request: NextRequest) {
     const objectifsMois =
       body.objectifsMois !== undefined ? sanitizeObjectifs(body.objectifsMois) : actuel.objectifsMois;
 
+    // Langue maternelle : un code connu, ou '' pour effacer ; absent = inchangé
+    let langueMaternelle = actuel.langueMaternelle;
+    if (body.langueMaternelle !== undefined) {
+      langueMaternelle = estLangueConnue(body.langueMaternelle) ? body.langueMaternelle : '';
+    }
+
     // L'historique ne bouge que si les curseurs ont bougé
     const aChange = JSON.stringify(positionnement) !== JSON.stringify(actuel.positionnement);
     const historique = aChange
@@ -183,14 +199,23 @@ export async function PUT(request: NextRequest) {
     const now = new Date();
     const suivant: NiveauxFle = {
       eleveId,
+      langueMaternelle,
       positionnement,
       objectifsMois,
       historique,
       updatedAt: now.toISOString(),
     };
-    await ref.set({ ...suivant, profId: auth.uid, updatedAt: now });
+    await ref.set({
+      ...suivant,
+      langueMaternelle: encrypt(langueMaternelle),
+      profId: auth.uid,
+      updatedAt: now,
+    });
 
-    return NextResponse.json({ success: true, data: { niveaux: suivant } });
+    return NextResponse.json({
+      success: true,
+      data: { niveaux: suivant, niveauGlobal: globalDe(suivant, referentiel) },
+    });
   } catch (error) {
     console.error('Erreur PUT /api/niveaux-fle:', error);
     return NextResponse.json({ success: false, message: 'Erreur serveur' }, { status: 500 });

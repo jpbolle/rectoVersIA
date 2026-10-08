@@ -533,7 +533,7 @@ export default function TravailDetailPage() {
       <header className={styles.header}>
         <div className={styles.headerLeft}>
           <Link href="/" className={styles.logoLink}>
-            <img src="/logoRecto.png" alt="Recto-VersIA" className={styles.logoImg} />
+            <img src="/logoRecto.png" alt="RectoVerso" className={styles.logoImg} />
           </Link>
           <button className={styles.backBtn} onClick={handleBack}>
             ←

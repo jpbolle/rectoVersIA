@@ -18,6 +18,11 @@ export interface ObjectifMois {
 
 export interface NiveauxFle {
   eleveId: string;
+  // LANGUE MATERNELLE (2026-10-08) — code de `LANGUES_MATERNELLES`, '' = pas
+  // encore posée. Posée par le prof dans la fiche ; sert aux aides lexicales
+  // de la lecture de cours. ⚠ Indice d'origine : CHIFFRÉE en base (encrypt),
+  // jamais dans un where().
+  langueMaternelle: string;
   // compétence → niveau (ids du référentiel configuration/didactique-fle).
   // Une compétence absente = pas encore positionnée : pré-A1 sur le radar.
   positionnement: Record<string, string>;
@@ -29,6 +34,48 @@ export interface NiveauxFle {
 }
 
 export const HISTORIQUE_MAX = 24;
+
+// Les langues des élèves DASPA — la liste de l'extension Daspalecte (11),
+// même codes (ISO 639-1 ; « fa » pour le dari, qui n'a pas de code propre).
+export const LANGUES_MATERNELLES: { code: string; label: string }[] = [
+  { code: 'ar', label: 'Arabe' },
+  { code: 'en', label: 'Anglais' },
+  { code: 'fa', label: 'Dari' },
+  { code: 'es', label: 'Espagnol' },
+  { code: 'ku', label: 'Kurde' },
+  { code: 'ps', label: 'Pashto' },
+  { code: 'pl', label: 'Polonais' },
+  { code: 'ro', label: 'Roumain' },
+  { code: 'ru', label: 'Russe' },
+  { code: 'tr', label: 'Turc' },
+  { code: 'uk', label: 'Ukrainien' },
+];
+
+export function langueLabel(code: string): string {
+  return LANGUES_MATERNELLES.find((l) => l.code === code)?.label ?? code;
+}
+
+export function estLangueConnue(code: unknown): code is string {
+  return typeof code === 'string' && LANGUES_MATERNELLES.some((l) => l.code === code);
+}
+
+// NIVEAU GLOBAL — déduit du radar, jamais saisi (décision JP, 2026-10-08) :
+// la médiane BASSE des compétences positionnées. Basse plutôt que haute parce
+// qu'il commande la quantité d'aides lexicales : au doute, on aide plus.
+// Aucune compétence positionnée → null (l'appelant décide du repli).
+export function niveauGlobal<N extends { id: string; rang: number }>(
+  positionnement: Record<string, string>,
+  niveaux: N[]
+): N | null {
+  const rangs = Object.values(positionnement)
+    .map((id) => niveaux.find((n) => n.id === id))
+    .filter((n): n is N => !!n)
+    .map((n) => n.rang)
+    .sort((a, b) => a - b);
+  if (rangs.length === 0) return null;
+  const median = rangs[Math.floor((rangs.length - 1) / 2)];
+  return niveaux.find((n) => n.rang === median) ?? null;
+}
 
 // Le mois courant au format « 2026-09 »
 export function moisCourant(date = new Date()): string {

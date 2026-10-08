@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
 
     devoirs.forEach((d) => {
       // Sans échéance, une activité ne peut être ni en retard ni « à venir » :
-      // l'échéance est facultative dans Recto-versIA (cf. INIT.md §4).
+      // l'échéance est facultative dans RectoVerso (cf. INIT.md §4).
       if (!d.dateRemise) return;
       const t = travaux.get(d.id);
       // Remis, corrigé, ou décrété non rendu par le prof : plus rien à faire

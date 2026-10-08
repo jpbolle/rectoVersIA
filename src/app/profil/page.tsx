@@ -7,7 +7,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { aUneClasseFle, espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
+import { aUneClasseFle, useStudentClasses } from '@/hooks/useStudentClasses';
+import { useEspace } from '@/context/EspaceContext';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import ProfilPanel from '@/components/ProfilPanel/ProfilPanel';
@@ -17,6 +18,7 @@ export default function ProfilPage() {
   const { isAuthenticated, isLoading: authLoading, role } = useAuth();
   const router = useRouter();
   const { classes, isLoading: classesLoading } = useStudentClasses();
+  const { espace } = useEspace();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export default function ProfilPage() {
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
       <Header
-        variant={role === 'prof' ? 'prof' : espaceFleSeulement(classes) ? 'fle' : 'student'}
+        variant={role === 'prof' ? 'prof' : espace === 'fle' && aUneClasseFle(classes) ? 'fle' : 'student'}
         avecCoursFle={role !== 'prof' && aUneClasseFle(classes)}
       />
 

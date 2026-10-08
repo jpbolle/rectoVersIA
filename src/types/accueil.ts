@@ -38,3 +38,39 @@ export interface Accueil {
   // sept lignes de tableau vides n'apprendraient rien.)
   roue: UaaCertifiee[];
 }
+
+// ── L'accueil du PROF (2026-10-08) : à corriger, échéances à venir, élèves en
+// retard — sur les classes de l'espace courant (classique ou FLE). Calculé à
+// la lecture, comme l'accueil élève.
+export interface ACorrigerProf {
+  devoirId: string;
+  intitule: string;
+  classeNom: string;
+  // Copies remises sans correction rendue
+  nb: number;
+}
+
+export interface EcheanceProf {
+  devoirId: string;
+  intitule: string;
+  classeNom: string;
+  dateRemise: string;
+  remises: number;
+  total: number;
+}
+
+export interface RetardProf {
+  devoirId: string;
+  intitule: string;
+  classeNom: string;
+  dateRemise: string;
+  joursDeRetard: number;
+  // Prénom Nom des élèves qui n'ont pas remis
+  eleves: string[];
+}
+
+export interface AccueilProf {
+  aCorriger: ACorrigerProf[];
+  echeances: EcheanceProf[];
+  retards: RetardProf[];
+}
