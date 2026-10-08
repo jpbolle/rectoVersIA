@@ -114,7 +114,12 @@ export type ManchePhase =
   | 'question'  // une question court
   | 'resultat'  // la question est close : on regarde CE QUE LA CLASSE A RÉPONDU
   | 'revele'    // le professeur a montré la bonne réponse
-  | 'finie';    // la partie est terminée
+  | 'finie'     // la partie est terminée
+  // SONDAGE ANONYME AU RYTHME DE L'ÉLÈVE (2026-10-09) : toutes les questions
+  // sont ouvertes d'un coup, chacun répond quand il veut, en une fois. Pas de
+  // chrono, pas de pilotage — la manche n'est là que pour recevoir les
+  // réponses sans les attacher à une copie. Jamais pour une compétition.
+  | 'libre';
 
 /**
  * ⚠ POURQUOI `resultat` ET `revele` SONT DEUX MOMENTS.
@@ -573,6 +578,15 @@ export interface SondageVue {
   sommaire?: MancheSommaireItem[];
   /** Prof : toutes les questions posées et leur répartition — l'onglet Statistiques */
   bilan?: SondageBilanItem[];
+  // ── Réglages (2026-10-09) ──
+  /** Manche « libre » : au rythme des élèves, pas de pilotage */
+  libre?: boolean;
+  /** Le sondage est anonyme (sinon, « Arrêter » verse les copies dans `travaux`) */
+  anonyme?: boolean;
+  /** Prof, manche libre : combien ont envoyé leurs réponses */
+  repondus?: number;
+  /** Prof, nominatif : les copies versées à l'arrêt */
+  versement?: { at: string; copies: number } | null;
 }
 
 /** Ce que le prof demande à faire sur un sondage. Pas de « révéler », rien à révéler. */

@@ -25,9 +25,13 @@ import {
   ouvrirManche,
   reponsesA,
   signalerPresence,
+  verserDansTravaux,
 } from '@/lib/manche-server';
 import type { Entree } from '@/lib/manche-server';
-import { DELAI_DEPART_MS, phaseEffective, tempsDeReponse } from '@/types/manche';
+import { classesDeLEleve } from '@/lib/session-server';
+import { sessionId as sessionIdDe } from '@/types/session';
+import { reglagesSondage } from '@/types/didactique';
+import { DELAI_DEPART_MS, mancheId, phaseEffective, tempsDeReponse } from '@/types/manche';
 import {
   ECHELLE_COMPETENCE,
   ECHELLE_HUMEUR,
@@ -48,27 +52,42 @@ import type {
   AutoEvalAnswer,
   AutoEvalQuestion,
   AutoEvalQuestionnaire,
+  SondageReglages,
 } from '@/types/autoevaluation';
 
-// ─── Le questionnaire du sondage ───
+// ─── Le questionnaire du sondage, et ses réglages ───
 //
 // Il vit sur l'activité (`devoirs.autoEvalQuiz`) — pas de bibliothèque, pas de
 // copie figée : un sondage se compose pour une heure de cours. On le garde
 // quelques secondes en mémoire : le relire à chaque interrogation coûterait
-// une lecture par élève et par seconde.
+// une lecture par élève et par seconde. Les RÉGLAGES (2026-10-09 : nominatif
+// ou anonyme, rythme de l'élève ou du prof) se lisent au même endroit.
 
 const QUIZ_CACHE_MS = 5000;
-const quizCache = new Map<string, { quiz: AutoEvalQuestionnaire | null; luA: number }>();
+interface InfosDevoir {
+  quiz: AutoEvalQuestionnaire | null;
+  reglages: SondageReglages;
+}
+const infosCache = new Map<string, { infos: InfosDevoir; luA: number }>();
+
+async function infosDuDevoir(devoirId: string): Promise<InfosDevoir> {
+  const courant = infosCache.get(devoirId);
+  const now = Date.now();
+  if (courant && now - courant.luA < QUIZ_CACHE_MS) return courant.infos;
+  const snap = await adminDb.collection('devoirs').doc(devoirId).get();
+  const data = snap.exists
+    ? (snap.data() as { autoEvalQuiz?: AutoEvalQuestionnaire | null; atelier?: string; sondage?: SondageReglages | null })
+    : null;
+  const infos: InfosDevoir = {
+    quiz: data?.autoEvalQuiz ?? null,
+    reglages: reglagesSondage(data),
+  };
+  infosCache.set(devoirId, { infos, luA: now });
+  return infos;
+}
 
 async function quizDuSondage(m: Manche): Promise<AutoEvalQuestionnaire | null> {
-  const courant = quizCache.get(m.devoirId);
-  const now = Date.now();
-  if (courant && now - courant.luA < QUIZ_CACHE_MS) return courant.quiz;
-  const snap = await adminDb.collection('devoirs').doc(m.devoirId).get();
-  const data = snap.exists ? (snap.data() as { autoEvalQuiz?: AutoEvalQuestionnaire | null }) : null;
-  const quiz = data?.autoEvalQuiz ?? null;
-  quizCache.set(m.devoirId, { quiz, luA: now });
-  return quiz;
+  return (await infosDuDevoir(m.devoirId)).quiz;
 }
 
 /** Les réponses à UNE question, dans la forme de l'auto-évaluation. */
@@ -260,10 +279,11 @@ export async function vueDuSondage(
   const m = e.manche;
   const phase = phaseEffective(m);
 
-  const quiz = await quizDuSondage(m);
+  const { quiz, reglages } = await infosDuDevoir(m.devoirId);
   const questions = quiz?.questions ?? [];
   const brute = m.questionIndex >= 0 ? questions[m.questionIndex] ?? null : null;
   const nums = numeros(questions);
+  const libre = phase === 'libre';
 
   // La question ne part QUE lorsqu'elle est en jeu ou qu'on en regarde le
   // résultat : en salle d'attente, la servir livrerait le questionnaire entier
@@ -281,6 +301,8 @@ export async function vueDuSondage(
     numero: brute ? nums[m.questionIndex] ?? 0 : 0,
     total: questions.filter(estQuestion).length,
     question,
+    libre,
+    anonyme: reglages.anonyme,
   };
 
   // Ce que la classe a répondu — une fois la question close seulement.
@@ -302,6 +324,11 @@ export async function vueDuSondage(
       );
     }
     vue.presents = joueurs(id);
+    vue.versement = m.versement ?? null;
+    // Manche libre : qui a envoyé — un compte, jamais des noms
+    if (libre || phase === 'finie') {
+      vue.repondus = [...e.copies.values()].filter((c) => Object.keys(c).length > 0).length;
+    }
     if (brute && estQuestion(brute)) {
       const repondants = reponsesSondage(e, brute.id);
       vue.compteur = {
@@ -333,6 +360,7 @@ export async function vueDuSondage(
     // L'uid reste en mémoire du serveur, il ne sort jamais : l'anonymat tient
     signalerPresence(id, uid);
     if (brute) vue.aRepondu = reponsesSondage(e, brute.id).has(uid);
+    if (libre) vue.aRepondu = Object.keys(e.copies.get(uid) ?? {}).length > 0;
   }
 
   return vue;
@@ -354,8 +382,15 @@ export async function ouvrirSondage(
   if (!manche) return null;
   // `ouvrirManche` a vidé le cache : la prochaine lecture relit la base, où le
   // genre est désormais posé.
-  await adminDb.collection('manches').doc(manche.id).update({ genre: 'sondage' });
-  return { ...manche, genre: 'sondage' };
+  const { quiz, reglages } = await infosDuDevoir(manche.devoirId);
+  // AU RYTHME DE L'ÉLÈVE (anonyme) : la manche naît « libre », toutes les
+  // questions ouvertes, et le prof n'a rien à piloter.
+  const libre = reglages.rythme === 'participant';
+  const patch: Partial<Manche> & { genre: 'sondage' } = libre
+    ? { genre: 'sondage', phase: 'libre', posees: (quiz?.questions ?? []).map((_, i) => i) }
+    : { genre: 'sondage' };
+  await adminDb.collection('manches').doc(manche.id).update(patch);
+  return { ...manche, ...patch };
 }
 
 export interface OptionsPilotageSondage {
@@ -380,6 +415,10 @@ export async function piloterSondage(
   if (!e) return null;
   const m = { ...e.manche };
   const now = new Date();
+  const { reglages } = await infosDuDevoir(m.devoirId);
+
+  // Une manche LIBRE ne se pilote pas : elle se clôt, ou se rouvre à zéro.
+  if (m.phase === 'libre' && action !== 'terminer' && action !== 'ouvrir') return m;
 
   switch (action) {
     case 'lancer': {
@@ -427,20 +466,30 @@ export async function piloterSondage(
         m.clotureAt = now.toISOString();
       }
       break;
-    case 'terminer':
-      // Rien ne se verse nulle part : un sondage anonyme ne peut pas devenir
-      // des copies nominatives. La manche est sa propre trace.
+    case 'terminer': {
+      const etaitLibre = m.phase === 'libre';
       m.phase = 'finie';
       m.clotureAt = now.toISOString();
+      // ANONYME : rien ne se verse nulle part — un sondage anonyme ne peut pas
+      // devenir des copies nominatives, la manche est sa propre trace.
+      // NOMINATIF joué en direct (2026-10-09) : la partie finie DEVIENT des
+      // copies, comme en compétition — l'aval (regard du prof à l'aveugle,
+      // lucidité, profil) lit alors une auto-évaluation ordinaire.
+      if (!reglages.anonyme && !etaitLibre) {
+        m.versement = await verserDansTravaux(e, m, now.toISOString(), 'autoevaluation');
+      }
       break;
-    case 'ouvrir':
-      m.phase = 'salle';
+    }
+    case 'ouvrir': {
+      const libre = reglages.rythme === 'participant';
+      m.phase = libre ? 'libre' : 'salle';
       m.questionIndex = -1;
       m.debutAt = null;
       m.clotureAt = null;
-      m.posees = [];
+      m.posees = libre ? ((await quizDuSondage(m))?.questions ?? []).map((_, i) => i) : [];
       m.chronos = {};
       break;
+    }
   }
 
   m.updatedAt = now.toISOString();
@@ -511,4 +560,121 @@ export async function enregistrerReponseSondage(
   e.temps.set(uid, t);
 
   return { ok: true };
+}
+
+// ─── Manche LIBRE : le sondage anonyme au rythme de l'élève (2026-10-09) ───
+//
+// Pas de pilotage : l'élève reçoit le questionnaire entier (il n'y a rien à
+// cacher, aucune bonne réponse), répond quand il veut, et envoie EN UNE FOIS.
+// La manche n'est là que pour recevoir les réponses sans les attacher à une
+// copie — `travaux` ne voit rien passer, le profil non plus. Même contrat
+// d'anonymat que le direct : le serveur retient qui a envoyé (pour refuser un
+// second envoi), et ne le sert jamais.
+
+/**
+ * La manche libre que CET élève doit rejoindre pour une activité, créée au
+ * besoin : il n'y a pas de prof pour l'ouvrir. La session de sa classe doit
+ * être OUVERTE — sinon il n'aurait pas dû voir l'activité.
+ */
+export async function mancheLibrePourEleve(
+  devoirId: string,
+  uid: string,
+  email: string
+): Promise<{ id: string; phase: 'libre' | 'finie' } | null> {
+  const classes = await classesDeLEleve(uid, email);
+  for (const classeId of classes) {
+    const sid = sessionIdDe(devoirId, classeId);
+    const sSnap = await adminDb.collection('sessions').doc(sid).get();
+    if (!sSnap.exists) continue;
+    const s = sSnap.data() as { profId?: string; disponible?: boolean; archive?: boolean };
+    if (s.disponible !== true || s.archive === true) continue;
+
+    const id = mancheId(sid);
+    const existante = await entree(id);
+    if (existante) {
+      const phase = existante.manche.phase;
+      if (phase === 'finie') return { id, phase: 'finie' };
+      if (phase === 'libre') return { id, phase: 'libre' };
+      // Une manche pilotée existe sur cette session : ce n'est pas un sondage libre
+      continue;
+    }
+    const { quiz } = await infosDuDevoir(devoirId);
+    const now = new Date().toISOString();
+    const manche: Manche = {
+      id,
+      sessionId: sid,
+      devoirId,
+      classeId,
+      profId: String(s.profId ?? ''),
+      phase: 'libre',
+      questionIndex: -1,
+      debutAt: null,
+      chronoSec: 0,
+      clotureAt: null,
+      posees: (quiz?.questions ?? []).map((_, i) => i),
+      chronos: {},
+      versement: null,
+      equipes: null,
+      genre: 'sondage',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const { id: _id, ...data } = manche;
+    await adminDb.collection('manches').doc(id).set(data);
+    return { id, phase: 'libre' };
+  }
+  return null;
+}
+
+export interface ResultatEnvoiLibre {
+  ok: boolean;
+  motif?: 'phase' | 'vide' | 'deja';
+}
+
+/** L'élève envoie TOUTES ses réponses d'un coup — une seule fois. */
+export async function enregistrerReponsesLibres(
+  id: string,
+  uid: string,
+  answers: Record<string, AutoEvalAnswer>
+): Promise<ResultatEnvoiLibre> {
+  const e = await entree(id);
+  if (!e) return { ok: false, motif: 'phase' };
+  if (e.manche.phase !== 'libre') return { ok: false, motif: 'phase' };
+  if (Object.keys(e.copies.get(uid) ?? {}).length > 0) return { ok: false, motif: 'deja' };
+
+  // Seules les questions du questionnaire, et seulement celles qui ont une réponse
+  const quiz = await quizDuSondage(e.manche);
+  const ids = new Set((quiz?.questions ?? []).map((q) => q.id));
+  const propres: Record<string, AutoEvalAnswer> = {};
+  Object.entries(answers ?? {}).forEach(([qid, a]) => {
+    if (ids.has(qid) && a && typeof a === 'object' && !reponseSondageVide(a)) propres[qid] = a;
+  });
+  if (Object.keys(propres).length === 0) return { ok: false, motif: 'vide' };
+
+  await adminDb
+    .collection('manches')
+    .doc(id)
+    .collection('reponses')
+    .doc(uid)
+    .set({ uid, answers: propres, tempsMs: {}, updatedAt: new Date().toISOString() }, { merge: true });
+  e.copies.set(uid, propres as unknown as Record<string, never>);
+  return { ok: true };
+}
+
+/** Où en est CET élève sur un sondage libre : a-t-il envoyé, est-ce clos ? */
+export async function etatLibreDeLEleve(
+  devoirId: string,
+  uid: string,
+  email: string
+): Promise<{ aRepondu: boolean; ferme: boolean }> {
+  const classes = await classesDeLEleve(uid, email);
+  for (const classeId of classes) {
+    const e = await entree(mancheId(sessionIdDe(devoirId, classeId)));
+    if (!e) continue;
+    return {
+      aRepondu: Object.keys(e.copies.get(uid) ?? {}).length > 0,
+      ferme: e.manche.phase === 'finie',
+    };
+  }
+  return { aRepondu: false, ferme: false };
 }

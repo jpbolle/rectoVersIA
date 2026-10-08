@@ -10,6 +10,11 @@
 // puis on regarde ce que la classe a répondu — il n'y a rien à révéler), pas
 // de score, pas de podium, et AUCUN NOM nulle part : l'onglet Statistiques
 // montre des répartitions, jamais qui a dit quoi.
+//
+// Réglages du 2026-10-09 : NOMINATIF, « Arrêter » verse les copies dans
+// `travaux` (la revue se fait depuis la page des copies) ; manche LIBRE (anonyme,
+// au rythme des élèves), rien à piloter — l'écran se résume aux statistiques
+// et à « Clore le sondage ».
 
 import { useState } from 'react';
 import ResizableSplit from '@/components/ResizableSplit/ResizableSplit';
@@ -27,7 +32,11 @@ type Onglet = 'questions' | 'stats';
 export default function SondagePilote({ sessionId }: { sessionId: string }) {
   const { vue, motif, sommaire, demarree, reste, avantDepart, isLoading, piloter } =
     useDirect<SondageVue>({ sessionId, base: '/api/sondage' });
-  const [onglet, setOnglet] = useState<Onglet>('questions');
+  const [ongletChoisi, setOngletChoisi] = useState<Onglet | null>(null);
+  // Manche libre : rien à lancer, l'onglet utile est Statistiques
+  const libre = vue?.libre === true;
+  const onglet: Onglet = ongletChoisi ?? (libre ? 'stats' : 'questions');
+  const setOnglet = setOngletChoisi;
 
   const carteSeule = (contenu: React.ReactNode) => (
     <div className={styles.contentSection}>
@@ -76,6 +85,7 @@ export default function SondagePilote({ sessionId }: { sessionId: string }) {
   const chronometre = enQuestion && vue.chronoSec > 0;
   const libelle: Record<string, string> = AUTOEVAL_TYPE_LABELS;
   const bilan = vue.bilan ?? [];
+  const nominatif = vue.anonyme === false;
 
   // ── Colonne de gauche : ce que la classe voit ──
   const jeu = (
@@ -84,7 +94,11 @@ export default function SondagePilote({ sessionId }: { sessionId: string }) {
         <h2>Sondage</h2>
         {/* Pendant une question : qui a répondu, sur ceux qui JOUENT. Entre
             deux questions (salle d'attente comprise) : qui est connecté. */}
-        {vue.compteur ? (
+        {libre || (finie && typeof vue.repondus === 'number') ? (
+          <span className={styles.headerCompteur}>
+            {vue.repondus ?? 0} réponse{(vue.repondus ?? 0) > 1 ? 's' : ''}
+          </span>
+        ) : vue.compteur ? (
           <span className={styles.headerCompteur}>
             {vue.compteur.repondu} / {vue.compteur.attendus} ont répondu
           </span>
@@ -98,13 +112,15 @@ export default function SondagePilote({ sessionId }: { sessionId: string }) {
       <div className={styles.jeu}>
         <div className={styles.bandeau}>
           <span className={styles.phase}>
-            {vue.phase === 'salle'
-              ? 'Salle d’attente'
-              : enQuestion
-              ? 'Question ouverte'
-              : close
-              ? 'Réponses de la classe'
-              : 'Terminé'}
+            {libre
+              ? 'Au rythme des élèves'
+              : vue.phase === 'salle'
+                ? 'Salle d’attente'
+                : enQuestion
+                  ? 'Question ouverte'
+                  : close
+                    ? 'Réponses de la classe'
+                    : 'Terminé'}
           </span>
           {vue.numero > 0 && (
             <span>
@@ -154,36 +170,52 @@ export default function SondagePilote({ sessionId }: { sessionId: string }) {
             La salle est ouverte. Choisis ta première question dans l’onglet « Questions ».
           </p>
         )}
-        {finie && <p className={styles.vide}>Sondage terminé. Les réponses restent lisibles dans l’onglet « Statistiques ».</p>}
+        {libre && (
+          <p className={styles.vide}>
+            Les élèves répondent quand ils veulent, d’où ils veulent. Les répartitions se lisent
+            dans l’onglet « Statistiques », au fil des envois — sans un nom.
+          </p>
+        )}
+        {finie && (
+          <p className={styles.vide}>
+            {nominatif
+              ? `Auto-évaluation terminée${vue.versement ? ` : ${vue.versement.copies} copie${vue.versement.copies > 1 ? 's' : ''} versée${vue.versement.copies > 1 ? 's' : ''}` : ''}. La revue se fait depuis la page des copies de l’activité.`
+              : 'Sondage terminé. Les réponses restent lisibles dans l’onglet « Statistiques ».'}
+          </p>
+        )}
 
         {/* Barre d'actions — forme imposée : un trait, les boutons, un trait.
             Verts = agir sur le sondage ; ambre = l'arrêter. */}
         <div className={styles.bottomActions}>
           <span className={styles.bottomActionsLine} />
           <div className={styles.bottomActionsRow}>
-            <button
-              type="button"
-              className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
-              onClick={() => piloter('lancer')}
-              disabled={chronometre || finie}
-            >
-              {vue.numero === 0 && vue.phase === 'salle' ? 'Lancer la première question' : 'Question suivante'}
-            </button>
-            <button
-              type="button"
-              className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
-              onClick={() => piloter('stopper')}
-              disabled={!enQuestion}
-            >
-              Arrêter la question
-            </button>
+            {!libre && (
+              <>
+                <button
+                  type="button"
+                  className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+                  onClick={() => piloter('lancer')}
+                  disabled={chronometre || finie}
+                >
+                  {vue.numero === 0 && vue.phase === 'salle' ? 'Lancer la première question' : 'Question suivante'}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+                  onClick={() => piloter('stopper')}
+                  disabled={!enQuestion}
+                >
+                  Arrêter la question
+                </button>
+              </>
+            )}
             <button
               type="button"
               className={`${styles.actionBtn} ${styles.actionBtnAmber}`}
               onClick={() => piloter('terminer')}
               disabled={finie}
             >
-              Arrêter le sondage
+              {libre ? 'Clore le sondage' : nominatif ? 'Arrêter et verser les copies' : 'Arrêter le sondage'}
             </button>
           </div>
           <span className={styles.bottomActionsLine} />
@@ -231,8 +263,14 @@ export default function SondagePilote({ sessionId }: { sessionId: string }) {
                         encours ? styles.encours : ''
                       }`}
                       onClick={() => piloter('lancer', { index: item.index })}
-                      disabled={encours && enQuestion}
-                      title={posee ? 'Déjà posée — cliquez pour la reposer' : 'Poser cette question'}
+                      disabled={libre || (encours && enQuestion)}
+                      title={
+                        libre
+                          ? 'Au rythme des élèves : toutes les questions sont ouvertes'
+                          : posee
+                            ? 'Déjà posée — cliquez pour la reposer'
+                            : 'Poser cette question'
+                      }
                     >
                       <span className={styles.rang}>{item.numero ?? 'ℹ'}</span>
                       <span className={styles.apercu}>{item.apercu}</span>
@@ -253,9 +291,13 @@ export default function SondagePilote({ sessionId }: { sessionId: string }) {
                 </span>
               </div>
               <div className={styles.statLigne}>
-                <span>Réponses à la question en cours</span>
+                <span>{libre ? 'Élèves qui ont envoyé' : 'Réponses à la question en cours'}</span>
                 <span className={styles.statValeur}>
-                  {vue.compteur ? `${vue.compteur.repondu} / ${vue.compteur.attendus}` : '—'}
+                  {libre
+                    ? String(vue.repondus ?? 0)
+                    : vue.compteur
+                      ? `${vue.compteur.repondu} / ${vue.compteur.attendus}`
+                      : '—'}
                 </span>
               </div>
 
@@ -263,8 +305,9 @@ export default function SondagePilote({ sessionId }: { sessionId: string }) {
                   trace du sondage — et elle ne porte aucun nom. */}
               {bilan.length === 0 ? (
                 <p className={styles.vide}>
-                  Les réponses de la classe apparaissent ici, question par question, dès que la
-                  première est close.
+                  {libre
+                    ? 'Les répartitions apparaissent ici dès le premier envoi.'
+                    : 'Les réponses de la classe apparaissent ici, question par question, dès que la première est close.'}
                 </p>
               ) : (
                 <div className={propres.bilan}>

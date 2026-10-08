@@ -4,7 +4,7 @@
 // l'accueil élève — À corriger · Échéances à venir · Élèves en retard — pour
 // les classes de l'espace courant (classique ou FLE). Rendu par /accueil.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useEspace } from '@/context/EspaceContext';
@@ -18,6 +18,15 @@ function echeanceLabel(iso: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+// Au-delà de cinq retardataires, la liste des noms rend l'encadré illisible
+// (JP, 2026-10-09) : on dit seulement qu'ils sont plusieurs, le compte de
+// l'en-tête reste exact.
+const MAX_NOMS_RETARD = 5;
+
+function retardEleves(eleves: string[]) {
+  return eleves.length > MAX_NOMS_RETARD ? 'Plusieurs élèves en retard' : eleves.join(', ');
 }
 
 function retardLabel(jours: number) {
@@ -59,6 +68,25 @@ export default function AccueilProf() {
   }, [isAuthenticated, getAuthHeaders, espace, pret]);
 
   const prenom = user?.displayName?.split(' ')[0] ?? '';
+
+  // « Vu » : la ligne part tout de suite, la session s'en souvient (PATCH).
+  const marquerRetardVu = useCallback(
+    async (sessionId: string) => {
+      setData((d) => (d ? { ...d, retards: d.retards.filter((r) => r.sessionId !== sessionId) } : d));
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers) return;
+        await fetch(`/api/sessions/${sessionId}`, {
+          method: 'PATCH',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ retardsVus: true }),
+        });
+      } catch (err) {
+        console.error('Erreur « retards vus » :', err);
+      }
+    },
+    [getAuthHeaders]
+  );
 
   return (
     <div className={`${styles.pageWrapper} ${isReady ? styles.ready : ''}`}>
@@ -130,15 +158,25 @@ export default function AccueilProf() {
                 </div>
                 {data?.retards.length ? (
                   data.retards.map((r) => (
-                    <Link key={`${r.devoirId}-${r.classeNom}`} href={`/dashboard/travaux/${r.devoirId}`} className={styles.ligne}>
-                      <span className={styles.ligneTitre}>
-                        {r.intitule}
-                        <span className={styles.ligneAtelier}>
-                          {r.classeNom} · {r.eleves.join(', ')}
+                    <div key={r.sessionId} className={styles.ligneAvecCase}>
+                      <input
+                        type="checkbox"
+                        className={styles.ligneCase}
+                        title="Vu — retirer de l’encadré"
+                        aria-label={`Vu : ${r.intitule}, ${r.classeNom}`}
+                        checked={false}
+                        onChange={() => marquerRetardVu(r.sessionId)}
+                      />
+                      <Link href={`/dashboard/travaux/${r.devoirId}`} className={styles.ligne}>
+                        <span className={styles.ligneTitre}>
+                          {r.intitule}
+                          <span className={styles.ligneAtelier}>
+                            {r.classeNom} · {retardEleves(r.eleves)}
+                          </span>
                         </span>
-                      </span>
-                      <span className={`${styles.ligneMeta} ${styles.ligneRetard}`}>{retardLabel(r.joursDeRetard)}</span>
-                    </Link>
+                        <span className={`${styles.ligneMeta} ${styles.ligneRetard}`}>{retardLabel(r.joursDeRetard)}</span>
+                      </Link>
+                    </div>
                   ))
                 ) : (
                   <p className={styles.blocVide}>Personne en retard sur les 30 derniers jours.</p>

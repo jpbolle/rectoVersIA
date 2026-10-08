@@ -19,6 +19,8 @@
 // à supprimer quand l'élément a déjà servi.
 
 import { UAA_LIST } from './grille';
+import { SONDAGE_REGLAGES_DEFAUT } from './autoevaluation';
+import type { SondageReglages } from './autoevaluation';
 
 export interface DidactiqueItem {
   id: string; // identifiant stable ("0".."6" pour les UAA)
@@ -59,9 +61,18 @@ export interface Atelier {
 }
 
 export const ATELIER_SONDAGE = 'sondage';
+/**
+ * L'ancienne carte « Activité d'auto-évaluation » (2026-08-15 → 2026-10-09) :
+ * plus proposée, mais ses activités existent en base et des habiletés y sont
+ * rattachées dans /admin. Partout, cet id VAUT `sondage`.
+ */
+export const ATELIER_AUTOEVALUATION_LEGACY = 'autoevaluation';
 export const ATELIER_SEQUENCE_FLE = 'sequence-fle';
 export const ATELIER_CONCEPTUALISATION = 'conceptualisation';
 
+// Ordre = celui de la popup de choix (JP, 2026-10-09) : les quatre ATELIERS
+// d'abord (l'élève produit), puis la lecture d'une œuvre, puis les
+// QUESTIONNAIRES (il répond), la séquence FLE en dernier (jamais dans la popup).
 export const ATELIERS: Atelier[] = [
   {
     id: 'ecriture',
@@ -70,27 +81,6 @@ export const ATELIERS: Atelier[] = [
     dispositif: 'ecrire',
     modeParDefaut: 'ecrire',
     description: 'L’élève rédige un texte, évalué avec une grille de critères.',
-  },
-  {
-    id: 'lecture',
-    label: 'Atelier de lecture',
-    court: 'Lecture',
-    dispositif: 'lire',
-    modeParDefaut: 'lire',
-    description: 'Un questionnaire sur un texte ou un document : questions ouvertes, QCM, glisser-déposer…',
-  },
-  {
-    // Même dispositif que l'atelier de lecture — c'est le MÊME questionnaire,
-    // dans une autre enveloppe : un parcours paginé au lieu d'une page. Ce qui
-    // change tient dans l'activité (une œuvre rattachée, une échéance, un
-    // minimum de vérifications), pas dans la machinerie.
-    // Toujours FORMATIF : « je suis juste là pour les inviter à lire » (JP).
-    id: 'lecture-oeuvre',
-    label: 'Lecture d’une œuvre',
-    court: 'Œuvre',
-    dispositif: 'lire',
-    modeParDefaut: 'lire',
-    description: 'Un parcours paginé dans une œuvre, avec des questions au fil des chapitres.',
   },
   {
     id: 'recherche',
@@ -109,30 +99,53 @@ export const ATELIERS: Atelier[] = [
     description: 'Une liste de mots à apprendre, avec révision et mots personnels.',
   },
   {
-    // L'élève porte un regard sur son propre travail ou sur son attitude :
-    // rien n'y est juste ou faux, donc pas de grille et pas de points. Le
-    // mode principal est réflexif — c'est un geste sur soi.
-    id: 'autoevaluation',
-    label: 'Activité d’auto-évaluation',
-    court: 'Auto-évaluation',
-    dispositif: 'autoevaluation',
-    modeParDefaut: 'reflexif',
-    description: 'L’élève se prononce sur son travail ou son attitude : rien n’y est juste ou faux.',
+    // L'ATELIER DE CONCEPTUALISATION (plan du 2026-10-04) : à partir d'une base
+    // documentaire, l'élève schématise — et peut changer de type de schéma en
+    // cours de route. JP : « lire-écrire » ; le mode retenu est « écrire » (on
+    // produit un schéma), le prof peut passer en « lire ».
+    id: ATELIER_CONCEPTUALISATION,
+    label: 'Atelier de conceptualisation',
+    court: 'Schéma',
+    dispositif: 'schematiser',
+    modeParDefaut: 'ecrire',
+    description: 'À partir d’une base documentaire, l’élève construit un schéma : carte conceptuelle, mentale, ligne du temps…',
   },
   {
-    // Le SONDAGE : les questions de l'auto-évaluation (rien n'y est juste ou
-    // faux), mais posées EN DIRECT, au rythme du professeur, et ANONYMES. Même
-    // dispositif que l'auto-évaluation — c'est le même constructeur, la même
-    // forme de réponse — dans une autre enveloppe : une partie jouée en classe,
-    // dont rien ne remonte au profil de l'élève (plan du 2026-09-08).
-    // Mode principal « parler » : un sondage nourrit l'échange oral, ce n'est
-    // pas un geste sur soi.
+    // Même dispositif que l'atelier de lecture — c'est le MÊME questionnaire,
+    // dans une autre enveloppe : un parcours paginé au lieu d'une page. Ce qui
+    // change tient dans l'activité (une œuvre rattachée, une échéance, un
+    // minimum de vérifications), pas dans la machinerie.
+    // Toujours FORMATIF : « je suis juste là pour les inviter à lire » (JP).
+    id: 'lecture-oeuvre',
+    label: 'Lecture d’une œuvre',
+    court: 'Œuvre',
+    dispositif: 'lire',
+    modeParDefaut: 'lire',
+    description: 'Un parcours paginé dans une œuvre, avec des questions au fil des chapitres.',
+  },
+  {
+    id: 'lecture',
+    label: 'Questionnaire de compréhension',
+    court: 'Lecture',
+    dispositif: 'lire',
+    modeParDefaut: 'lire',
+    description: 'Un questionnaire sur un texte ou un document : questions ouvertes, QCM, glisser-déposer…',
+  },
+  {
+    // Le SONDAGE (2026-10-09) : des questions sans bonne réponse — emojis,
+    // échelle, choix, textes. Deux réglages sur l'activité (`Devoir.sondage`) :
+    // NOMINATIF (l'auto-évaluation : copie, regard du prof à l'aveugle,
+    // lucidité, profil) ou ANONYME (la manche est la seule trace) ; au RYTHME
+    // DE L'ÉLÈVE (il répond quand il veut) ou DU PROF (en classe, question par
+    // question, avec chrono). Avant cette date, deux cartes : « Activité
+    // d'auto-évaluation » (`atelier: 'autoevaluation'`, encore en base) et
+    // « Sondage en direct ». Voir `reglagesSondage()`.
     id: ATELIER_SONDAGE,
-    label: 'Sondage en direct',
+    label: 'Sondage',
     court: 'Sondage',
     dispositif: 'autoevaluation',
-    modeParDefaut: 'parler',
-    description: 'Des questions posées en direct, au rythme du prof, avec réponses anonymes.',
+    modeParDefaut: 'reflexif',
+    description: 'Des questions sans bonne réponse : auto-évaluation nominative ou sondage anonyme, au rythme de chacun ou de la classe.',
   },
   {
     // La SÉQUENCE FLE : une activité qui en CONTIENT d'autres. Le prof y
@@ -148,33 +161,64 @@ export const ATELIERS: Atelier[] = [
     modeParDefaut: 'lire',
     description: 'Un parcours de modules FLE (théorie + activités) donné à une classe DASPA.',
   },
-  {
-    // L'ATELIER DE CONCEPTUALISATION (plan du 2026-10-04) : à partir d'une base
-    // documentaire, l'élève schématise — et peut changer de type de schéma en
-    // cours de route. JP : « lire-écrire » ; le mode retenu est « écrire » (on
-    // produit un schéma), le prof peut passer en « lire ».
-    id: ATELIER_CONCEPTUALISATION,
-    label: 'Atelier de conceptualisation',
-    court: 'Schéma',
-    dispositif: 'schematiser',
-    modeParDefaut: 'ecrire',
-    description: 'À partir d’une base documentaire, l’élève construit un schéma : carte conceptuelle, mentale, ligne du temps…',
-  },
 ];
 
-/** Un atelier de conceptualisation — repère des aiguillages (comme `estSondage`). */
+/** Un atelier de conceptualisation — repère des aiguillages (comme `estSondageEnDirect`). */
 export function estSchema(
   devoir: { typeTravail?: string | null; atelier?: string | null } | null | undefined
 ): boolean {
   return devoir?.typeTravail === 'schematiser' || devoir?.atelier === ATELIER_CONCEPTUALISATION;
 }
 
-/** L'identifiant de l'atelier « Sondage en direct » — repère des aiguillages. */
-export function estSondage(devoir: { atelier?: string | null } | null | undefined): boolean {
-  return devoir?.atelier === ATELIER_SONDAGE;
+/** L'id d'atelier à comparer : l'ancienne auto-évaluation est un sondage. */
+export function atelierCanonique(id: string | null | undefined): string {
+  return id === ATELIER_AUTOEVALUATION_LEGACY ? ATELIER_SONDAGE : id ?? '';
 }
 
-/** Une séquence FLE — repère des aiguillages (comme `estSondage`). */
+/** Une liste d'ids d'ateliers (habileté, grille) contient-elle cet atelier ? */
+export function ateliersContiennent(ateliers: string[], id: string): boolean {
+  const c = atelierCanonique(id);
+  return ateliers.some((a) => atelierCanonique(a) === c);
+}
+
+/**
+ * Les RÉGLAGES d'un sondage (dispositif autoevaluation), avec repli pour les
+ * activités d'avant le 2026-10-09 : l'ancienne « Activité d'auto-évaluation »
+ * est nominative au rythme de l'élève, l'ancien « Sondage en direct » est
+ * anonyme au rythme du prof. Toujours passer par ici — jamais lire
+ * `devoir.sondage` directement.
+ */
+export function reglagesSondage(
+  devoir:
+    | { atelier?: string | null; sondage?: SondageReglages | null }
+    | null
+    | undefined
+): SondageReglages {
+  const r = devoir?.sondage;
+  if (r && typeof r === 'object') {
+    return { anonyme: r.anonyme === true, rythme: r.rythme === 'prof' ? 'prof' : 'participant' };
+  }
+  if (devoir?.atelier === ATELIER_SONDAGE) return { anonyme: true, rythme: 'prof' };
+  return { ...SONDAGE_REGLAGES_DEFAUT };
+}
+
+/** Un sondage joué EN DIRECT, au rythme du prof — repère des aiguillages (l'élève ne reçoit pas les questions). */
+export function estSondageEnDirect(
+  devoir: { typeTravail?: string | null; atelier?: string | null; sondage?: SondageReglages | null } | null | undefined
+): boolean {
+  return devoir?.typeTravail === 'autoevaluation' && reglagesSondage(devoir).rythme === 'prof';
+}
+
+/** Un sondage ANONYME au rythme de l'élève : manche « libre », rien dans les copies. */
+export function estSondageLibre(
+  devoir: { typeTravail?: string | null; atelier?: string | null; sondage?: SondageReglages | null } | null | undefined
+): boolean {
+  if (devoir?.typeTravail !== 'autoevaluation') return false;
+  const r = reglagesSondage(devoir);
+  return r.anonyme && r.rythme === 'participant';
+}
+
+/** Une séquence FLE — repère des aiguillages (comme `estSondageEnDirect`). */
 export function estSequenceFle(
   devoir: { typeTravail?: string | null; atelier?: string | null } | null | undefined
 ): boolean {
@@ -182,7 +226,8 @@ export function estSequenceFle(
 }
 
 export function findAtelier(id: string | undefined): Atelier | undefined {
-  return ATELIERS.find((a) => a.id === id);
+  const c = atelierCanonique(id);
+  return ATELIERS.find((a) => a.id === c);
 }
 
 // L'atelier correspondant à un dispositif — sert à retrouver l'atelier des
@@ -194,7 +239,7 @@ export function atelierParDispositif(d: Dispositif): Atelier {
 export const ATELIER_IDS = ATELIERS.map((a) => a.id);
 
 export function atelierLabel(id: string, court = false): string {
-  const a = ATELIERS.find((x) => x.id === id);
+  const a = findAtelier(id);
   return a ? (court ? a.court : a.label) : id;
 }
 
@@ -343,8 +388,8 @@ export function habiletesPourAtelier(
   // L'auto-évaluation ne travaille ni la lecture ni l'écriture : elle exerce
   // le savoir-être et la réflexivité. On les propose donc d'emblée, sans
   // attendre qu'un rattachement ait été fait dans /admin.
-  if (atelier === 'autoevaluation') {
-    const parAtelier = visibles.filter((h) => h.ateliers.includes(atelier));
+  if (atelierCanonique(atelier) === ATELIER_SONDAGE) {
+    const parAtelier = visibles.filter((h) => ateliersContiennent(h.ateliers, ATELIER_SONDAGE));
     if (parAtelier.length) return { items: parAtelier, fallback: false };
     return {
       items: visibles.filter((h) => TYPES_SAVOIR_ETRE.includes(h.type)),
@@ -352,7 +397,7 @@ export function habiletesPourAtelier(
     };
   }
   if (atelier) {
-    const parAtelier = visibles.filter((h) => h.ateliers.includes(atelier));
+    const parAtelier = visibles.filter((h) => ateliersContiennent(h.ateliers, atelier));
     if (parAtelier.length) return { items: parAtelier, fallback: false };
   }
   if (!mode) return { items: [], fallback: false };

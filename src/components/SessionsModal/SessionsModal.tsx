@@ -30,8 +30,10 @@ interface Props {
    * pas sur la carte, qui ne sait pas avec qui on joue.
    */
   competition?: boolean;
-  /** Sondage en direct : même bouton, vers l'écran du sondage ; pas de corrigé */
+  /** Sondage : un bouton vers son écran (piloter en direct, ou lire les réponses d'une manche libre) */
   sondage?: boolean;
+  /** Sondage ANONYME : pas de copies, donc pas de corrigé à ouvrir */
+  anonyme?: boolean;
   onClose: () => void;
   /** Prévient le parent qu'une classe a bougé (rafraîchir la card) */
   onChange?: () => void;
@@ -49,6 +51,7 @@ export default function SessionsModal({
   intitule,
   competition = false,
   sondage = false,
+  anonyme = false,
   onClose,
   onChange,
   partagee = false,
@@ -173,7 +176,7 @@ export default function SessionsModal({
                     className={styles.jouer}
                     title={`Ouvrir l’écran du sondage pour la ${s.classeNom}`}
                   >
-                    📊 Lancer
+                    📊 Ouvrir
                   </a>
                 )}
                 <Toggle
@@ -183,7 +186,7 @@ export default function SessionsModal({
                   labelOff="Travail non disponible"
                   disabled={enCours.has(s.id) || lecture}
                 />
-                {!sondage && (
+                {!anonyme && (
                   <Toggle
                     checked={s.corrigeDisponible}
                     onChange={(v) => basculer(s, 'corrigeDisponible', v)}

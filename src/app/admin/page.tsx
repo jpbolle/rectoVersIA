@@ -90,7 +90,7 @@ export default function AdminPage() {
     if (!isAuthenticated) {
       router.replace('/login');
     } else if (!isAdmin(user?.email || '')) {
-      router.replace('/dashboard');
+      router.replace('/accueil');
     }
   }, [isAuthenticated, authLoading, user, router]);
 

@@ -24,7 +24,7 @@ export default function SondagePage({ params }: { params: Promise<{ sessionId: s
           <button type="button" className={styles.backButton} onClick={() => router.push('/dashboard')}>
             ← Retour
           </button>
-          <h1 className={styles.headerTitle}>Sondage en direct</h1>
+          <h1 className={styles.headerTitle}>Sondage</h1>
         </div>
         <UserAvatar />
       </header>

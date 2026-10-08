@@ -4,8 +4,20 @@
 // l'élève. Un questionnaire d'auto-évaluation ne contient ni bonne réponse ni
 // corrigé — l'élève peut donc recevoir le document tel quel.
 
-import { SONDAGE_CHRONO_MAX_SEC } from '@/types/autoevaluation';
-import type { AutoEvalQuestion, AutoEvalQuestionType, AutoEvalQuestionnaire } from '@/types/autoevaluation';
+import { SONDAGE_CHRONO_MAX_SEC, SONDAGE_REGLAGES_DEFAUT } from '@/types/autoevaluation';
+import type {
+  AutoEvalQuestion,
+  AutoEvalQuestionType,
+  AutoEvalQuestionnaire,
+  SondageReglages,
+} from '@/types/autoevaluation';
+
+/** Les réglages du sondage reçus du client, ramenés à leurs deux valeurs. */
+export function sanitizeSondageReglages(input: unknown): SondageReglages {
+  if (!input || typeof input !== 'object') return { ...SONDAGE_REGLAGES_DEFAUT };
+  const r = input as { anonyme?: unknown; rythme?: unknown };
+  return { anonyme: r.anonyme === true, rythme: r.rythme === 'prof' ? 'prof' : 'participant' };
+}
 
 const TYPES: AutoEvalQuestionType[] = [
   'qcm',

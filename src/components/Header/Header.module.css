@@ -1,4 +1,12 @@
+/* ── EN-TÊTE RÉTRACTABLE (2026-10-09) ──
+   `--t` va de 0 (déplié, haut de page) à 1 (réduit à la ligne des boutons),
+   posé par Header.tsx au défilement. Tout ce qui bouge est une fonction de
+   `--t` : aucune transition JS, un seul nombre. Sous 480 px la mise en page est
+   empilée et le mécanisme est neutralisé (voir la dernière media query). */
 .header {
+  --t: 0;
+  --titre-h: 40px;
+  --sous-titre-h: 20px;
   position: fixed;
   top: 0;
   left: 0;
@@ -7,7 +15,7 @@
   z-index: 100;
   box-shadow: var(--c-shadow-header);
   border-bottom: 3px solid var(--c-primary-dark);
-  padding: 25px 40px;
+  padding: calc(25px - 15px * var(--t)) 40px;
 }
 
 .headerContent {
@@ -22,20 +30,40 @@
   font-size: 32px;
   font-weight: 700;
   letter-spacing: 1px;
+  line-height: var(--titre-h);
+  max-height: calc(var(--titre-h) * (1 - var(--t)));
+  opacity: calc(1 - var(--t) * 1.6);
+  overflow: hidden;
 }
 
 .subtitle {
   color: rgba(255, 255, 255, 0.9);
   font-size: 16px;
-  margin-top: 8px;
+  margin-top: calc(8px * (1 - var(--t)));
   font-weight: 400;
+  line-height: var(--sous-titre-h);
+  max-height: calc(var(--sous-titre-h) * (1 - var(--t)));
+  opacity: calc(1 - var(--t) * 1.6);
+  overflow: hidden;
 }
 
 .navButtons {
   display: flex;
   gap: 15px;
   justify-content: center;
-  margin-top: 25px;
+  margin-top: calc(25px * (1 - var(--t)));
+}
+
+/* Moins d'animations : les deux états se succèdent en fondu court */
+@media (prefers-reduced-motion: reduce) {
+  .header,
+  .title,
+  .subtitle,
+  .navButtons,
+  .logoLink,
+  .headerActions {
+    transition: all 0.2s ease;
+  }
 }
 
 .navBtn {
@@ -81,7 +109,9 @@
   position: absolute;
   top: 50%;
   left: 30px;
-  transform: translateY(-50%);
+  /* Le logo se contracte vers son CENTRE à mesure que l'en-tête se réduit */
+  transform: translateY(-50%) scale(calc(1 - var(--t)));
+  opacity: calc(1 - var(--t));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -90,7 +120,12 @@
 }
 
 .logoLink:hover {
-  transform: translateY(-50%) scale(1.08);
+  transform: translateY(-50%) scale(calc(1.08 * (1 - var(--t))));
+}
+
+/* Réduit : le logo n'est plus cliquable (il a disparu), rien ne traîne sous la souris */
+.compact .logoLink {
+  pointer-events: none;
 }
 
 .logoImg {
@@ -100,7 +135,9 @@
 
 .headerActions {
   position: absolute;
-  top: 20px;
+  /* Déplié : en haut à droite. Réduit : sur la ligne des boutons (padding 10 px,
+     bouton de 42 px, action de 40 px → 11 px), toujours à droite. */
+  top: calc(20px - 9px * var(--t));
   right: 20px;
   display: flex;
   gap: 10px;
@@ -222,7 +259,7 @@
 
 @media (max-width: 768px) {
   .header {
-    padding: 20px 20px;
+    padding: calc(20px - 12px * var(--t)) 20px;
   }
   .title {
     font-size: 24px;
@@ -232,7 +269,7 @@
   }
   .navButtons {
     gap: 10px;
-    margin-top: 15px;
+    margin-top: calc(15px * (1 - var(--t)));
   }
   .navBtn {
     padding: 10px 20px;
@@ -241,13 +278,17 @@
   .logoLink {
     top: 12px;
     left: 12px;
+    transform: scale(calc(1 - var(--t)));
+  }
+  .logoLink:hover {
+    transform: scale(calc(1.08 * (1 - var(--t))));
   }
   .logoImg {
     width: 44px;
     height: 44px;
   }
   .headerActions {
-    top: 12px;
+    top: calc(12px - 2px * var(--t));
     right: 12px;
     gap: 8px;
   }
@@ -266,6 +307,8 @@
 
 @media (max-width: 480px) {
   .header {
+    /* Mise en page empilée : l'en-tête ne se rétracte pas */
+    --t: 0 !important;
     padding: 15px 12px;
   }
   .title {

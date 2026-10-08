@@ -26,13 +26,14 @@ import { createPlanItem, planHasContent } from '@/lib/draft-utils';
 import { useVocabulaireThemes } from '@/hooks/useVocabulaireThemes';
 import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail, EvaluationType, CorrigeReference } from '@/types/devoir';
 import type { LectureQuiz, LectureQuizMode } from '@/types/lecture';
-import type { AutoEvalQuestionnaire } from '@/types/autoevaluation';
+import type { AutoEvalQuestionnaire, SondageReglages } from '@/types/autoevaluation';
+import { SONDAGE_REGLAGES_DEFAUT } from '@/types/autoevaluation';
 import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
 import HabiletesPicker from '@/components/HabiletesPicker/HabiletesPicker';
 import { useOeuvres } from '@/hooks/useOeuvres';
-import { ATELIERS, findAtelier, TYPES_MODAUX, ATELIER_SONDAGE } from '@/types/didactique';
+import { ATELIERS, findAtelier, TYPES_MODAUX } from '@/types/didactique';
 import type { TypeModal } from '@/types/didactique';
 import { DIAGRAM_TYPES, DIAGRAM_TYPE_LABELS, type DiagramType } from '@/types/diagram';
 import styles from './CreationForm.module.css';
@@ -216,6 +217,14 @@ export default function CreationForm({
 
   // Questionnaire d'auto-évaluation (type autoevaluation) — composé au verso
   const [autoEvalQuiz, setAutoEvalQuiz] = useState<AutoEvalQuestionnaire | null>(null);
+  // Sondage : nominatif / anonyme, rythme de l'élève / du prof (2026-10-09).
+  // Anonyme, le sondage nourrit l'échange oral (« parler ») ; nominatif, c'est
+  // un geste sur soi (« réflexif »).
+  const [sondageReglages, setSondageReglages] = useState<SondageReglages>(SONDAGE_REGLAGES_DEFAUT);
+  const changeSondageReglages = (r: SondageReglages) => {
+    setSondageReglages(r);
+    if (r.anonyme !== sondageReglages.anonyme) setModePrincipal(r.anonyme ? 'parler' : 'reflexif');
+  };
 
   // Atelier de conceptualisation (type schematiser) : type de schéma de départ,
   // et liberté d'en changer (décision JP 2026-10-04 : libre par défaut)
@@ -319,7 +328,9 @@ export default function CreationForm({
     if (face !== target) flip();
   }, [face, flip]);
 
-  const resetForm = useCallback(() => {
+  // Pas de `useCallback` : la fonction n'entre dans aucune dépendance d'effet,
+  // et une mémoïsation à vide figeait `atelierDeDepart` (eslint, 2026-10-09).
+  const resetForm = () => {
     setFace('recto');
     setSelectedClasses([]);
     setDateRemise('');
@@ -337,6 +348,7 @@ export default function CreationForm({
     setAccesIA(false);
     setDisponible(false);
     setAtelier(atelierDeDepart?.id ?? 'ecriture');
+    setSondageReglages(SONDAGE_REGLAGES_DEFAUT);
     setModePrincipal(atelierDeDepart?.modeParDefaut ?? 'ecrire');
     setHabiletes(null);
     setEvaluation('formatif');
@@ -356,7 +368,7 @@ export default function CreationForm({
     setOeuvreMinimum(8);
     setHiddenCriteria([]);
     setShowHideCriteria(false);
-  }, []);
+  };
 
   function buildData(): CreateDevoirData {
     const data: CreateDevoirData = {
@@ -458,6 +470,9 @@ export default function CreationForm({
       autoEvalQuiz.questions.length > 0
     ) {
       data.autoEvalQuiz = autoEvalQuiz;
+    }
+    if (typeTravail === 'autoevaluation') {
+      data.sondage = sondageReglages;
     }
 
     return data;
@@ -1078,7 +1093,8 @@ export default function CreationForm({
           onChange={setAutoEvalQuiz}
           disabled={isSubmitting}
           allowedHabiletes={habiletes}
-          sondage={atelier === ATELIER_SONDAGE}
+          reglages={sondageReglages}
+          onReglagesChange={changeSondageReglages}
         />
       )}
 

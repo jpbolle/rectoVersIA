@@ -23,9 +23,11 @@ import propres from './SondageActivity.module.css';
 interface Props {
   devoirId: string;
   intitule?: string;
+  /** Anonyme : rien n'est attaché à l'élève. Nominatif : ses réponses deviennent sa copie à l'arrêt */
+  anonyme?: boolean;
 }
 
-export default function SondageActivity({ devoirId, intitule }: Props) {
+export default function SondageActivity({ devoirId, intitule, anonyme = true }: Props) {
   const { vue, demarree, reste, avantDepart, isLoading, repondre } = useDirect<SondageVue>({
     devoirId,
     base: '/api/sondage',
@@ -71,7 +73,9 @@ export default function SondageActivity({ devoirId, intitule }: Props) {
         <p className={styles.attenteTitre}>{intitule || 'Sondage'}</p>
         <p>En attente de ton professeur…</p>
         <p className={propres.rassurance}>
-          Tes réponses sont anonymes : personne ne saura ce que tu as répondu.
+          {anonyme
+            ? 'Tes réponses sont anonymes : personne ne saura ce que tu as répondu.'
+            : 'Il n’y a ni bonne ni mauvaise réponse : tu dis où tu en es, et ton professeur lira tes réponses.'}
         </p>
       </div>
     );
@@ -80,8 +84,8 @@ export default function SondageActivity({ devoirId, intitule }: Props) {
   if (vue.phase === 'finie') {
     return (
       <div className={styles.attente}>
-        <p className={styles.attenteTitre}>Sondage terminé</p>
-        <p>Merci d’avoir participé.</p>
+        <p className={styles.attenteTitre}>{anonyme ? 'Sondage terminé' : 'Auto-évaluation terminée'}</p>
+        <p>{anonyme ? 'Merci d’avoir participé.' : 'Merci : tes réponses ont été remises à ton professeur.'}</p>
       </div>
     );
   }

@@ -1,0 +1,54 @@
+/* OngletsBarre — Classica : soulignement vert sous l'onglet actif, compte en pastille */
+
+.barre {
+  display: flex;
+  gap: 6px;
+  border-bottom: 2px solid var(--c-border);
+  margin: 0 0 26px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.onglet {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--c-font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  padding: 10px 20px 12px;
+  border-radius: var(--c-radius) var(--c-radius) 0 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: background 0.15s;
+}
+
+.onglet:hover {
+  background: var(--c-bg-element);
+}
+
+.ongletActif {
+  color: var(--c-primary);
+  border-bottom-color: var(--c-primary);
+  background: var(--c-bg-card);
+}
+
+.compte {
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--c-bg-element);
+  color: var(--c-text-secondary);
+  text-align: center;
+}
+
+.ongletActif .compte {
+  background: var(--c-primary);
+  color: #fff;
+}

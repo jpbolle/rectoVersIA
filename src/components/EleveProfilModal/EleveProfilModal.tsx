@@ -94,7 +94,7 @@ export default function EleveProfilModal({
             <section className={styles.fle}>
               <h3 className={styles.fleTitre}>Niveaux CECR</h3>
               <p className={styles.fleSub}>
-                Règle les curseurs : l’élève voit le radar sur sa page « Mon cours FLE ». Les
+                Règle les curseurs : l’élève voit le radar sur sa page « Mon profil FLE ». Les
                 objectifs du mois s’y affichent aussi.
               </p>
               <NiveauFlePanel key={`fle-${eleveId}`} eleveId={eleveId} />

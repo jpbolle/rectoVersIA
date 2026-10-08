@@ -1,4 +1,5 @@
 import type { PlanItem } from './travail';
+import type { SondageReglages } from './autoevaluation';
 import type { DiagramType } from './diagram';
 import type { LectureQuizMode, LectureQuiz, LectureResume } from './lecture';
 import type { AutoEvalQuestionnaire } from './autoevaluation';
@@ -131,6 +132,11 @@ export interface Devoir {
   modePrincipal?: TypeModal;
   // Type d'activité : l'atelier (ids de ATELIERS dans types/didactique)
   atelier?: string;
+  // SONDAGE (dispositif autoevaluation, 2026-10-09) : nominatif ou anonyme, au
+  // rythme de l'élève ou du prof. Absent = lecture par repli selon l'atelier
+  // d'origine — voir `reglagesSondage()` dans types/didactique. Jamais lu
+  // directement : toujours par ce helper.
+  sondage?: SondageReglages | null;
   // Habiletés travaillées dans CETTE activité. Absent ou null = toutes celles
   // rattachées à l'atelier (cas par défaut) ; un tableau = sélection du prof.
   habiletes?: string[] | null;
@@ -276,6 +282,7 @@ export interface CreateDevoirData {
   typeTravail: TypeTravail;
   modePrincipal?: TypeModal;      // compétence en jeu (didactique)
   atelier?: string;               // type d'activité — id de ATELIERS
+  sondage?: SondageReglages | null; // réglages du sondage (dispositif autoevaluation)
   habiletes?: string[] | null;    // null = toutes celles de l'atelier
   evaluation?: EvaluationType;
   hiddenCriteria?: string[];      // ids de critères masqués pour ce devoir

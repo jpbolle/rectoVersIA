@@ -34,10 +34,16 @@ export async function GET(request: NextRequest) {
     // 1. Mes classes actives, de l'espace courant
     const classesSnap = await adminDb.collection('classes').where('profId', '==', auth.uid).get();
     const classes = new Map<string, string>();
+    // Noms de TOUTES mes classes FLE (archivées comprises) : une activité
+    // donnée à l'une d'elles est FLE, même si elle l'est aussi à une classe de
+    // français — même règle que le tableau de bord (« plus rien de FLE en
+    // classique », JP, 2026-10-08 ; constaté le 09/10 sur « Lecture du cours »).
+    const nomsFle = new Set<string>();
     classesSnap.docs.forEach((d) => {
       const data = d.data();
-      if (data.archive === true) return;
       const fle = data.type === 'fle';
+      if (fle) nomsFle.add(String(data.nom ?? ''));
+      if (data.archive === true) return;
       if (fle === (espace === 'fle')) classes.set(d.id, String(data.nom ?? ''));
     });
     const vide: AccueilProf = { aCorriger: [], echeances: [], retards: [] };
@@ -54,15 +60,19 @@ export async function GET(request: NextRequest) {
     const devoirIds = [...new Set(sessions.map((s) => String(s.devoirId)))];
     // Une activité CLASSÉE (« travail corrigé ») ou archivée n'est plus en
     // cours : rien à corriger, personne en retard (JP, 2026-10-08)
-    const devoirs = new Map<string, { intitule: string; enCours: boolean }>();
+    // Une activité est FLE si elle porte le référentiel FLE ou si UNE de ses
+    // classes est FLE : elle n'appartient alors qu'à l'espace FLE.
+    const devoirs = new Map<string, { intitule: string; enCours: boolean; fle: boolean }>();
     await Promise.all(
       devoirIds.map(async (id) => {
         const d = await adminDb.collection('devoirs').doc(id).get();
         if (d.exists) {
           const data = d.data()!;
+          const classesDevoir: string[] = Array.isArray(data.classes) ? data.classes.map(String) : [];
           devoirs.set(id, {
             intitule: String(data.intitule ?? ''),
             enCours: data.corrige !== true && data.archive !== true,
+            fle: data.referentiel === 'fle' || classesDevoir.some((nom) => nomsFle.has(nom)),
           });
         }
       })
@@ -77,6 +87,7 @@ export async function GET(request: NextRequest) {
       sessions.map(async (s) => {
         const devoir = devoirs.get(String(s.devoirId));
         if (!devoir || !devoir.enCours) return;
+        if (devoir.fle !== (espace === 'fle')) return;
         const classeNom = classes.get(String(s.classeId)) ?? '';
         const copies = await adminDb
           .collection('travaux')
@@ -117,7 +128,8 @@ export async function GET(request: NextRequest) {
         // Une copie se reconnaît par l'empreinte d'email, l'uid ou l'email en
         // clair (copies d'avant le chiffrement) : il faut les trois pour ne
         // compter en retard que ceux qui n'ont vraiment rien remis.
-        if (jours > 0 && jours <= JOURS_RETARDS && s.disponible === true) {
+        // Le prof peut cocher « vu » : la session n'y revient plus.
+        if (jours > 0 && jours <= JOURS_RETARDS && s.disponible === true && s.retardsVus !== true) {
           const remisCles = new Set<string>();
           remises.forEach((c) => {
             const d = c.data();
@@ -143,6 +155,7 @@ export async function GET(request: NextRequest) {
           if (eleves.length > 0) {
             retards.push({
               devoirId: String(s.devoirId),
+              sessionId: String(s.id),
               intitule: devoir.intitule,
               classeNom,
               dateRemise: echeance.toISOString(),

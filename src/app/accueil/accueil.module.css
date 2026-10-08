@@ -107,7 +107,28 @@
   border-bottom: none;
 }
 
-.ligne:hover .ligneTitre {
+.ligne:hover /* Accueil du prof : une case « vu » devant la ligne des retards (2026-10-09) */
+.ligneAvecCase {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ligneAvecCase .ligne {
+  flex: 1;
+  min-width: 0;
+}
+
+.ligneCase {
+  flex: none;
+  margin: 10px 0 0;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--c-primary);
+  cursor: pointer;
+}
+
+.ligneTitre {
   color: var(--c-primary);
   text-decoration: underline;
 }

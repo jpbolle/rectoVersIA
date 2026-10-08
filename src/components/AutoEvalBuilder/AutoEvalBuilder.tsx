@@ -33,6 +33,7 @@ import type {
   AutoEvalQuestion,
   AutoEvalQuestionType,
   AutoEvalQuestionnaire,
+  SondageReglages,
 } from '@/types/autoevaluation';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import styles from './AutoEvalBuilder.module.css';
@@ -46,12 +47,13 @@ interface Props {
   // null = pas de restriction.
   allowedHabiletes?: string[] | null;
   /**
-   * SONDAGE EN DIRECT (plan du 2026-09-08) : mêmes questions, mais posées en
-   * classe au rythme du prof, anonymes, sans remontée au profil. Le
-   * constructeur remplace alors « obligatoire » par un CHRONO par question,
-   * et range les gestes et le texte d'accompagnement, sans objet ici.
+   * LES RÉGLAGES DU SONDAGE (2026-10-09) : nominatif ou anonyme, au rythme de
+   * l'élève ou du prof. Au rythme du prof, « obligatoire » cède la place à un
+   * CHRONO par question ; anonyme, les gestes (qui nourrissent le profil) et le
+   * texte d'accompagnement n'ont plus d'objet.
    */
-  sondage?: boolean;
+  reglages: SondageReglages;
+  onReglagesChange?: (reglages: SondageReglages) => void;
 }
 
 // Ce qu'on peut ajouter, dans l'ordre du bandeau de boutons
@@ -155,8 +157,12 @@ export default function AutoEvalBuilder({
   onChange,
   disabled = false,
   allowedHabiletes = null,
-  sondage = false,
+  reglages,
+  onReglagesChange,
 }: Props) {
+  // En direct = au rythme du prof : chrono par question, pas d'« obligatoire ».
+  const sondage = reglages.rythme === 'prof';
+  const anonyme = reglages.anonyme;
   const { config } = useDidactique();
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -247,19 +253,83 @@ export default function AutoEvalBuilder({
   return (
     <div className={styles.builder}>
       <h3 className={styles.title}>
-        {sondage ? 'Questions du sondage' : 'Questionnaire d’auto-évaluation'}
+        {anonyme ? 'Questions du sondage' : 'Questionnaire d’auto-évaluation'}
       </h3>
+
+      {/* Les deux réglages : qui répond (nominatif / anonyme) et à quel rythme */}
+      <div className={styles.reglages}>
+        <div className={styles.reglage}>
+          <span className={styles.label}>Qui répond</span>
+          <div className={styles.segments} role="radiogroup" aria-label="Nominatif ou anonyme">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!anonyme}
+              className={`${styles.segment} ${!anonyme ? styles.segmentOn : ''}`}
+              onClick={() => onReglagesChange?.({ ...reglages, anonyme: false })}
+              disabled={disabled || !onReglagesChange}
+            >
+              Nominatif
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={anonyme}
+              className={`${styles.segment} ${anonyme ? styles.segmentOn : ''}`}
+              onClick={() => onReglagesChange?.({ ...reglages, anonyme: true })}
+              disabled={disabled || !onReglagesChange}
+            >
+              Anonyme
+            </button>
+          </div>
+          <p className={styles.reglageNote}>
+            {anonyme
+              ? 'Personne ne sait qui a répondu quoi — vous non plus. Seules les répartitions existent.'
+              : 'Chaque élève répond en son nom : vous posez votre regard sur ses réponses, elles nourrissent son profil.'}
+          </p>
+        </div>
+        <div className={styles.reglage}>
+          <span className={styles.label}>À quel rythme</span>
+          <div className={styles.segments} role="radiogroup" aria-label="Rythme">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!sondage}
+              className={`${styles.segment} ${!sondage ? styles.segmentOn : ''}`}
+              onClick={() => onReglagesChange?.({ ...reglages, rythme: 'participant' })}
+              disabled={disabled || !onReglagesChange}
+            >
+              Au rythme de l’élève
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={sondage}
+              className={`${styles.segment} ${sondage ? styles.segmentOn : ''}`}
+              onClick={() => onReglagesChange?.({ ...reglages, rythme: 'prof' })}
+              disabled={disabled || !onReglagesChange}
+            >
+              Au rythme du prof
+            </button>
+          </div>
+          <p className={styles.reglageNote}>
+            {sondage
+              ? 'En classe : vous lancez les questions une à une, chacune avec son chrono.'
+              : 'Chacun répond quand il veut, d’où il veut, et envoie en une fois.'}
+          </p>
+        </div>
+      </div>
 
       <div className={styles.intro}>
         <label className={styles.label}>
-          {sondage ? 'Sur quoi la classe se prononce-t-elle ?' : 'Sur quoi l’élève se prononce-t-il ?'}
+          {anonyme ? 'Sur quoi la classe se prononce-t-elle ?' : 'Sur quoi l’élève se prononce-t-il ?'}
         </label>
         <textarea
           className={styles.introArea}
           value={quiz?.intention ?? ''}
           onChange={(e) => maj({ intention: e.target.value })}
           placeholder={
-            sondage
+            anonyme
               ? 'Ex. : le chapitre 3, que nous venons de lire — ou le débat de tout à l’heure.'
               : 'Ex. : ta contraction de texte rendue la semaine dernière — ou ton attitude au cours depuis les vacances.'
           }
@@ -267,9 +337,13 @@ export default function AutoEvalBuilder({
           disabled={disabled}
         />
         <p className={styles.hint}>
-          {sondage
+          {anonyme && sondage
             ? 'Les questions sont posées en classe, une à une, quand vous les lancez. Les réponses sont anonymes : elles ne remontent ni à une note ni au profil de l’élève. Chaque question porte son chrono (0 = pas de chrono, vous la fermez vous-même).'
-            : 'Rien n’est corrigé ici : l’élève dit où il en est. Ses réponses n’entrent dans aucune note, elles nourrissent l’onglet réflexif de son profil.'}
+            : anonyme
+              ? 'Chaque élève répond quand il veut et envoie en une fois. Les réponses sont anonymes : vous ne voyez que les répartitions, rien ne remonte au profil.'
+              : sondage
+                ? 'Les questions sont posées en classe, une à une, quand vous les lancez. À l’arrêt, les réponses deviennent des copies : vous y posez votre regard à l’aveugle, elles nourrissent le profil de chaque élève.'
+                : 'Rien n’est corrigé ici : l’élève dit où il en est. Ses réponses n’entrent dans aucune note, elles nourrissent l’onglet réflexif de son profil.'}
         </p>
       </div>
 
@@ -359,7 +433,7 @@ export default function AutoEvalBuilder({
                       s
                     </label>
                   )}
-                  {!info && !sondage && (
+                  {!info && !anonyme && (
                     <>
                       <span className={styles.habWrap}>
                         <button

@@ -83,6 +83,8 @@ export async function GET(request: NextRequest) {
           classes: (data.classes as string[]) || [],
           disponible: data.disponible ?? true,
           archive: data.archive ?? false,
+          // Classée par le prof : rangée, plus rien à attendre (2026-10-09)
+          corrige: data.corrige === true,
           corrigeDisponible: data.corrigeDisponible ?? false,
           typeTravail: (data.typeTravail as string) || 'ecrire',
           eleves: data.eleves,
@@ -96,6 +98,7 @@ export async function GET(request: NextRequest) {
         (d) =>
           d.disponible &&
           !d.archive &&
+          !d.corrige &&
           d.classes.some((c) => classeNames.includes(c)) &&
           // Réservée à certains élèves de la classe : les autres ne la voient pas
           !eleveExclu(d.eleves, eleveIds)

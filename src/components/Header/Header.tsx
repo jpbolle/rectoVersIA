@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import UserAvatar from '@/components/UserAvatar';
@@ -17,7 +18,7 @@ export type AdminHeaderTab = 'vue' | 'membres' | 'didactique' | 'couts';
 // menus suivent l'espace :
 //   prof classique : Accueil · Mes Activités · Mes Classes · Mes Ressources
 //   prof FLE       : Accueil · Mes activités FLE · Mes classes · Mes ressources FLE
-//   élève classique: le header élève habituel ; élève FLE : « Mon cours FLE ».
+//   élève classique: le header élève habituel ; élève FLE : « Mon profil FLE ».
 interface HeaderProps {
   variant: 'prof' | 'student' | 'admin' | 'fle';
   topOffset?: number;
@@ -40,6 +41,45 @@ export const ADMIN_TABS: { key: AdminHeaderTab; label: string }[] = [
   { key: 'couts', label: 'Gestion des coûts' },
 ];
 
+// EN-TÊTE RÉTRACTABLE (JP, 2026-10-09, plan `2026-10-09-entete-retractable`) :
+// au défilement, l'en-tête se réduit à la ligne des boutons. Le logo se
+// contracte vers son centre, titre et sous-titre se replient, la cloche,
+// l'avatar et le double bouton glissent sur la ligne des boutons, à droite.
+// Progressif : une variable CSS `--t` (0 = déplié, 1 = réduit) posée à chaque
+// image sur les 140 premiers pixels de défilement ; le CSS fait le reste.
+// Les pages réservent la hauteur de l'en-tête DÉPLIÉ par des marges en dur —
+// c'est l'état en haut de page, rien à changer chez elles.
+const DEFILEMENT_MAX_PX = 140;
+
+function useEnteteRetractable(ref: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Moins d'animations : deux états, sans glissement intermédiaire
+    const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let demande = 0;
+    let dernier = -1;
+    const appliquer = () => {
+      demande = 0;
+      let t = Math.min(1, Math.max(0, window.scrollY / DEFILEMENT_MAX_PX));
+      if (reduit) t = t >= 0.5 ? 1 : 0;
+      if (t === dernier) return;
+      dernier = t;
+      el.style.setProperty('--t', String(t));
+      el.classList.toggle(styles.compact, t === 1);
+    };
+    const onScroll = () => {
+      if (!demande) demande = window.requestAnimationFrame(appliquer);
+    };
+    appliquer();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (demande) window.cancelAnimationFrame(demande);
+    };
+  }, [ref]);
+}
+
 export default function Header({
   variant,
   topOffset = 0,
@@ -49,6 +89,8 @@ export default function Header({
 }: HeaderProps) {
   const router = useRouter();
   const { espace, setEspace } = useEspace();
+  const enteteRef = useRef<HTMLElement | null>(null);
+  useEnteteRetractable(enteteRef);
 
   const estProf = variant === 'prof';
   const estEleve = variant === 'student' || variant === 'fle';
@@ -71,13 +113,13 @@ export default function Header({
       : estProf
         ? espace === 'fle'
           ? 'Espace FLE'
-          : 'Assistant de correction'
+          : 'Soutien à l’apprentissage du français'
         : variant === 'fle'
           ? 'Mon cours de français'
           : 'Aide à l’écrilecture';
 
   return (
-    <header className={styles.header} style={topOffset ? { top: `${topOffset}px` } : undefined}>
+    <header ref={enteteRef} className={styles.header} style={topOffset ? { top: `${topOffset}px` } : undefined}>
       <Link href="/" className={styles.logoLink}>
         <img src="/logoRecto.png" alt="RectoVerso" className={styles.logoImg} />
       </Link>
@@ -97,7 +139,7 @@ export default function Header({
               </button>
             ))}
             {/* Sortie de l'administration : en dernier, après les onglets */}
-            <button className={styles.navBtn} onClick={() => router.push('/dashboard')}>
+            <button className={styles.navBtn} onClick={() => router.push('/accueil')}>
               Retour à l&apos;accueil
             </button>
           </nav>
@@ -134,17 +176,17 @@ export default function Header({
           </nav>
         ) : variant === 'fle' ? (
           <nav className={styles.navButtons}>
+            {/* « Mon profil FLE » (JP, 2026-10-09) : radar, objectifs, parcours,
+                lectures, évaluations. Le profil d'écrilecteur (/profil) relève du
+                cours de français classique — il n'a pas sa place dans cet espace. */}
             <button className={styles.navBtn} onClick={() => router.push('/fle')}>
-              Mon cours FLE
+              Mon profil FLE
             </button>
             <button className={styles.navBtn} onClick={() => router.push('/mes-classes')}>
               Mes classes
             </button>
             <button className={styles.navBtn} onClick={() => router.push('/fle/ressources')}>
               Mes ressources personnelles
-            </button>
-            <button className={styles.navBtn} onClick={() => router.push('/profil')}>
-              Mon profil
             </button>
           </nav>
         ) : (

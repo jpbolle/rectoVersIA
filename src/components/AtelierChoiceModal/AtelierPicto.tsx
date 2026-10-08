@@ -105,15 +105,17 @@ export default function AtelierPicto({ atelierId, className }: AtelierPictoProps
         </svg>
       );
     case 'sondage':
-      // Un diagramme en barres qui monte, un point « en direct »
+      // Un diagramme en barres et un visage : des positions, pas des réponses justes
       return (
         <svg {...COMMUN} className={className} aria-hidden>
           <path d="M8 48h56" />
           <rect x="14" y="30" width="10" height="18" rx="2" fill={PAPIER} />
           <rect x="30" y="18" width="10" height="30" rx="2" fill={PRIMAIRE} stroke="none" />
           <rect x="46" y="24" width="10" height="24" rx="2" fill={ACCENT} stroke="none" />
-          <circle cx="60" cy="10" r="4" fill="var(--c-danger)" stroke="none" />
-          <circle cx="60" cy="10" r="7" stroke="var(--c-danger)" strokeWidth="1.5" opacity="0.5" />
+          <circle cx="58" cy="11" r="6" fill={PAPIER} />
+          <circle cx="56" cy="10" r="0.9" fill="currentColor" stroke="none" />
+          <circle cx="60" cy="10" r="0.9" fill="currentColor" stroke="none" />
+          <path d="M55.5 13c1.3 1.3 3.7 1.3 5 0" strokeWidth="1.2" />
         </svg>
       );
     case 'sequence-fle':

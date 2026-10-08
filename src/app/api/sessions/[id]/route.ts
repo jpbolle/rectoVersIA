@@ -54,6 +54,10 @@ export async function PATCH(
     if (body.archive !== undefined) {
       patch.archive = body.archive === true;
     }
+    // « Vu » sur l'accueil du prof : la ligne des retards disparaît (2026-10-09)
+    if (body.retardsVus !== undefined) {
+      patch.retardsVus = body.retardsVus === true;
+    }
 
     const changeCorrige =
       body.corrigeDisponible !== undefined &&

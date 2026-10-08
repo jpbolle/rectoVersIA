@@ -47,7 +47,7 @@ export default function RessourcesFleElevePage() {
     if (role === 'prof') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- garde de redirection imposée par AGENTS.md (state `redirecting`)
       setRedirecting(true);
-      router.replace('/dashboard');
+      router.replace('/accueil');
       return;
     }
     if (role === 'eleve' && !classesLoading && !aUneClasseFle(classes)) {

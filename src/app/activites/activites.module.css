@@ -168,6 +168,16 @@
   }
 }
 
+/* Bloc « Activités classées » (2026-10-09) : les onglets et les étiquettes sont
+   des composants partagés (OngletsBarre, ActivitesEtiquettes) */
+.ongletVide {
+  text-align: center;
+  color: var(--c-text-muted);
+  font-size: 14px;
+  padding: 18px 0;
+  margin: 0;
+}
+
 /* Bloc « Travaux non rendus » : carte estompée + badge de motif */
 .nonRenduWrap {
   position: relative;

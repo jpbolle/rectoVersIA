@@ -123,6 +123,26 @@ export interface AutoEvalQuestion {
   chronoSec?: number;
 }
 
+// ═══ LES RÉGLAGES DU SONDAGE (JP, 2026-10-09) ═══
+//
+// Une seule carte « Sondage » et deux réglages : l'auto-évaluation d'avant est
+// un sondage NOMINATIF au rythme de l'élève ; le sondage en direct d'avant est
+// un sondage ANONYME au rythme du prof. Les deux autres combinaisons existent
+// désormais (plan `2026-10-09-sondage-et-autoevaluation`).
+//
+//  nominatif · élève  → l'auto-évaluation : copie, regard du prof, lucidité, profil
+//  nominatif · prof   → la même, jouée en classe ; « Arrêter » verse les copies
+//  anonyme   · prof   → le sondage en direct : la manche est la seule trace
+//  anonyme   · élève  → sondage asynchrone : manche « libre », rien dans les copies
+export interface SondageReglages {
+  /** Personne ne sait qui a répondu quoi — le prof non plus */
+  anonyme: boolean;
+  /** `participant` : chacun répond quand il veut ; `prof` : en classe, question par question */
+  rythme: 'participant' | 'prof';
+}
+
+export const SONDAGE_REGLAGES_DEFAUT: SondageReglages = { anonyme: false, rythme: 'participant' };
+
 /** Chrono proposé à la création d'une question de sondage, en secondes. */
 export const SONDAGE_CHRONO_DEFAUT_SEC = 60;
 /** Au-delà, ce n'est plus un sondage en direct : dix minutes. */

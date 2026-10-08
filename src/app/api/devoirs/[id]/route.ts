@@ -26,9 +26,9 @@ import {
   computeLectureResume,
 } from '@/lib/lecture-server';
 import { parseLectureAnswers, type LectureResume } from '@/types/lecture';
-import { sanitizeAutoEvalQuiz } from '@/lib/autoevaluation-server';
+import { sanitizeAutoEvalQuiz, sanitizeSondageReglages } from '@/lib/autoevaluation-server';
 import { generateTravailId } from '@/lib/travail-utils';
-import { atelierParDispositif, estSondage, isTypeModal } from '@/types/didactique';
+import { atelierParDispositif, estSondageEnDirect, isTypeModal } from '@/types/didactique';
 
 export async function GET(
   request: NextRequest,
@@ -219,6 +219,8 @@ export async function GET(
       modePrincipal: data.modePrincipal || undefined,
       // Activités créées avant le champ : l'atelier se déduit du dispositif
       atelier: data.atelier || atelierParDispositif(data.typeTravail || 'ecrire').id,
+      // Sondage : ses réglages (absent = repli selon l'atelier, cf. reglagesSondage)
+      sondage: data.sondage ? sanitizeSondageReglages(data.sondage) : null,
       habiletes: Array.isArray(data.habiletes) ? data.habiletes : null,
       questionnaireId: data.questionnaireId || null,
       codeAcces: data.codeAcces || null,
@@ -246,11 +248,12 @@ export async function GET(
           ? lectureQuizEnDirectPourEleve(lectureQuizForEleve(lectureQuiz))
           : lectureQuiz,
       // Auto-évaluation : servie telle quelle, il n'y a rien à cacher.
-      // SONDAGE en direct : l'élève ne reçoit AUCUNE question à l'ouverture —
-      // elles arrivent une à une par /api/sondage/etat (fuite bouchée comme
-      // pour la compétition).
+      // SONDAGE AU RYTHME DU PROF : l'élève ne reçoit AUCUNE question à
+      // l'ouverture — elles arrivent une à une par /api/sondage/etat (fuite
+      // bouchée comme pour la compétition).
       autoEvalQuiz:
-        auth.role === 'eleve' && estSondage(data as { atelier?: string })
+        auth.role === 'eleve' &&
+        estSondageEnDirect({ typeTravail: data.typeTravail, atelier: data.atelier, sondage: data.sondage })
           ? null
           : data.autoEvalQuiz || null,
       // Lecture d'une œuvre : un renvoi vers la bibliothèque, le contenu vit
@@ -455,6 +458,10 @@ export async function PATCH(
     if (body.autoEvalQuiz !== undefined) {
       updateData.autoEvalQuiz =
         body.autoEvalQuiz === null ? null : sanitizeAutoEvalQuiz(body.autoEvalQuiz);
+    }
+    // Réglages du sondage (nominatif / anonyme, rythme)
+    if (body.sondage !== undefined) {
+      updateData.sondage = sanitizeSondageReglages(body.sondage);
     }
 
     // Élèves concernés : null explicite = toute la classe

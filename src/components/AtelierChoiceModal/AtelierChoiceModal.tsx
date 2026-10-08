@@ -61,7 +61,7 @@ export default function AtelierChoiceModal({
   onChoose,
   onClose,
   modeFle = false,
-  titre = 'Quel type d’activité ?',
+  titre = 'Choix de l’activité',
 }: AtelierChoiceModalProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -84,9 +84,6 @@ export default function AtelierChoiceModal({
       >
         <div className={styles.head}>
           <h3 className={styles.headTitre}>{titre}</h3>
-          <span className={styles.headSous}>
-            Choisis l’atelier : le formulaire s’ouvrira déjà réglé sur ce type.
-          </span>
           <button type="button" className={styles.fermer} onClick={onClose} aria-label="Fermer">
             ✕
           </button>

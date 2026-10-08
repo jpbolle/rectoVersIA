@@ -33,7 +33,8 @@ export default function LoginPage() {
     if (role === 'prof') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- garde de redirection imposée par AGENTS.md (state `redirecting`)
       setRedirecting(true);
-      router.replace('/dashboard');
+      // Le prof entre par son accueil (2026-10-09), comme l'élève
+      router.replace('/accueil');
       return;
     }
 

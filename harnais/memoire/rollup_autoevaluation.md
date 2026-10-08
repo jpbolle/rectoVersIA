@@ -1,5 +1,12 @@
 # Rollup — Activité d'auto-évaluation
 
+> **2026-10-09 : l'auto-évaluation n'est plus une carte.** Elle est le **sondage
+> nominatif au rythme de l'élève** (carte « Sondage », réglages `Devoir.sondage`).
+> Rien de son parcours ne change (`AutoEvalActivity`, `AutoEvalReview`, lucidité,
+> profil) ; les activités `atelier: 'autoevaluation'` en base se lisent par repli.
+> Voir `rollup_sondage.md` (tableau des quatre combinaisons) et le plan
+> `2026-10-09-sondage-et-autoevaluation.md`.
+
 > Session du 2026-08-15. **Cinquième dispositif** de l'application, à côté
 > d'écrire, lire, rechercher et vocabulaire.
 >

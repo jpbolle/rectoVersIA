@@ -14,12 +14,13 @@ import { getTodayString } from '@/lib/devoir-utils';
 import { createPlanItem, planHasContent } from '@/lib/draft-utils';
 import type { Devoir, Classe, DevoirRessource, EvaluationType, TypeTravail, CorrigeReference } from '@/types/devoir';
 import type { LectureQuiz, LectureQuizMode } from '@/types/lecture';
-import type { AutoEvalQuestionnaire } from '@/types/autoevaluation';
+import type { AutoEvalQuestionnaire, SondageReglages } from '@/types/autoevaluation';
+import { SONDAGE_REGLAGES_DEFAUT } from '@/types/autoevaluation';
 import type { DraftContent } from '@/types/travail';
 import type { NavigKidQuestion } from '@/types/navigkid';
 import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal';
 import HabiletesPicker from '@/components/HabiletesPicker/HabiletesPicker';
-import { ATELIER_SONDAGE, atelierParDispositif, findAtelier, TYPES_MODAUX } from '@/types/didactique';
+import { atelierParDispositif, findAtelier, reglagesSondage, TYPES_MODAUX } from '@/types/didactique';
 import SequenceFleBuilder from '@/components/SequenceFleBuilder/SequenceFleBuilder';
 import ElevesChoix from '@/components/ElevesChoix/ElevesChoix';
 import type { EleveAvecClasse } from '@/components/ElevesChoix/ElevesChoix';
@@ -141,6 +142,8 @@ export default function EditDevoirModal({
 
   // Questionnaire d'auto-évaluation (type autoevaluation)
   const [autoEvalQuiz, setAutoEvalQuiz] = useState<AutoEvalQuestionnaire | null>(null);
+  // Sondage : nominatif / anonyme, rythme (2026-10-09)
+  const [sondageReglages, setSondageReglages] = useState<SondageReglages>(SONDAGE_REGLAGES_DEFAUT);
   // Atelier de conceptualisation : type de départ + liberté de transformer
   const [schemaType, setSchemaType] = useState<DiagramType>('conceptmap');
   const [schemaTypeLibre, setSchemaTypeLibre] = useState(true);
@@ -156,11 +159,17 @@ export default function EditDevoirModal({
   // disparaissaient au moindre repli/dépli. On ne réinitialise donc que quand
   // l'activité change vraiment d'identité, ou quand la modale se rouvre.
   const devoirRef = useRef(devoir);
-  devoirRef.current = devoir;
+  // Mise à jour dans un effet (jamais pendant le rendu — règle react-hooks/refs) :
+  // déclaré AVANT l'effet d'initialisation, il s'exécute avant lui dans le même
+  // rendu, qui lit donc toujours l'activité courante.
+  useEffect(() => {
+    devoirRef.current = devoir;
+  });
 
   useEffect(() => {
     const devoir = devoirRef.current;
     if (devoir) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- chargement du formulaire à l'ouverture de la modale (même dérogation que les gardes de redirection)
       setFace('recto');
       setIsFlipping(false);
       setSelectedClasses(devoir.classes || []);
@@ -188,6 +197,7 @@ export default function EditDevoirModal({
       setLectureMode(devoir.lectureMode || devoir.lectureQuiz?.mode || 'worksheet');
       setHiddenQuestions(devoir.hiddenQuestions || []);
       setAutoEvalQuiz(devoir.autoEvalQuiz || null);
+      setSondageReglages(reglagesSondage(devoir));
       setSequenceFle(devoir.sequenceFle ?? null);
       const sc = schemaDuDevoir(devoir);
       setSchemaType(sc.typeDepart);
@@ -348,6 +358,7 @@ export default function EditDevoirModal({
     if (devoir.typeTravail === 'autoevaluation') {
       data.autoEvalQuiz =
         autoEvalQuiz && autoEvalQuiz.questions.length > 0 ? autoEvalQuiz : null;
+      data.sondage = sondageReglages;
     }
 
     // Séquence FLE : le parcours et les élèves choisis
@@ -393,7 +404,7 @@ export default function EditDevoirModal({
     selectedClasses, dateRemise, grille, hiddenCriteria, intitule, consignes,
     accesIA, disponible, ressources, evaluation, modePrincipal, habiletes,
     flipInverted, ressourcesToIA, profTheme, profDraft, planToIA,
-    profProduction, productionToIA, lectureQuiz, lectureMode, hiddenQuestions, autoEvalQuiz, autoEvaluation,
+    profProduction, productionToIA, lectureQuiz, lectureMode, hiddenQuestions, autoEvalQuiz, sondageReglages, autoEvaluation,
     nkQuestions, nkThemes, eleves, sequenceFle,
   ]);
 
@@ -821,7 +832,11 @@ export default function EditDevoirModal({
           onChange={setAutoEvalQuiz}
           disabled={isSaving}
           allowedHabiletes={habiletes}
-          sondage={atelierId === ATELIER_SONDAGE}
+          reglages={sondageReglages}
+          onReglagesChange={(r) => {
+            if (r.anonyme !== sondageReglages.anonyme) setModePrincipal(r.anonyme ? 'parler' : 'reflexif');
+            setSondageReglages(r);
+          }}
         />
       )}
 

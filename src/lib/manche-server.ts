@@ -615,7 +615,7 @@ export async function mancheDeLEleve(
   if (vivantes.length === 0) return null;
 
   const rang = (phase: unknown) =>
-    phase === 'question' || phase === 'resultat' ? 0 : phase === 'salle' ? 1 : 2;
+    phase === 'question' || phase === 'resultat' ? 0 : phase === 'salle' || phase === 'libre' ? 1 : 2;
   vivantes.sort((a, b) => rang(a.data()!.phase) - rang(b.data()!.phase));
   return vivantes[0].id;
 }
@@ -1142,10 +1142,15 @@ export async function effacerReponses(mancheId: string, questionId: string): Pro
  * brouillon, et c'est au prof de la déclarer « non rendue » s'il le veut —
  * comme pour n'importe quelle activité.
  */
-async function verserDansTravaux(
+// `type` (2026-10-09) : la forme du JSON de `content` — `lecture` pour la
+// compétition, `autoevaluation` pour un sondage NOMINATIF joué en direct
+// (`sondage-server`) : l'aval lit alors la copie comme une auto-évaluation
+// ordinaire (regard du prof à l'aveugle, lucidité, profil).
+export async function verserDansTravaux(
   e: Entree,
   m: Manche,
-  now: string
+  now: string,
+  type: 'lecture' | 'autoevaluation' = 'lecture'
 ): Promise<{ at: string; copies: number }> {
   // Qui a répondu à quelque chose
   const joueurs = [...e.copies.entries()].filter(([, copie]) => Object.keys(copie).length > 0);
@@ -1191,7 +1196,7 @@ async function verserDansTravaux(
     const identite = parUid.get(uid);
     const hash = identite?.email ? hashEmail(identite.email) : null;
     const existant = parStudentId.get(uid) ?? (hash ? parHash.get(hash) : undefined);
-    const content = JSON.stringify({ type: 'lecture', answers });
+    const content = JSON.stringify({ type, answers });
 
     if (existant) {
       lot.update(adminDb.collection('travaux').doc(existant), {

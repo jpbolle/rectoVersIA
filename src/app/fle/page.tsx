@@ -1,6 +1,6 @@
 'use client';
 
-// « Mon cours FLE » — la page d'ouverture de l'élève FLE (DASPA).
+// « Mon profil FLE » (ex « Mon cours FLE », 2026-10-09) — la page d'ouverture de l'élève FLE (DASPA).
 //
 // Dépouillée, à dessein : gros pictogrammes, peu de texte, jamais le lexique
 // « écrilecteur / ceinture / geste ». Depuis le 2026-10-08, deux CARDS en
@@ -8,9 +8,11 @@
 //  · PARCOURS — le travail donné par le prof à sa classe FLE (séquences FLE et
 //    activités ordinaires données à cette classe — et RIEN d'une autre classe) ;
 //  · LECTURES — ses lectures de cours, avec le bouton « Importer un cours ».
-// Un clic sur une card remplace toute la page par son contenu (le radar et
-// les classes disparaissent) ; « ← Mon cours » ramène à l'accueil.
-// Sous les cards : son radar CECR et ses objectifs du mois, et ses classes.
+// Un clic sur une card DÉPLIE son contenu juste en dessous, sur la même page
+// (JP, 2026-10-09 : « je ne veux pas que l'on passe à une nouvelle page ») ;
+// la card s'allume, un second clic — ou « Fermer » — replie. L'adresse garde
+// `?vue=` pour qu'un retour depuis une lecture rouvre le même volet.
+// Sous les cards : son radar CECR et ses objectifs du mois.
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -97,7 +99,7 @@ export default function FlePage() {
     if (role === 'prof') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- garde de redirection imposée par AGENTS.md (state `redirecting`)
       setRedirecting(true);
-      router.replace('/dashboard');
+      router.replace('/accueil');
       return;
     }
     if (role === 'eleve' && !classesLoading) {
@@ -220,11 +222,13 @@ export default function FlePage() {
   const travailFle =
     activites === null ? null : activites.filter((d) => d.classes.some((nom) => nomsFle.has(nom)));
 
+  // Un second clic sur la card ouverte la replie
   const changerVue = (v: Vue) => {
-    setVue(v);
-    window.history.replaceState(null, '', v === 'accueil' ? '/fle' : `/fle?vue=${v}`);
-    window.scrollTo({ top: 0 });
+    const cible = v !== 'accueil' && v === vue ? 'accueil' : v;
+    setVue(cible);
+    window.history.replaceState(null, '', cible === 'accueil' ? '/fle' : `/fle?vue=${cible}`);
   };
+  const classeCard = (v: Vue) => `${styles.card} ${vue === v ? styles.cardActive : ''}`;
 
   // ── Les listes ──
   const listeParcours = (liste: Devoir[]) => (
@@ -332,7 +336,7 @@ export default function FlePage() {
       <main className={styles.main}>
         {classesLoading ? (
           <EmptyState icon="hourglass" message="En cours de chargement" />
-        ) : vue === 'accueil' ? (
+        ) : (
           <>
             <h1 className={styles.hello}>
               <span className={styles.helloPicto} aria-hidden="true">👋</span>
@@ -343,9 +347,14 @@ export default function FlePage() {
               <p className={styles.helloSub}>{classesFle.map((c) => c.nom).join(' · ')}</p>
             )}
 
-            {/* Les deux cards : un clic ouvre le contenu en grand */}
+            {/* Les trois cards : un clic déplie le contenu juste en dessous */}
             <div className={styles.cards}>
-              <button type="button" className={styles.card} onClick={() => changerVue('parcours')}>
+              <button
+                type="button"
+                className={classeCard('parcours')}
+                aria-expanded={vue === 'parcours'}
+                onClick={() => changerVue('parcours')}
+              >
                 <span className={styles.cardPicto} aria-hidden="true">🎒</span>
                 <span className={styles.cardTitre}>Mes parcours</span>
                 <span className={styles.cardSous}>Le travail donné par mon professeur</span>
@@ -357,7 +366,12 @@ export default function FlePage() {
                       : `${travailFle.length} à faire`}
                 </span>
               </button>
-              <button type="button" className={styles.card} onClick={() => changerVue('lectures')}>
+              <button
+                type="button"
+                className={classeCard('lectures')}
+                aria-expanded={vue === 'lectures'}
+                onClick={() => changerVue('lectures')}
+              >
                 <span className={styles.cardPicto} aria-hidden="true">📚</span>
                 <span className={styles.cardTitre}>Mes lectures de cours</span>
                 <span className={styles.cardSous}>Un cours importé, expliqué à mon niveau</span>
@@ -369,7 +383,12 @@ export default function FlePage() {
                       : `${lectures.length} lecture${lectures.length > 1 ? 's' : ''}`}
                 </span>
               </button>
-              <button type="button" className={styles.card} onClick={() => changerVue('evaluations')}>
+              <button
+                type="button"
+                className={classeCard('evaluations')}
+                aria-expanded={vue === 'evaluations'}
+                onClick={() => changerVue('evaluations')}
+              >
                 <span className={styles.cardPicto} aria-hidden="true">🎯</span>
                 <span className={styles.cardTitre}>Mes évaluations</span>
                 <span className={styles.cardSous}>Ce que mon professeur me demande de faire</span>
@@ -383,36 +402,9 @@ export default function FlePage() {
               </button>
             </div>
 
-            {/* Le radar et les objectifs du mois */}
-            <section className={styles.bloc}>
-              <div className={styles.blocHead}>
-                <span className={styles.blocPicto} aria-hidden="true">🧭</span>
-                <h2 className={styles.blocTitre}>Où j’en suis</h2>
-              </div>
-              <NiveauFlePanel compact />
-            </section>
-
-            {/* Les classes */}
-            <section className={styles.bloc}>
-              <div className={styles.blocHead}>
-                <span className={styles.blocPicto} aria-hidden="true">🏫</span>
-                <h2 className={styles.blocTitre}>Mes classes</h2>
-              </div>
-              <div className={styles.classes}>
-                {classesFle.map((c) => (
-                  <Link key={c.id} href="/mes-classes" className={styles.classeCarte}>
-                    {c.nom}
-                  </Link>
-                ))}
-              </div>
-            </section>
-          </>
-        ) : (
-          <>
-            <button type="button" className={styles.retour} onClick={() => changerVue('accueil')}>
-              ← Mon cours
-            </button>
-            <section className={styles.bloc}>
+            {/* Le volet de la card ouverte, sur place */}
+            {vue !== 'accueil' && (
+            <section className={`${styles.bloc} ${styles.volet}`}>
               <div className={styles.blocHead}>
                 <span className={styles.blocPicto} aria-hidden="true">
                   {vue === 'parcours' ? '🎒' : vue === 'lectures' ? '📚' : '🎯'}
@@ -420,7 +412,12 @@ export default function FlePage() {
                 <h2 className={styles.blocTitre}>
                   {vue === 'parcours' ? 'Mes parcours' : vue === 'lectures' ? 'Mes lectures de cours' : 'Mes évaluations'}
                 </h2>
-                {vue === 'lectures' && <span className={styles.blocAction}>{boutonImporter}</span>}
+                <span className={styles.blocAction}>
+                  {vue === 'lectures' && boutonImporter}
+                  <button type="button" className={styles.fermer} onClick={() => changerVue('accueil')}>
+                    Fermer ✕
+                  </button>
+                </span>
               </div>
               {vue === 'parcours' ? (
                 travailFle === null ? (
@@ -452,6 +449,18 @@ export default function FlePage() {
                 listeLectures(lectures)
               )}
             </section>
+            )}
+
+            {/* Le radar et les objectifs du mois */}
+            <section className={styles.bloc}>
+              <div className={styles.blocHead}>
+                <span className={styles.blocPicto} aria-hidden="true">🧭</span>
+                <h2 className={styles.blocTitre}>Où j’en suis</h2>
+              </div>
+              <NiveauFlePanel compact />
+            </section>
+
+            {/* Pas de bloc « Mes classes » : l'en-tête a déjà son bouton (JP, 2026-10-09) */}
           </>
         )}
       </main>

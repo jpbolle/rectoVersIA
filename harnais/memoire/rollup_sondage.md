@@ -1,4 +1,27 @@
-# Rollup — Sondage en direct
+# Rollup — Sondage (ex « Sondage en direct » + « Activité d'auto-évaluation »)
+
+> **2026-10-09 — REFONTE : une seule carte « Sondage », deux réglages.** Plan
+> `harnais/plans/2026-10-09-sondage-et-autoevaluation.md`, validé et écrit d'un
+> bloc, **RIEN VU À L'ÉCRAN** (ni le sondage ni l'auto-évaluation n'ont jamais
+> été utilisés en classe — JP, 2026-10-09). L'auto-évaluation est un sondage
+> **nominatif** ; `Devoir.sondage = { anonyme, rythme: 'participant' | 'prof' }`,
+> lu **uniquement** par `reglagesSondage()` (repli : `atelier: 'autoevaluation'`
+> ⇒ nominatif/élève, `atelier: 'sondage'` sans réglages ⇒ anonyme/prof — aucune
+> migration). L'ancien id `autoevaluation` **vaut** `sondage` partout
+> (`atelierCanonique`, `ateliersContiennent` pour les habiletés de /admin).
+>
+> | | Au rythme de l'élève | Au rythme du prof |
+> |---|---|---|
+> | **Nominatif** | l'auto-évaluation d'avant : copie, `AutoEvalReview`, lucidité, profil | NEUF : la manche se joue, **« Arrêter et verser les copies »** → `verserDansTravaux(…, 'autoevaluation')` (exporté de `manche-server`), l'aval ne change pas |
+> | **Anonyme** | NEUF : **manche `libre`** (phase ajoutée à `ManchePhase`), créée par le serveur au premier envoi de l'élève (`mancheLibrePourEleve`), `SondageLibreActivity` = `AutoEvalActivity` dont les réponses partent **en une fois** sur `POST /api/sondage/libre` (jamais dans `travaux`) ; prof : Statistiques + « Clore », compte des envois sans nom | le sondage en direct d'avant |
+>
+> Aiguillages : `estSondageEnDirect()` (anti-fuite des questions, carte, écran
+> élève), `estSondageLibre()`. `AutoEvalBuilder` : props `reglages` /
+> `onReglagesChange` (deux commutateurs en tête) — chrono si rythme prof, gestes
+> seulement si nominatif ; anonyme bascule `modePrincipal` sur `parler`.
+> `SessionsModal` : prop `anonyme` (cache le corrigé), `sondage` (lien « 📊 Ouvrir »).
+> `SondageVue` : `libre`, `anonyme`, `repondus`, `versement`.
+> **À tester** : les quatre combinaisons, dans l'ordre du plan (« Comment on saura »).
 
 Chantier du **2026-09-08** (soir), mené d'un bloc après la compétition. Plan et
 décisions datées : `harnais/plans/2026-09-08-atelier-sondage.md`.

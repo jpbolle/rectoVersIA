@@ -120,11 +120,12 @@ d'une année sur l'autre.
 | Nouvelle façon d'évaluer une activité | **Grille pour l'écriture, habiletés partout ailleurs** — jamais les deux. La grille n'est exigée que pour `typeTravail === 'ecrire'`, client ET serveur | `usesGrille` dans `CreationForm` / `EditDevoirModal` |
 | Demander une saisie ou une confirmation | **Jamais** `prompt()` / `confirm()` / `alert()` : popup de l'application, centrée, sur fond assombri, en-tête et pied d'actions. Consigne durable (dépôt `harnais`, `0-moi/consignes.md`) | `ScenarisationFormModal`, `CertificationNotesModal` |
 | Nouvelle carte dans **Mes Ressources** | Gabarit de `GrilleCard` : dégradé vert, contenu centré, icône 32 px, titre 17 px vert, boutons d'action 40 × 36 (dupliquer · ✏️ ouvrir · 🗑️ rouge au survol). Tous les onglets forment une famille — un gabarit divergent se voit (harmonisation du 2026-09-19 : questionnaires réalignés, activités et séquences FLE sorties de la carte du tableau de bord). **Nouvelle carte = styles d'`OeuvreCard.module.css`** (rangée d'actions) ; **carte « + » = `CreateOeuvreCard libelle="…"`**, jamais recopiée | `GrilleCard`, `OeuvreCard`, `ScenarisationCard`, `ModuleFleCard`, `ActiviteRessourceCard` |
-| Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) — 9 ateliers, 7 dispositifs (`sequence` depuis le 2026-09-14 : une activité qui en contient d'autres, sans copie ni remise ; `schematiser` depuis le 2026-10-04 : l'élève construit un schéma, JSON `Diagram` dans `travail.content`). Chaque atelier porte une `description` d'une ligne pour la **popup de choix** (`AtelierChoiceModal`) qui précède désormais le formulaire de création : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
+| Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) — 8 ateliers (le 2026-10-09, « Activité d'auto-évaluation » et « Sondage en direct » ont fusionné en **« Sondage »**, deux réglages sur l'activité — `Devoir.sondage`, lu par `reglagesSondage()` ; l'ancien id `autoevaluation` reste en base et **vaut** `sondage` : `atelierCanonique()`), 7 dispositifs (`sequence` depuis le 2026-09-14 : une activité qui en contient d'autres, sans copie ni remise ; `schematiser` depuis le 2026-10-04 : l'élève construit un schéma, JSON `Diagram` dans `travail.content`). Chaque atelier porte une `description` d'une ligne pour la **popup de choix** (`AtelierChoiceModal`) qui précède désormais le formulaire de création : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
 | Activité où **rien ne se remet** (recherche, questionnaire de lecture, auto-évaluation, lecture d'une œuvre) | `hideSubmit` sur `WorkTopBar` ; la remise, quand elle existe, vit **au bas de la colonne de gauche**, dans la ligne d'actions | `hideSubmit` dans `/activites/[id]` |
 | Nouvelle façon d'afficher des propositions à l'élève (QCM, matrice, appariement, tri) | **Mélangées par élève**, jamais dans l'ordre du prof — `ordreAffichage(taille, graine, melanger)`, graine = `uid + id de question`. ⚠️ **C'est un ORDRE D'AFFICHAGE** : la réponse reste enregistrée dans l'ordre du PROF, sinon tous les corrigés déjà en base désignent la mauvaise case. Case `pasDeMelange` pour une chronologie ou une gradation | `ordreAffichage` dans `src/types/lecture.ts` ; `LectureQuizActivity`, `OeuvreReader`, `QuestionInteractions/` |
 | Ajouter un élément au milieu d'une liste qu'on compose (question, bloc de scène) | **Trait d'insertion** : un trait discret entre deux éléments, qui s'éclaire au survol avec un `+` ; le clic déplie les types **à cet endroit**. Hauteur RÉSERVÉE en permanence, sinon la liste saute sous la souris. Pas de ligne de boutons en bas de page | `TraitInsertion` dans `LectureQuizBuilder`, `Trait` dans `OeuvreBuilder` |
 | Ressource jointe à une activité (image, vidéo, lien, document, interactif) | **Un volet dépliant par ressource**, titré par le prof, le premier ouvert. Volets INDÉPENDANTS (ouvrir une image ne referme pas le document). Un contenu qui se mesure lui-même (éditeur d'annotations) est caché en CSS, jamais démonté — d'où `garderMonte` | `Volet` dans `RessourcesTab` |
+| Bloc « Activités classées » (prof ET élève) | **Même construction des deux côtés** (2026-10-09) : bloc « en cours » en cartes, puis bloc à onglets avec compteurs (`OngletsBarre`) ; ce qui est rangé (classé, archivé) s'affiche en **étiquettes** (`ActivitesEtiquettes` : titre cliquable + infobulle de l'app — classes, échéance, type). Jamais recopier la barre d'onglets ni l'étiquette : ce sont des composants partagés | `/activites` (élève), `/dashboard` (prof) |
 | Panneau latéral élève | `WorkspaceRail` (rail icônes droite + panneau redimensionnable) — côté prof on garde `ResizableSplit` + onglets. **Ne pas uniformiser** | `/activites/[id]` vs `/dashboard/travaux/[devoirId]/[travailId]` |
 
 ---
@@ -349,14 +350,20 @@ interface Questionnaire {
   « N connectés » (`vue.presents`).
   **Équipes en option** (`equipes: [{id, nom, membres: uid[]}] | null`) : le score d'une
   équipe est la somme de ses membres, jamais stocké ; noms = couleurs, 8 max.
-  **Un SONDAGE en direct est une manche de genre `sondage`** (`genre: 'sondage'` sur le
+  **Un SONDAGE est une manche de genre `sondage`** (`genre: 'sondage'` sur le
   document ; absent = compétition) : mêmes phases sans `revele`, questions de
   l'auto-évaluation (`devoirs.autoEvalQuiz`, chrono par question `chronoSec` fixé par le
   prof), réponses `AutoEvalAnswer` dans la même sous-collection. Moteur à part
   (`src/lib/sondage-server.ts`) qui **importe la plomberie** de `manche-server` (cache,
-  `entree`, `reponsesA`, `effacerReponses`, `signalerPresence` / `joueurs`). **Aucun nom, aucun uid ne sort
-  du serveur** ; rien n'est versé dans `travaux`, rien au profil : la manche est la
-  trace (onglet Statistiques, `bilan`).
+  `entree`, `reponsesA`, `effacerReponses`, `signalerPresence` / `joueurs`).
+  **Réglages (2026-10-09, `Devoir.sondage`)** : ANONYME → aucun nom, aucun uid ne sort
+  du serveur, rien dans `travaux`, rien au profil, la manche est la trace (onglet
+  Statistiques, `bilan`) ; NOMINATIF au rythme du prof → « Arrêter » **verse les copies**
+  (`verserDansTravaux(…, 'autoevaluation')`, `content` JSON `{type:'autoevaluation'}`) et
+  l'aval lit une auto-évaluation ordinaire. **Phase `libre`** (anonyme au rythme de
+  l'élève) : toutes les questions ouvertes, pas de pilotage, l'élève envoie en une fois
+  (`/api/sondage/libre`, manche créée par le serveur à son premier envoi), le prof n'a
+  que Statistiques et « Clore ». Jamais pour une compétition.
 - `oeuvres` + `oeuvres/{id}/sections` : **bibliothèque d'œuvres** (atelier « Lecture
   d'une œuvre »). Le document parent ne porte que le **sommaire** (chapitres → titres de
   sections) ; le contenu vit dans la **sous-collection**, chargée à la demande — une
@@ -489,15 +496,15 @@ interface Questionnaire {
 | Route | Accès | Description |
 |---|---|---|
 | `/login` | public | Connexion Google + modal join classe |
-| `/dashboard` | prof | Devoirs (actuels / corrigés / archivés) + création |
+| `/dashboard` | prof | **Même construction que la page élève** (2026-10-09) : bloc **Mes activités en cours** (**toujours l'année en cours** ; filtres type / évaluation — le menu des années vit dans le second bloc, et une activité d'une année passée ni classée ni archivée s'y retrouve sous « Ni classées ni archivées » dans l'onglet Toutes, carte « + », cartes, puis « Activités de mes classes partagées ») et bloc **Activités classées** à onglets (`OngletsBarre`, partagé) : Toutes / Classées (bascule `corrige`, en cartes) / Archivées (en **étiquettes** `ActivitesEtiquettes`, partagé — clic = page des copies ; « Gérer les archives → » mène à `/archives` pour désarchiver). Pas d'onglet « Corrigées » côté prof : le corrigé s'ouvre classe par classe et la liste ne porte pas le compte des copies corrigées |
 | `/dashboard/travaux/[devoirId]` | prof | Travaux par devoir (3 colonnes) |
 | `/dashboard/travaux/[devoirId]/[travailId]` | prof | Correction + annotations (`ResizableSplit`) |
 | `/classes` | prof | Gestion classes et élèves + bloc « Mes Élèves » (tous les élèves, filtre actifs/archivés, recherche) ; clic sur un élève (bloc ou détail de classe) → fiche complète en popup (`EleveProfilModal` → `ProfilPanel`) |
 | `/grilles` | prof | Mes Ressources : onglets Grilles + Listes de vocabulaire + **Design & scénarisation didactique** (`ScenarisationPanel`). ~~Modules FLE~~ → **déménagé dans `/parcours-fle` le 2026-10-08** (`?onglet=fle` redirige). Ancien onglet (`RessourcesFlePanel`, 2026-09-19 : bascule **Points de théorie** = `ModuleFlePanel` / **Activités** = `ActiviteFlePanel`, les activités FLE qui n'apparaissent PAS au tableau de bord / **Séquences de cours** = `SequencesFlePanel`, les séquences — aussi au tableau de bord — dont la carte ouvre l'atelier `SequenceAtelier` : serpentin en grand, enregistrement auto, encadrés cliquables vers la ressource ; `?onglet=fle&section=theorie|activites|sequences` lu au montage) |
 | `/archives` | prof | Devoirs archivés |
-| `/fle` | élève | **Mon cours FLE** (espace FLE, 2026-09-14 ; refondu le 2026-10-08) : « Bonjour Prénom · A2 » (niveau global), puis **deux cards** — **Mes parcours** (les activités données à sa classe FLE : séquences ET activités ordinaires, rien d'une autre classe) et **Mes lectures de cours** (+ « Importer un cours », popup `ImportCoursModal`) ; un clic sur une card remplace la page par son contenu (`?vue=parcours|lectures`), « ← Mon cours » revient ; en dessous, radar CECR + objectifs du mois (`NiveauFlePanel` en lecture), classes. Header FLE avec « Accueil » si classes mixtes (`avecAccueil`). Un élève dont **toutes** les classes sont FLE y arrive depuis `/login` et `/accueil` (`espaceFleSeulement`) ; classes mixtes → `/accueil` + entrée « Mon cours » dans le header |
+| `/fle` | élève | **Mon profil FLE** (ex « Mon cours FLE » ; espace FLE, 2026-09-14 ; refondu les 2026-10-08 et 09) : « Bonjour Prénom · A2 » (niveau global), puis **trois cards** — **Mes parcours** (les activités données à sa classe FLE : séquences ET activités ordinaires, rien d'une autre classe), **Mes lectures de cours** (+ « Importer un cours », popup `ImportCoursModal`) et **Mes évaluations** ; un clic sur une card **déplie son contenu sur place**, juste dessous (card allumée `cardActive`, « Fermer ✕ » ou second clic replie ; `?vue=parcours|lectures|evaluations` conservé pour le retour depuis une lecture) ; en dessous, radar CECR + objectifs du mois (`NiveauFlePanel` en lecture). **Plus de bloc « Mes classes »** (le bouton de l'en-tête suffit, 2026-10-09). Header FLE avec « Accueil » si classes mixtes (`avecAccueil`). Un élève dont **toutes** les classes sont FLE y arrive depuis `/login` et `/accueil` (`espaceFleSeulement`) ; classes mixtes → `/accueil` + entrée « Mon cours » dans le header |
 | `/fle/lectures/[id]` | élève (prof en lecture seule avec `?eleveId=`) | **Lecture d'une séquence de cours** (2026-10-08) : deux colonnes — à gauche six sections en accordéon (`Accordeon`, la première ouverte ; `LectureCoursSections/`), à droite le cours importé. Les sections se **génèrent une à une** à l'ouverture (chaîne côté page, `POST …/sections/[cle]`), reprise à la réouverture ; les réponses partent en `PATCH` différé (700 ms). Section 3 : fiches à retourner (`Flashcard`) + les **7 exercices Daspalecte** (`ExercicesVocabulaire`) + **test de lecture** |
-| `/accueil` (prof) | prof | **Accueil du prof** (2026-10-08, soir) : `AccueilProf` — À corriger · Échéances à venir (14 j) · Élèves en retard (30 j, noms déchiffrés), sur les classes de l'**espace courant** ; `/api/accueil-prof?espace=`. Premier bouton de l'en-tête prof dans les deux espaces |
+| `/accueil` (prof) | prof | **Accueil du prof** (2026-10-08, soir) : `AccueilProf` — À corriger · Échéances à venir (14 j) · Élèves en retard (30 j, noms déchiffrés ; **plus de 5 noms = « Plusieurs élèves en retard »** ; **case « vu »** par ligne → `PATCH /api/sessions/[id] { retardsVus: true }`, la session n'y revient plus), sur les classes de l'**espace courant** ; `/api/accueil-prof?espace=` applique la **même règle d'espace que le tableau de bord** (une classe FLE suffit → espace FLE seulement). **Point d'entrée du prof** depuis le 2026-10-09 (`/`, `/login`, éjections) |
 | `/dashboard` | prof | Mes Activités, **filtré par espace** : classique = activités sans classe ou avec une classe non FLE ; FLE = « Mes activités FLE », les activités ayant une classe FLE, précédées du panneau des **séquences** (`SequencesFlePanel`) |
 | `/classes` | prof | Mes Classes, **filtré par espace** (FLE : « Mes classes FLE ») ; carte FLE à liseré ambre |
 | `/ressources-fle` | prof | **Mes ressources FLE** (espace FLE) : points de théorie (`ModuleFlePanel`) · activités FLE sans classe (`ActiviteFlePanel`), `?section=` |
@@ -506,7 +513,7 @@ interface Questionnaire {
 | `/roadmap` | tous | Nouveautés + à venir — **pilotée par Firestore**, éditable par l'admin (drag « À venir » → « Nouveautés » pour marquer fait) |
 | `/rgpd` | tous | Données personnelles : quelles données, protection (chiffrement), services IA, droits RGPD — statique, menu avatar |
 | `/accueil` | élève | **Page d'ouverture** (`/` y renvoie) : 3 blocs (travaux et lectures en retard · échéances à venir · derniers résultats) + **roue des ceintures** (`CeinturesRoue`) |
-| `/activites` | élève | 3 blocs : devoirs disponibles / travaux corrigés (correction rendue) / travaux non rendus (cochés par le prof, badge justifié ou « Non fait — 0 ») |
+| `/activites` | élève | **Mes activités en cours** (ouvertes, ni corrigées, ni classées, ni archivées) · **Activités classées** en 4 onglets (2026-10-09 ; ouvert sur Corrigées) : Toutes (non archivées) / Corrigées (correction rendue, en cartes) / Classées (`devoir.corrige` coché par le prof, en **étiquettes**) / Archivées (par le prof, sessions archivées, ou toutes mes classes de l'activité archivées — étiquettes ; `/api/devoirs` sert à l'élève les archivées **déjà ouvertes un jour**, `disponibleAt`) · Travaux non rendus (cochés par le prof, badge justifié ou « Non fait — 0 »). Une activité classée est aussi exclue des retards et échéances de `/api/accueil` |
 | `/mes-ressources` | élève | Mes ressources personnelles : onglet Liste de vocabulaire (mots dont il a demandé la définition) + onglet **Mes schémas** (`MesSchemasPanel`, 2026-10-04 : cartes personnelles sans activité, collection `schemasPersonnels`) |
 | `/mes-ressources/schemas/[id]` | élève | Un schéma personnel en plein écran (`DiagramWorkspace` avec sa colonne de gauche, enregistrement différé 0,8 s, vignette PNG) |
 | `/activites/[id]` | élève | Rédaction + auto-évaluation + remise (`WorkspaceRail`) |
@@ -515,7 +522,16 @@ interface Questionnaire {
 
 ### Header
 
-Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classes · Mon vocabulaire · Mon profil — sous-titre « Mon cours de français »). Le variant `student` accepte `avecCoursFle` (entrée « Mon cours » pour un élève de classes mixtes).
+**Rétractable au défilement** (2026-10-09, plan `harnais/plans/2026-10-09-entete-retractable.md`) :
+une variable CSS `--t` (0 → 1 sur les 140 premiers px, `useEnteteRetractable` dans
+`Header.tsx`, un écouteur passif + `requestAnimationFrame`) ; le logo se contracte vers son
+centre, titre et sous-titre se replient (`max-height`), la cloche, l'avatar et le double
+bouton descendent sur la ligne des boutons à droite. `prefers-reduced-motion` ⇒ deux états.
+⚠ **La hauteur de l'en-tête déplié est réservée EN DUR dans ~20 CSS de pages**
+(`margin-top: 220px` / `280px`) : ne pas y toucher, c'est l'état en haut de page. Sous
+480 px le mécanisme est neutralisé (`--t: 0 !important`).
+
+Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · Mes classes · Mes ressources personnelles — sous-titre « Mon cours de français » ; plus de « Mon profil » : le profil d'écrilecteur relève du cours classique, 2026-10-09). Le variant `student` accepte `avecCoursFle` (entrée « Mon cours » pour un élève de classes mixtes).
 - Prof : Mes Activités → `/dashboard` | Mes Classes → `/classes` | Mes Ressources →
   `/grilles` | Cloche notifications | Avatar menu (l'œil « Vue élève » a été retiré —
   l'aperçu passe par le bouton Prévisualiser des activités)
@@ -668,9 +684,12 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
   `AutoEvalReview` (**prof : il répond à l'aveugle, la réponse de l'élève se découvre
   question par question**), `AutoEvalEvaluation` (onglet Évaluation : lucidité).
   Aucune note nulle part — voir `harnais/memoire/rollup_autoevaluation.md`.
-  En mode **sondage** (`sondage` prop du `AutoEvalBuilder`, atelier `sondage`) : un
-  **chrono par question** remplace « obligatoire », gestes et texte d'accompagnement
-  rangés — voir `harnais/memoire/rollup_sondage.md`
+  **Depuis le 2026-10-09, l'auto-évaluation est un SONDAGE nominatif** : une seule carte
+  « Sondage », et deux commutateurs en tête d'`AutoEvalBuilder` (`reglages` /
+  `onReglagesChange`) — Nominatif / Anonyme · Au rythme de l'élève / du prof. Au rythme
+  du prof : un **chrono par question** remplace « obligatoire » ; anonyme : les gestes
+  (qui nourrissent le profil) disparaissent. Anonyme bascule le mode didactique sur
+  `parler`, nominatif sur `reflexif` — voir `harnais/memoire/rollup_sondage.md`
 - Admin : `DidactiquePanel` (bloc « Référentiel du cours » — UAA et méthodes en deux
   colonnes — puis les familles de gestes : Lecture, Écriture, Parole, Lexique, Réflexifs,
   Savoir-être ; alimente `useDidactique`), `AnnonceModal` (envoi d'une notification)
@@ -809,7 +828,7 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
   `EquipesPanel` (tirage au sort + étiquettes déplaçables, glisser-déposer natif). L'élève
   ne reçoit **aucune question à l'ouverture** — elles arrivent une à une par
   `/api/direct/etat`
-- Sondage en direct (atelier `sondage`, dispositif `autoevaluation` ; `src/components/Sondage/`,
+- Sondage (atelier `sondage`, dispositif `autoevaluation` ; `src/components/Sondage/`,
   page prof `/sondage/[sessionId]`, routes `/api/sondage/{etat,pilote,reponse}`) :
   `SondagePilote` (même gabarit et **mêmes styles** que `CompetitionPilote` — deux
   colonnes, Questions / Statistiques ; actions : question suivante, arrêter la question,
@@ -819,9 +838,13 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (Mon cours · Mes classe
   échelle à cinq crans + moyenne, tableau teinté, **cartes anonymes** pour la réponse
   longue). Le champ de réponse est **`AutoEvalReponse`**, exporté d'`AutoEvalActivity`
   et partagé. `useDirect` prend une `base` (`/api/sondage`) et un type de vue
-  (`SondageVue`). L'élève ne reçoit **pas `autoEvalQuiz`** (`/api/devoirs`,
-  `/api/devoirs/[id]`) ; la carte cache échéance, copies, corrigé et « Travail disponible »
-  (`estSondage()` dans `src/types/didactique.ts`)
+  (`SondageVue`). Au rythme du prof, l'élève ne reçoit **pas `autoEvalQuiz`** (`/api/devoirs`,
+  `/api/devoirs/[id]`, `estSondageEnDirect()`) ; la carte cache échéance, copies et « Travail
+  disponible », le corrigé seulement si anonyme. **`SondageLibreActivity`** (2026-10-09) :
+  l'écran élève du sondage anonyme au rythme de l'élève (`estSondageLibre()`) — le même
+  `AutoEvalActivity`, mais les réponses partent en une fois dans la manche libre, jamais
+  dans la copie. Quatre aiguillages dans `/activites/[id]` : en direct → `SondageActivity`
+  (prop `anonyme` pour les textes), libre → `SondageLibreActivity`, sinon `AutoEvalActivity`
 
 ### Hooks
 `useAuth` (expose `getAuthHeaders`), `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,

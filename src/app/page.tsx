@@ -20,7 +20,8 @@ export default function Home() {
 
     setRedirecting(true);
     if (role === 'prof') {
-      router.replace('/dashboard');
+      // Le prof aussi entre par son accueil : à corriger, échéances, retards (2026-10-09)
+      router.replace('/accueil');
     } else {
       // L'élève entre par sa page d'accueil : ses retards et sa progression
       // avant la liste de ses activités (2026-08-17)

@@ -37,6 +37,13 @@ export interface Session {
   archive: boolean;
 
   /**
+   * Le prof a coché « vu » sur la ligne « Élèves en retard » de son accueil
+   * (2026-10-09) : la session n'y revient plus, même si d'autres élèves
+   * passent en retard ensuite. Absent = pas vu.
+   */
+  retardsVus?: boolean;
+
+  /**
    * Ce que le prof qui lit peut faire de CETTE session — servi par le serveur,
    * jamais stocké (coprofesseur, 2026-10-04). 'auteur' = son activité ;
    * 'titulaire' / 'edition' = il agit pour cette classe ; 'lecture' = il

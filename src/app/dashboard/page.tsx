@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useDevoirs } from '@/hooks/useDevoirs';
 import { useGrilleTypes } from '@/hooks/useEvaluations';
@@ -19,6 +20,8 @@ import EditDevoirModal from '@/components/EditDevoirModal/EditDevoirModal';
 import LoadingOverlay from '@/components/LoadingOverlay/LoadingOverlay';
 import MessageBox from '@/components/MessageBox/MessageBox';
 import EmptyState from '@/components/EmptyState/EmptyState';
+import OngletsBarre from '@/components/OngletsBarre/OngletsBarre';
+import ActivitesEtiquettes from '@/components/ActivitesEtiquettes/ActivitesEtiquettes';
 import { atelierLabel, atelierParDispositif } from '@/types/didactique';
 import type { Dispositif } from '@/types/didactique';
 import { calculateSchoolYear } from '@/lib/auth-utils';
@@ -132,13 +135,10 @@ export default function DashboardPage() {
       ? anneeCourante
       : anneesDisponibles[0] ?? anneeCourante);
 
-  const devoirsAnnee = useMemo(
-    () =>
-      anneeFiltre === TOUTES
-        ? devoirs
-        : devoirs.filter((d) => (d.anneeScolaire || SANS_ANNEE) === anneeFiltre),
-    [devoirs, anneeFiltre]
-  );
+  // L'ANNÉE ne filtre que le bloc « Activités classées » (JP, 2026-10-09) : le
+  // bloc « en cours » est, par définition, celui de l'année en cours.
+  const deLAnnee = (d: Devoir, annee: string) =>
+    annee === TOUTES || (d.anneeScolaire || SANS_ANNEE) === annee;
 
   // ── Filtres par type d'activité et par nature de l'évaluation ──
   // Le filtre par année ne suffisait plus : une année de français, c'est des
@@ -150,15 +150,15 @@ export default function DashboardPage() {
   // choix vides se lit comme une panne (même parti que pour les années).
   const typesDisponibles = useMemo(() => {
     const vus = new Set<string>();
-    devoirsAnnee.forEach((d) => vus.add(atelierDe(d)));
+    devoirs.forEach((d) => vus.add(atelierDe(d)));
     return [...vus].sort((a, b) => atelierLabel(a, true).localeCompare(atelierLabel(b, true)));
-  }, [devoirsAnnee]);
+  }, [devoirs]);
 
   // ── Tri par échéance, la plus proche d'abord ──
   // Une activité sans échéance ferme la marche : elle n'attend rien de
   // personne, elle n'a pas à passer devant celle de demain.
   const devoirsTries = useMemo(() => {
-    const retenus = devoirsAnnee.filter(
+    const retenus = devoirs.filter(
       (d) =>
         (typeFiltre === TOUS || atelierDe(d) === typeFiltre) &&
         (evalFiltre === TOUS || (d.evaluation || SANS_EVAL) === evalFiltre)
@@ -169,7 +169,7 @@ export default function DashboardPage() {
       if (!b.dateRemise) return -1;
       return a.dateRemise.localeCompare(b.dateRemise);
     });
-  }, [devoirsAnnee, typeFiltre, evalFiltre]);
+  }, [devoirs, typeFiltre, evalFiltre]);
 
   // ── Les activités d'un collègue sur mes classes partagées (2026-10-04) ──
   // Mêmes filtres que les miennes, rangées à part : je n'en suis pas l'auteur.
@@ -182,23 +182,37 @@ export default function DashboardPage() {
             d.referentiel !== 'fle' &&
             d.typeTravail !== 'sequence' &&
             dansEspace(d) &&
-            (anneeFiltre === TOUTES || (d.anneeScolaire || SANS_ANNEE) === anneeFiltre) &&
             (typeFiltre === TOUS || atelierDe(d) === typeFiltre) &&
             (evalFiltre === TOUS || (d.evaluation || SANS_EVAL) === evalFiltre)
         )
         .sort((a, b) => a.intitule.localeCompare(b.intitule)),
-    [devoirsPartages, anneeFiltre, typeFiltre, evalFiltre, dansEspace]
+    [devoirsPartages, typeFiltre, evalFiltre, dansEspace]
   );
-  const partagesActuels = partagesTries.filter((d) => !d.archive);
-  const partagesArchives = partagesTries.filter((d) => d.archive);
+  const partagesActuels = partagesTries.filter((d) => !d.archive && deLAnnee(d, anneeCourante));
+  const partagesArchives = partagesTries.filter((d) => d.archive && deLAnnee(d, anneeFiltre));
 
-  // Devoirs non archivés, séparés en "en cours" et "corrigés"
-  const devoirsActuels = devoirsTries.filter((d) => !d.archive && !d.corrige);
-  const devoirsCorreges = devoirsTries.filter((d) => !d.archive && d.corrige);
-  const devoirsArchives = devoirsTries.filter((d) => d.archive);
+  // En cours = l'année en cours, sans autre choix ; classées et archivées
+  // suivent le menu des années du second bloc
+  const devoirsActuels = devoirsTries.filter((d) => !d.archive && !d.corrige && deLAnnee(d, anneeCourante));
+  const devoirsCorreges = devoirsTries.filter((d) => !d.archive && d.corrige && deLAnnee(d, anneeFiltre));
+  const devoirsArchives = devoirsTries.filter((d) => d.archive && deLAnnee(d, anneeFiltre));
+  // Une activité d'une année PASSÉE ni classée ni archivée n'apparaît plus
+  // dans « en cours » : on la montre ici, pour qu'elle puisse être rangée.
+  const devoirsOublies =
+    anneeFiltre === anneeCourante
+      ? []
+      : devoirsTries.filter((d) => !d.archive && !d.corrige && deLAnnee(d, anneeFiltre) && (d.anneeScolaire || SANS_ANNEE) !== anneeCourante);
 
-  // Onglet actif
-  const [activeTab, setActiveTab] = useState<'actuels' | 'archives'>('actuels');
+  // Le bloc « Activités classées » et ses onglets — même construction que la
+  // page des activités de l'élève (JP, 2026-10-09) ; s'ouvre sur Classées
+  type OngletClasse = 'toutes' | 'classees' | 'archivees';
+  const [ongletClasse, setOngletClasse] = useState<OngletClasse>('classees');
+  const archivees = [...devoirsArchives, ...partagesArchives];
+  const ongletsClasses: { id: OngletClasse; label: string; n: number }[] = [
+    { id: 'toutes', label: 'Toutes', n: devoirsCorreges.length + archivees.length + devoirsOublies.length },
+    { id: 'classees', label: 'Classées', n: devoirsCorreges.length },
+    { id: 'archivees', label: 'Archivées', n: archivees.length },
+  ];
 
   useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 100);
@@ -442,26 +456,8 @@ export default function DashboardPage() {
         {!isFormVisible && (
         <section className={styles.evaluationsSection}>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>{espace === 'fle' ? 'Mes activités FLE' : 'Mes Activités'}</h2>
+            <h2 className={styles.sectionTitle}>{espace === 'fle' ? 'Mes activités FLE en cours' : 'Mes activités en cours'}</h2>
             <div className={styles.headerActions}>
-              {/* Le tableau de bord s'ouvre sur l'année en cours. Les années
-                  passées restent accessibles, mais il faut aller les chercher. */}
-              <select
-                className={styles.anneeSelect}
-                value={anneeFiltre}
-                onChange={(e) => setAnneeChoisie(e.target.value)}
-                title="Année scolaire affichée"
-              >
-                {anneesDisponibles.map((a) => (
-                  <option key={a} value={a}>
-                    {a === SANS_ANNEE ? 'Année non précisée' : a}
-                  </option>
-                ))}
-                {anneesDisponibles.length > 1 && (
-                  <option value={TOUTES}>Toutes les années</option>
-                )}
-              </select>
-
               {/* Type d'activité — le même vocabulaire que l'étiquette de la
                   carte, pour qu'on retrouve ce qu'on a filtré. */}
               {typesDisponibles.length > 1 && (
@@ -491,37 +487,18 @@ export default function DashboardPage() {
                 <option value="certificatif">Certificatif</option>
                 <option value={SANS_EVAL}>Non précisé</option>
               </select>
-              <div className={styles.tabs}>
-                <button
-                  type="button"
-                  className={`${styles.tab} ${activeTab === 'actuels' ? styles.tabActive : ''}`}
-                  onClick={() => setActiveTab('actuels')}
-                >
-                  Travaux actuels
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.tab} ${activeTab === 'archives' ? styles.tabActive : ''}`}
-                  onClick={() => setActiveTab('archives')}
-                >
-                  Travaux archivés
-                </button>
-              </div>
             </div>
           </div>
 
-          {activeTab === 'actuels' ? (
-            <>
               {/* Travaux en cours */}
-              <h3 className={styles.subSectionTitle}>📝 Travaux en cours</h3>
               <div className={styles.evaluationsGrid}>
                 {devoirsLoading ? (
                   <EmptyState icon="hourglass" message="En cours de chargement" />
                 ) : (
                   <>
                     <CreateDevoirCard onClick={() => setChoixAtelierVisible(true)} />
-                    {devoirsActuels.length === 0 && devoirsCorreges.length === 0 ? null : devoirsActuels.length === 0 ? (
-                      <p className={styles.emptySubSection}>Aucun travail en cours</p>
+                    {devoirsActuels.length === 0 ? (
+                      <p className={styles.emptySubSection}>Aucune activité en cours</p>
                     ) : (
                       devoirsActuels.map((devoir) => (
                         <DevoirCard
@@ -542,29 +519,6 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Travaux corrigés */}
-              {devoirsCorreges.length > 0 && (
-                <>
-                  <h3 className={`${styles.subSectionTitle} ${styles.subSectionTitleCorrige}`}>✅ Travaux corrigés</h3>
-                  <div className={styles.evaluationsGrid}>
-                    {devoirsCorreges.map((devoir) => (
-                      <DevoirCard
-                        key={devoir.id}
-                        devoir={devoir}
-                        variant="prof"
-                        onEdit={handleEditDevoir}
-                        onDelete={handleDeleteDevoir}
-                        onDuplicate={handleDuplicateDevoir}
-                        onToggleDisponible={handleToggleDisponible}
-                        onToggleArchive={handleToggleArchive}
-                        onToggleCorrige={handleToggleCorrige}
-                        onToggleCorrigeDisponible={handleToggleCorrigeDisponible}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-
               {/* Activités d'un collègue sur mes classes partagées */}
               {partagesActuels.length > 0 && (
                 <>
@@ -581,31 +535,89 @@ export default function DashboardPage() {
                   </div>
                 </>
               )}
-            </>
-          ) : (
-            /* Onglet Archives */
-            <div className={styles.evaluationsGrid}>
-              {devoirsLoading ? (
-                <EmptyState icon="hourglass" message="En cours de chargement" />
-              ) : devoirsArchives.length === 0 && partagesArchives.length === 0 ? (
-                <EmptyState icon="🗃️" message="Aucun devoir archivé" />
-              ) : (
-                [...devoirsArchives, ...partagesArchives].map((devoir) => (
-                  <DevoirCard
-                    key={devoir.id}
-                    devoir={devoir}
-                    variant="prof"
-                    onEdit={handleEditDevoir}
-                    onDelete={handleDeleteDevoir}
-                    onDuplicate={handleDuplicateDevoir}
-                    onToggleDisponible={handleToggleDisponible}
-                    onToggleArchive={handleToggleArchive}
-                    onToggleCorrige={handleToggleCorrige}
-                    onToggleCorrigeDisponible={handleToggleCorrigeDisponible}
-                  />
-                ))
-              )}
+        </section>
+        )}
+
+        {/* ── Activités classées : le même bloc à onglets que chez l'élève ── */}
+        {!isFormVisible && (
+        <section className={`${styles.evaluationsSection} ${styles.classeesSection}`}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Activités classées</h2>
+            <div className={styles.headerActions}>
+              {/* L'année ne concerne que ce bloc : le bloc « en cours » est celui
+                  de l'année en cours (JP, 2026-10-09). Les années passées restent
+                  accessibles, mais il faut aller les chercher. */}
+              <select
+                className={styles.anneeSelect}
+                value={anneeFiltre}
+                onChange={(e) => setAnneeChoisie(e.target.value)}
+                title="Année scolaire affichée"
+              >
+                {anneesDisponibles.map((a) => (
+                  <option key={a} value={a}>
+                    {a === SANS_ANNEE ? 'Année non précisée' : a}
+                  </option>
+                ))}
+                {anneesDisponibles.length > 1 && (
+                  <option value={TOUTES}>Toutes les années</option>
+                )}
+              </select>
+
             </div>
+          </div>
+          <OngletsBarre onglets={ongletsClasses} actif={ongletClasse} onChange={setOngletClasse} />
+          {devoirsLoading ? (
+            <EmptyState icon="hourglass" message="En cours de chargement" />
+          ) : (
+            <>
+              {(ongletClasse === 'classees' || ongletClasse === 'toutes') &&
+                (devoirsCorreges.length === 0 ? (
+                  <p className={styles.ongletVide}>Aucune activité classée pour le moment.</p>
+                ) : (
+                  <div className={styles.evaluationsGrid}>
+                    {devoirsCorreges.map((devoir) => (
+                      <DevoirCard
+                        key={devoir.id}
+                        devoir={devoir}
+                        variant="prof"
+                        onEdit={handleEditDevoir}
+                        onDelete={handleDeleteDevoir}
+                        onDuplicate={handleDuplicateDevoir}
+                        onToggleDisponible={handleToggleDisponible}
+                        onToggleArchive={handleToggleArchive}
+                        onToggleCorrige={handleToggleCorrige}
+                        onToggleCorrigeDisponible={handleToggleCorrigeDisponible}
+                      />
+                    ))}
+                  </div>
+                ))}
+              {ongletClasse === 'toutes' && (
+                <ActivitesEtiquettes
+                  devoirs={devoirsOublies}
+                  hrefDe={(d) => `/dashboard/travaux/${d.id}`}
+                  vide=""
+                  titre="Ni classées ni archivées"
+                  note="Cliquer pour ouvrir les copies"
+                />
+              )}
+              {(ongletClasse === 'archivees' || ongletClasse === 'toutes') && (
+                <>
+                  <ActivitesEtiquettes
+                    devoirs={archivees}
+                    hrefDe={(d) => `/dashboard/travaux/${d.id}`}
+                    vide="Aucune activité archivée."
+                    titre={ongletClasse === 'toutes' ? 'Archivées' : undefined}
+                    note="Cliquer pour ouvrir les copies"
+                  />
+                  {/* Désarchiver, supprimer : la page des archives garde les cartes complètes */}
+                  {archivees.length > 0 && (
+                    <Link href="/archives" className={styles.archivesLien}>
+                      Gérer les archives →
+                    </Link>
+                  )}
+                </>
+              )}
+            </>
           )}
         </section>
         )}

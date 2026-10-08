@@ -19,6 +19,72 @@
   border-bottom: 2px solid var(--c-primary);
 }
 
+/* ── Les deux réglages du sondage (2026-10-09) ── */
+
+.reglages {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.reglage {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.segments {
+  display: inline-flex;
+  border: 1.5px solid var(--c-primary);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.segment {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--c-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.segment + .segment {
+  border-left: 1.5px solid var(--c-primary);
+}
+
+.segment:hover:not(:disabled) {
+  background: rgba(45, 106, 90, 0.08);
+}
+
+.segmentOn,
+.segmentOn:hover:not(:disabled) {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.segment:disabled {
+  cursor: default;
+}
+
+.reglageNote {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--c-text-muted);
+}
+
+@media (max-width: 700px) {
+  .reglages {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Intention ── */
 
 .intro {

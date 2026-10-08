@@ -61,6 +61,8 @@ export interface EcheanceProf {
 
 export interface RetardProf {
   devoirId: string;
+  // La session (activité × classe) : c'est elle qui porte « retards vus »
+  sessionId: string;
   intitule: string;
   classeNom: string;
   dateRemise: string;

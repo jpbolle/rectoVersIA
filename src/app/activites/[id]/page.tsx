@@ -24,7 +24,8 @@ import VocabulaireActivity from '@/components/VocabulaireActivity/VocabulaireAct
 import LectureQuizActivity from '@/components/LectureQuizActivity/LectureQuizActivity';
 import CompetitionActivity from '@/components/Competition/CompetitionActivity';
 import SondageActivity from '@/components/Sondage/SondageActivity';
-import { estSequenceFle, estSondage } from '@/types/didactique';
+import SondageLibreActivity from '@/components/Sondage/SondageLibreActivity';
+import { estSequenceFle, estSondageEnDirect, estSondageLibre, reglagesSondage } from '@/types/didactique';
 import SequenceFleActivity from '@/components/SequenceFleActivity/SequenceFleActivity';
 import OeuvreReader from '@/components/OeuvreReader/OeuvreReader';
 import OeuvreSommaire from '@/components/OeuvreReader/OeuvreSommaire';
@@ -461,7 +462,7 @@ export default function TravailPage() {
             className={styles.sequenceRetour}
             onClick={() => router.push(isPreviewMode ? '/dashboard' : '/fle')}
           >
-            ← {isPreviewMode ? 'Mes Activités' : 'Mon cours FLE'}
+            ← {isPreviewMode ? 'Mes Activités' : 'Mon profil FLE'}
           </button>
           {isPreviewMode && <span className={styles.sequenceApercu}>👁️ Vue élève</span>}
         </div>
@@ -526,12 +527,17 @@ export default function TravailPage() {
   // Lecture d'une œuvre : la colonne de gauche devient la liseuse, et la
   // navigation dans le livre s'installe à droite, sous la consigne.
   const isOeuvre = devoir?.typeTravail === 'lire' && !!devoir?.oeuvreId;
-  // SONDAGE en direct : le questionnaire ne s'ouvre pas — il se joue au rythme
-  // du professeur, et l'élève ne reçoit aucune question à l'ouverture
-  // (`autoEvalQuiz` lui est servi vide). L'atelier seul fait l'aiguillage.
-  const isSondage = estSondage(devoir);
-  // Auto-évaluation : l'élève se prononce sur son travail ou son attitude
-  const isAutoEval = !isSondage && devoir?.typeTravail === 'autoevaluation' && !!devoir?.autoEvalQuiz;
+  // SONDAGE au rythme du prof : le questionnaire ne s'ouvre pas — il se joue
+  // en direct, et l'élève ne reçoit aucune question à l'ouverture
+  // (`autoEvalQuiz` lui est servi vide). Les réglages font l'aiguillage.
+  const isSondage = estSondageEnDirect(devoir);
+  // SONDAGE anonyme au rythme de l'élève : le questionnaire entier, mais les
+  // réponses partent dans une manche « libre », jamais dans la copie.
+  const isSondageLibre = estSondageLibre(devoir) && !!devoir?.autoEvalQuiz;
+  // Auto-évaluation (sondage nominatif au rythme de l'élève) : il se prononce
+  // sur son travail ou son attitude, dans sa copie
+  const isAutoEval =
+    !isSondage && !isSondageLibre && devoir?.typeTravail === 'autoevaluation' && !!devoir?.autoEvalQuiz;
   // Atelier de conceptualisation : la colonne de gauche devient l'éditeur de
   // schéma ; la base documentaire est dans le rail (onglet Ressources).
   const isSchema = devoir?.typeTravail === 'schematiser';
@@ -551,7 +557,7 @@ export default function TravailPage() {
   // dans la gouttière de correction, question par question), auto-évaluation
   // (il n'y a pas de copie ; le regard du prof se lit dans l'onglet Évaluation,
   // en face de celui de l'élève).
-  const showRemarques = !isVocabulaire && !isRecherche && !isLecture && !isAutoEval && !isSondage && !isSchema;
+  const showRemarques = !isVocabulaire && !isRecherche && !isLecture && !isAutoEval && !isSondage && !isSondageLibre && !isSchema;
 
   // Ordre : Consignes → Ressources → Aide IA → Remarques → Recherche → Évaluation
   const railTabs: RailTab[] = [];
@@ -638,7 +644,7 @@ export default function TravailPage() {
           // Le VOCABULAIRE rejoint la liste : l'élève y coche des mots et fait
           // ses exercices pendant des semaines, il n'y a jamais rien à remettre.
           // Le bouton promettait une fin qui n'existe pas (demande JP, 2026-09-20).
-          isRecherche || isLectureQuiz || isAutoEval || isOeuvre || isSondage || isVocabulaire
+          isRecherche || isLectureQuiz || isAutoEval || isOeuvre || isSondage || isSondageLibre || isVocabulaire
         }
         submitOutsideApp={isRecherche}
       />
@@ -729,7 +735,22 @@ export default function TravailPage() {
             </div>
             {/* Comme la compétition : sa CLASSE désigne la partie, à partir du
                 seul numéro d'activité. */}
-            <SondageActivity devoirId={devoir.id} intitule={devoir.intitule} />
+            <SondageActivity
+              devoirId={devoir.id}
+              intitule={devoir.intitule}
+              anonyme={reglagesSondage(devoir).anonyme}
+            />
+          </div>
+        ) : isSondageLibre ? (
+          <div className={styles.editorSection}>
+            <div className={styles.editorHeader}>
+              <h2>{devoir.intitule || 'Sondage'}</h2>
+            </div>
+            <SondageLibreActivity
+              devoirId={devoir.id}
+              quiz={devoir.autoEvalQuiz!}
+              previewMode={isPreviewMode}
+            />
           </div>
         ) : isAutoEval ? (
           <div className={styles.editorSection}>

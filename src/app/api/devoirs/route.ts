@@ -25,8 +25,8 @@ import {
   lectureQuizPourFirestore,
   lectureQuizDepuisFirestore,
 } from '@/lib/lecture-server';
-import { sanitizeAutoEvalQuiz } from '@/lib/autoevaluation-server';
-import { atelierParDispositif, estSondage, findAtelier, isTypeModal } from '@/types/didactique';
+import { sanitizeAutoEvalQuiz, sanitizeSondageReglages } from '@/lib/autoevaluation-server';
+import { atelierParDispositif, estSondageEnDirect, findAtelier, isTypeModal } from '@/types/didactique';
 
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -71,6 +71,8 @@ export async function GET(request: NextRequest) {
         ressources: data.ressources || null,
         accesIA: data.accesIA ?? false,
         disponible: data.disponible ?? true,
+        // Horodatage de l'ouverture : « a-t-elle déjà été ouverte ? » (élève, archives)
+        disponibleAt: data.disponibleAt?.toDate?.()?.toISOString?.() || data.disponibleAt || null,
         archive: data.archive ?? false,
         corrige: data.corrige ?? false,
         corrigeDisponible: data.corrigeDisponible ?? false,
@@ -105,6 +107,8 @@ export async function GET(request: NextRequest) {
         hiddenQuestions: Array.isArray(data.hiddenQuestions) ? data.hiddenQuestions : null,
         lectureQuiz: lectureQuizDepuisFirestore(data.lectureQuiz),
         autoEvalQuiz: data.autoEvalQuiz || null,
+        // Sondage : ses réglages (absent = repli selon l'atelier, cf. reglagesSondage)
+        sondage: data.sondage ? sanitizeSondageReglages(data.sondage) : null,
         // Lecture d'une œuvre : l'activité ne porte qu'un renvoi vers la
         // bibliothèque, jamais le contenu
         oeuvreId: data.oeuvreId || null,
@@ -275,12 +279,19 @@ export async function GET(request: NextRequest) {
       const mesClasses = await classesDeLEleve(auth.uid, auth.email);
       const sessions = await sessionsParDevoir(mesClasses);
       devoirs = devoirs.map((d) => {
-        const etat = etatEffectif(d, sessions.get(d.id) ?? []);
+        const ses = sessions.get(d.id) ?? [];
+        const etat = etatEffectif(d, ses);
         return {
           ...d,
           disponible: etat.disponible,
           corrigeDisponible: etat.corrigeDisponible,
           dateRemise: etat.dateRemise ?? d.dateRemise,
+          // ARCHIVÉE pour cet élève : par le prof (activité), ou toutes ses
+          // sessions archivées (2026-10-09, onglet « Archivées » de l'élève)
+          archive: d.archive === true || (ses.length > 0 && ses.every((s) => s.archive)),
+          // A-t-elle déjà été ouverte à sa classe ? Une archive jamais ouverte
+          // n'a rien à faire chez lui.
+          disponibleAt: d.disponibleAt || ses.find((s) => s.disponibleAt)?.disponibleAt || null,
         };
       });
 
@@ -310,10 +321,10 @@ export async function GET(request: NextRequest) {
           ? d.lectureQuiz || null
           : lectureQuizEnDirectPourEleve(lectureQuizForEleve(d.lectureQuiz)),
         // Auto-évaluation : rien à filtrer, il n'y a ni bonne réponse ni corrigé.
-        // SONDAGE en direct : l'élève ne reçoit AUCUNE question à l'ouverture —
-        // elles lui arrivent une à une par /api/sondage/etat, quand le prof
-        // les lance (même fuite bouchée que pour la compétition).
-        autoEvalQuiz: estSondage(d) ? null : d.autoEvalQuiz || null,
+        // SONDAGE AU RYTHME DU PROF : l'élève ne reçoit AUCUNE question à
+        // l'ouverture — elles lui arrivent une à une par /api/sondage/etat,
+        // quand le prof les lance (même fuite bouchée que pour la compétition).
+        autoEvalQuiz: estSondageEnDirect(d) ? null : d.autoEvalQuiz || null,
       }));
     }
 
@@ -351,8 +362,12 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Les activités OUVERTES — et les ARCHIVÉES qui l'ont été un jour : elles
+      // restent lisibles dans l'onglet « Archivées » de l'élève (2026-10-09)
       devoirs = devoirs.filter(
-        (d) => d.disponible === true && d.classes.some((c: string) => classeNames.includes(c))
+        (d) =>
+          (d.disponible === true || (d.archive === true && !!d.disponibleAt)) &&
+          d.classes.some((c: string) => classeNames.includes(c))
       );
 
       // Activité réservée à certains élèves de la classe : les autres ne la
@@ -431,6 +446,7 @@ export async function POST(request: NextRequest) {
       referentiel,
       fle,
       schema,
+      sondage,
     } = body;
 
     // ACTIVITÉ FLE (Mes Ressources › Modules FLE) : jamais de classe, et née FERMÉE.
@@ -493,6 +509,8 @@ export async function POST(request: NextRequest) {
       ...(estFle ? { referentiel: 'fle' } : {}),
       // Utilisable dans un parcours FLE : une activité FLE l'est par nature
       fle: estFle || fle === true,
+      // Sondage : nominatif / anonyme, rythme de l'élève / du prof (2026-10-09)
+      ...(typeTravail === 'autoevaluation' ? { sondage: sanitizeSondageReglages(sondage) } : {}),
     };
 
     // Critères de la grille masqués pour ce devoir (ids)

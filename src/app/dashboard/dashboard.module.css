@@ -146,6 +146,33 @@
   grid-column: 1 / -1;
 }
 
+/* Bloc « Activités classées » (2026-10-09) : liseré ambre et même écart que chez l'élève */
+.classeesSection {
+  margin-top: 30px;
+  border-left: 4px solid var(--c-accent);
+}
+
+.ongletVide {
+  text-align: center;
+  color: var(--c-text-muted);
+  font-size: 14px;
+  padding: 18px 0;
+  margin: 0;
+}
+
+.archivesLien {
+  display: inline-block;
+  margin-top: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-accent);
+  text-decoration: none;
+}
+
+.archivesLien:hover {
+  text-decoration: underline;
+}
+
 /* Header actions */
 .headerActions {
   display: flex;

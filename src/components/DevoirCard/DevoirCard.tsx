@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Toggle from '@/components/Toggle/Toggle';
 import SessionsModal from '@/components/SessionsModal/SessionsModal';
 import { formatDateShort } from '@/lib/devoir-utils';
-import { atelierLabel, atelierParDispositif, estSondage } from '@/types/didactique';
+import { atelierLabel, atelierParDispositif, reglagesSondage } from '@/types/didactique';
 import type { Dispositif } from '@/types/didactique';
 import type { Devoir } from '@/types/devoir';
 import styles from './DevoirCard.module.css';
@@ -36,10 +36,16 @@ export default function DevoirCard({
   const router = useRouter();
   const [sessionsOuvertes, setSessionsOuvertes] = useState(false);
   const estCompetition = devoir.lectureQuiz?.mode === 'competition';
-  // Le SONDAGE se joue en direct comme la compétition : mêmes gestes sur la
-  // carte (pas d'échéance, pas de copies, l'ouverture passe par la partie).
-  const sondage = estSondage(devoir);
-  const enDirect = estCompetition || sondage;
+  // Le SONDAGE (dispositif autoevaluation, réglages du 2026-10-09) : au rythme
+  // du prof il se joue en direct comme la compétition (mêmes gestes sur la
+  // carte : pas d'échéance, l'ouverture passe par la partie) ; anonyme au
+  // rythme de l'élève, la carte mène aux réponses (manche libre).
+  const reglages = devoir.typeTravail === 'autoevaluation' ? reglagesSondage(devoir) : null;
+  const sondageEnDirect = !!reglages && reglages.rythme === 'prof';
+  const sondageLibre = !!reglages && reglages.anonyme && reglages.rythme === 'participant';
+  // Un bouton vers l'écran du sondage : en direct (piloter) ou libre (lire)
+  const sondage = sondageEnDirect || sondageLibre;
+  const enDirect = estCompetition || sondageEnDirect;
   // Activité FLE : sans classe et toujours fermée — seule une séquence FLE
   // l'ouvre. « Disponible » n'a donc pas de sens sur sa carte.
   const fle = devoir.referentiel === 'fle';
@@ -52,8 +58,14 @@ export default function DevoirCard({
   // Le type d'activité, en un mot. Un sondage et une compétition sont deux
   // usages d'un même atelier : ils se nomment eux-mêmes, sinon ils passeraient
   // tous deux pour une simple « Lecture ».
-  const libelleAtelier = sondage
-    ? 'Sondage'
+  const libelleAtelier = reglages
+    ? reglages.anonyme
+      ? sondageEnDirect
+        ? 'Sondage en direct'
+        : 'Sondage anonyme'
+      : sondageEnDirect
+        ? 'Auto-évaluation en direct'
+        : 'Auto-évaluation'
     : estCompetition
       ? 'Compétition'
       : atelierLabel(
@@ -209,9 +221,11 @@ export default function DevoirCard({
             >
               {devoir.monAcces === 'lecture'
                 ? '🎓 État pour ma classe'
-                : sondage
+                : sondageEnDirect
                   ? '📊 Lancer le sondage'
-                  : estCompetition
+                  : sondageLibre
+                    ? '📊 Voir les réponses'
+                    : estCompetition
                     ? '🏁 Lancer une partie'
                     : '🎓 Ouvrir, publier, archiver pour ma classe'}
             </button>
@@ -260,18 +274,20 @@ export default function DevoirCard({
               même avec une seule classe, puisqu'on joue toujours AVEC une
               classe donnée. Ailleurs il ne sert qu'à dissocier, donc à partir
               de deux. */}
-          {(devoir.classes.length > 1 || enDirect) && (
+          {(devoir.classes.length > 1 || enDirect || sondageLibre) && (
             <div className={styles.toggleRow}>
               <button
                 type="button"
                 className={styles.sessionsLink}
                 onClick={() => setSessionsOuvertes(true)}
               >
-                {sondage
+                {sondageEnDirect
                   ? '📊 Lancer le sondage'
-                  : estCompetition
-                  ? '🏁 Lancer une partie'
-                  : '🎓 Régler classe par classe'}
+                  : sondageLibre
+                    ? '📊 Voir les réponses'
+                    : estCompetition
+                      ? '🏁 Lancer une partie'
+                      : '🎓 Régler classe par classe'}
               </button>
             </div>
           )}
@@ -280,7 +296,7 @@ export default function DevoirCard({
               checked={devoir.corrige}
               onChange={handleToggleCorrige}
               labelOn="Travail classé"
-              labelOff="Classer le travail corrigé"
+              labelOff="Classer le travail"
             />
             <Toggle
               checked={devoir.archive}
@@ -317,6 +333,7 @@ export default function DevoirCard({
           // sur la session, jamais sur la carte.
           competition={estCompetition}
           sondage={sondage}
+          anonyme={!!reglages && reglages.anonyme}
           partagee={partagee}
           onClose={() => setSessionsOuvertes(false)}
         />

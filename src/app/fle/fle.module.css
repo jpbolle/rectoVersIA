@@ -217,6 +217,50 @@ button.sequence {
   box-shadow: 0 6px 18px rgba(74, 123, 167, 0.15);
 }
 
+/* La card dont le volet est ouvert : liseré plein, fond teinté */
+.cardActive,
+.cardActive:hover {
+  border-color: #4a7ba7;
+  background: rgba(74, 123, 167, 0.08);
+  box-shadow: 0 6px 18px rgba(74, 123, 167, 0.15);
+  transform: none;
+}
+
+/* Le volet déplié sous les cards : rattaché visuellement à la rangée */
+.volet {
+  border-top: 3px solid #4a7ba7;
+  animation: voletOuvre 0.2s ease;
+}
+
+@keyframes voletOuvre {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fermer {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  background: none;
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.fermer:hover {
+  color: var(--c-text);
+  border-color: var(--c-text-secondary);
+}
+
 .cardPicto {
   font-size: 38px;
   line-height: 1;

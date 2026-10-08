@@ -9,6 +9,8 @@ import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import DevoirCard from '@/components/DevoirCard/DevoirCard';
 import EmptyState from '@/components/EmptyState/EmptyState';
+import OngletsBarre from '@/components/OngletsBarre/OngletsBarre';
+import ActivitesEtiquettes from '@/components/ActivitesEtiquettes/ActivitesEtiquettes';
 import styles from './activites.module.css';
 
 export default function ActivitesPage() {
@@ -24,6 +26,12 @@ export default function ActivitesPage() {
       ? tousLesDevoirs.filter((d) => !d.classes.some((nom) => nomsFle.has(nom)))
       : tousLesDevoirs;
 
+  // Le bloc « Activités classées » et ses quatre onglets (JP, 2026-10-09) ;
+  // il s'ouvre sur les activités corrigées
+  type Onglet = 'toutes' | 'corrigees' | 'classees' | 'archivees';
+  const [onglet, setOnglet] = useState<Onglet>('corrigees');
+  const mesNoms = new Set(classes.map((c) => c.nom));
+  const nomsArchives = new Set(classes.filter((c) => c.archive).map((c) => c.nom));
   const [isReady, setIsReady] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   // devoirId → visibleParEleve pour les corrections individuelles
@@ -67,6 +75,7 @@ export default function ActivitesPage() {
   useEffect(() => {
     if ((authLoading && !isAuthenticated) || redirecting) return;
     if (!isAuthenticated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- garde de redirection imposée par AGENTS.md (state `redirecting`)
       setRedirecting(true);
       router.replace('/login');
       return;
@@ -109,10 +118,52 @@ export default function ActivitesPage() {
           const nonRenduOf = (d: { id: string }) =>
             role === 'eleve' ? travauxStatus?.[d.id]?.nonRendu ?? null : null;
           // Un travail marqué « non rendu » par le prof sort de tous les autres
-          // blocs, que l'activité soit corrigée ou non
-          const actives = devoirs.filter((d) => !estCorrige(d) && !nonRenduOf(d));
-          const corrigees = devoirs.filter((d) => estCorrige(d) && !nonRenduOf(d));
+          // blocs, que l'activité soit corrigée ou non.
+          // ARCHIVÉE : par le prof (le serveur a déjà replié les sessions), ou
+          // parce que toutes MES classes de cette activité sont archivées.
+          const archivee = (d: { archive?: boolean; classes: string[] }) => {
+            if (d.archive) return true;
+            const miennes = d.classes.filter((nom) => mesNoms.has(nom));
+            return miennes.length > 0 && miennes.every((nom) => nomsArchives.has(nom));
+          };
+          // CLASSÉE par le prof (`corrige`, 2026-10-09) : rangée, chez lui comme
+          // chez l'élève — qui peut encore l'ouvrir pour relire.
+          const classee = (d: { corrige?: boolean }) => d.corrige === true;
           const nonRendus = devoirs.filter((d) => nonRenduOf(d));
+          const restantes = devoirs.filter((d) => !nonRenduOf(d));
+          const archivees = restantes.filter(archivee);
+          const vivantes = restantes.filter((d) => !archivee(d));
+          const actives = vivantes.filter((d) => !estCorrige(d) && !classee(d));
+          const corrigees = vivantes.filter((d) => estCorrige(d) && !classee(d));
+          const classees = vivantes.filter(classee);
+          const onglets: { id: Onglet; label: string; n: number }[] = [
+            { id: 'toutes', label: 'Toutes', n: corrigees.length + classees.length },
+            { id: 'corrigees', label: 'Corrigées', n: corrigees.length },
+            { id: 'classees', label: 'Classées', n: classees.length },
+            { id: 'archivees', label: 'Archivées', n: archivees.length },
+          ];
+          // Classées et archivées : des ÉTIQUETTES (le titre), pas des cartes —
+          // composant partagé avec le tableau de bord du prof
+          const etiquettes = (liste: typeof devoirs, vide: string, titre?: string) => (
+            <ActivitesEtiquettes
+              devoirs={liste}
+              hrefDe={(d) => `/activites/${d.id}`}
+              classesDe={(d) => d.classes.filter((nom) => mesNoms.has(nom))}
+              vide={vide}
+              titre={titre}
+              note="Cliquer pour relire"
+            />
+          );
+          const cartes = (liste: typeof devoirs, vide: string) =>
+            liste.length === 0 ? (
+              <p className={styles.ongletVide}>{vide}</p>
+            ) : (
+              <div className={styles.activitesGrid}>
+                {liste.map((devoir) => (
+                  <DevoirCard key={devoir.id} devoir={devoir} variant="student" />
+                ))}
+              </div>
+            );
           const excuseLabel = (d: { id: string }) =>
             nonRenduOf(d) === 'justifie'
               ? 'Non rendu — justifié'
@@ -120,7 +171,7 @@ export default function ActivitesPage() {
           return (
             <>
               <section className={styles.activitesSection}>
-                <h3 className={styles.sectionTitle}>Mes Activités</h3>
+                <h3 className={styles.sectionTitle}>Mes activités en cours</h3>
                 <div className={styles.activitesGrid}>
                   {actives.length === 0 ? (
                     <EmptyState
@@ -139,20 +190,19 @@ export default function ActivitesPage() {
                 </div>
               </section>
 
-              {corrigees.length > 0 && (
-                <section className={`${styles.activitesSection} ${styles.corrigeesSection}`}>
-                  <h3 className={styles.sectionTitle}>Travaux corrigés</h3>
-                  <div className={styles.activitesGrid}>
-                    {corrigees.map((devoir) => (
-                      <DevoirCard
-                        key={devoir.id}
-                        devoir={devoir}
-                        variant="student"
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
+              <section className={`${styles.activitesSection} ${styles.corrigeesSection}`}>
+                <h3 className={styles.sectionTitle}>Activités classées</h3>
+                <OngletsBarre onglets={onglets} actif={onglet} onChange={setOnglet} />
+                {onglet === 'corrigees' && cartes(corrigees, 'Aucune activité corrigée pour le moment.')}
+                {onglet === 'classees' && etiquettes(classees, 'Aucune activité classée pour le moment.')}
+                {onglet === 'archivees' && etiquettes(archivees, 'Aucune activité archivée.')}
+                {onglet === 'toutes' && (
+                  <>
+                    {cartes(corrigees, 'Aucune activité corrigée pour le moment.')}
+                    {etiquettes(classees, '', 'Classées')}
+                  </>
+                )}
+              </section>
 
               {nonRendus.length > 0 && (
                 <section className={`${styles.activitesSection} ${styles.corrigeesSection}`}>
