@@ -545,37 +545,6 @@
   background: var(--c-accent);
 }
 
-.flipTurnButton {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  border: 1.5px solid var(--c-primary);
-  background: var(--c-bg-card);
-  color: var(--c-primary);
-  border-radius: 9px;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.flipTurnButton:hover:not(:disabled) {
-  background: var(--c-primary);
-  color: var(--c-text-on-primary);
-}
-
-.flipTurnIcon {
-  display: inline-block;
-  font-size: 16px;
-  transition: transform 0.3s ease;
-}
-
-.flipTurnButton:hover:not(:disabled) .flipTurnIcon {
-  transform: rotate(180deg);
-}
-
 .flipCard {
   transition: transform 0.28s ease, opacity 0.28s ease;
 }
@@ -737,9 +706,6 @@
   .flipBar {
     flex-direction: column;
     align-items: stretch;
-  }
-  .flipTurnButton {
-    justify-content: center;
   }
 }
 

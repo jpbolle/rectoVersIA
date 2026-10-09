@@ -60,7 +60,6 @@ export async function donneesDeCopie(
     sequenceFle: devoir.sequenceFle ?? null,
     // Une activité FLE reste une activité FLE (rangée dans Mes Ressources)
     referentiel: devoir.referentiel === 'fle' ? 'fle' : null,
-    fle: devoir.fle === true,
     // Atelier de conceptualisation : ses réglages suivent
     schema: devoir.schema ?? null,
     oeuvreChapitres: devoir.oeuvreChapitres ?? null,

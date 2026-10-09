@@ -247,12 +247,10 @@ export interface Devoir {
   // aux élèves (`ouvertParSequence`). Absent = activité classique.
   // (Plan 2026-09-19-fle-theorie-et-activites.)
   referentiel?: 'fle' | null;
-  // UTILISABLE EN FLE (2026-10-08) — case cochée par le prof sur une activité
-  // ORDINAIRE qu'il compte insérer dans un parcours FLE : le sélecteur du
-  // constructeur de séquence filtre dessus. Cochée d'office dès qu'une classe
-  // FLE est cochée. Distinct de `referentiel` (une activité FLE sans classe,
-  // née fermée) : ici l'activité garde ses classes et son tableau de bord.
-  fle?: boolean;
+  // ⚠ Plus de drapeau `fle` « utilisable dans un parcours FLE » (retiré le
+  // 2026-10-09) : une activité est FLE par son `referentiel` ou par ses
+  // classes (une classe FLE suffit) — `estDevoirFle()` ci-dessous. Le champ
+  // `fle` des documents existants est simplement ignoré.
   // ATELIER DE CONCEPTUALISATION (type schematiser, 2026-10-04) : le type de
   // schéma proposé au départ, et si l'élève peut en changer (métamorphose).
   // Le schéma lui-même vit dans `travail.content` (JSON `Diagram`).
@@ -323,8 +321,6 @@ export interface CreateDevoirData {
   sequenceFle?: SequenceFleContenu | null;
   // Activité FLE (voir `Devoir.referentiel`)
   referentiel?: 'fle' | null;
-  // Utilisable dans un parcours FLE (voir `Devoir.fle`)
-  fle?: boolean;
   // Atelier de conceptualisation (type schematiser uniquement)
   schema?: SchemaConfig | null;
   // AUTO-ÉVALUATION INTÉGRÉE — l'élève se prononce sur son propre travail
@@ -335,4 +331,18 @@ export interface CreateDevoirData {
   // ABSENT = ACTIVÉ : les activités antérieures gardent le comportement
   // qu'elles avaient, où l'auto-évaluation a toujours existé.
   autoEvaluation?: boolean;
+}
+
+/**
+ * Une activité est FLE si elle est née dans Ressources FLE (`referentiel`) ou
+ * si l'une de ses classes est une classe FLE — la règle des deux espaces
+ * (2026-10-08). `nomsClassesFle` : les noms des classes FLE du prof.
+ */
+export function estDevoirFle(
+  devoir: Pick<Devoir, 'referentiel' | 'classes'>,
+  nomsClassesFle: ReadonlySet<string> | readonly string[]
+): boolean {
+  if (devoir.referentiel === 'fle') return true;
+  const noms = nomsClassesFle instanceof Set ? nomsClassesFle : new Set(nomsClassesFle);
+  return (devoir.classes ?? []).some((nom) => noms.has(nom));
 }

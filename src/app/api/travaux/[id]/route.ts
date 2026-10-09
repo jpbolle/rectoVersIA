@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { decrypt } from '@/lib/crypto';
 import { accesTravail, peutAgir } from '@/lib/classe-acces';
+import { nettoyerConsignesCochees } from '@/lib/consignes-etapes';
 import type { Travail, UpdateTravailData } from '@/types/travail';
 
 // GET - Recuperer un travail par ID
@@ -64,6 +65,7 @@ export async function GET(
       ressourceAnnotations: data.ressourceAnnotations || '',
       ressourceNotes: data.ressourceNotes || {},
       ressourceImageShapes: data.ressourceImageShapes || {},
+      consignesCochees: Array.isArray(data.consignesCochees) ? data.consignesCochees : [],
       status: data.status || 'draft',
       selfEvaluation: data.selfEvaluation || null,
       nonRendu: data.nonRendu || null,
@@ -159,6 +161,12 @@ export async function PATCH(
 
     if (body.ressourceImageShapes !== undefined) {
       updateData.ressourceImageShapes = body.ressourceImageShapes;
+    }
+
+    // Feuille de route : l'élève coche ses consignes, même après remise (comme
+    // ses notes de ressources). Liste de textes courts, nettoyée côté serveur.
+    if (body.consignesCochees !== undefined) {
+      updateData.consignesCochees = nettoyerConsignesCochees(body.consignesCochees) ?? [];
     }
 
     if (body.draftContent !== undefined) {

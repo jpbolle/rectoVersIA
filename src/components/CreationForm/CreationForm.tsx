@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import Toggle from '@/components/Toggle/Toggle';
 import DatePicker from '@/components/DatePicker/DatePicker';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
+import ConsignesEditor from '@/components/ConsignesEditor/ConsignesEditor';
 import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/QuestionnaireBuilder';
 import QuestionnairePreviewModal from '@/components/QuestionnairePreviewModal/QuestionnairePreviewModal';
 import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
@@ -250,8 +251,6 @@ export default function CreationForm({
   // Auto-évaluation intégrée — activée par défaut : c'est le geste qu'on
   // veut voir posé, le prof la retire quand elle n'a pas lieu d'être.
   const [autoEvaluation, setAutoEvaluation] = useState(true);
-  // Utilisable dans un parcours FLE — cochée d'office dès qu'une classe FLE est cochée
-  const [fle, setFle] = useState(false);
   // Questionnaire choisi dans la bibliothèque, ou « sur mesure » (écrit ici)
   const [lectureQuizId, setLectureQuizId] = useState<string>(QUESTIONNAIRE_SUR_MESURE);
   // COMMENT le questionnaire se joue. Porté par l'activité et non par le
@@ -382,7 +381,6 @@ export default function CreationForm({
       disponible: modeFle ? false : disponible,
       typeTravail,
       ...(modeFle ? { referentiel: 'fle' as const } : {}),
-      fle: modeFle || fle,
       // Toujours transmis : « absent = activé » ne vaut que pour les activités
       // antérieures au réglage, pas pour celles qu'on crée maintenant.
       autoEvaluation: supporteAutoEval ? autoEvaluation : false,
@@ -764,24 +762,6 @@ export default function CreationForm({
         />
       )}
 
-      {/* Utilisable en FLE : une activité ordinaire qu'on insérera dans un
-          parcours FLE. Cochée d'office avec une classe FLE, décochable. */}
-      {!modeFle && typeTravail !== 'sequence' && (
-        <label
-          className={styles.autoEvalToggle}
-          title="Cette activité apparaîtra dans le groupe « Activités FLE » du constructeur de parcours."
-        >
-          <input
-            type="checkbox"
-            checked={fle || selectedClasses.some((nom) => classeNamesFle.includes(nom))}
-            onChange={(e) => setFle(e.target.checked)}
-            disabled={isSubmitting || selectedClasses.some((nom) => classeNamesFle.includes(nom))}
-          />
-          <span className={styles.autoEvalSwitch} />
-          <span className={styles.autoEvalText}>🎓 Utilisable dans un parcours FLE</span>
-        </label>
-      )}
-
 
       {/* Ligne 3 : les habiletés (hors écriture), l'œuvre à lire — ce qui
           dépend du type d'activité */}
@@ -944,13 +924,7 @@ export default function CreationForm({
           <span>Ajouter des consignes particulières</span>
         </label>
         {showConsignes && (
-          <textarea
-            className={styles.textarea}
-            value={consignes}
-            onChange={(e) => setConsignes(e.target.value)}
-            placeholder="Instructions détaillées pour les élèves..."
-            rows={4}
-          />
+          <ConsignesEditor value={consignes} onChange={setConsignes} disabled={isSubmitting} />
         )}
       </div>
 
@@ -1305,14 +1279,6 @@ export default function CreationForm({
             {versoHasContent && <span className={styles.flipToggleDot} />}
           </button>
         </div>
-        <button
-          type="button"
-          className={styles.flipTurnButton}
-          onClick={flip}
-          disabled={isSubmitting}
-        >
-          <span className={styles.flipTurnIcon}>⟳</span> Retourner
-        </button>
       </div>
 
       {/* Carte animée */}

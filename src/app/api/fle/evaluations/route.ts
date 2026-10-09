@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       // La classe doit être sur l'activité, sinon ses élèves ne peuvent pas l'ouvrir
       const classes: string[] = Array.isArray(devoir.classes) ? devoir.classes : [];
       if (classeNom && !classes.includes(classeNom)) {
-        await devoirDoc.ref.update({ classes: FieldValue.arrayUnion(classeNom), fle: true, updatedAt: new Date() });
+        await devoirDoc.ref.update({ classes: FieldValue.arrayUnion(classeNom), updatedAt: new Date() });
         await syncSessions(devoirId);
       }
       source = { kind: 'activite', devoirId, intitule: String(devoir.intitule ?? ''), typeTravail: String(devoir.typeTravail ?? 'ecrire') };

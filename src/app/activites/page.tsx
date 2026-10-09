@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useDevoirs } from '@/hooks/useDevoirs';
+import { parEcheance } from '@/lib/devoir-utils';
 import { aUneClasseFle, useStudentClasses } from '@/hooks/useStudentClasses';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
@@ -21,10 +22,12 @@ export default function ActivitesPage() {
   // Espace classique (2026-10-08) : une activité donnée à une classe FLE est
   // FLE — elle vit dans « Mon cours FLE », pas ici (même règle que chez le prof)
   const nomsFle = new Set(classes.filter((c) => c.type === 'fle').map((c) => c.nom));
-  const devoirs =
+  // Par échéance, de la plus proche à la plus éloignée (JP, 2026-10-09)
+  const devoirs = (
     role === 'eleve' && aUneClasseFle(classes)
       ? tousLesDevoirs.filter((d) => !d.classes.some((nom) => nomsFle.has(nom)))
-      : tousLesDevoirs;
+      : tousLesDevoirs
+  ).slice().sort(parEcheance);
 
   // Le bloc « Activités classées » et ses quatre onglets (JP, 2026-10-09) ;
   // il s'ouvre sur les activités corrigées

@@ -120,8 +120,6 @@ export async function GET(request: NextRequest) {
         sequenceFle: data.typeTravail === 'sequence' ? lireSequenceFle(data.sequenceFle) : null,
         // Activité FLE : rangée dans Mes Ressources › Modules FLE, pas au tableau de bord
         referentiel: data.referentiel === 'fle' ? ('fle' as const) : null,
-        // Utilisable dans un parcours FLE (case du prof)
-        fle: data.fle === true,
         submittedCount: undefined as number | undefined,
         monAcces: undefined as 'titulaire' | 'edition' | 'lecture' | undefined,
         auteurNom: undefined as string | undefined,
@@ -444,7 +442,6 @@ export async function POST(request: NextRequest) {
       sequenceFle,
       eleves,
       referentiel,
-      fle,
       schema,
       sondage,
     } = body;
@@ -507,8 +504,6 @@ export async function POST(request: NextRequest) {
       // Horodatage de l'ouverture aux élèves (notifications)
       ...(ouverte ? { disponibleAt: new Date() } : {}),
       ...(estFle ? { referentiel: 'fle' } : {}),
-      // Utilisable dans un parcours FLE : une activité FLE l'est par nature
-      fle: estFle || fle === true,
       // Sondage : nominatif / anonyme, rythme de l'élève / du prof (2026-10-09)
       ...(typeTravail === 'autoevaluation' ? { sondage: sanitizeSondageReglages(sondage) } : {}),
     };

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Toggle from '@/components/Toggle/Toggle';
 import DatePicker from '@/components/DatePicker/DatePicker';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
+import ConsignesEditor from '@/components/ConsignesEditor/ConsignesEditor';
 import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/QuestionnaireBuilder';
 import QuestionnairePreviewModal from '@/components/QuestionnairePreviewModal/QuestionnairePreviewModal';
 import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
@@ -109,8 +110,6 @@ export default function EditDevoirModal({
   const [flipInverted, setFlipInverted] = useState(false);
   // Auto-évaluation intégrée — absent = activé (activités antérieures)
   const [autoEvaluation, setAutoEvaluation] = useState(true);
-  // Utilisable dans un parcours FLE (case du prof)
-  const [fle, setFle] = useState(false);
   const [evaluation, setEvaluation] = useState<EvaluationType>('formatif');
   // Didactique : le mode principal et les habiletés se modifient ; l'atelier
   // non — il commande le dispositif, le changer transformerait l'activité
@@ -184,7 +183,6 @@ export default function EditDevoirModal({
       setDisponible(devoir.disponible || false);
       setFlipInverted(devoir.flipInverted ?? false);
       setAutoEvaluation(devoir.autoEvaluation !== false);
-      setFle(devoir.fle === true);
       setEvaluation(devoir.evaluation ?? 'formatif');
       setModePrincipal(
         devoir.modePrincipal ??
@@ -376,11 +374,6 @@ export default function EditDevoirModal({
       data.autoEvaluation = autoEvaluation;
     }
 
-    // Utilisable dans un parcours FLE (une classe FLE cochée l'impose)
-    if (devoir.referentiel !== 'fle' && !isSequence) {
-      data.fle = fle || selectedClasses.some((nom) => classeNamesFle.includes(nom));
-    }
-
     const ok = await onSave(devoir.id, data, silencieux);
     if (ok && fermer) onClose();
     return ok;
@@ -501,23 +494,6 @@ export default function EditDevoirModal({
             onEleves={setElevesDesClasses}
             disabled={isSaving}
           />
-
-          {/* Utilisable en FLE — cf. CreationForm */}
-          {!isSequence && (
-            <label
-              className={styles.autoEvalToggle}
-              title="Cette activité apparaîtra dans le groupe « Activités FLE » du constructeur de parcours."
-            >
-              <input
-                type="checkbox"
-                checked={fle || selectedClasses.some((nom) => classeNamesFle.includes(nom))}
-                onChange={(e) => setFle(e.target.checked)}
-                disabled={isSaving || selectedClasses.some((nom) => classeNamesFle.includes(nom))}
-              />
-              <span className={styles.autoEvalSwitch} />
-              <span className={styles.autoEvalText}>🎓 Utilisable dans un parcours FLE</span>
-            </label>
-          )}
         </>
       )}
 
@@ -719,13 +695,7 @@ export default function EditDevoirModal({
       {/* Consignes */}
       <div className={styles.formGroup}>
         <label className={styles.label}>Consignes particulières</label>
-        <textarea
-          className={styles.textarea}
-          value={consignes}
-          onChange={(e) => setConsignes(e.target.value)}
-          placeholder="Instructions détaillées pour les élèves..."
-          rows={3}
-        />
+        <ConsignesEditor value={consignes} onChange={setConsignes} disabled={isSaving} />
       </div>
 
       {/* Toggles */}
@@ -975,14 +945,6 @@ export default function EditDevoirModal({
                 {versoHasContent && <span className={styles.flipToggleDot} />}
               </button>
             </div>
-            <button
-              type="button"
-              className={styles.flipTurnButton}
-              onClick={flip}
-              disabled={isSaving}
-            >
-              <span className={styles.flipTurnIcon}>⟳</span> Retourner
-            </button>
           </div>
 
           {/* Carte animée */}

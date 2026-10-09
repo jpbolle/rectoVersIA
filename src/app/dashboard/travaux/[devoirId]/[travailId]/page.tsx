@@ -858,6 +858,7 @@ export default function TravailDetailPage() {
                   studentRessourceAnnotations={travail.ressourceAnnotations}
                   studentRessourceImageShapes={travail.ressourceImageShapes}
                   studentRessourceNotes={travail.ressourceNotes}
+                  consignesCochees={travail.consignesCochees ?? []}
                   navigkidQuestions={nkQuestions.length > 0 ? nkQuestions : undefined}
                   navigkidReponse={nkReponse}
                   vocabState={devoir.typeTravail === 'vocabulaire' && travail?.content ? (() => { try { return JSON.parse(travail.content); } catch { return null; } })() : undefined}

@@ -50,6 +50,10 @@ interface AssistancePanelProps {
   onRessourceNotesChange?: (notes: Record<string, string>) => void;
   ressourceImageShapes?: Record<string, DrawShape[]>;
   onRessourceImageShapesChange?: (shapes: Record<string, DrawShape[]>) => void;
+  // Feuille de route (onglet Consignes) : coches de l'élève, et le geste de
+  // cocher — absent chez le prof, qui suit sans cocher
+  consignesCochees?: string[] | null;
+  onConsigneToggle?: (cle: string) => void;
   studentRessourceAnnotations?: string;
   studentRessourceNotes?: Record<string, string>;
   studentRessourceImageShapes?: Record<string, DrawShape[]>;
@@ -129,6 +133,8 @@ export default function AssistancePanel({
   onRessourceNotesChange,
   ressourceImageShapes,
   onRessourceImageShapesChange,
+  consignesCochees,
+  onConsigneToggle,
   studentRessourceAnnotations,
   studentRessourceNotes,
   studentRessourceImageShapes,
@@ -255,7 +261,12 @@ export default function AssistancePanel({
       <div className={styles.content}>
         {currentTab === 'consignes' && (
           <>
-            <ConsignesTab devoir={devoir} />
+            <ConsignesTab
+              devoir={devoir}
+              cochees={consignesCochees}
+              onToggle={onConsigneToggle}
+              isProfessorView={isProfessorView}
+            />
             {oeuvreNav}
           </>
         )}

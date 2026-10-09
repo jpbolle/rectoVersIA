@@ -166,6 +166,7 @@ export async function GET(request: NextRequest) {
       ressourceAnnotations: data.ressourceAnnotations || '',
       ressourceNotes: data.ressourceNotes || {},
       ressourceImageShapes: data.ressourceImageShapes || {},
+      consignesCochees: Array.isArray(data.consignesCochees) ? data.consignesCochees : [],
       status: data.status || 'draft',
       selfEvaluation: data.selfEvaluation || null,
       nonRendu: data.nonRendu || null,

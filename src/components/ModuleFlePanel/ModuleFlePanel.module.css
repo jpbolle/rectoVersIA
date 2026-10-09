@@ -55,6 +55,35 @@
   gap: 16px;
 }
 
+/* Panneau posé dans un bloc d'une autre page (tableau de bord, espace FLE) */
+.integre {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+/* Dans ce bloc, la grille est celle des activités juste en dessous : deux
+   colonnes, mêmes largeurs (JP, 2026-10-09) */
+.integre .grille {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 1080px) {
+  .integre .grille {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .integre .grille {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
 .btnGhost,
 .btnDanger {
   border-radius: var(--c-radius);

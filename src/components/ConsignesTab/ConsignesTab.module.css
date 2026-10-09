@@ -149,3 +149,118 @@
     padding: 10px;
   }
 }
+
+/* ═══ Feuille de route : une ligne de consigne = une étape cochable ═══
+   Même grammaire que les ateliers personnalisés de KitSchool : case pleine et
+   texte barré quand c'est fait, compteur « 3 / 7 » en tête. Le prof voit les
+   cases sans pouvoir les toucher. */
+.titreLigne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.compteur {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-primary);
+  background: rgba(45, 106, 90, 0.1);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.compteurComplet {
+  color: #fff;
+  background: var(--c-primary);
+}
+
+.etapes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.etapeTitre {
+  margin: 6px 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+  line-height: 1.5;
+}
+
+.etapeTitre:first-child {
+  margin-top: 0;
+}
+
+.etape {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: var(--c-radius-sm, 6px);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--c-text);
+  transition: background 0.15s ease;
+}
+
+.etapeCochable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.etapeCochable:hover {
+  background: rgba(45, 106, 90, 0.07);
+}
+
+.etapeTexte {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.etapeFaite .etapeTexte {
+  color: var(--c-text-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(45, 106, 90, 0.5);
+}
+
+.check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--c-primary);
+  border-radius: 5px;
+  background: var(--c-bg-card);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.check:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.checkFait {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+}
+
+.aide {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-text-muted);
+  font-style: italic;
+}

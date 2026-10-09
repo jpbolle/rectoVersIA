@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth';
 import type { Travail, UpdateTravailData } from '@/types/travail';
+import { basculerConsigne } from '@/lib/consignes-etapes';
 
 const DEBOUNCE_DELAY = 2500; // 2.5 secondes
 
@@ -195,6 +196,21 @@ export function useTravail(devoirId: string | null) {
     }, DEBOUNCE_DELAY);
   }, [saveNow]);
 
+  // Feuille de route : cocher / décocher une consigne. Enregistrement IMMÉDIAT
+  // (un clic = une écriture, comme les ateliers de KitSchool), état local mis à
+  // jour tout de suite et remis en place si le serveur refuse. Autorisé même
+  // après remise : la liste est à l'élève, pas à la copie.
+  const toggleConsigneCochee = useCallback(async (cle: string) => {
+    const avant = travailRef.current?.consignesCochees ?? [];
+    if (!travailRef.current) return;
+    const apres = basculerConsigne(avant, cle);
+    setTravail(prev => prev ? { ...prev, consignesCochees: apres } : null);
+    const ok = await saveNow({ consignesCochees: apres });
+    if (!ok) {
+      setTravail(prev => prev ? { ...prev, consignesCochees: avant } : null);
+    }
+  }, [saveNow]);
+
   // Soumission du travail (immediate)
   const submit = useCallback(async () => {
     // D'abord sauvegarder les changements en attente
@@ -242,6 +258,7 @@ export function useTravail(devoirId: string | null) {
     updateRessourceAnnotations,
     updateRessourceNotes,
     updateRessourceImageShapes,
+    toggleConsigneCochee,
     submit,
     refetch: fetchTravail,
   };

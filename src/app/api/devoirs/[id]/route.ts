@@ -344,9 +344,6 @@ export async function PATCH(
     if (body.accesIA !== undefined) {
       updateData.accesIA = body.accesIA;
     }
-    if (body.fle !== undefined) {
-      updateData.fle = body.fle === true;
-    }
     if (body.classes !== undefined) {
       updateData.classes = body.classes;
     }

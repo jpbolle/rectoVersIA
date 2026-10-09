@@ -1,0 +1,152 @@
+/* Éditeur de consignes ligne par ligne — même cadre que les champs du
+   formulaire (bordure 2 px, rayon du projet), une tâche par ligne. */
+.editeur {
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card, #fff);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.editeur:focus-within {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.08);
+}
+
+.editeurInactif {
+  background: var(--c-bg-element);
+}
+
+.lignes {
+  margin: 0;
+  padding: 6px 8px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px;
+  border-radius: var(--c-radius-sm, 6px);
+}
+
+.ligne:hover {
+  background: rgba(45, 106, 90, 0.05);
+}
+
+.icone {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--c-primary);
+}
+
+.ligneVide .icone {
+  color: var(--c-text-muted);
+  opacity: 0.6;
+}
+
+.ligneTitre .icone {
+  color: var(--c-text-secondary);
+}
+
+.champ {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--c-text);
+}
+
+.ligneTitre .champ {
+  font-weight: 600;
+}
+
+.champ:focus {
+  outline: none;
+  border-bottom-color: var(--c-primary);
+}
+
+.champ::placeholder {
+  color: #bdc1c6;
+  font-weight: 400;
+}
+
+.retirer {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.ligne:hover .retirer,
+.retirer:focus-visible {
+  opacity: 1;
+}
+
+.retirer:hover:not(:disabled) {
+  background: rgba(217, 95, 95, 0.12);
+  color: #d95f5f;
+}
+
+.retirer:disabled {
+  cursor: default;
+  opacity: 0;
+}
+
+.pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 10px 8px;
+  border-top: 1px solid var(--c-border);
+}
+
+.ajouter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px dashed var(--c-primary);
+  border-radius: 999px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-primary);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ajouter:hover:not(:disabled) {
+  background: rgba(45, 106, 90, 0.08);
+}
+
+.ajouter:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.aide {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  font-style: italic;
+}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useDevoirs } from '@/hooks/useDevoirs';
+import { parEcheance } from '@/lib/devoir-utils';
 import { useGrilleTypes } from '@/hooks/useEvaluations';
 import { useClasses } from '@/hooks/useClasses';
 import Header from '@/components/Header/Header';
@@ -163,12 +164,7 @@ export default function DashboardPage() {
         (typeFiltre === TOUS || atelierDe(d) === typeFiltre) &&
         (evalFiltre === TOUS || (d.evaluation || SANS_EVAL) === evalFiltre)
     );
-    return [...retenus].sort((a, b) => {
-      if (!a.dateRemise && !b.dateRemise) return a.intitule.localeCompare(b.intitule);
-      if (!a.dateRemise) return 1;
-      if (!b.dateRemise) return -1;
-      return a.dateRemise.localeCompare(b.dateRemise);
-    });
+    return [...retenus].sort(parEcheance);
   }, [devoirs, typeFiltre, evalFiltre]);
 
   // ── Les activités d'un collègue sur mes classes partagées (2026-10-04) ──
@@ -185,7 +181,7 @@ export default function DashboardPage() {
             (typeFiltre === TOUS || atelierDe(d) === typeFiltre) &&
             (evalFiltre === TOUS || (d.evaluation || SANS_EVAL) === evalFiltre)
         )
-        .sort((a, b) => a.intitule.localeCompare(b.intitule)),
+        .sort(parEcheance),
     [devoirsPartages, typeFiltre, evalFiltre, dansEspace]
   );
   const partagesActuels = partagesTries.filter((d) => !d.archive && deLAnnee(d, anneeCourante));
@@ -446,17 +442,10 @@ export default function DashboardPage() {
             (ou le formulaire fermé). Deux blocs empilés faisaient une interface
             lourde — demande JP du 2026-09-14. Même parti que le détail d'une
             classe dans Mes Classes. */}
-        {/* Espace FLE : les parcours (séquences) d'abord, les activités ensuite */}
-        {!isFormVisible && espace === 'fle' && (
-          <section className={styles.evaluationsSection}>
-            <SequencesFlePanel />
-          </section>
-        )}
-
         {!isFormVisible && (
         <section className={styles.evaluationsSection}>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>{espace === 'fle' ? 'Mes activités FLE en cours' : 'Mes activités en cours'}</h2>
+            <h2 className={styles.sectionTitle}>{espace === 'fle' ? 'Activités en cours' : 'Mes activités en cours'}</h2>
             <div className={styles.headerActions}>
               {/* Type d'activité — le même vocabulaire que l'étiquette de la
                   carte, pour qu'on retrouve ce qu'on a filtré. */}
@@ -489,6 +478,16 @@ export default function DashboardPage() {
               </select>
             </div>
           </div>
+
+              {/* Espace FLE : UN SEUL bloc, deux rangées (JP, 2026-10-09) — les
+                  séquences de cours d'abord, puis les activités FLE */}
+              {espace === 'fle' && (
+                <>
+                  <h3 className={styles.subSectionTitle}>🧭 Mes séquences FLE</h3>
+                  <SequencesFlePanel integre />
+                  <h3 className={`${styles.subSectionTitle} ${styles.subSectionTitleSuite}`}>🎯 Mes activités FLE</h3>
+                </>
+              )}
 
               {/* Travaux en cours */}
               <div className={styles.evaluationsGrid}>

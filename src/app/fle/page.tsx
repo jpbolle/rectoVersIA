@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { aUneClasseFle, espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
 import { atelierLabel } from '@/types/didactique';
+import { parEcheance } from '@/lib/devoir-utils';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import EmptyState from '@/components/EmptyState/EmptyState';
@@ -219,8 +220,11 @@ export default function FlePage() {
   // suit aussi un cours de français ordinaire retrouve le reste sur /accueil.
   // (`Devoir.classes` porte des noms de classes, comme `classes.nom`.)
   const nomsFle = new Set(classesFle.map((c) => c.nom));
+  // Par échéance, de la plus proche à la plus éloignée (JP, 2026-10-09)
   const travailFle =
-    activites === null ? null : activites.filter((d) => d.classes.some((nom) => nomsFle.has(nom)));
+    activites === null
+      ? null
+      : activites.filter((d) => d.classes.some((nom) => nomsFle.has(nom))).sort(parEcheance);
 
   // Un second clic sur la card ouverte la replie
   const changerVue = (v: Vue) => {
@@ -451,14 +455,17 @@ export default function FlePage() {
             </section>
             )}
 
-            {/* Le radar et les objectifs du mois */}
-            <section className={styles.bloc}>
-              <div className={styles.blocHead}>
-                <span className={styles.blocPicto} aria-hidden="true">🧭</span>
-                <h2 className={styles.blocTitre}>Où j’en suis</h2>
-              </div>
-              <NiveauFlePanel compact />
-            </section>
+            {/* Le radar et les objectifs du mois — à l'accueil seulement : une
+                card ouverte ne montre que son volet (JP, 2026-10-09) */}
+            {vue === 'accueil' && (
+              <section className={styles.bloc}>
+                <div className={styles.blocHead}>
+                  <span className={styles.blocPicto} aria-hidden="true">🧭</span>
+                  <h2 className={styles.blocTitre}>Où j’en suis</h2>
+                </div>
+                <NiveauFlePanel compact />
+              </section>
+            )}
 
             {/* Pas de bloc « Mes classes » : l'en-tête a déjà son bouton (JP, 2026-10-09) */}
           </>

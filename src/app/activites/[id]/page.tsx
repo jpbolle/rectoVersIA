@@ -116,6 +116,7 @@ export default function TravailPage() {
     updateRessourceAnnotations,
     updateRessourceNotes,
     updateRessourceImageShapes,
+    toggleConsigneCochee,
     submit,
   } = useTravail(isPreviewMode ? null : devoirId);
 
@@ -936,6 +937,8 @@ export default function TravailPage() {
             onRessourceNotesChange={isPreviewMode ? undefined : updateRessourceNotes}
             ressourceImageShapes={travail?.ressourceImageShapes}
             onRessourceImageShapesChange={isPreviewMode ? undefined : updateRessourceImageShapes}
+            consignesCochees={isPreviewMode ? undefined : (travail?.consignesCochees ?? [])}
+            onConsigneToggle={isPreviewMode ? undefined : toggleConsigneCochee}
             dictionaryEnabled={dictionaryEnabled}
             onDictionaryEnabledChange={setDictionaryEnabled}
             activeTab={activeTab}

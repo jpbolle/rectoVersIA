@@ -19,12 +19,19 @@ import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
 import EditDevoirModal from '@/components/EditDevoirModal/EditDevoirModal';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import { donneesDeCopie } from '@/lib/devoir-copie';
+import { parEcheance } from '@/lib/devoir-utils';
 import { ATELIER_SEQUENCE_FLE } from '@/types/didactique';
 import type { CreateDevoirData, Devoir } from '@/types/devoir';
 import SequenceAtelier from './SequenceAtelier';
 import styles from '@/components/ModuleFlePanel/ModuleFlePanel.module.css';
 
-export default function SequencesFlePanel() {
+interface Props {
+  // Posé DANS le bloc « Activités en cours » du tableau de bord (JP, 2026-10-09) :
+  // la grille seule, sans son propre bloc blanc ni texte d'aide
+  integre?: boolean;
+}
+
+export default function SequencesFlePanel({ integre = false }: Props) {
   const { getAuthHeaders } = useAuth();
   const {
     devoirs,
@@ -49,7 +56,10 @@ export default function SequencesFlePanel() {
   const [enEdition, setEnEdition] = useState<Devoir | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const sequences = useMemo(() => devoirs.filter((d) => d.typeTravail === 'sequence'), [devoirs]);
+  const sequences = useMemo(
+    () => devoirs.filter((d) => d.typeTravail === 'sequence').sort(parEcheance),
+    [devoirs]
+  );
   const actives = sequences.filter((d) => !d.archive);
   const archivees = sequences.filter((d) => d.archive);
   const sequenceOuverte = ouverte ? sequences.find((d) => d.id === ouverte) ?? null : null;
@@ -165,6 +175,44 @@ export default function SequencesFlePanel() {
       />
     ));
 
+  const popupEdition = (
+    <EditDevoirModal
+      devoir={enEdition}
+      classeNames={classeNames}
+      grilleTypes={grilleTypes}
+      grilles={grilles}
+      isOpen={enEdition !== null}
+      onClose={() => setEnEdition(null)}
+      onSave={enregistrer}
+      isSaving={false}
+      getAuthHeaders={getAuthHeaders}
+    />
+  );
+
+  // Intégré au bloc du tableau de bord : la grille, les archivées à la suite
+  // (grisées), rien d'autre
+  if (integre) {
+    return (
+      <div className={styles.integre}>
+        {message && (
+          <div className={styles.message} onClick={() => setMessage(null)} role="status">
+            {message}
+          </div>
+        )}
+        {isLoading ? (
+          <EmptyState icon="hourglass" message="En cours de chargement" />
+        ) : (
+          <div className={styles.grille}>
+            <CreateOeuvreCard onClick={() => setCreation(true)} libelle="Créer une séquence" />
+            {cartes(actives)}
+            {cartes(archivees)}
+          </div>
+        )}
+        {popupEdition}
+      </div>
+    );
+  }
+
   return (
     <div className={styles.panneau}>
       {message && (
@@ -203,17 +251,7 @@ export default function SequencesFlePanel() {
         </>
       )}
 
-      <EditDevoirModal
-        devoir={enEdition}
-        classeNames={classeNames}
-        grilleTypes={grilleTypes}
-        grilles={grilles}
-        isOpen={enEdition !== null}
-        onClose={() => setEnEdition(null)}
-        onSave={enregistrer}
-        isSaving={false}
-        getAuthHeaders={getAuthHeaders}
-      />
+      {popupEdition}
     </div>
   );
 }

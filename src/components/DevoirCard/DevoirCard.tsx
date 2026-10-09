@@ -129,9 +129,6 @@ export default function DevoirCard({
       <div className={styles.titreLigne}>
         <h3 className={styles.title}>{devoir.intitule}</h3>
         <span className={styles.atelierTag}>{libelleAtelier}</span>
-        {devoir.fle && !fle && (
-          <span className={styles.atelierTag} title="Utilisable dans un parcours FLE">FLE</span>
-        )}
         {devoir.evaluation && (
           <span
             className={
@@ -298,12 +295,17 @@ export default function DevoirCard({
               labelOn="Travail classé"
               labelOff="Classer le travail"
             />
-            <Toggle
-              checked={devoir.archive}
-              onChange={handleToggleArchive}
-              labelOn="Archivé"
-              labelOff="Archiver le travail"
-            />
+            {/* On n'archive qu'un travail CLASSÉ (JP, 2026-10-09) : la bascule ne
+                se montre que dans le bloc « Activités classées » — ou sur une
+                activité déjà archivée, pour pouvoir la ressortir. */}
+            {(devoir.corrige || devoir.archive) && (
+              <Toggle
+                checked={devoir.archive}
+                onChange={handleToggleArchive}
+                labelOn="Archivé"
+                labelOff="Archiver le travail"
+              />
+            )}
           </div>
         </div>
       )}

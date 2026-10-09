@@ -107,21 +107,36 @@
   border-bottom: none;
 }
 
-.ligne:hover /* Accueil du prof : une case « vu » devant la ligne des retards (2026-10-09) */
+/* Accueil du prof : une case « vu » devant la ligne des retards (2026-10-09).
+   ⚠ Un `.ligne:hover` orphelin collé devant ce sélecteur en faisait un
+   sélecteur descendant (`.ligne:hover .ligneAvecCase`) qui ne s'appliquait
+   JAMAIS : la case tombait au-dessus de l'intitulé. Corrigé le 2026-10-09.
+   La case et la ligne SUR LA MÊME LIGNE : grille à deux colonnes, la case à
+   gauche, centrée. La bordure passe sur l'enveloppe, sinon chaque ligne est
+   « dernière » de sa boîte et n'en a plus. */
 .ligneAvecCase {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  align-items: center;
   gap: 10px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.ligneAvecCase:last-of-type {
+  border-bottom: none;
 }
 
 .ligneAvecCase .ligne {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  width: auto;
+  border-bottom: none;
 }
 
 .ligneCase {
-  flex: none;
-  margin: 10px 0 0;
+  flex: 0 0 15px;
+  display: inline-block;
+  margin: 0;
   width: 15px;
   height: 15px;
   accent-color: var(--c-primary);

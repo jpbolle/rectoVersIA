@@ -92,9 +92,16 @@ Plan écrit le 20/09 : `harnais/plans/2026-09-20-portfolio-apprentissage.md`
 **Dépend de** : la schématisation (étape 2.2) et les questions à image (étape 1.2) — mais
 ni l'une ni l'autre ne bloque les étapes 1 à 7 du portfolio, qui peuvent commencer avant.
 
-### 4. Recto-versIA devient **TRACES**
+### 4. Recto-versIA devient **RectoVerso** (« TRACES » abandonné)
 
-Décidé le 20/09. Rien n'est fait. Détail dans `roadmap.md` (§ Ensuite).
+> **2026-10-09 — « Traces » est abandonné au profit de « RectoVerso »** (JP). Le nom
+> affiché est fait depuis le 2026-10-08 (strings d'interface seulement). **Ce qui reste :
+> aller chez OVH changer le nom de domaine**, puis faire suivre le VPS, Firebase Auth et
+> l'extension — avec une redirection de l'ancienne adresse (liens distribués aux élèves,
+> extension au Web Store). Les mises en garde ci-dessous restent valables pour cette
+> seconde moitié.
+
+Décidé le 20/09, renommage affiché le 08/10. Détail dans `roadmap.md` (§ Ensuite).
 
 ⚠ Ce chantier **traverse toute l'application** : interface, emails, page `/roadmap`,
 documents du harnais, URL de production, chemin du VPS, process PM2, dépôt Git,
@@ -104,7 +111,7 @@ extension Chrome. Deux conséquences :
   ⇒ **À faire dans un moment calme**, pas en parallèle.
 - Ce qui se renomme n'est pas ce qui **peut** se renommer : l'URL et le dépôt engagent des
   liens déjà distribués à des élèves et une extension publiée au Web Store. Commencer par
-  les **strings d'interface**, qui ne cassent rien.
+  les **strings d'interface**, qui ne cassent rien — **fait le 2026-10-08**.
 
 ## Ordre proposé
 
@@ -113,7 +120,7 @@ extension Chrome. Deux conséquences :
 | ~~1~~ | ~~Finir les **questions à image**~~ | **réglé** d'après JP (2026-10-04) |
 | ~~2~~ | ~~Écrire le plan de la **schématisation**, puis le construire~~ | **écrit, testé et déployé le 2026-10-04** |
 | **3 → prochain** | **Portfolio**, étapes 1 à 7 | Le gros morceau ; ses deux dépendances sont levées (depuis le 2026-10-04) |
-| **4** | **TRACES** | Purement mécanique : à faire quand le code ne bouge plus |
+| ~~4~~ | ~~**RectoVerso** — nom de domaine chez OVH, puis VPS / Firebase~~ | **fait le 2026-10-09** (OVH, nginx, certificat, Firebase Auth) ; l'ancienne adresse reste servie. Reste l'extension NavigKid (`API_BASE`, Web Store) |
 
 Entre deux, **faire voir** ce qui dort : le sondage en direct, les corrections de la
 compétition, les exercices Daspalecte. Ce sont des heures déjà payées.

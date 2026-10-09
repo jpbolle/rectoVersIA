@@ -109,9 +109,10 @@
   position: absolute;
   top: 50%;
   left: 30px;
-  /* Le logo se contracte vers son CENTRE à mesure que l'en-tête se réduit */
-  transform: translateY(-50%) scale(calc(1 - var(--t)));
-  opacity: calc(1 - var(--t));
+  /* Le logo se contracte vers son CENTRE à mesure que l'en-tête se réduit,
+     jusqu'à 45 % (≈ 40 px) : il reste visible et cliquable dans le bandeau
+     réduit (JP, 2026-10-09 : « je ne voulais pas qu'il disparaisse ») */
+  transform: translateY(-50%) scale(calc(1 - 0.55 * var(--t)));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -120,12 +121,7 @@
 }
 
 .logoLink:hover {
-  transform: translateY(-50%) scale(calc(1.08 * (1 - var(--t))));
-}
-
-/* Réduit : le logo n'est plus cliquable (il a disparu), rien ne traîne sous la souris */
-.compact .logoLink {
-  pointer-events: none;
+  transform: translateY(-50%) scale(calc(1.08 * (1 - 0.55 * var(--t))));
 }
 
 .logoImg {
@@ -278,10 +274,10 @@
   .logoLink {
     top: 12px;
     left: 12px;
-    transform: scale(calc(1 - var(--t)));
+    transform: scale(calc(1 - 0.55 * var(--t)));
   }
   .logoLink:hover {
-    transform: scale(calc(1.08 * (1 - var(--t))));
+    transform: scale(calc(1.08 * (1 - 0.55 * var(--t))));
   }
   .logoImg {
     width: 44px;

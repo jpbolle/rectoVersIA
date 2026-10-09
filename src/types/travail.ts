@@ -63,6 +63,9 @@ export interface Travail {
   ressourceNotes?: Record<string, string>; // Notes par paragraphe (index → texte)
   // Tracés de l'élève sur les images de ressources (clé = fileId de l'image)
   ressourceImageShapes?: Record<string, DrawShape[]>;
+  // Feuille de route : clés des consignes cochées par l'élève (une ligne de
+  // `Devoir.consignes` = une étape, clé = son texte — `src/lib/consignes-etapes.ts`)
+  consignesCochees?: string[];
   status: TravailStatus;
   selfEvaluation: Record<string, number> | null;  // {criterionId: level}
   // Travail non rendu — décision du prof (jamais automatique) :
@@ -93,6 +96,7 @@ export interface UpdateTravailData {
   draftContent?: DraftContent | null;
   ressourceAnnotations?: string;
   ressourceNotes?: Record<string, string>;
+  consignesCochees?: string[];
   ressourceImageShapes?: Record<string, DrawShape[]>;
   selfEvaluation?: Record<string, number> | null;
   status?: TravailStatus;

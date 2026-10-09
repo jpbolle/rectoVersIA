@@ -1,0 +1,179 @@
+/* Carte d'une séquence FLE ou d'une activité FLE — au GABARIT de la carte
+   d'activité du tableau de bord (DevoirCard) : titre et étiquettes à gauche
+   sur une ligne, métadonnées dessous, boutons d'action en bas à droite
+   (JP, 2026-10-09 : « pourquoi les boutons d'action sont centrés ? »). */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(45, 106, 90, 0.06) 0%, rgba(212, 148, 76, 0.06) 100%);
+  border: 2px solid rgba(45, 106, 90, 0.15);
+  border-radius: var(--c-radius-lg);
+  transition: all 0.3s ease;
+}
+
+.cardCliquable {
+  cursor: zoom-in;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(45, 106, 90, 0.15);
+  border-color: rgba(45, 106, 90, 0.35);
+}
+
+.card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.2);
+}
+
+.cardArchivee {
+  opacity: 0.6;
+  background: var(--c-bg-element);
+  border-color: var(--c-border);
+}
+
+/* Titre et étiquettes sur une même ligne */
+.titreLigne {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px 9px;
+  margin-bottom: 8px;
+}
+
+.title {
+  color: var(--c-primary);
+  font-family: var(--c-font-title);
+  font-weight: 700;
+  font-size: 18px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.picto {
+  font-size: 16px;
+  margin-right: 4px;
+}
+
+.tag,
+.tagEdition,
+.tagArchive,
+.tagType {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* Formatif / certificatif : les étiquettes de la carte d'activité */
+.tag {
+  background: var(--c-bg-element);
+  color: var(--c-text-secondary);
+  border: 1px solid var(--c-border);
+}
+
+.tagCertificatif {
+  background: var(--c-accent);
+  color: #fff;
+  border-color: var(--c-accent);
+}
+
+/* Le type (séquence / atelier) : la teinte d'accent de la carte d'activité */
+.tagType {
+  background: rgba(212, 148, 76, 0.12);
+  color: var(--c-accent);
+  border: 1px solid rgba(212, 148, 76, 0.4);
+}
+
+/* Ouverte / corrigé visible : vert plein ; fermée : discret */
+.tagEdition {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.tagArchive {
+  background: var(--c-text-muted);
+  color: #fff;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--c-text-secondary);
+  font-size: 13px;
+}
+
+.metaIcon {
+  font-size: 14px;
+}
+
+/* Les boutons : en bas à droite, comme sur la carte d'activité */
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.actionBtn {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  width: 40px;
+  height: 36px;
+  padding: 0;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: var(--c-radius);
+  transition: all 0.2s ease;
+  box-shadow: var(--c-shadow-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text);
+}
+
+.actionBtn:hover {
+  background: rgba(45, 106, 90, 0.08);
+  border-color: var(--c-primary);
+  box-shadow: 0 4px 8px rgba(45, 106, 90, 0.15);
+}
+
+.actionActive {
+  background: rgba(45, 106, 90, 0.15);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.actionDanger:hover {
+  background: rgba(180, 64, 64, 0.06);
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+  box-shadow: 0 4px 8px rgba(180, 64, 64, 0.15);
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 18px;
+  }
+  .title {
+    font-size: 17px;
+  }
+}

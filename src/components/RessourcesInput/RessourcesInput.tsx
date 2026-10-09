@@ -278,12 +278,16 @@ export default function RessourcesInput({
   );
 
   // ── Champ Vidéo : une URL YouTube par ligne, resynchronisé comme le champ Lien ──
-  const [videoText, setVideoText] = useState(() => videosValue.join('\n'));
+  const [videoText, setVideoText] = useState(() => videosValue.map((v) => v.url).join('\n'));
   const videoTextRef = useRef(videoText);
   videoTextRef.current = videoText;
 
   useEffect(() => {
-    const external = videosValue.join('\n');
+    // ⚠ `videosValue` est une liste d'OBJETS (adresse + titre) depuis le 01/09 :
+    // comparer les adresses seules, sinon `join` donne « [object Object] » et
+    // le champ est réécrit à chaque frappe (symptôme : impossible d'ajouter
+    // une vidéo de plus).
+    const external = videosValue.map((v) => v.url).join('\n');
     const localNormalized = videoTextRef.current
       .split('\n')
       .map((l) => l.trim())

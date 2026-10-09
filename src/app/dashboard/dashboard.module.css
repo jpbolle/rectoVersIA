@@ -17,7 +17,7 @@
   flex: 1;
   margin-top: 180px;
   padding: 40px 20px 60px;
-  max-width: 1400px;
+  max-width: none; /* toute la largeur : trois cartes de front (JP, 2026-10-09) */
   width: 100%;
   margin-left: auto;
   margin-right: auto;
@@ -118,7 +118,7 @@
 
 .evaluationsGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 }
 
@@ -130,6 +130,11 @@
   margin: 0 0 16px 0;
   padding-bottom: 8px;
   border-bottom: 2px solid rgba(45, 106, 90, 0.12);
+}
+
+/* Seconde rangée d'un même bloc (espace FLE : séquences puis activités) */
+.subSectionTitleSuite {
+  margin-top: 32px;
 }
 
 .subSectionTitleCorrige {

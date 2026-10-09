@@ -27,8 +27,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useClasses } from '@/hooks/useClasses';
+import { estClasseFle } from '@/types/classe';
 import { useDidactiqueFle } from '@/hooks/useDidactiqueFle';
 import { ATELIERS, atelierLabel } from '@/types/didactique';
+import { estDevoirFle } from '@/types/devoir';
 import type { Devoir } from '@/types/devoir';
 import type { ModuleFle } from '@/types/module-fle';
 import { iconeTypeModule } from '@/types/module-fle';
@@ -72,6 +75,8 @@ export default function SequenceFleBuilder({
 }: Props) {
   const { getAuthHeaders } = useAuth();
   const { config } = useDidactiqueFle();
+  // Les classes FLE du prof : c'est par elles qu'une activité ordinaire est FLE
+  const { classes: mesClasses, classesPartagees } = useClasses();
   const contenu = value ?? SEQUENCE_FLE_VIDE;
 
   // Le « + » : où insérer, quelle nature
@@ -205,10 +210,11 @@ export default function SequenceFleBuilder({
   const q = recherche.trim().toLowerCase();
   const candidatsDevoirs = (devoirs ?? []).filter((d) => !q || d.intitule.toLowerCase().includes(q));
   const candidatsModules = (modules ?? []).filter((m) => !q || m.titre.toLowerCase().includes(q));
-  // Deux groupes : les activités FLE d'abord, puis les classiques
-  // Deux groupes : les activités FLE (sans classe) ET celles que le prof a
-  // marquées « utilisable en FLE » (2026-10-08) ; puis tout le reste
-  const estPourFle = (d: Devoir) => d.referentiel === 'fle' || d.fle === true;
+  // Deux groupes : les activités FLE (nées dans Ressources FLE, ou données à
+  // une classe FLE — règle des deux espaces, plus de case à cocher depuis le
+  // 2026-10-09) ; puis tout le reste
+  const nomsClassesFle = new Set([...mesClasses, ...classesPartagees].filter((c) => estClasseFle(c)).map((c) => c.nom));
+  const estPourFle = (d: Devoir) => estDevoirFle(d, nomsClassesFle);
   const activitesFle = candidatsDevoirs.filter(estPourFle);
   const activitesClassiques = candidatsDevoirs.filter((d) => !estPourFle(d));
   const lienCreer =

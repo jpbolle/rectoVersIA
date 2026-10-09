@@ -182,11 +182,11 @@ export default function Header({
             <button className={styles.navBtn} onClick={() => router.push('/fle')}>
               Mon profil FLE
             </button>
-            <button className={styles.navBtn} onClick={() => router.push('/mes-classes')}>
-              Mes classes
-            </button>
             <button className={styles.navBtn} onClick={() => router.push('/fle/ressources')}>
               Mes ressources personnelles
+            </button>
+            <button className={styles.navBtn} onClick={() => router.push('/mes-classes')}>
+              Mes classes
             </button>
           </nav>
         ) : (
@@ -199,14 +199,15 @@ export default function Header({
             <button className={styles.navBtn} onClick={() => router.push('/activites')}>
               Mes Activités
             </button>
-            <button className={styles.navBtn} onClick={() => router.push('/mes-classes')}>
-              Mes Classes
+            <button className={styles.navBtn} onClick={() => router.push('/profil')}>
+              Mon Profil
             </button>
             <button className={styles.navBtn} onClick={() => router.push('/mes-ressources')}>
               Mes Ressources personnelles
             </button>
-            <button className={styles.navBtn} onClick={() => router.push('/profil')}>
-              Mon Profil
+            {/* Mes classes en dernier (JP, 2026-10-09) — idem dans l'espace FLE */}
+            <button className={styles.navBtn} onClick={() => router.push('/mes-classes')}>
+              Mes Classes
             </button>
           </nav>
         )}

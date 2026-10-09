@@ -35,15 +35,18 @@
 
 ## Ensuite
 
-**L'application change de nom : « Traces » (décidé le 2026-09-20)** :
+**L'application s'appelle « RectoVerso » (décidé le 2026-10-08 — « Traces », retenu le
+2026-09-20, est abandonné)** :
 
-- [ ] **Renommer Recto-versIA en Traces** — chantier à mener d'un bloc, jamais écran par
-  écran : le nom est dans l'interface, les emails, la page `/roadmap`, les documents du
-  harnais, l'URL de production (`rectoversia.edukids.pedagokit.be`), le chemin du VPS
-  (`/var/www/rectoVersIA`), le process PM2, le dépôt Git et l'extension NavigKid.
-  ⚠ **Distinguer ce qui se renomme de ce qui ne peut pas** : l'URL et le dépôt engagent
-  des liens déjà distribués à des élèves et une extension publiée au Web Store — à trancher
-  séparément du nom affiché. Commencer par les **strings d'interface**, qui ne cassent rien.
+- [x] **Nom affiché** : « RectoVerso » dans les strings d'interface depuis le 2026-10-08.
+  L'infrastructure garde `rectoversia` (dépôt, chemin du VPS, process PM2, extension).
+- [x] **Nom de domaine — fait le 2026-10-09** : `rectoverso.edukids.pedagokit.be` chez OVH
+  (entrée A vers le VPS), nginx et certificat Let's Encrypt étendus aux deux noms,
+  domaine ajouté aux domaines autorisés de Firebase Auth. **L'ancienne adresse reste
+  servie à l'identique, sans redirection** : des liens circulent chez les élèves et
+  l'extension NavigKid l'a en dur.
+- [ ] **Extension NavigKid** : passer `API_BASE` (et la fiche du Web Store) sur la nouvelle
+  adresse, republier — ensuite seulement, décider d'une redirection de l'ancienne adresse.
 - [ ] **Remplacer les effets « flip » par de simples transitions** — l'animation de
   retournement (recto/verso) traverse ~24 fichiers : `FlipChoice`, `FlipEditor` et ses
   styles, `devoir.flipInverted`, `facesInversees` d'une scène d'œuvre, l'espace de

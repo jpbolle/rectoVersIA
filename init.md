@@ -36,7 +36,7 @@
 
 | Élément | Valeur |
 |---|---|
-| URL production | https://rectoversia.edukids.pedagokit.be |
+| URL production | **https://rectoverso.edukids.pedagokit.be** (depuis le 2026-10-09) — l'ancienne `rectoversia.edukids.pedagokit.be` reste servie à l'identique (liens distribués, extension NavigKid en dur), même certificat, pas de redirection |
 | VPS | Hostinger `srv948876.hstgr.cloud` — accès **terminal web hPanel uniquement**, jamais SSH |
 | Chemin VPS / process | `/var/www/rectoVersIA` — PM2 `rectoVersia` — port **3003** (3000-3002 occupés) |
 | Firebase | Firestore plan Blaze — `adminDb` côté serveur, `firebase` côté client |

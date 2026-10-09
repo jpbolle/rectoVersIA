@@ -33,3 +33,20 @@ export function getTodayString(): string {
   const today = new Date();
   return today.toISOString().split('T')[0];
 }
+
+/**
+ * Tri des activités par ÉCHÉANCE, de la plus proche à la plus éloignée
+ * (JP, 2026-10-09 — partout : tableau de bord prof, listes de l'élève,
+ * espaces classique et FLE). Une activité sans échéance ferme la marche :
+ * elle n'attend rien de personne, elle n'a pas à passer devant celle de
+ * demain. À échéance égale, l'ordre alphabétique de l'intitulé.
+ */
+export function parEcheance(
+  a: { dateRemise?: string | null; intitule: string },
+  b: { dateRemise?: string | null; intitule: string }
+): number {
+  if (!a.dateRemise && !b.dateRemise) return a.intitule.localeCompare(b.intitule);
+  if (!a.dateRemise) return 1;
+  if (!b.dateRemise) return -1;
+  return a.dateRemise.localeCompare(b.dateRemise) || a.intitule.localeCompare(b.intitule);
+}
