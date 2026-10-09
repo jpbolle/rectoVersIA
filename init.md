@@ -176,7 +176,8 @@ interface Devoir {
                                  // null et non « champ absent » : orderBy l'exclurait.
   grille: string;
   intitule: string;
-  consignes: string;
+  consignes: string;             // texte libre ; une LIGNE = une étape cochable chez l'élève (2026-10-09,
+                                 // `src/lib/consignes-etapes.ts`), une ligne finissant par « : » = titre
   ressources: DevoirRessource | null;
   accesIA: boolean;              // eleve peut utiliser IA
   disponible: boolean;           // visible par eleves
@@ -257,6 +258,8 @@ interface Travail {
   updatedAt: string;
   submittedAt: string | null;
   ressourceImageShapes?: Record<string, DrawShape[]>; // tracés élève sur les images de ressources (clé = fileId)
+  consignesCochees?: string[];   // feuille de route : clés (= texte normalisé) des consignes cochées,
+                                 // écrites UNE par clic (`toggleConsigneCochee`), permises après remise
 }
 ```
 > Pour les activités **vocabulaire** et **lire avec questionnaire**, `content` porte
@@ -525,18 +528,19 @@ interface Questionnaire {
 **Rétractable au défilement** (2026-10-09, plan `harnais/plans/2026-10-09-entete-retractable.md`) :
 une variable CSS `--t` (0 → 1 sur les 140 premiers px, `useEnteteRetractable` dans
 `Header.tsx`, un écouteur passif + `requestAnimationFrame`) ; le logo se contracte vers son
-centre, titre et sous-titre se replient (`max-height`), la cloche, l'avatar et le double
+centre **jusqu'à 45 % et reste visible et cliquable dans le bandeau réduit** (JP, 2026-10-09 soir),
+titre et sous-titre se replient (`max-height`), la cloche, l'avatar et le double
 bouton descendent sur la ligne des boutons à droite. `prefers-reduced-motion` ⇒ deux états.
 ⚠ **La hauteur de l'en-tête déplié est réservée EN DUR dans ~20 CSS de pages**
 (`margin-top: 220px` / `280px`) : ne pas y toucher, c'est l'état en haut de page. Sous
 480 px le mécanisme est neutralisé (`--t: 0 !important`).
 
-Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · Mes classes · Mes ressources personnelles — sous-titre « Mon cours de français » ; plus de « Mon profil » : le profil d'écrilecteur relève du cours classique, 2026-10-09). Le variant `student` accepte `avecCoursFle` (entrée « Mon cours » pour un élève de classes mixtes).
+Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · Mes ressources personnelles · Mes classes — « Mes classes » en dernier, 2026-10-09 — sous-titre « Mon cours de français » ; plus de « Mon profil » : le profil d'écrilecteur relève du cours classique, 2026-10-09). Le variant `student` accepte `avecCoursFle` (entrée « Mon cours » pour un élève de classes mixtes).
 - Prof : Mes Activités → `/dashboard` | Mes Classes → `/classes` | Mes Ressources →
   `/grilles` | Cloche notifications | Avatar menu (l'œil « Vue élève » a été retiré —
   l'aperçu passe par le bouton Prévisualiser des activités)
-- Élève : **Accueil → `/accueil`** | Mes Activités → `/activites` | Mes Classes → `/mes-classes` | Mes Ressources
-  personnelles → `/mes-ressources` | Mon Profil → `/profil` | Cloche | Avatar menu
+- Élève (ordre du 2026-10-09) : **Accueil → `/accueil`** | Mes Activités → `/activites` | Mon Profil → `/profil` |
+  Mes Ressources personnelles → `/mes-ressources` | **Mes Classes → `/mes-classes` en dernier** | Cloche | Avatar menu
 - Cloche (`NotificationBell`, 3 variantes) : notifications calculées à la lecture
   (`/api/notifications`), badge non-lus vs `users.notifsLastSeen`, désactivables
   (prof/admin) via `users.notifsEnabled` — élève : activité ouverte / corrigé dispo ;
@@ -590,6 +594,28 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
 
 ### Composants clés
 
+- **Consignes = feuille de route cochable** (2026-10-09 soir, option A validée par JP — plan
+  `harnais/plans/2026-10-09-consignes-feuille-de-route.md`) : `Devoir.consignes` reste du texte, découpé
+  à la lecture par `decouperConsignes()` (`src/lib/consignes-etapes.ts`) ; **clé d'une coche = le texte
+  normalisé de la ligne**, jamais sa position (piège KitSchool du 20/08). `ConsignesTab` : case + texte
+  barré, compteur « 3 / 7 », liens cliquables sans cocher ; prof en lecture seule dans la correction
+  (`isProfessorView`), aperçu sans case. `ConsignesEditor` (partagé par `CreationForm` et
+  `EditDevoirModal`) : une ligne = une tâche, Entrée crée la suivante (coupe la ligne au curseur),
+  Retour arrière sur ligne vide retire, collage multi-lignes = autant de tâches, ligne finissant par
+  « : » = titre. Persistance : `Travail.consignesCochees` (PATCH `/api/travaux/[id]`, nettoyé par
+  `nettoyerConsignesCochees`), `useTravail.toggleConsigneCochee` (écriture immédiate, optimiste).
+- **Cartes et tableau de bord, espace FLE** (2026-10-09 soir) : `ActiviteRessourceCard` (séquences au
+  tableau de bord, activités de Mes ressources FLE) est au **gabarit de `DevoirCard`** (titre + étiquettes
+  à gauche, méta, boutons en bas à droite ; CSS propre) — remplace le gabarit « Ressources » du 19/09.
+  Tableau de bord FLE : **un seul bloc « Activités en cours »**, deux rangées sous-titrées (séquences
+  via `SequencesFlePanel integre`, puis activités). Tableau de bord en **pleine largeur, 3 cartes par
+  ligne** (2 sous 1080 px, 1 sous 768). `DevoirCard` : la bascule **« Archiver » n'apparaît que sur un
+  travail classé** (ou déjà archivé). Formulaires : plus de bouton « Retourner » (les deux onglets
+  suffisent). Tri **par échéance** partout (`parEcheance`, `src/lib/devoir-utils.ts`).
+- **`/fle` (Mon profil FLE)** : feuille de style refaite au thème Classica (plus de bleu) — cards
+  d'entrée et rangées au gabarit de `DevoirCard`, 1200 px ; « Où j'en suis » n'apparaît qu'à l'accueil,
+  une card ouverte ne montre que son volet.
+
 - **Atelier de conceptualisation** (2026-10-04, dispositif `schematiser`, atelier `conceptualisation`) :
   `src/components/Diagram/` = le moteur SchémaKit transposé (`DiagramWorkspace` : sélecteur de type,
   éditeurs `ConceptMapEditor` / `TreeEditor` / `TimelineEditor`, volet du bas Outils · Markdown · À placer,
@@ -605,7 +631,7 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
   tableau de bord, Modules FLE › Activités (`modeFle`), chemin « Créer » de `ModuleActivitesModal`
   (`AtelierChoiceGrid` inline).
 
-- **Lecture d'une séquence de cours** (2026-10-08, plan `harnais/plans/2026-10-08-lecture-sequence-de-cours-fle.md`) : l'outil de l'élève FLE — import (`ImportCoursModal`), page `/fle/lectures/[id]`, six sections générées une à une par `claude-sonnet-5-5` (résumé traduit, 10 points, vocabulaire + exercices, reformulation + questions QCM/vrai-faux/ouverte corrigées sur place, phrases à la loupe avec arbre rendu par `DiagramWorkspace` en lecture seule, passerelle vers le pays de l'élève), aides lexicales dosées par niveau (`preambule()`). Composants neufs partagés : `Accordeon`, `Flashcard` (⚠ `VocabulaireActivity` garde sa `Flashcard` locale — à faire converger), `ExercicesVocabulaire` (les 7 exercices de l'extension + `TestDeLecture` ; voix `speechSynthesis`, micro `webkitSpeechRecognition`, alignement LCS), `LecturesCoursEleve` (fiche prof). `Devoir.fle` (case « Utilisable dans un parcours FLE », cochée d'office avec une classe FLE ; filtre du sélecteur de `SequenceFleBuilder`).
+- **Lecture d'une séquence de cours** (2026-10-08, plan `harnais/plans/2026-10-08-lecture-sequence-de-cours-fle.md`) : l'outil de l'élève FLE — import (`ImportCoursModal`), page `/fle/lectures/[id]`, six sections générées une à une par `claude-sonnet-5-5` (résumé traduit, 10 points, vocabulaire + exercices, reformulation + questions QCM/vrai-faux/ouverte corrigées sur place, phrases à la loupe avec arbre rendu par `DiagramWorkspace` en lecture seule, passerelle vers le pays de l'élève), aides lexicales dosées par niveau (`preambule()`). Composants neufs partagés : `Accordeon`, `Flashcard` (⚠ `VocabulaireActivity` garde sa `Flashcard` locale — à faire converger), `ExercicesVocabulaire` (les 7 exercices de l'extension + `TestDeLecture` ; voix `speechSynthesis`, micro `webkitSpeechRecognition`, alignement LCS), `LecturesCoursEleve` (fiche prof). ~~`Devoir.fle`~~ **retiré le 2026-10-09** : une activité est FLE par son `referentiel` ou par ses classes (une classe FLE suffit) — `estDevoirFle()` dans `src/types/devoir.ts`, lu par `SequenceFleBuilder` et `/api/accueil-prof`. Le champ `fle` des documents existants est ignoré.
 - **Espace FLE** (2026-09-14) : `RadarFle` (SVG maison, N branches horaires depuis le haut, anneaux = niveaux visibles, aire bleue `#4a7ba7` — angles d'ÉCRAN, à l'inverse de `CeinturesRoue`), `NiveauFlePanel` (radar + une ligne par compétence : libellé, niveau en gras, curseur `range` côté prof / crans pleins côté élève ; objectifs du mois ; enregistrement différé 500 ms), `DidactiqueFlePanel` (référentiel dans /admin). La fiche élève (`EleveProfilModal`) reçoit `classeType` et place `NiveauFlePanel` avant `ProfilPanel` pour une classe FLE. **Séquences** : `SequenceFleBuilder` au **verso** (création et popup ✏️) pour une activité de type `sequence` : **ligne du temps en serpentin** (rangées mesurées, `row-reverse` une fois sur deux), un « + » (cercle pointillé ; séquence vide = grand « + » et début de serpentin) qui demande la **nature** (point de théorie / activité) puis ne propose que **l'existant** (activités en deux groupes : FLE puis Mes Activités) — créer = lien vers Mes Ressources › Modules FLE en **nouvel onglet**, la liste se relit au retour (`focus`) — 2026-09-19 ; « tous / n élèves » par étape ; côté élève `SequenceFleActivity` (rendu par `/activites/[id]` **avant** les gardes sur le travail : ligne de progression, modules dépliables avec théorie « À lire d'abord » et activités à pastille d'état). `/fle` › « Mon travail à faire » liste les séquences de l'élève depuis `/api/devoirs`. **Bibliothèque** : `ModuleFlePanel` (paniers + carte « + » qui ouvre **directement** l'éditeur sur un point vierge — créé en base au premier « Enregistrer », 2026-09-19 — + popup d'archivage), `ModuleFleCard` (réutilise les styles d'`OeuvreCard` et de `CreateOeuvreCard`), `ModuleFleEditor` (pleine page, deux colonnes : fiche + « Je peux… » du référentiel à gauche, `DocumentEditor` Tiptap + activités ordonnées ▲▼ à droite ; enregistrement EXPLICITE, bouton ambre tant qu'il reste à enregistrer ; popup « Rattacher une activité » qui lit `/api/devoirs`).
 - Éditeurs Tiptap : `WorkEditor` (élève — collage externe bloqué, seul le texte copié
   dans l'espace de travail est recollable via `internal-clipboard.ts`), `RessourceEditor`
@@ -957,6 +983,21 @@ redimensionnement — elle se bat avec la hauteur calculée.
 Corollaire : un `AutoGrowTextarea` **ne s'observe pas lui-même**. Chaque mesure
 repasse par `height: auto` ; observer ce qu'on modifie fait sursauter le champ.
 Il observe son parent, et ne réagit qu'à un changement de LARGEUR. *(2026-08-20)*
+
+### Un sélecteur CSS sans accolades avale la règle suivante
+`.ligne:hover` écrit seul, sans bloc, suivi de `.ligneAvecCase { … }` : le navigateur lit
+`.ligne:hover .ligneAvecCase { … }`, un sélecteur descendant qui ne matche jamais — et
+**personne ne prévient** (ni le build, ni les CSS Modules). La case « vu » des retards est
+restée au-dessus de l'intitulé à cause de ça ; la première « correction » enrichissait une
+règle morte. **Règle** : quand une règle CSS semble ignorée, lire la ligne AU-DESSUS de son
+sélecteur avant de toucher à ses propriétés. *(2026-10-09, `accueil.module.css`)*
+
+### `join` sur une liste d'objets écrit « [object Object] »
+Le champ Vidéo de `RessourcesInput` resynchronisait son texte avec `videosValue.join('\n')`
+alors que `videos` était devenu une liste d'objets `{url, titre}` (01/09) : chaque frappe
+réécrivait le champ en « [object Object] », d'où « impossible d'ajouter une vidéo de plus ».
+**Règle** : quand un tableau de chaînes devient un tableau d'objets, chercher tous ses
+`join` / comparaisons textuelles — TypeScript ne dit rien. *(2026-10-09)*
 
 ### Firestore refuse les champs `undefined`
 Écrire un objet dont une clé vaut `undefined` fait échouer la requête entière

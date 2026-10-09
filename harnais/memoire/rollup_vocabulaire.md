@@ -29,7 +29,7 @@ Session 2026-08-09 (retours de test JP, **livré non déployé**) :
   vides. Bouton « i » supprimé, `getFirstSyllable` supprimé de `types/vocabulaire.ts`.
   Demi-point conservé : trou trouvé à partir de la 2ᵉ vérification → `credit: 0.5`.
 
-Session 2026-10-07 (**testé et validé par JP le jour même, non déployé**) — import de listes
+Session 2026-10-07 (**testé et validé par JP le jour même, déployé le 2026-10-08**) — import de listes
 dans `VocabListEditor` (bouton « ⤓ Importer », panneau en ligne comme le panneau IA,
 pas de popup) :
 - Onglet **Liste de mots** : un mot par ligne (puces/numéros retirés) ; des lignes

@@ -32,7 +32,7 @@ prof retouche le questionnaire), et seules les questions **ouvertes** notées à
   défaut, `--apply` pour écrire, `--devoir <id>` pour une seule activité. Idempotent, ne
   touche que `scoreLecture`. **Passé le 2026-09-21 : 39 corrections écrites**, moyenne 45 %,
   étendue 3 → 64 %.
-- ⚠ **Reste à DÉPLOYER** (VPS, `/deploy`) : jusque-là, une nouvelle correction de lecture
+- ~~⚠ **Reste à DÉPLOYER**~~ **déployé** (vérifié le 2026-10-09) — jusque-là, une nouvelle correction de lecture
   n'écrit pas son total — seul le script le pose.
 - ⚠ `travaux.content` est une **chaîne JSON**, pas un objet (`parseLectureAnswers`).
 
