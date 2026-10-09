@@ -128,6 +128,19 @@ export default function AtelierPicto({ atelierId, className }: AtelierPictoProps
           <circle cx="62" cy="44" r="5" fill={PAPIER} />
         </svg>
       );
+    case 'portfolio':
+      // Un classeur à onglets : trois étapes empilées, une coche
+      return (
+        <svg {...COMMUN} className={className} aria-hidden>
+          <rect x="12" y="10" width="48" height="40" rx="5" fill={PAPIER} />
+          <path d="M12 22h48M12 34h48" strokeWidth="1.5" />
+          <circle cx="20" cy="16" r="3" fill={PRIMAIRE} stroke="none" />
+          <circle cx="20" cy="28" r="3" fill={ACCENT} stroke="none" />
+          <circle cx="20" cy="40" r="3" fill={PAPIER} />
+          <path d="M26 16h26M26 28h20M26 40h24" strokeWidth="1.5" />
+          <path d="M50 8l4 4 7-8" strokeWidth="2.5" />
+        </svg>
+      );
     case 'conceptualisation':
       // Une carte conceptuelle : des boîtes reliées
       return (

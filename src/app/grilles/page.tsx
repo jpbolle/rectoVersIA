@@ -13,6 +13,7 @@ import GrilleBuilder from '@/components/GrilleBuilder/GrilleBuilder';
 import ScenarisationPanel from '@/components/ScenarisationPanel/ScenarisationPanel';
 import OeuvrePanel from '@/components/OeuvrePanel/OeuvrePanel';
 import QuestionnaireLecturePanel from '@/components/QuestionnaireLecturePanel/QuestionnaireLecturePanel';
+import PortfolioPanel from '@/components/Portfolio/PortfolioPanel';
 import GrilleViewer from '@/components/GrilleViewer/GrilleViewer';
 import VocabCard from '@/components/VocabCard/VocabCard';
 import CreateVocabCard from '@/components/CreateVocabCard/CreateVocabCard';
@@ -22,7 +23,7 @@ import EmptyState from '@/components/EmptyState/EmptyState';
 import type { Grille, GrilleCriterion } from '@/types/grille';
 import styles from './grilles.module.css';
 
-type Tab = 'grilles' | 'vocabulaire' | 'questionnaires' | 'oeuvres' | 'scenarisation';
+type Tab = 'grilles' | 'vocabulaire' | 'questionnaires' | 'oeuvres' | 'portfolios' | 'scenarisation';
 
 export default function GrillesPage() {
   const { isAuthenticated, isLoading: authLoading, role, isAdmin: userIsAdmin, getAuthHeaders } = useAuth();
@@ -311,6 +312,12 @@ export default function GrillesPage() {
             Bibliothèque d&apos;œuvres
           </button>
           <button
+            className={`${styles.tabButton} ${activeTab === 'portfolios' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('portfolios')}
+          >
+            Portfolios
+          </button>
+          <button
             className={`${styles.tabButton} ${activeTab === 'scenarisation' ? styles.tabActive : ''}`}
             onClick={() => setActiveTab('scenarisation')}
           >
@@ -323,6 +330,9 @@ export default function GrillesPage() {
 
         {/* ===== TAB BIBLIOTHÈQUE D'ŒUVRES ===== */}
         {activeTab === 'oeuvres' && <OeuvrePanel />}
+
+        {/* ===== TAB PORTFOLIOS (matrices) ===== */}
+        {activeTab === 'portfolios' && <PortfolioPanel />}
 
         {/* ===== TAB SCÉNARISATION ===== */}
         {activeTab === 'scenarisation' && <ScenarisationPanel />}
@@ -381,8 +391,9 @@ export default function GrillesPage() {
               </div>
             </section>
 
-            {/* Grilles des autres professeurs */}
-            {(sharedGrilles.length > 0 || otherProfsGrilles.length > 0) && (
+            {/* Grilles des autres professeurs — bloc TOUJOURS présent, même vide
+                (JP, 2026-10-09 : chaque onglet a son second bloc à dupliquer) */}
+            {(
               <section className={styles.grillesSection}>
                 <div className={styles.sectionHeader}>
                   <h2 className={styles.sectionTitle}>Grilles des professeurs</h2>
@@ -391,6 +402,9 @@ export default function GrillesPage() {
                   </p>
                 </div>
 
+                {sharedGrilles.length === 0 && otherProfsGrilles.length === 0 && (
+                  <p className={styles.sectionSubtitle}>Aucune grille de collègue pour l’instant.</p>
+                )}
                 <div className={styles.grillesGrid}>
                   {[...sharedGrilles, ...otherProfsGrilles].map((grille) => (
                     <GrilleCard
@@ -483,8 +497,8 @@ export default function GrillesPage() {
               </div>
             </section>
 
-            {/* Listes des autres professeurs */}
-            {otherThemes.length > 0 && (
+            {/* Listes des autres professeurs — bloc TOUJOURS présent, même vide */}
+            {(
               <section className={styles.grillesSection}>
                 <div className={styles.sectionHeader}>
                   <h2 className={styles.sectionTitle}>Listes des professeurs</h2>
@@ -493,6 +507,9 @@ export default function GrillesPage() {
                   </p>
                 </div>
 
+                {otherThemes.length === 0 && (
+                  <p className={styles.sectionSubtitle}>Aucune liste de collègue pour l’instant.</p>
+                )}
                 <div className={styles.grillesGrid}>
                   {otherThemes.map((theme) => (
                     <VocabCard

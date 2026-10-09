@@ -96,6 +96,7 @@ const ICONE_ATELIER: Record<string, string> = {
   autoevaluation: '🪞',
   sondage: '📊',
   'sequence-fle': '🧭',
+  portfolio: '🗂️',
 };
 
 export function iconeAtelier(atelier: string | undefined | null): string {

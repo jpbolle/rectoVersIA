@@ -31,6 +31,15 @@ interface RoadmapData {
 const DEFAULT_DATA: RoadmapData = {
   nouveautes: [
     {
+      date: '9 octobre 2026',
+      items: [
+        'Portfolio d\'apprentissage : nouveau type d\'activité — des étapes vers une tâche finale (objectifs, échéance, statut IA, dépôts) et des renvois vers les autres activités',
+        'Mes Ressources › Portfolios : la matrice réutilisable, « Utiliser pour une classe » en fait une activité',
+        'Côté élève : l\'étape où l\'on en était à gauche, le « Sommaire du portfolio » à droite — cases cochées toutes seules, verrous réglés par le prof',
+        'Groupe de travail déclaré par l\'élève, confirmé par ses partenaires, accepté ou refusé par le professeur',
+      ],
+    },
+    {
       date: '5 mai 2026',
       items: [
         'Choix recto/verso de l\'espace d\'écriture : le prof décide ce qui apparaît au recto (rédaction par défaut) et au verso (planification), avec un sélecteur dans le formulaire de création/modification',

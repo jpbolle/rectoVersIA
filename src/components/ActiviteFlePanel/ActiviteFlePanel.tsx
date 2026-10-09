@@ -29,6 +29,7 @@ export default function ActiviteFlePanel() {
   const router = useRouter();
   const {
     devoirs,
+    devoirsAutresFle,
     isLoading,
     createDevoir,
     updateDevoir,
@@ -198,6 +199,32 @@ export default function ActiviteFlePanel() {
               )}
               {cartes(actives)}
             </div>
+          </section>
+
+          {/* Le second bloc, TOUJOURS présent — même vide (JP, 2026-10-09) : les
+              activités FLE des collègues, à dupliquer pour se les approprier */}
+          <section className={styles.groupe}>
+            <div className={styles.groupeEntete}>
+              <h2 className={styles.groupeTitre}>Activités FLE des professeurs</h2>
+              <p className={styles.groupeAide}>À dupliquer pour les modifier — la copie devient la vôtre.</p>
+            </div>
+            {devoirsAutresFle.length === 0 ? (
+              <p className={styles.groupeAide}>Aucune activité FLE de collègue pour l’instant.</p>
+            ) : (
+              <div className={styles.grille}>
+                {devoirsAutresFle.map((d) => (
+                  <ActiviteRessourceCard
+                    key={d.id}
+                    devoir={d}
+                    lectureSeule
+                    onOuvrir={() => undefined}
+                    onEditer={() => undefined}
+                    onDupliquer={dupliquer}
+                    onToggleArchive={() => undefined}
+                  />
+                ))}
+              </div>
+            )}
           </section>
 
           {archivees.length > 0 && (

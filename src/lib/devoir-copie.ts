@@ -58,6 +58,8 @@ export async function donneesDeCopie(
     // Séquence FLE : le parcours suit. Les élèves choisis, non : la copie
     // n'a pas de classe (le prof les rechoisit avec la classe)
     sequenceFle: devoir.sequenceFle ?? null,
+    // Portfolio d'apprentissage : les étapes suivent
+    portfolio: devoir.portfolio ?? null,
     // Une activité FLE reste une activité FLE (rangée dans Mes Ressources)
     referentiel: devoir.referentiel === 'fle' ? 'fle' : null,
     // Atelier de conceptualisation : ses réglages suivent

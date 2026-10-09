@@ -13,6 +13,7 @@ import {
   syncSessions,
 } from '@/lib/session-server';
 import { eleveExclu, identiteEleve, ouvertParSequence, restrictionElevesPourFirestore, sequenceFlePourFirestore } from '@/lib/sequence-server';
+import { portfolioContenuPourFirestore } from '@/lib/portfolio-server';
 import { verifyAuth } from '@/lib/api-auth';
 import { accesDevoir, accesSessionDepuis, nomDuProf, peutAgir, type AccesDevoir } from '@/lib/classe-acces';
 import { sanitizeRessources } from '@/lib/ressources-server';
@@ -473,6 +474,11 @@ export async function PATCH(
     }
     if (body.sequenceFle !== undefined) {
       updateData.sequenceFle = body.sequenceFle === null ? null : sequenceFlePourFirestore(body.sequenceFle);
+    }
+    // Portfolio d'apprentissage : ses étapes
+    if (body.portfolio !== undefined) {
+      updateData.portfolio =
+        body.portfolio === null ? null : portfolioContenuPourFirestore(body.portfolio, { codeAutorise: auth.isAdmin });
     }
 
     if (Object.keys(updateData).length === 0) {

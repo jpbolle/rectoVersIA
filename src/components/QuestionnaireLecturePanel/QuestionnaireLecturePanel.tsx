@@ -27,6 +27,8 @@ export default function QuestionnaireLecturePanel() {
   const { isAuthenticated, getAuthHeaders } = useAuth();
   const [miens, setMiens] = useState<QuestionnaireLectureResume[]>([]);
   const [exemples, setExemples] = useState<QuestionnaireLectureResume[]>([]);
+  // Ceux des collègues (bloc « des professeurs », toujours présent — JP 2026-10-09)
+  const [autres, setAutres] = useState<QuestionnaireLectureResume[]>([]);
   const [chargement, setChargement] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -47,6 +49,7 @@ export default function QuestionnaireLecturePanel() {
       if (json.success) {
         setMiens(json.data.miens);
         setExemples(json.data.exemples);
+        setAutres(Array.isArray(json.data.autres) ? json.data.autres : []);
       }
     } catch (err) {
       console.error('Erreur chargement des questionnaires:', err);
@@ -74,6 +77,31 @@ export default function QuestionnaireLecturePanel() {
       setQuiz(json.data.quiz);
     },
     [getAuthHeaders]
+  );
+
+  // Dupliquer un questionnaire de collègue : on le lit, on en crée une copie à soi
+  const dupliquer = useCallback(
+    async (q: QuestionnaireLectureResume) => {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      try {
+        const res = await fetch(`/api/questionnaires-lecture/${q.id}`, { headers });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || 'Lecture impossible');
+        const post = await fetch('/api/questionnaires-lecture', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ nom: `COPIE - ${json.data.nom}`, description: json.data.description ?? '', quiz: json.data.quiz }),
+        });
+        const pj = await post.json();
+        if (!pj.success) throw new Error(pj.message || 'Duplication impossible');
+        setMessage('Questionnaire dupliqué — il est dans « Mes questionnaires »');
+        charger();
+      } catch (e) {
+        setMessage(e instanceof Error ? e.message : 'Duplication impossible');
+      }
+    },
+    [getAuthHeaders, charger]
   );
 
   const creer = useCallback(() => {
@@ -271,24 +299,44 @@ export default function QuestionnaireLecturePanel() {
         )}
       </div>
 
-      {exemples.length > 0 && (
-        <>
-          <h2 className={styles.sectionTitle}>Questionnaires des professeurs</h2>
-          <div className={styles.grid}>
-            {exemples.map((q) => (
-              <article key={q.id} className={styles.card}>
-                <div className={styles.cardIcon}>📋</div>
-                <h3 className={styles.title}>{q.nom}</h3>
-                <div className={styles.metaRow}>
-                  <span className={styles.metaItem}>
-                    ❓ {q.nbQuestions} question{q.nbQuestions > 1 ? 's' : ''}
-                  </span>
-                </div>
-              </article>
-            ))}
-          </div>
-        </>
+      {/* Le second bloc, TOUJOURS présent — même vide : exemples partagés et
+          questionnaires des collègues, à dupliquer pour se les approprier */}
+      <h2 className={styles.sectionTitle}>Questionnaires des professeurs</h2>
+      {!chargement && exemples.length === 0 && autres.length === 0 && (
+        <p className={styles.description}>Aucun questionnaire de collègue pour l’instant.</p>
       )}
+      <div className={styles.grid}>
+        {[...exemples, ...autres].map((q) => (
+          <article key={q.id} className={styles.card}>
+            <div className={styles.tags}>
+              {q.shared && <span className={styles.tag}>Exemple partagé</span>}
+              <span className={styles.tag}>{q.mode === 'quiz' ? 'Quiz' : 'Questionnaire'}</span>
+            </div>
+            <div className={styles.cardIcon}>📋</div>
+            <h3 className={styles.title}>{q.nom}</h3>
+            {q.description && <p className={styles.description}>{q.description}</p>}
+            <div className={styles.metaRow}>
+              <span className={styles.metaItem}>
+                ❓ {q.nbQuestions} question{q.nbQuestions > 1 ? 's' : ''}
+              </span>
+              <span className={styles.metaItem}>
+                🎯 {q.points} pt{q.points > 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={() => dupliquer(q)}
+                title="Dupliquer dans mes questionnaires"
+                aria-label="Dupliquer dans mes questionnaires"
+              >
+                ⧉
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }

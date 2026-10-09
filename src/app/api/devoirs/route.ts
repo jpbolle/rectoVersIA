@@ -11,6 +11,7 @@ import {
   syncSessions,
 } from '@/lib/session-server';
 import { eleveExclu, lireSequenceFle, restrictionElevesPourFirestore, sequenceFlePourFirestore } from '@/lib/sequence-server';
+import { lirePortfolioContenu, portfolioContenuPourFirestore } from '@/lib/portfolio-server';
 import { verifyAuth } from '@/lib/api-auth';
 import { classesAccessibles, nomDuProf } from '@/lib/classe-acces';
 import { sanitizeRessources } from '@/lib/ressources-server';
@@ -118,6 +119,8 @@ export async function GET(request: NextRequest) {
         eleves: Array.isArray(data.eleves) ? (data.eleves as string[]) : null,
         // Séquence FLE : le parcours (modules)
         sequenceFle: data.typeTravail === 'sequence' ? lireSequenceFle(data.sequenceFle) : null,
+        // Portfolio d'apprentissage : ses étapes
+        portfolio: data.typeTravail === 'portfolio' ? lirePortfolioContenu(data.portfolio) : null,
         // Activité FLE : rangée dans Mes Ressources › Modules FLE, pas au tableau de bord
         referentiel: data.referentiel === 'fle' ? ('fle' as const) : null,
         submittedCount: undefined as number | undefined,
@@ -374,14 +377,31 @@ export async function GET(request: NextRequest) {
       devoirs = devoirs.filter((d) => !eleveExclu(d.eleves, mesFiches));
     }
 
+    // ── Les ACTIVITÉS FLE des collègues (Mes ressources FLE › bloc « des
+    // professeurs », JP 2026-10-09) : lisibles et duplicables, jamais modifiées.
+    // Panier à part, comme `partagees` : aucun écran existant ne les reçoit
+    // sans l'avoir demandé.
+    let autresFle: ReturnType<typeof versDevoir>[] = [];
+    if (auth.role === 'prof') {
+      try {
+        const snapFle = await adminDb.collection('devoirs').where('referentiel', '==', 'fle').get();
+        autresFle = snapFle.docs
+          .filter((d) => d.data().profId !== auth.uid && d.data().archive !== true)
+          .map(versDevoir);
+      } catch (e) {
+        console.error('Activités FLE des collègues illisibles :', e);
+      }
+    }
+
     if (idsPartagees.size > 0) {
       return NextResponse.json({
         success: true,
         data: devoirs.filter((d) => !idsPartagees.has(d.id)),
         partagees: devoirs.filter((d) => idsPartagees.has(d.id)),
+        autresFle,
       });
     }
-    return NextResponse.json({ success: true, data: devoirs });
+    return NextResponse.json({ success: true, data: devoirs, autresFle });
   } catch (error) {
     console.error('Erreur GET /api/devoirs:', error);
     return NextResponse.json(
@@ -440,6 +460,7 @@ export async function POST(request: NextRequest) {
       oeuvreChapitres,
       oeuvreMinimum,
       sequenceFle,
+      portfolio,
       eleves,
       referentiel,
       schema,
@@ -607,6 +628,11 @@ export async function POST(request: NextRequest) {
     // Séquence FLE : son parcours (recopié à la duplication)
     if (typeTravail === 'sequence') {
       devoirData.sequenceFle = sequenceFlePourFirestore(sequenceFle ?? {});
+    }
+
+    // Portfolio d'apprentissage : ses étapes (copiées depuis la matrice, ou composées)
+    if (typeTravail === 'portfolio') {
+      devoirData.portfolio = portfolioContenuPourFirestore(portfolio ?? {}, { codeAutorise: auth.isAdmin });
     }
 
     // Atelier de conceptualisation : type de départ + liberté de transformer

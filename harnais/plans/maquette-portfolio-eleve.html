@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette v2 — Portfolio d'apprentissage (2026-10-09)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --c-primary:#2d6a5a;--c-primary-light:#357a68;--c-primary-dark:#245649;
+    --c-accent:#d4944c;--c-accent-dark:#c4862e;
+    --c-bg:#faf6f0;--c-bg-card:#fff;--c-bg-element:#f0ebe3;
+    --c-text:#3d3832;--c-text-secondary:#5a534b;--c-text-muted:#8a7f72;--c-text-dim:#a89e92;
+    --c-border:#d5cec4;--c-border-strong:#b5ad9f;
+    --c-danger:#b44040;--c-success:#2d8a4e;--c-warning:#c4862e;
+    --c-shadow-card:0 2px 8px rgba(0,0,0,.08);--c-shadow-popup:0 4px 16px rgba(0,0,0,.15),0 1px 4px rgba(0,0,0,.1);
+    --c-radius:4px;--c-radius-lg:8px;
+    --c-font-title:'Playfair Display',Georgia,serif;--c-font-body:'Inter',system-ui,sans-serif;
+    --rail:#98ADC4;--rail-dark:#8a9fb8;--bleu:#4a7ba7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--c-bg);color:var(--c-text);font-family:var(--c-font-body);font-size:14px;line-height:1.5}
+  .mq{background:#3d3832;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px}
+  .mq strong{font-family:var(--c-font-title);font-size:15px;margin-right:6px}
+  .mq button{background:transparent;border:1px solid #777;color:#fff;padding:6px 12px;border-radius:20px;cursor:pointer;font:inherit}
+  .mq button.on{background:var(--c-accent);border-color:var(--c-accent);font-weight:600}
+  .mq .note{margin-left:auto;color:#ccc}
+  .vue{display:none}.vue.on{display:block}
+
+  .topbar{background:linear-gradient(135deg,#2d6a5a,#357a68);color:#fff;padding:10px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(45,106,90,.2)}
+  .topbar .retour{opacity:.85}
+  .topbar .titre{font-family:var(--c-font-title);font-size:18px;font-weight:600}
+  .topbar .chip{background:rgba(255,255,255,.18);padding:3px 10px;border-radius:20px;font-size:12px}
+  .topbar .droite{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px;opacity:.9}
+
+  .main{display:flex;gap:16px;padding:20px;height:calc(100vh - 44px - 50px);min-height:640px}
+  .col1{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--c-bg-card);border-radius:var(--c-radius-lg);box-shadow:var(--c-shadow-card);overflow:hidden}
+  .colHead{background:var(--rail);border-bottom:1px solid var(--rail-dark);padding:14px 20px;display:flex;align-items:center;gap:14px;color:#fff}
+  .colHead h2{margin:0;font-family:var(--c-font-title);font-size:18px;font-weight:600}
+  .colHead .sect{font-size:12px;opacity:.85;display:block}
+  .colHead .nav{margin-left:auto;display:flex;gap:8px}
+  .colHead .nav button{background:rgba(255,255,255,.18);border:none;color:#fff;padding:6px 12px;border-radius:var(--c-radius);cursor:pointer;font:inherit;font-size:12px;font-weight:500}
+  .colHead .nav button[disabled]{opacity:.5;cursor:not-allowed}
+  .colBody{flex:1;overflow-y:auto;padding:22px 28px 40px}
+
+  .panel{width:28%;min-width:300px;background:var(--c-bg-card);border-radius:var(--c-radius-lg);box-shadow:var(--c-shadow-card);display:flex;flex-direction:column;overflow:hidden;position:relative}
+  .panelHead{background:var(--rail);border-bottom:1px solid var(--rail-dark);padding:14px 18px;min-height:56px;display:flex;align-items:center;justify-content:space-between;color:#fff}
+  .panelHead h3{margin:0;font-family:var(--c-font-title);font-size:17px;font-weight:600}
+  .panelHead .x{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center}
+  .panelBody{flex:1;overflow-y:auto}
+  .rail{width:56px;background:var(--rail);border-radius:var(--c-radius-lg);box-shadow:var(--c-shadow-card);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:6px}
+  .railBtn{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;cursor:pointer;position:relative}
+  .railBtn.on{background:#fff;color:var(--rail)}
+  .railBtn[title]:hover::after{content:attr(title);position:absolute;right:48px;background:#3d3832;color:#fff;font-size:11px;padding:4px 8px;border-radius:4px;white-space:nowrap}
+
+  .meta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--c-border);background:var(--c-bg-element);color:var(--c-text-secondary)}
+  .tag.ech{border-color:var(--c-accent);color:var(--c-accent-dark);background:#fbf1e6}
+  .tag.ia-part{border-color:var(--c-warning);color:var(--c-warning);background:#fbf1e6}
+  .tag.ia-libre{border-color:var(--c-success);color:var(--c-success);background:#eaf5ee}
+  .tag.perso{border-style:dashed}
+  .tag.coll{border-color:var(--bleu);color:var(--bleu);background:#eef3f8}
+  h4{font-family:var(--c-font-title);font-size:15px;margin:22px 0 8px;color:var(--c-primary)}
+  h4:first-of-type{margin-top:0}
+  .objectifs{margin:0;padding-left:20px;color:var(--c-text-secondary)}
+  .consigne{background:var(--c-bg-element);border-left:3px solid var(--c-primary);padding:12px 16px;border-radius:0 var(--c-radius) var(--c-radius) 0}
+  .depot{border:1px solid var(--c-border);border-radius:var(--c-radius-lg);padding:14px 16px;margin-top:14px;background:#fff}
+  .depot .lib{display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:4px}
+  .depot .lib .obl{font-size:11px;color:var(--c-accent-dark);font-weight:500}
+  .depot .lib .etat{margin-left:auto;font-size:11px;color:var(--c-text-muted);font-weight:400}
+  .depot .lib .etat.ok{color:var(--c-success)}
+  .depot .lib .etat.att{color:var(--c-warning)}
+  .depot .aide{font-size:13px;color:var(--c-text-muted);margin:0 0 8px}
+  .champ{width:100%;min-height:68px;border:1px solid var(--c-border);border-radius:var(--c-radius);padding:10px 12px;font:inherit;color:var(--c-text);resize:none;background:#fff}
+  .champ.filigrane{color:var(--c-text-dim);font-style:italic}
+  .sauve{font-size:11px;color:var(--c-text-dim);text-align:right;margin-top:4px}
+  .renvoi{display:flex;align-items:center;gap:16px;border:1px solid var(--c-border);border-radius:var(--c-radius-lg);padding:16px 18px;margin-top:14px;background:var(--c-bg-element)}
+  .renvoi .picto{font-size:28px}
+  .renvoi .txt b{display:block}
+  .renvoi .txt span{font-size:12px;color:var(--c-text-muted)}
+  .renvoi .btn{margin-left:auto}
+  .btn{background:linear-gradient(90deg,#2d6a5a,#357a68);color:#fff;border:none;border-radius:var(--c-radius);padding:9px 16px;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+  .btn.sec{background:#fff;color:var(--c-primary);border:1px solid var(--c-primary)}
+  .btn.ghost{background:transparent;color:var(--c-text-secondary);border:1px solid var(--c-border)}
+  .btn.ok{background:var(--c-success)}
+  .btn.non{background:#fff;color:var(--c-danger);border:1px solid var(--c-danger)}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .bas{display:flex;justify-content:space-between;align-items:center;margin-top:34px;padding-top:18px;border-top:1px solid var(--c-border)}
+  .bas .milieu{font-size:12px;color:var(--c-text-muted)}
+  .verrouMsg{display:flex;align-items:center;gap:14px;background:#fbf1e6;border:1px solid var(--c-accent);border-radius:var(--c-radius-lg);padding:14px 18px;margin-top:14px;color:var(--c-accent-dark)}
+  .verrouMsg .big{font-size:26px}
+
+  /* groupe */
+  .membres{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  .membre{display:flex;align-items:center;gap:10px;border:1px solid var(--c-border);border-radius:var(--c-radius);padding:8px 12px;background:#fff}
+  .membre .av{width:28px;height:28px;border-radius:50%;background:var(--c-bg-element);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--c-primary)}
+  .membre .st{margin-left:auto;font-size:11px;color:var(--c-text-muted)}
+  .membre .st.ok{color:var(--c-success)}
+  .membre .sup{color:var(--c-text-dim);cursor:pointer}
+  .ajoutM{display:flex;gap:8px;margin-top:8px}
+  .ajoutM input{flex:1;border:1px solid var(--c-border);border-radius:var(--c-radius);padding:8px 10px;font:inherit}
+  .statut{margin-top:12px;padding:10px 14px;border-radius:var(--c-radius);font-size:13px;display:flex;align-items:center;gap:10px}
+  .statut.att{background:#fbf1e6;color:var(--c-accent-dark)}
+  .statut.ok{background:#eaf5ee;color:var(--c-success)}
+
+  /* sommaire */
+  .plan{padding:12px 14px}
+  .consigneG{font-size:12.5px;color:var(--c-text-secondary);background:var(--c-bg-element);border-left:3px solid var(--c-primary);padding:8px 10px;border-radius:0 4px 4px 0;margin:0 2px 12px}
+  .plan .compteur{font-size:12px;color:var(--c-text-muted);margin:0 4px 10px;display:flex;justify-content:space-between}
+  .plan .legende{display:flex;gap:10px;font-size:11px;color:var(--c-text-dim);margin:0 4px 14px;flex-wrap:wrap}
+  .section{margin-bottom:6px}
+  .sectionT{display:flex;align-items:center;gap:8px;padding:8px 6px;font-weight:600;font-size:13px;cursor:pointer;border-radius:var(--c-radius)}
+  .sectionT:hover{background:var(--c-bg-element)}
+  .sectionT .chev{color:var(--c-text-dim);font-size:11px;width:12px}
+  .sectionT .n{margin-left:auto;font-weight:400;font-size:11px;color:var(--c-text-dim)}
+  .etape{display:flex;align-items:center;gap:9px;padding:7px 8px 7px 24px;border-radius:var(--c-radius);cursor:pointer;font-size:13px}
+  .etape:hover{background:var(--c-bg-element)}
+  .etape.on{background:#eef3f8;font-weight:600}
+  .etape.ferme{cursor:not-allowed;color:var(--c-text-dim)}
+  .etape.ferme:hover{background:transparent}
+  .etape input[type=checkbox]{margin:0;width:15px;height:15px;accent-color:var(--c-success);flex-shrink:0}
+  .etape .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .etape .t.fait{text-decoration:line-through;color:var(--c-text-muted)}
+  .etape .t small{font-size:11px;color:var(--c-text-dim);font-weight:400}
+  .etape .d{font-size:11px;color:var(--c-text-dim);white-space:nowrap}
+  .etape .d.retard{color:var(--c-danger);font-weight:600}
+  .etape .ic{font-size:12px;flex-shrink:0}
+
+  /* popup prof */
+  .fond{background:rgba(40,35,30,.55);min-height:calc(100vh - 44px);display:flex;align-items:center;justify-content:center;padding:30px 20px}
+  .popup{background:var(--c-bg-card);border-radius:var(--c-radius-lg);box-shadow:var(--c-shadow-popup);width:780px;max-width:100%;overflow:hidden}
+  .popup .h{background:linear-gradient(135deg,#2d6a5a,#357a68);color:#fff;padding:14px 20px;display:flex;align-items:center}
+  .popup .h h3{margin:0;font-family:var(--c-font-title);font-size:18px;font-weight:600}
+  .popup .h .x{margin-left:auto;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center}
+  .popup .c{padding:20px 22px;max-height:72vh;overflow-y:auto}
+  .popup .f{padding:14px 22px;border-top:1px solid var(--c-border);display:flex;justify-content:flex-end;gap:10px;background:var(--c-bg)}
+  .ligne2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .lab{display:block;font-size:12px;font-weight:600;color:var(--c-text-secondary);margin:14px 0 5px}
+  .in{width:100%;border:1px solid var(--c-border);border-radius:var(--c-radius);padding:8px 10px;font:inherit;background:#fff}
+  .in.ta{min-height:60px;resize:vertical}
+  .seg{display:inline-flex;border:1px solid var(--c-border);border-radius:var(--c-radius);overflow:hidden}
+  .seg span{padding:7px 12px;font-size:12.5px;cursor:pointer;border-right:1px solid var(--c-border)}
+  .seg span:last-child{border-right:none}
+  .seg span.on{background:var(--c-primary);color:#fff;font-weight:600}
+  .hint{font-size:11.5px;color:var(--c-text-muted);margin:4px 0 0}
+  .toggle{display:flex;align-items:center;gap:12px;border:1px solid var(--c-border);border-radius:var(--c-radius-lg);padding:12px 14px;margin-top:14px;background:var(--c-bg)}
+  .toggle .sw{width:40px;height:22px;border-radius:11px;background:var(--c-success);position:relative;flex-shrink:0}
+  .toggle .sw::after{content:"";position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;background:#fff}
+  .toggle .sw.off{background:var(--c-border-strong)}
+  .toggle .sw.off::after{right:auto;left:3px}
+  .toggle b{display:block;font-size:13px}
+  .toggle span{font-size:12px;color:var(--c-text-muted)}
+  .dep{border:1px solid var(--c-border);border-radius:var(--c-radius-lg);padding:12px 14px;margin-top:10px;background:var(--c-bg)}
+  .dep .dt{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .dep .dt .num{font-weight:700;color:var(--c-primary)}
+  .dep .dt select{font:inherit;font-size:12px;border:1px solid var(--c-border);border-radius:4px;padding:4px 6px;background:#fff}
+  .dep .dt .sup{color:var(--c-text-dim);cursor:pointer;font-size:16px}
+  .ajout{margin-top:10px;background:none;border:1px dashed var(--c-border-strong);border-radius:var(--c-radius);padding:9px;width:100%;color:var(--c-primary);font:inherit;font-weight:600;cursor:pointer}
+  .objLigne{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .objLigne .in{flex:1}
+  .legend{margin:14px 20px 30px;font-size:12.5px;color:var(--c-text-muted);max-width:960px}
+  .legend b{color:var(--c-text-secondary)}
+
+  /* Mes Ressources */
+  .page{padding:20px;max-width:1200px;margin:0 auto}
+  .tabs{display:flex;gap:4px;border-bottom:2px solid var(--c-border);margin-bottom:20px}
+  .tabs span{padding:10px 16px;font-weight:500;color:var(--c-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
+  .tabs span.on{color:var(--c-primary);border-bottom-color:var(--c-primary);font-weight:600}
+  .cartes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .carte{background:#fff;border-radius:var(--c-radius-lg);box-shadow:var(--c-shadow-card);padding:16px 18px;display:flex;flex-direction:column;gap:8px;min-height:170px}
+  .carte h5{margin:0;font-family:var(--c-font-title);font-size:16px;color:var(--c-primary)}
+  .carte .etq{display:flex;gap:6px;flex-wrap:wrap}
+  .carte .etq span{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--c-bg-element);color:var(--c-text-secondary)}
+  .carte .desc{font-size:12.5px;color:var(--c-text-muted);flex:1}
+  .carte .act{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--c-border);padding-top:10px}
+  .carte.creer{border:2px dashed var(--c-border-strong);box-shadow:none;background:transparent;align-items:center;justify-content:center;color:var(--c-primary);font-weight:600;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="mq">
+  <strong>Maquette v2 · Portfolio</strong>
+  <button class="on" data-v="v1">1 · Élève — une étape</button>
+  <button data-v="v2">2 · Élève — groupe &amp; verrou</button>
+  <button data-v="v3">3 · Prof — édition d'une étape</button>
+  <button data-v="v4">4 · Prof — Mes Ressources › Portfolios</button>
+  <span class="note">v2, 2026-10-09 après-midi — intègre les réponses de JP : sommaire à droite, verrou réglable, sections collectives, groupe à valider, matrice dans Mes Ressources</span>
+</div>
+
+<!-- ═══════════ VUE 1 : l'élève dans une étape, là où il en était ═══════════ -->
+<section class="vue on" id="v1">
+  <div class="topbar">
+    <span class="retour">← Mes activités</span>
+    <span class="titre">Interpréter Molière !</span>
+    <span class="chip">Portfolio</span><span class="chip">4C</span>
+    <div class="droite"><span>Échéance du portfolio : 15 déc.</span><span class="chip">Enregistré il y a 3 s</span></div>
+  </div>
+  <div class="main">
+    <div class="col1">
+      <div class="colHead">
+        <div><span class="sect">2. Compréhension de la scène · étape 7 sur 18</span><h2>2.2 Mon personnage</h2></div>
+        <div class="nav"><button>← 2.1</button><button disabled title="Termine d'abord 2.2">3.1 → 🔒</button></div>
+      </div>
+      <div class="colBody">
+        <div class="meta">
+          <span class="tag ech">📅 Échéance · 12 novembre</span>
+          <span class="tag ia-part">🤖 IA partielle — pour reformuler, pas pour inventer</span>
+          <span class="tag perso">👤 Travail personnel</span>
+        </div>
+        <h4>Objectifs</h4>
+        <ul class="objectifs">
+          <li>Cerner les traits physiques et psychologiques du personnage que je joue.</li>
+          <li>Justifier mes choix de costume, de maquillage et d'objet symbolique.</li>
+        </ul>
+        <h4>Consigne</h4>
+        <div class="consigne">Quatre productions personnelles : la mind map du personnage se fait dans l'activité de schématisation (ci-dessous) ; les trois textes se déposent ici. En classe, trois improvisations suivront — elles ne laissent aucune trace dans le portfolio.</div>
+        <h4>À déposer</h4>
+        <div class="renvoi">
+          <span class="picto">🕸️</span>
+          <div class="txt"><b>Mind map de mon personnage</b><span>Activité de schématisation · <span style="color:var(--c-accent-dark);font-weight:600">en cours</span> — tu y as travaillé le 4 nov.</span></div>
+          <button class="btn sec">Ouvrir l'activité</button>
+        </div>
+        <div class="depot">
+          <div class="lib">Costume et maquillage <span class="obl">· obligatoire</span><span class="etat ok">✓ déposé</span></div>
+          <p class="aide">Décris ta démarche : ce que tu as choisi, et ce que ça dit du personnage.</p>
+          <textarea class="champ">Harpagon porte un habit noir élimé, trop grand pour lui : il refuse d'en acheter un neuf depuis vingt ans. Le maquillage creuse les joues — un homme qui se prive même de manger.</textarea>
+          <div class="sauve">Enregistré</div>
+        </div>
+        <div class="depot">
+          <div class="lib">Objet symbolique et métonymique <span class="obl">· obligatoire</span><span class="etat">à faire</span></div>
+          <p class="aide">Quel objet représente ton personnage sur scène ? Pourquoi celui-là ?</p>
+          <textarea class="champ filigrane">Ex. : La cassette. Elle contient tout ce qu'Harpagon aime au monde — il la serre comme on serrerait un enfant…</textarea>
+          <div class="sauve">L'exemple s'efface quand tu écris</div>
+        </div>
+        <div class="depot">
+          <div class="lib">Une phrase du texte qui résume mon personnage<span class="etat">à faire</span></div>
+          <p class="aide">Recopie la réplique, puis explique en quoi elle le résume.</p>
+          <textarea class="champ"></textarea>
+        </div>
+        <div class="verrouMsg"><span class="big">🔒</span><div><b>L'étape 3.1 s'ouvrira quand celle-ci sera faite</b><br><span style="font-size:12px">Il manque : l'objet symbolique, et la mind map à remettre.</span></div></div>
+        <div class="bas">
+          <button class="btn ghost">← 2.1 Adaptation du texte</button>
+          <span class="milieu">1 dépôt sur 2 obligatoires · mind map en cours</span>
+          <button class="btn" disabled>3.1 Intonation → 🔒</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panelHead"><h3>Sommaire du portfolio</h3><span class="x">×</span></div>
+      <div class="panelBody"><div class="plan">
+        <div class="consigneG">Mets en scène un extrait de Molière avec ton groupe. Chaque étape te dit si l'IA est permise — vérifie avant d'ouvrir un outil.</div>
+        <div class="compteur"><span>6 étapes faites sur 18</span><span>Tâche finale : 15 déc.</span></div>
+        <div class="legende"><span>☑ cochée toute seule quand c'est fait</span><span>🔒 fermée</span><span>👥 collective</span></div>
+        <div class="section"><div class="sectionT"><span class="chev">▸</span>0. Introduction au projet<span class="n">1/1</span></div></div>
+        <div class="section"><div class="sectionT"><span class="chev">▸</span>1. Premiers préparatifs<span class="n">4/4</span></div></div>
+        <div class="section"><div class="sectionT"><span class="chev">▾</span>2. Compréhension de la scène<span class="n">1/3</span></div>
+          <div class="etape"><input type="checkbox" checked disabled><span class="t fait">2.0 Comprendre les répliques</span><span class="d">22 oct.</span></div>
+          <div class="etape"><input type="checkbox" disabled><span class="ic">👥</span><span class="t">2.1 Adaptation du texte</span><span class="d retard">5 nov. · en retard</span></div>
+          <div class="etape on"><input type="checkbox" disabled><span class="t">2.2 Mon personnage <small>1/2</small></span><span class="d">12 nov.</span></div>
+        </div>
+        <div class="section"><div class="sectionT"><span class="chev">▾</span>3. Travail de la mise en scène<span class="n">0/4</span></div>
+          <div class="etape ferme"><span class="ic">🔒</span><span class="t">3.1 Intonation — lecture</span><span class="d">19 nov.</span></div>
+          <div class="etape ferme"><span class="ic">🔒</span><span class="t">3.2 Gestuelle — Selfie BD</span><span class="d">19 nov.</span></div>
+          <div class="etape ferme"><span class="ic">🔒</span><span class="t">3.3 Répétitions <small>· sans trace</small></span><span class="d"></span></div>
+          <div class="etape ferme"><span class="ic">🔒</span><span class="ic">👥</span><span class="t">3.4 Bruits, musique, écrans</span><span class="d">26 nov.</span></div>
+        </div>
+        <div class="section"><div class="sectionT"><span class="chev">▸</span>4. Création de l'affiche<span class="n">0/2</span></div></div>
+        <div class="section"><div class="sectionT"><span class="chev">▸</span>5. Répétition générale et coévaluation<span class="n">0/1</span></div></div>
+        <div class="section"><div class="sectionT"><span class="chev">▸</span>6. Passation<span class="n">0/1</span></div></div>
+        <div class="section"><div class="sectionT"><span class="chev">▸</span>7. Regards sur le travail<span class="n">0/2</span></div></div>
+      </div></div>
+    </div>
+    <div class="rail">
+      <div class="railBtn on" title="Sommaire du portfolio">📋</div>
+      <div class="railBtn" title="Ressources">📁</div>
+      <div class="railBtn" title="Évaluation">📊</div>
+    </div>
+  </div>
+  <p class="legend"><b>Vue 1.</b> La colonne 1 s'ouvre sur l'étape où l'élève en était (mémorisée). Pas de serpentin à gauche : la vue d'ensemble est l'onglet <b>Sommaire du portfolio</b> à droite — sections repliables, une case par étape cochée toute seule quand c'est fait, 🔒 sur les étapes fermées, 👥 sur les collectives. Ici le prof a verrouillé 2.2 : la 3.1 reste fermée tant que les dépôts obligatoires et la mind map ne sont pas rendus, et l'écran le dit en clair.</p>
+</section>
+
+<!-- ═══════════ VUE 2 : groupe à valider + étape verrouillée ═══════════ -->
+<section class="vue" id="v2">
+  <div class="topbar">
+    <span class="retour">← Mes activités</span>
+    <span class="titre">Interpréter Molière !</span>
+    <span class="chip">Portfolio</span><span class="chip">4C</span>
+    <div class="droite"><span>Échéance du portfolio : 15 déc.</span></div>
+  </div>
+  <div class="main">
+    <div class="col1">
+      <div class="colHead">
+        <div><span class="sect">1. Premiers préparatifs · étape 3 sur 18</span><h2>1.1 Lecture de l'anthologie et choix de la scène</h2></div>
+        <div class="nav"><button>← 1.0</button><button>1.2 →</button></div>
+      </div>
+      <div class="colBody">
+        <div class="meta">
+          <span class="tag ech">📅 Échéance · 7 octobre</span>
+          <span class="tag ia-libre">🤖 IA libre</span>
+          <span class="tag coll">👥 Étape collective — partagée avec ton groupe une fois accepté</span>
+        </div>
+        <h4>Consigne</h4>
+        <div class="consigne">Lis l'anthologie, choisis une scène avec tes partenaires, puis déclare ton groupe ici. Le professeur doit l'accepter avant que vous ne travailliez ensemble dans le portfolio.</div>
+        <h4>À déposer</h4>
+        <div class="renvoi">
+          <span class="picto">📚</span>
+          <div class="txt"><b>Anthologie Molière</b><span>Lecture d'une œuvre · <span style="color:var(--c-success);font-weight:600">terminée</span> — 11 scènes lues sur 11</span></div>
+          <button class="btn sec">Rouvrir</button>
+        </div>
+        <div class="depot">
+          <div class="lib">Mon groupe <span class="obl">· obligatoire</span><span class="etat att">⏳ en attente du professeur</span></div>
+          <p class="aide">Ajoute tes partenaires (3 à 5 élèves de la 4C). Chacun confirme de son côté.</p>
+          <div class="membres">
+            <div class="membre"><span class="av">LD</span>Léa D. <span style="font-size:11px;color:var(--c-text-dim)">(toi)</span><span class="st ok">✓</span></div>
+            <div class="membre"><span class="av">MK</span>Mehdi K.<span class="st ok">✓ a confirmé</span><span class="sup">×</span></div>
+            <div class="membre"><span class="av">SB</span>Sarah B.<span class="st">en attente de sa confirmation</span><span class="sup">×</span></div>
+            <div class="membre"><span class="av">TR</span>Tom R.<span class="st ok">✓ a confirmé</span><span class="sup">×</span></div>
+          </div>
+          <div class="ajoutM"><input placeholder="Ajouter un élève de la classe… (tape les premières lettres)"><button class="btn sec">Ajouter</button></div>
+          <div class="statut att">⏳ Groupe déclaré le 6 oct. — le professeur ne l'a pas encore accepté. Tant qu'il ne l'est pas, les étapes collectives restent personnelles.</div>
+        </div>
+        <div class="depot">
+          <div class="lib">L'extrait choisi et le personnage que je joue <span class="obl">· obligatoire</span><span class="etat ok">✓ déposé</span></div>
+          <textarea class="champ">L'Avare, acte I, scène 3 (Harpagon chasse La Flèche). Je joue Harpagon.</textarea>
+        </div>
+        <div class="bas">
+          <button class="btn ghost">← 1.0 Choix d'un sketch</button>
+          <span class="milieu">groupe en attente · 1 dépôt sur 1</span>
+          <button class="btn">1.2 Découverte de Molière →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panelHead"><h3>Sommaire du portfolio</h3><span class="x">×</span></div>
+      <div class="panelBody"><div class="plan">
+        <div class="consigneG">Mets en scène un extrait de Molière avec ton groupe. Chaque étape te dit si l'IA est permise.</div>
+        <div class="compteur"><span>2 étapes faites sur 18</span><span>Tâche finale : 15 déc.</span></div>
+        <div class="section"><div class="sectionT"><span class="chev">▾</span>0. Introduction au projet<span class="n">1/1</span></div>
+          <div class="etape"><input type="checkbox" checked disabled><span class="t fait">0. Le projet, les objectifs, la cotation</span><span class="d"></span></div></div>
+        <div class="section"><div class="sectionT"><span class="chev">▾</span>1. Premiers préparatifs<span class="n">1/4</span></div>
+          <div class="etape"><input type="checkbox" checked disabled><span class="t fait">1.0 Choix d'un sketch</span><span class="d">2 oct.</span></div>
+          <div class="etape on"><input type="checkbox" disabled><span class="ic">👥</span><span class="t">1.1 Anthologie et groupe <small>⏳ prof</small></span><span class="d">7 oct.</span></div>
+          <div class="etape"><input type="checkbox" disabled><span class="t">1.2 Découverte de Molière</span><span class="d">14 oct.</span></div>
+          <div class="etape"><input type="checkbox"><span class="t">1.3 Lecture intégrale <small>· je coche moi-même</small></span><span class="d"></span></div></div>
+        <div class="section"><div class="sectionT"><span class="chev">▾</span>2. Compréhension de la scène<span class="n">0/3</span></div>
+          <div class="etape ferme"><span class="ic">🔒</span><span class="t">2.0 Comprendre les répliques</span><span class="d">22 oct.</span></div>
+          <div class="etape ferme"><span class="ic">🔒</span><span class="ic">👥</span><span class="t">2.1 Adaptation du texte</span><span class="d">5 nov.</span></div>
+          <div class="etape ferme"><span class="ic">🔒</span><span class="t">2.2 Mon personnage</span><span class="d">12 nov.</span></div></div>
+        <div class="section"><div class="sectionT"><span class="chev">▸</span>3. Travail de la mise en scène<span class="n">0/4</span></div></div>
+        <div class="section"><div class="sectionT"><span class="chev">▸</span>4. Création de l'affiche<span class="n">0/2</span></div></div>
+        <div class="section"><div class="sectionT"><span class="chev">▸</span>5 · 6 · 7 …<span class="n">0/4</span></div></div>
+      </div></div>
+    </div>
+    <div class="rail">
+      <div class="railBtn on" title="Sommaire du portfolio">📋</div>
+      <div class="railBtn" title="Ressources">📁</div>
+      <div class="railBtn" title="Évaluation">📊</div>
+    </div>
+  </div>
+  <p class="legend"><b>Vue 2.</b> Une des premières étapes porte le dépôt <b>« Mon groupe »</b> : l'élève liste ses partenaires (champ qui filtre les élèves de la classe), chacun confirme de son côté, puis le professeur <b>accepte ou refuse</b> depuis la copie. Tant que le groupe n'est pas accepté, les étapes 👥 se comportent comme des étapes personnelles. La section 2 est fermée parce que le prof a verrouillé 1.3 (étape sans trace : c'est l'élève qui la coche). Une étape sans verrou laisse passer même inachevée.</p>
+</section>
+
+<!-- ═══════════ VUE 3 : popup prof ═══════════ -->
+<section class="vue" id="v3">
+  <div class="fond">
+    <div class="popup">
+      <div class="h"><h3>Étape du portfolio</h3><span class="x">×</span></div>
+      <div class="c">
+        <div class="ligne2">
+          <div><label class="lab" style="margin-top:0">Section</label><input class="in" value="2. Compréhension de la scène"><p class="hint">Les étapes qui portent la même section se regroupent dans le sommaire de l'élève.</p></div>
+          <div><label class="lab" style="margin-top:0">Titre de l'étape</label><input class="in" value="2.2 Mon personnage"></div>
+        </div>
+        <label class="lab">Objectifs <span style="font-weight:400;color:var(--c-text-muted)">— un par ligne, Entrée pour le suivant</span></label>
+        <div class="objLigne"><span>•</span><input class="in" value="Cerner les traits physiques et psychologiques du personnage que je joue."><span style="color:var(--c-text-dim)">×</span></div>
+        <div class="objLigne"><span>•</span><input class="in" value="Justifier mes choix de costume, de maquillage et d'objet symbolique."><span style="color:var(--c-text-dim)">×</span></div>
+        <label class="lab">Consigne de l'étape</label>
+        <textarea class="in ta">Quatre productions personnelles : la mind map du personnage se fait dans l'activité de schématisation ; les trois textes se déposent ici…</textarea>
+        <div class="ligne2">
+          <div><label class="lab">Échéance</label><input class="in" value="12/11/2026"></div>
+          <div><label class="lab">Intelligence artificielle</label><div class="seg"><span>🟢 Libre</span><span class="on">🟠 Partielle</span><span>🔴 Aucune</span></div><p class="hint">Absent = le réglage IA de l'activité.</p></div>
+        </div>
+        <div class="ligne2">
+          <div><label class="lab">Portée</label><div class="seg"><span class="on">👤 Personnelle</span><span>👥 Collective</span></div><p class="hint">Collective : un seul dépôt pour tout le groupe accepté.</p></div>
+          <div><label class="lab">Enchaînement</label>
+            <div class="toggle" style="margin-top:0"><span class="sw"></span><div><b>Verrouille l'étape suivante</b><span>3.1 reste fermée tant que celle-ci n'est pas faite (dépôts obligatoires + activité remise).</span></div></div>
+          </div>
+        </div>
+        <label class="lab">Dépôts <span style="font-weight:400;color:var(--c-text-muted)">— ce que l'élève laisse dans cette étape · aucun = étape sans trace, cochée par l'élève</span></label>
+        <div class="dep">
+          <div class="dt"><span class="num">1</span><input class="in" value="Costume et maquillage" style="flex:1"><select><option>Texte</option><option>Groupe (déclaration des partenaires)</option><option disabled>Tableau — bientôt</option><option disabled>Image — bientôt</option><option disabled>Lien — bientôt</option></select><span class="sup">×</span></div>
+          <div class="ligne2"><input class="in" value="Décris ta démarche : ce que tu as choisi, et ce que ça dit du personnage."><input class="in" value="Ex. : Un habit noir élimé, trop grand…"></div>
+          <label style="font-size:12px;margin-top:8px;display:block"><input type="checkbox" checked> Obligatoire</label>
+        </div>
+        <div class="dep">
+          <div class="dt"><span class="num">2</span><input class="in" value="Objet symbolique et métonymique" style="flex:1"><select><option>Texte</option></select><span class="sup">×</span></div>
+          <div class="ligne2"><input class="in" value="Quel objet représente ton personnage sur scène ? Pourquoi celui-là ?"><input class="in" value="Ex. : La cassette…"></div>
+          <label style="font-size:12px;margin-top:8px;display:block"><input type="checkbox" checked> Obligatoire</label>
+        </div>
+        <div class="dep">
+          <div class="dt"><span class="num">3</span><input class="in" value="Une phrase du texte qui résume mon personnage" style="flex:1"><select><option>Texte</option></select><span class="sup">×</span></div>
+          <div class="ligne2"><input class="in" value="Recopie la réplique, puis explique en quoi elle le résume."><input class="in" placeholder="Exemple (facultatif)"></div>
+          <label style="font-size:12px;margin-top:8px;display:block"><input type="checkbox"> Obligatoire</label>
+        </div>
+        <button class="ajout">+ Ajouter un dépôt</button>
+        <label class="lab">Ressources de l'étape</label>
+        <p class="hint" style="margin:0">Les mêmes cinq volets que l'onglet Ressources d'une activité. Elles s'affichent en tête de l'onglet Ressources quand l'élève est dans cette étape.</p>
+      </div>
+      <div class="f"><button class="btn ghost">Annuler</button><button class="btn">Enregistrer l'étape</button></div>
+    </div>
+  </div>
+  <p class="legend"><b>Vue 3.</b> La popup du créateur (clic sur une étape du serpentin). Nouveau par rapport à la v1 : la <b>portée</b> est active (personnelle / collective), et l'<b>enchaînement</b> est une bascule par étape, « Verrouille l'étape suivante » — c'est le réglage « Marquer comme terminé » de VibeCoding, transposé. Le type de dépôt <b>Groupe</b> sert aux premières sections : déclaration des partenaires, acceptée ou refusée par le prof dans la copie.</p>
+</section>
+
+<!-- ═══════════ VUE 4 : Mes Ressources › Portfolios ═══════════ -->
+<section class="vue" id="v4">
+  <div class="topbar"><span class="titre">Mes Ressources</span><div class="droite"><span>Accueil · Mes Activités · Mes Classes · <b>Mes Ressources</b></span></div></div>
+  <div class="page">
+    <div class="tabs"><span>Grilles</span><span>Vocabulaire</span><span>Questionnaires</span><span>Œuvres</span><span class="on">Portfolios</span><span>Scénarisation</span></div>
+    <div class="cartes">
+      <div class="carte">
+        <h5>Interpréter Molière !</h5>
+        <div class="etq"><span>18 étapes</span><span>8 sections</span><span>3 collectives</span><span>Utilisé : 4C · 4B</span></div>
+        <div class="desc">Certification de Noël (UAA 0 et 5) : mettre en scène un extrait de Molière et représenter sa classe au concours inter-classes.</div>
+        <div class="act"><button class="btn ghost">Modifier</button><button class="btn">Utiliser pour une classe</button></div>
+      </div>
+      <div class="carte">
+        <h5>Le roman en 3ᵉ — lecture accompagnée</h5>
+        <div class="etq"><span>9 étapes</span><span>4 sections</span><span>Jamais utilisé</span></div>
+        <div class="desc">Trame vide pour un portfolio ouvert : l'élève y accroche ses propres ressources (étape 8 du chantier).</div>
+        <div class="act"><button class="btn ghost">Modifier</button><button class="btn">Utiliser pour une classe</button></div>
+      </div>
+      <div class="carte creer">+ Créer un portfolio</div>
+    </div>
+    <p class="legend" style="margin:24px 0 0"><b>Vue 4.</b> La <b>matrice</b> vit dans Mes Ressources (nouvel onglet Portfolios, même gabarit de cartes que les séquences FLE). « Utiliser pour une classe » ouvre le formulaire de création d'activité pré-rempli : l'activité est une <b>copie</b> de la matrice, rangée dans Mes Activités, adaptable sans toucher la matrice. Depuis la popup « Choix de l'activité », « Portfolio » propose une matrice ou un départ de zéro.</p>
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll('.mq button').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.mq button').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.vue').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');document.getElementById(b.dataset.v).classList.add('on');
+  }));
+</script>
+</body>
+</html>

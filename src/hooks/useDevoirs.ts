@@ -10,6 +10,8 @@ export function useDevoirs() {
   // Activités d'autres profs sur mes classes partagées (coprofesseur,
   // 2026-10-04) — à part : aucune bascule globale ne doit les toucher
   const [devoirsPartages, setDevoirsPartages] = useState<Devoir[]>([]);
+  // Activités FLE des collègues (Mes ressources FLE › « des professeurs », 2026-10-09)
+  const [devoirsAutresFle, setDevoirsAutresFle] = useState<Devoir[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +29,7 @@ export function useDevoirs() {
       if (json.success) {
         setDevoirs(json.data);
         setDevoirsPartages(Array.isArray(json.partagees) ? json.partagees : []);
+        setDevoirsAutresFle(Array.isArray(json.autresFle) ? json.autresFle : []);
       } else {
         setError(json.message || 'Erreur lors du chargement');
       }
@@ -264,6 +267,7 @@ export function useDevoirs() {
   return {
     devoirs,
     devoirsPartages,
+    devoirsAutresFle,
     isLoading,
     error,
     createDevoir,

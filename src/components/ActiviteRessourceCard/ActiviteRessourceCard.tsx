@@ -25,6 +25,8 @@ interface Props {
   onToggleArchive: (id: string, archive: boolean) => void;
   // Activité FLE seulement
   onToggleCorrigeDisponible?: (id: string, corrigeDisponible: boolean) => void;
+  // Activité d'un COLLÈGUE (bloc « des professeurs ») : on la lit, on la duplique, rien d'autre
+  lectureSeule?: boolean;
 }
 
 export default function ActiviteRessourceCard({
@@ -34,6 +36,7 @@ export default function ActiviteRessourceCard({
   onDupliquer,
   onToggleArchive,
   onToggleCorrigeDisponible,
+  lectureSeule = false,
 }: Props) {
   const sequence = devoir.typeTravail === 'sequence';
   const nbEtapes = devoir.sequenceFle?.etapes.length ?? 0;
@@ -46,11 +49,11 @@ export default function ActiviteRessourceCard({
 
   return (
     <article
-      className={`${styles.card} ${styles.cardCliquable} ${devoir.archive ? styles.cardArchivee : ''}`}
-      onClick={() => onOuvrir(devoir)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && e.target === e.currentTarget && onOuvrir(devoir)}
+      className={`${styles.card} ${lectureSeule ? '' : styles.cardCliquable} ${devoir.archive ? styles.cardArchivee : ''}`}
+      onClick={() => !lectureSeule && onOuvrir(devoir)}
+      role={lectureSeule ? undefined : 'button'}
+      tabIndex={lectureSeule ? undefined : 0}
+      onKeyDown={(e) => !lectureSeule && e.key === 'Enter' && e.target === e.currentTarget && onOuvrir(devoir)}
     >
       {/* Titre, type et étiquettes sur une ligne — comme la carte d'activité */}
       <div className={styles.titreLigne}>
@@ -97,6 +100,7 @@ export default function ActiviteRessourceCard({
       </div>
 
       <div className={styles.actions}>
+        {!lectureSeule && (
         <button
           type="button"
           className={styles.actionBtn}
@@ -106,6 +110,8 @@ export default function ActiviteRessourceCard({
         >
           {sequence ? '🧭' : '📋'}
         </button>
+        )}
+        {!lectureSeule && (
         <button
           type="button"
           className={styles.actionBtn}
@@ -115,7 +121,8 @@ export default function ActiviteRessourceCard({
         >
           ✏️
         </button>
-        {!sequence && onToggleCorrigeDisponible && (
+        )}
+        {!lectureSeule && !sequence && onToggleCorrigeDisponible && (
           <button
             type="button"
             className={`${styles.actionBtn} ${devoir.corrigeDisponible ? styles.actionActive : ''}`}
@@ -140,6 +147,7 @@ export default function ActiviteRessourceCard({
             <rect x="1" y="4" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="var(--c-bg-card)" />
           </svg>
         </button>
+        {!lectureSeule && (
         <button
           type="button"
           className={`${styles.actionBtn} ${devoir.archive ? '' : styles.actionDanger}`}
@@ -149,6 +157,7 @@ export default function ActiviteRessourceCard({
         >
           {devoir.archive ? '📤' : '🗑️'}
         </button>
+        )}
       </div>
     </article>
   );

@@ -183,14 +183,20 @@ export default function ModuleFlePanel() {
     </div>
   );
 
-  const section = (titreSection: string, aide: string, liste: ModuleFle[]) =>
-    liste.length > 0 && (
+  // `toujours` : le bloc reste visible même vide — le second bloc « des
+  // professeurs » existe sur chaque onglet de Mes Ressources (JP, 2026-10-09)
+  const section = (titreSection: string, aide: string, liste: ModuleFle[], toujours = false) =>
+    (liste.length > 0 || toujours) && (
       <section className={styles.groupe}>
         <div className={styles.groupeEntete}>
           <h2 className={styles.groupeTitre}>{titreSection}</h2>
           <p className={styles.groupeAide}>{aide}</p>
         </div>
-        {grille(liste, false)}
+        {liste.length === 0 ? (
+          <p className={styles.groupeAide}>Aucun point de théorie de collègue pour l’instant.</p>
+        ) : (
+          grille(liste, false)
+        )}
       </section>
     );
 
@@ -219,7 +225,7 @@ export default function ModuleFlePanel() {
           </section>
 
           {section('Points de théorie partagés', 'exemples proposés à tous', paniers.exemples)}
-          {section('Points de théorie des professeurs', 'à dupliquer pour les modifier', paniers.autres)}
+          {section('Points de théorie des professeurs', 'à dupliquer pour les modifier', paniers.autres, true)}
         </>
       )}
 

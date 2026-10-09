@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import SchemaActivity from '@/components/SchemaActivity/SchemaActivity';
+import PortfolioLecture from '@/components/Portfolio/PortfolioLecture';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -624,7 +625,17 @@ export default function TravailDetailPage() {
         <ResizableSplit
           storageKey="correction-split"
           left={
-            devoir.typeTravail === 'vocabulaire' ? (
+            devoir.typeTravail === 'portfolio' ? (
+              <div className={styles.contentSection}>
+                <div className={styles.sectionHeader}>
+                  <h2>Portfolio de l’élève</h2>
+                </div>
+                {/* Lecture seule, étape par étape ; le groupe s'accepte ou se
+                    refuse en tête. Pas de note ici : la grille sur le portfolio
+                    entier arrive à l'étape 7 du chantier. */}
+                <PortfolioLecture devoirId={devoir.id} travail={travail} getAuthHeaders={getAuthHeaders} />
+              </div>
+            ) : devoir.typeTravail === 'vocabulaire' ? (
               <div className={styles.contentSection}>
                 <div className={styles.sectionHeader}>
                   <h2>Progression vocabulaire</h2>

@@ -207,14 +207,20 @@ export default function OeuvrePanel() {
     </div>
   );
 
-  const section = (titre: string, aide: string, liste: Oeuvre[], mienne: boolean) =>
-    liste.length > 0 && (
+  // `toujours` : le bloc reste visible même vide — le second bloc « des
+  // professeurs » existe sur chaque onglet de Mes Ressources (JP, 2026-10-09)
+  const section = (titre: string, aide: string, liste: Oeuvre[], mienne: boolean, toujours = false) =>
+    (liste.length > 0 || toujours) && (
       <section className={styles.groupe}>
         <div className={styles.groupeEntete}>
           <h2 className={styles.groupeTitre}>{titre}</h2>
           <p className={styles.groupeAide}>{aide}</p>
         </div>
-        {grille(liste, { mienne })}
+        {liste.length === 0 ? (
+          <p className={styles.groupeAide}>Aucune œuvre de collègue pour l’instant.</p>
+        ) : (
+          grille(liste, { mienne })
+        )}
       </section>
     );
 
@@ -249,7 +255,8 @@ export default function OeuvrePanel() {
             'Œuvres des professeurs',
             'à dupliquer pour les modifier',
             paniers.autres,
-            false
+            false,
+            true
           )}
         </>
       )}

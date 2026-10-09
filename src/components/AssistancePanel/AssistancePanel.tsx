@@ -104,6 +104,13 @@ interface AssistancePanelProps {
    */
   oeuvreNav?: ReactNode;
   /**
+   * Portfolio d'apprentissage : le SOMMAIRE DU PORTFOLIO remplace l'onglet
+   * Consignes (JP, 2026-10-09 : la liste de tâches, c'est le sommaire).
+   */
+  consignesRemplacement?: ReactNode;
+  /** Portfolio : les ressources de l'étape ouverte, en tête de l'onglet Ressources. */
+  ressourcesPrefixe?: ReactNode;
+  /**
    * Lecture d'une œuvre : change à chaque vérification terminée. Le bilan de
    * l'onglet Évaluation est calculé sur le serveur — sans ce compteur, l'élève
    * répondrait à une vérification et verrait le même total qu'avant.
@@ -167,6 +174,8 @@ export default function AssistancePanel({
   selectedVocabEvalIndex,
   hideTabs = false,
   oeuvreNav,
+  consignesRemplacement,
+  ressourcesPrefixe,
   oeuvreBilanVersion,
 }: AssistancePanelProps) {
   // Mode contrôlé vs interne.
@@ -259,17 +268,19 @@ export default function AssistancePanel({
       )}
 
       <div className={styles.content}>
-        {currentTab === 'consignes' && (
-          <>
-            <ConsignesTab
-              devoir={devoir}
-              cochees={consignesCochees}
-              onToggle={onConsigneToggle}
-              isProfessorView={isProfessorView}
-            />
-            {oeuvreNav}
-          </>
-        )}
+        {currentTab === 'consignes' &&
+          (consignesRemplacement ?? (
+            <>
+              <ConsignesTab
+                devoir={devoir}
+                cochees={consignesCochees}
+                onToggle={onConsigneToggle}
+                isProfessorView={isProfessorView}
+              />
+              {oeuvreNav}
+            </>
+          ))}
+        {currentTab === 'ressources' && ressourcesPrefixe}
         {currentTab === 'ressources' && (
           <RessourcesTab
             devoir={devoir}

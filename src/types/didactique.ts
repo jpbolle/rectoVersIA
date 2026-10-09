@@ -45,7 +45,10 @@ export type TypeModal = 'lire' | 'ecrire' | 'parler' | 'reflexif' | 'lexique' | 
 // un schéma (carte conceptuelle, schéma libre, carte mentale, hiérarchie, ligne du
 // temps) à partir d'une base documentaire (les ressources de l'activité, dans le
 // rail de droite). Le schéma vit dans `travail.content` (JSON `Diagram`).
-export type Dispositif = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation' | 'sequence' | 'schematiser';
+// « portfolio » (2026-10-09) : le PORTFOLIO D'APPRENTISSAGE — une suite d'étapes
+// ordonnées (dépôts de l'élève, ou renvois vers des activités existantes) qui
+// mènent à une tâche finale. Matrice dans Mes Ressources, copie par classe.
+export type Dispositif = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation' | 'sequence' | 'schematiser' | 'portfolio';
 
 export interface Atelier {
   id: string;
@@ -69,6 +72,7 @@ export const ATELIER_SONDAGE = 'sondage';
 export const ATELIER_AUTOEVALUATION_LEGACY = 'autoevaluation';
 export const ATELIER_SEQUENCE_FLE = 'sequence-fle';
 export const ATELIER_CONCEPTUALISATION = 'conceptualisation';
+export const ATELIER_PORTFOLIO = 'portfolio';
 
 // Ordre = celui de la popup de choix (JP, 2026-10-09) : les quatre ATELIERS
 // d'abord (l'élève produit), puis la lecture d'une œuvre, puis les
@@ -109,6 +113,18 @@ export const ATELIERS: Atelier[] = [
     dispositif: 'schematiser',
     modeParDefaut: 'ecrire',
     description: 'À partir d’une base documentaire, l’élève construit un schéma : carte conceptuelle, mentale, ligne du temps…',
+  },
+  {
+    // Le PORTFOLIO D'APPRENTISSAGE (plan 2026-10-09) : des étapes vers une
+    // tâche finale — chacune avec objectifs, échéance, statut IA, dépôts —
+    // ou des renvois vers d'autres activités. Trame réutilisable dans Mes
+    // Ressources › Portfolios ; donnée à une classe, c'est une activité.
+    id: ATELIER_PORTFOLIO,
+    label: 'Portfolio d’apprentissage',
+    court: 'Portfolio',
+    dispositif: 'portfolio',
+    modeParDefaut: 'reflexif',
+    description: 'Un parcours d’étapes vers une tâche finale : l’élève y dépose ses productions et y retrouve les autres activités du projet.',
   },
   {
     // Même dispositif que l'atelier de lecture — c'est le MÊME questionnaire,
@@ -223,6 +239,13 @@ export function estSequenceFle(
   devoir: { typeTravail?: string | null; atelier?: string | null } | null | undefined
 ): boolean {
   return devoir?.typeTravail === 'sequence' || devoir?.atelier === ATELIER_SEQUENCE_FLE;
+}
+
+/** Un portfolio d'apprentissage — repère des aiguillages (comme `estSequenceFle`). */
+export function estPortfolio(
+  devoir: { typeTravail?: string | null; atelier?: string | null } | null | undefined
+): boolean {
+  return devoir?.typeTravail === 'portfolio' || devoir?.atelier === ATELIER_PORTFOLIO;
 }
 
 export function findAtelier(id: string | undefined): Atelier | undefined {

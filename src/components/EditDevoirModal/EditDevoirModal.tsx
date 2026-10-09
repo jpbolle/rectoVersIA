@@ -23,6 +23,8 @@ import HideCriteriaModal from '@/components/HideCriteriaModal/HideCriteriaModal'
 import HabiletesPicker from '@/components/HabiletesPicker/HabiletesPicker';
 import { atelierParDispositif, findAtelier, reglagesSondage, TYPES_MODAUX } from '@/types/didactique';
 import SequenceFleBuilder from '@/components/SequenceFleBuilder/SequenceFleBuilder';
+import PortfolioBuilder from '@/components/Portfolio/PortfolioBuilder';
+import { PORTFOLIO_VIDE, type PortfolioContenu } from '@/types/portfolio';
 import ElevesChoix from '@/components/ElevesChoix/ElevesChoix';
 import type { EleveAvecClasse } from '@/components/ElevesChoix/ElevesChoix';
 import { SEQUENCE_FLE_VIDE } from '@/types/sequence-fle';
@@ -46,6 +48,7 @@ const RESSOURCE_LABELS: Record<TypeTravail, string> = {
   autoevaluation: '📄 Travail à commenter (facultatif)',
   sequence: '📄 Ressources de la séquence (facultatif)',
   schematiser: '📄 Base documentaire',
+  portfolio: '📄 Ressources du portfolio (facultatif)',
 };
 
 const TYPE_LABELS: Record<TypeTravail, string> = {
@@ -56,6 +59,7 @@ const TYPE_LABELS: Record<TypeTravail, string> = {
   autoevaluation: 'Auto-évaluation',
   sequence: 'Séquence FLE',
   schematiser: 'Schématiser',
+  portfolio: 'Portfolio',
 };
 
 function createEmptyPlanDraft(): DraftContent {
@@ -151,6 +155,8 @@ export default function EditDevoirModal({
   const [elevesDesClasses, setElevesDesClasses] = useState<EleveAvecClasse[]>([]);
   // Séquence FLE (type sequence) : modules du parcours
   const [sequenceFle, setSequenceFle] = useState<SequenceFleContenu | null>(null);
+  // Portfolio d'apprentissage : ses étapes
+  const [portfolio, setPortfolio] = useState<PortfolioContenu | null>(null);
 
   // `devoir` est un objet INSTABLE (recréé à chaque rendu du parent) : le mettre
   // dans les dépendances rejouait cet effet en cours de saisie et écrasait le
@@ -197,6 +203,7 @@ export default function EditDevoirModal({
       setAutoEvalQuiz(devoir.autoEvalQuiz || null);
       setSondageReglages(reglagesSondage(devoir));
       setSequenceFle(devoir.sequenceFle ?? null);
+      setPortfolio(devoir.portfolio ?? null);
       const sc = schemaDuDevoir(devoir);
       setSchemaType(sc.typeDepart);
       setSchemaTypeLibre(sc.typeLibre);
@@ -364,6 +371,11 @@ export default function EditDevoirModal({
       data.sequenceFle = sequenceFle ?? SEQUENCE_FLE_VIDE;
     }
 
+    // Portfolio d'apprentissage : ses étapes
+    if (devoir.typeTravail === 'portfolio') {
+      data.portfolio = portfolio ?? PORTFOLIO_VIDE;
+    }
+
     // Atelier de conceptualisation : ses réglages
     if (devoir.typeTravail === 'schematiser') {
       data.schema = { typeDepart: schemaType, typeLibre: schemaTypeLibre };
@@ -398,7 +410,7 @@ export default function EditDevoirModal({
     accesIA, disponible, ressources, evaluation, modePrincipal, habiletes,
     flipInverted, ressourcesToIA, profTheme, profDraft, planToIA,
     profProduction, productionToIA, lectureQuiz, lectureMode, hiddenQuestions, autoEvalQuiz, sondageReglages, autoEvaluation,
-    nkQuestions, nkThemes, eleves, sequenceFle,
+    nkQuestions, nkThemes, eleves, sequenceFle, portfolio,
   ]);
 
   // `enregistrer` est recréée à chaque rendu : passée en dépendance, elle
@@ -775,6 +787,8 @@ export default function EditDevoirModal({
                     ? 'Le questionnaire de lecture : rempli par l’élève dans sa colonne de gauche. QCM corrigés automatiquement, le reste par vous. Les compétences cochées alimenteront le profil de lecteur.'
                     : typeTravail === 'sequence'
                       ? 'Les modules du parcours, dans l’ordre où l’élève les fera. Les élèves qui suivent la séquence se choisissent au recto.'
+                    : typeTravail === 'portfolio'
+                      ? 'Les étapes du portfolio, dans l’ordre où l’élève les fera. Un clic sur une étape règle son échéance, son statut IA, sa portée et son verrou.'
                     : 'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'
               }
             >
@@ -791,6 +805,15 @@ export default function EditDevoirModal({
           onChange={setSequenceFle}
           elevesDeLaSequence={eleves === null ? elevesDesClasses : elevesDesClasses.filter((e) => eleves.includes(e.id))}
           plusieursClasses={selectedClasses.length > 1}
+          disabled={isSaving}
+        />
+      )}
+
+      {/* Portfolio d'apprentissage : ses étapes */}
+      {typeTravail === 'portfolio' && (
+        <PortfolioBuilder
+          etapes={portfolio?.etapes ?? []}
+          onChange={(etapes) => setPortfolio({ ...(portfolio ?? PORTFOLIO_VIDE), etapes })}
           disabled={isSaving}
         />
       )}

@@ -5,13 +5,15 @@ import type { LectureQuizMode, LectureQuiz, LectureResume } from './lecture';
 import type { AutoEvalQuestionnaire } from './autoevaluation';
 import type { TypeModal } from './didactique';
 import type { SequenceFleContenu } from './sequence-fle';
+import type { PortfolioContenu } from './portfolio';
 
 export type Classe = string;
 // Le DISPOSITIF d'une activité : la machinerie que l'app sait afficher.
 // « autoevaluation » depuis le 2026-08-14 — l'élève se prononce sur son
 // propre travail (cf. src/types/autoevaluation.ts).
 // « sequence » depuis le 2026-09-14 : la séquence FLE (cf. src/types/sequence-fle.ts).
-export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation' | 'sequence' | 'schematiser';
+// « portfolio » depuis le 2026-10-09 : le portfolio d'apprentissage (cf. src/types/portfolio.ts).
+export type TypeTravail = 'ecrire' | 'lire' | 'rechercher' | 'vocabulaire' | 'autoevaluation' | 'sequence' | 'schematiser' | 'portfolio';
 // formatif : entraînement, ne compte pas — certificatif : compte pour la note
 export type EvaluationType = 'formatif' | 'certificatif';
 
@@ -242,6 +244,9 @@ export interface Devoir {
   // SÉQUENCE FLE (type sequence) : les modules du parcours. Absent / null =
   // séquence vide.
   sequenceFle?: SequenceFleContenu | null;
+  // PORTFOLIO D'APPRENTISSAGE (type portfolio, 2026-10-09) : les étapes, copiées
+  // depuis une matrice de Mes Ressources (`portfolioId`) ou composées ici.
+  portfolio?: PortfolioContenu | null;
   // ACTIVITÉ FLE — elle vit dans Mes Ressources › Modules FLE › Activités, PAS dans le
   // tableau de bord : sans classe, née fermée, seule une séquence FLE l'ouvre
   // aux élèves (`ouvertParSequence`). Absent = activité classique.
@@ -319,6 +324,8 @@ export interface CreateDevoirData {
   eleves?: string[] | null;
   // Séquence FLE (type sequence uniquement) — sert à la duplication
   sequenceFle?: SequenceFleContenu | null;
+  // Portfolio d'apprentissage : ses étapes (copiées à la duplication)
+  portfolio?: PortfolioContenu | null;
   // Activité FLE (voir `Devoir.referentiel`)
   referentiel?: 'fle' | null;
   // Atelier de conceptualisation (type schematiser uniquement)

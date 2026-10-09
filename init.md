@@ -8,6 +8,10 @@
 ## ⚡ TL;DR
 
 - **Nom affiché** : **RectoVerso** depuis le 2026-10-08 (strings d'interface ; l'infra reste `rectoversia`).
+- **Portfolio d'apprentissage** (2026-10-09, étape 1 du chantier écrite ; 1a validée, 1b/1c à voir) :
+  dispositif propre `portfolio`, matrice dans Mes Ressources › Portfolios, activité = copie ;
+  élève **dans** l'espace à 2 colonnes (étape à gauche, « Sommaire du portfolio » cochable à droite) ;
+  groupe déclaré par l'élève, accepté par le prof. Rollup : `harnais/memoire/rollup_portfolio.md`.
 - **Deux espaces** (2026-10-08, soir) : **classique / FLE**, double bouton ambre dans l'en-tête à côté de
   la cloche (`src/context/EspaceContext.tsx`, `localStorage` `espace-actif`). Prof : toujours ;
   élève : s'il a une classe FLE. Menus, Mes Classes, Mes Activités et l'accueil suivent l'espace.
@@ -111,6 +115,13 @@ d'une année sur l'autre.
 - Toujours vérifier les styles existants avant d'en créer — pas de styles conflictuels
 
 ### Patterns imposés
+
+**Mes Ressources (classique et FLE) : chaque onglet a DEUX blocs** (JP, 2026-10-09) — « Mes … »
+en premier, puis « … des professeurs » **toujours affiché, même vide** (« Aucun(e) … de collègue
+pour l'instant. ») : les ressources des collègues, lisibles et **duplicables** (la copie devient la
+mienne), jamais modifiables. Vaut pour grilles, listes de vocabulaire, questionnaires, œuvres,
+portfolios, points de théorie FLE, activités FLE. **Exception : Design & scénarisation**, personnel.
+Paniers servis par les routes (`otherProfs` / `autres` / `autresFle`), jamais filtrés côté client.
 
 | Situation qui revient | Forme imposée | Exemple à recopier |
 |---|---|---|
@@ -227,6 +238,9 @@ interface Devoir {
   // (avant les titres) ou `{ url, titre }`. On lit les deux, on n'écrit plus
   // que la seconde : TOUJOURS passer par `normaliserVideos()` (types/devoir.ts),
   // jamais lire le tableau directement. Aucune migration.
+  // PORTFOLIO (typeTravail 'portfolio', 2026-10-09) : `portfolio: { portfolioId?, tacheFinale?,
+  // etapes: PortfolioEtape[] }` — copie de la matrice. Nettoyé par
+  // `portfolioContenuPourFirestore` (src/lib/portfolio-server.ts).
   // ressources.interactifs[] : contenus embarqués (onglet Interactif).
   // DEUX natures, deux bacs à sable — `kind: 'url'` (page tierce, liste
   // blanche `src/lib/integration.ts`) et `kind: 'code'` (animation HTML du
@@ -333,6 +347,16 @@ interface Questionnaire {
 ```
 
 ### Autres collections
+- `portfolios/{PFO-…}` — **matrices** de portfolio (2026-10-09) : `titre`, `description`, `tacheFinale`,
+  `consignes`, `ressources`, `etapes` (`PortfolioEtape[]`), `profId`, `archive`. Serveur seulement
+  (`/api/portfolios`).
+- `portfolioGroupes/{PFG-…}` — le **groupe** d'un portfolio (dépôt `groupe`) : `devoirId`,
+  `createurEleveId`, `membres[{eleveId, statut: confirme|attente|decline}]`, `statut:
+  attente|accepte|refuse`, `motif`. Membres par FICHE `eleves`, jamais de nom stocké (noms
+  déchiffrés à la lecture, `src/lib/portfolio-groupe-server.ts`). Serveur seulement.
+- Copie d'un portfolio : `travaux.content` = JSON `{type:'portfolio', reponses{clé→texte},
+  cochees[], derniereEtape}` — écrit **champ par champ** (`PATCH /api/travaux/[id]` avec
+  `portfolio: {...}`, fusion serveur).
 - `schemasPersonnels/{id}` — schémas personnels (2026-10-04) : `uid`, `titre`, `type`, `diagram` (JSON `Diagram`), `thumbnail` (data URL PNG ou null), `createdAt`, `updatedAt`. Jamais lu côté client : routes `/api/schemas/personnel*`.
 - `manches` + `manches/{id}/reponses` : **une partie jouée en direct** (mode Compétition
   du questionnaire de lecture). `id = MAN-{sessionId}` — déterministe, une manche par
@@ -550,6 +574,9 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
 | Route | Méthodes | Description |
 |---|---|---|
 | `/api/devoirs`, `/api/devoirs/[id]`, `/api/devoirs/upload` | CRUD | Devoirs + upload fichiers |
+| `/api/portfolios`, `/api/portfolios/[id]` | GET POST / GET PATCH DELETE | Matrices de portfolio (prof ; DELETE = archive) |
+| `/api/devoirs/[id]/parcours-portfolio` | GET | Le portfolio prêt à afficher : renvois résolus + états (élève) ; prof : `?eleve=uid` |
+| `/api/portfolio/groupe` | GET POST PATCH | Groupe d'un portfolio : camarades + mon groupe (élève), tous les groupes (prof) ; déclarer ; confirmer/décliner/quitter (élève), accepter/refuser/annuler (prof) |
 | `/api/schemas/personnel`, `/api/schemas/personnel/[id]` | GET POST / GET PUT DELETE | Schémas personnels (`schemasPersonnels`, propriétaire = uid ; POST `{type,titre}` ou `{duplicateOf}` ; PUT `{diagram?, thumbnail?}`, vignette ≤ 200 Ko). Pas d'index : tri en mémoire |
 | `/api/travaux`, `/api/travaux/[id]`, `/api/travaux/mine` | CRUD | GET prof déclenche `ensureTravaux()` |
 | `/api/corrections`, `/api/corrections/[id]`, `/api/corrections/mine` | CRUD | `mine` filtre `visibleParEleve` |
@@ -594,6 +621,15 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
 
 ### Composants clés
 
+- **Portfolio d'apprentissage** (`src/components/Portfolio/`, 2026-10-09) : `PortfolioPanel` (Mes
+  Ressources › Portfolios), `PortfolioAtelier` (matrice : fiche + serpentin, autosave 800 ms, « créer
+  une activité » prend la page), `PortfolioBuilder` (serpentin, « + » à 3 choix), `EtapePortfolioModal`
+  (section · titre · objectifs · consigne · échéance · IA 3 états · portée · **verrou** · dépôts ·
+  ressources), `PortfolioActivity` (colonne 1 élève), `PortfolioSommaire` (rail, remplace
+  Consignes via `AssistancePanel.consignesRemplacement`), `PortfolioDepotGroupe`,
+  `PortfolioRessourcesEtape` (`AssistancePanel.ressourcesPrefixe`), `PortfolioLecture` (page de
+  correction, groupe à accepter). **Serpentin partagé** : `SequenceFleBuilder/Serpentin.tsx`
+  (mécanisme ; la séquence FLE et le portfolio rendent leurs propres encadrés). État : `src/lib/portfolio-etat.ts` (pur).
 - **Consignes = feuille de route cochable** (2026-10-09 soir, option A validée par JP — plan
   `harnais/plans/2026-10-09-consignes-feuille-de-route.md`) : `Devoir.consignes` reste du texte, découpé
   à la lecture par `decouperConsignes()` (`src/lib/consignes-etapes.ts`) ; **clé d'une coche = le texte
@@ -874,7 +910,8 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
 
 ### Hooks
 `useAuth` (expose `getAuthHeaders`), `useClasses`, `useStudentClasses`, `useEleves`, `useDevoirs`, `useGrille`,
-`useTravail` (auto-save 2,5 s), `useCorrection`, `usePreferences`, `useAudioRecorder`,
+`useTravail` (auto-save 2,5 s ; `patchPortfolio` = un champ, optimiste), `usePortfolioEleve`
+(parcours + contenu + étape courante + groupe d'un portfolio), `useCorrection`, `usePreferences`, `useAudioRecorder`,
 `useAiSuggestions`, `useAiGridEvaluation`, `useVocabulaireThemes`, `useVocabulaireWords`,
 `useVocabulaireExercises`, `useDictionaryLookup` (cache client partagé du dictionnaire),
 `useDidactique` (config UAA/gestes, cache module partagé),

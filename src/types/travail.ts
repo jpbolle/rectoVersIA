@@ -91,8 +91,21 @@ export interface CreateTravailData {
   content?: string;
 }
 
+/**
+ * PORTFOLIO : un geste de l'élève = UN champ écrit, jamais la copie entière
+ * (`content` est fusionné côté serveur). `reponses` : clé `{etapeId}/{depotId}`
+ * → texte (vide = effacé) ; `cochees` : les étapes sans trace cochées ;
+ * `derniereEtape` : là où il en était.
+ */
+export interface PortfolioPatch {
+  reponses?: Record<string, string>;
+  cochees?: string[];
+  derniereEtape?: string;
+}
+
 export interface UpdateTravailData {
   content?: string;
+  portfolio?: PortfolioPatch;
   draftContent?: DraftContent | null;
   ressourceAnnotations?: string;
   ressourceNotes?: Record<string, string>;

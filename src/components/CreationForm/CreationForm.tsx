@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Toggle from '@/components/Toggle/Toggle';
 import DatePicker from '@/components/DatePicker/DatePicker';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
@@ -9,6 +9,8 @@ import QuestionnaireBuilder from '@/components/QuestionnaireBuilder/Questionnair
 import QuestionnairePreviewModal from '@/components/QuestionnairePreviewModal/QuestionnairePreviewModal';
 import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import SequenceFleBuilder from '@/components/SequenceFleBuilder/SequenceFleBuilder';
+import PortfolioBuilder from '@/components/Portfolio/PortfolioBuilder';
+import { PORTFOLIO_VIDE, type PortfolioContenu, type PortfolioMatrice } from '@/types/portfolio';
 import ElevesChoix from '@/components/ElevesChoix/ElevesChoix';
 import type { EleveAvecClasse } from '@/components/ElevesChoix/ElevesChoix';
 import { classesPartageesPourActivite, useClasses } from '@/hooks/useClasses';
@@ -51,6 +53,7 @@ const RESSOURCE_LABELS: Record<TypeTravail, string> = {
   autoevaluation: '📄 Travail à commenter (facultatif)',
   sequence: '📄 Ressources de la séquence (facultatif)',
   schematiser: '📄 Base documentaire',
+  portfolio: '📄 Ressources du portfolio (facultatif)',
 };
 
 function createEmptyPlanDraft(): DraftContent {
@@ -96,6 +99,9 @@ interface CreationFormProps {
   // Type d'activité présélectionné (ex. « sequence-fle » depuis Mes Ressources
   // › Modules FLE › Séquences de cours). Absent = écriture, comme toujours.
   atelierInitial?: string;
+  // PORTFOLIO : « Utiliser pour une classe » depuis Mes Ressources › Portfolios —
+  // la matrice dont l'activité part (titre, consignes, ressources, étapes copiées)
+  portfolioInitial?: PortfolioMatrice | null;
 }
 
 export default function CreationForm({
@@ -110,6 +116,7 @@ export default function CreationForm({
   getAuthHeaders,
   modeFle = false,
   atelierInitial,
+  portfolioInitial = null,
 }: CreationFormProps) {
   // Face affichée du formulaire (recto : infos de base, verso : ressources)
   const [face, setFace] = useState<FormFace>('recto');
@@ -119,17 +126,17 @@ export default function CreationForm({
   const [selectedClasses, setSelectedClasses] = useState<Classe[]>([]);
   const [dateRemise, setDateRemise] = useState('');
   const [grille, setGrille] = useState('');
-  const [intitule, setIntitule] = useState('');
+  const [intitule, setIntitule] = useState(portfolioInitial?.titre ?? '');
   // Critères de la grille masqués pour cette activité (popup au choix de la grille)
   const [hiddenCriteria, setHiddenCriteria] = useState<string[]>([]);
   const [showHideCriteria, setShowHideCriteria] = useState(false);
 
   // Consignes particulières (optionnel avec checkbox)
-  const [showConsignes, setShowConsignes] = useState(false);
-  const [consignes, setConsignes] = useState('');
+  const [showConsignes, setShowConsignes] = useState(!!portfolioInitial?.consignes);
+  const [consignes, setConsignes] = useState(portfolioInitial?.consignes ?? '');
 
   // Verso : ressources + corrigé de référence (type ecrire)
-  const [ressources, setRessources] = useState<DevoirRessource | null>(null);
+  const [ressources, setRessources] = useState<DevoirRessource | null>(portfolioInitial?.ressources ?? null);
   const [profTheme, setProfTheme] = useState('');
   const [profDraft, setProfDraft] = useState<DraftContent>(createEmptyPlanDraft);
   const [profProduction, setProfProduction] = useState('');
@@ -157,6 +164,46 @@ export default function CreationForm({
   const [elevesDesClasses, setElevesDesClasses] = useState<EleveAvecClasse[]>([]);
   // Séquence FLE : modules (verso)
   const [sequenceFle, setSequenceFle] = useState<SequenceFleContenu | null>(null);
+  // Portfolio d'apprentissage : ses étapes (copiées de la matrice, ou composées ici)
+  const [portfolio, setPortfolio] = useState<PortfolioContenu | null>(
+    portfolioInitial
+      ? { portfolioId: portfolioInitial.id, tacheFinale: portfolioInitial.tacheFinale, etapes: portfolioInitial.etapes }
+      : null
+  );
+  // Les matrices de Mes Ressources, proposées au verso d'un portfolio créé de zéro
+  const [matrices, setMatrices] = useState<PortfolioMatrice[] | null>(null);
+  useEffect(() => {
+    if (typeTravail !== 'portfolio' || matrices !== null || !getAuthHeaders) return;
+    let annule = false;
+    (async () => {
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers) return;
+        const res = await fetch('/api/portfolios', { headers });
+        const json = await res.json();
+        if (!annule) setMatrices(json.success ? (json.data as PortfolioMatrice[]).filter((m) => !m.archive) : []);
+      } catch {
+        if (!annule) setMatrices([]);
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [typeTravail, matrices, getAuthHeaders]);
+  const partirDeMatrice = (id: string) => {
+    const m = matrices?.find((x) => x.id === id);
+    if (!m) {
+      setPortfolio(null);
+      return;
+    }
+    setPortfolio({ portfolioId: m.id, tacheFinale: m.tacheFinale, etapes: m.etapes });
+    if (!intitule.trim()) setIntitule(m.titre);
+    if (!consignes.trim() && m.consignes) {
+      setConsignes(m.consignes);
+      setShowConsignes(true);
+    }
+    if (!ressources && m.ressources) setRessources(m.ressources);
+  };
   // Une séquence FLE ne se donne qu'à des classes FLE : le menu des classes se
   // restreint (demande JP du 2026-09-14). Les noms viennent des classes du prof.
   const { classes: toutesMesClasses, classesPartagees } = useClasses();
@@ -171,6 +218,7 @@ export default function CreationForm({
     setAtelier(id);
     setHabiletes(null);
     setSequenceFle(null);
+    setPortfolio(null);
     setEleves(null);
     // Vers une séquence FLE : seules les classes FLE déjà cochées restent
     if (findAtelier(id)?.dispositif === 'sequence') {
@@ -311,7 +359,8 @@ export default function CreationForm({
     (typeTravail === 'vocabulaire' && selectedVocabTheme !== null) ||
     (typeTravail === 'lire' && (lectureQuiz?.questions.length ?? 0) > 0) ||
     (typeTravail === 'autoevaluation' && (autoEvalQuiz?.questions.length ?? 0) > 0) ||
-    (typeTravail === 'sequence' && (sequenceFle?.etapes.length ?? 0) > 0);
+    (typeTravail === 'sequence' && (sequenceFle?.etapes.length ?? 0) > 0) ||
+    (typeTravail === 'portfolio' && (portfolio?.etapes.length ?? 0) > 0);
 
   // Bascule animée recto ↔ verso
   const flip = useCallback(() => {
@@ -449,6 +498,10 @@ export default function CreationForm({
 
     if (typeTravail === 'sequence') {
       data.sequenceFle = sequenceFle;
+    }
+
+    if (typeTravail === 'portfolio') {
+      data.portfolio = portfolio ?? PORTFOLIO_VIDE;
     }
 
     if (typeTravail === 'schematiser') {
@@ -992,6 +1045,7 @@ export default function CreationForm({
           {typeTravail === 'vocabulaire' && 'Vocabulaire'}
           {typeTravail === 'autoevaluation' && 'Auto-évaluation'}
           {typeTravail === 'sequence' && 'Séquence FLE'}
+          {typeTravail === 'portfolio' && 'Portfolio'}
           {typeTravail === 'schematiser' && 'Schématiser'}
         </span>
       </div>
@@ -1038,6 +1092,8 @@ export default function CreationForm({
                     ? 'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'
                     : typeTravail === 'sequence'
                       ? 'Les modules du parcours, dans l’ordre où l’élève les fera. Chaque module apporte sa théorie et ses activités ; les élèves qui suivent la séquence se choisissent au recto.'
+                    : typeTravail === 'portfolio'
+                      ? 'Les étapes du portfolio, dans l’ordre où l’élève les fera : étapes propres (objectifs, consigne, dépôts) ou renvois vers d’autres activités. Un clic sur une étape règle son échéance, son statut IA, sa portée et son verrou.'
                     : typeTravail === 'autoevaluation'
                       ? 'Le questionnaire d’auto-évaluation : l’élève y dit où il en est. Rien n’est noté — les gestes cochés alimentent l’onglet réflexif de son profil.'
                       : 'La liste sert de support à l’activité (apprentissage et évaluation). Elle est aussi enregistrée dans Mes Ressources.'
@@ -1058,6 +1114,36 @@ export default function CreationForm({
           plusieursClasses={selectedClasses.length > 1}
           disabled={isSubmitting}
         />
+      )}
+
+      {/* Portfolio d'apprentissage : les étapes — depuis une matrice de Mes Ressources, ou de zéro */}
+      {typeTravail === 'portfolio' && (
+        <>
+          {!portfolioInitial && (matrices?.length ?? 0) > 0 && (
+            <div className={styles.formGroup}>
+              <label className={styles.label} htmlFor="portfolio-matrice">Partir d’un portfolio de Mes Ressources</label>
+              <select
+                id="portfolio-matrice"
+                className={styles.select}
+                value={portfolio?.portfolioId ?? ''}
+                onChange={(e) => partirDeMatrice(e.target.value)}
+                disabled={isSubmitting}
+              >
+                <option value="">— Composer de zéro —</option>
+                {(matrices ?? []).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.titre} ({m.etapes.length} étape{m.etapes.length > 1 ? 's' : ''})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <PortfolioBuilder
+            etapes={portfolio?.etapes ?? []}
+            onChange={(etapes) => setPortfolio({ ...(portfolio ?? PORTFOLIO_VIDE), etapes })}
+            disabled={isSubmitting}
+          />
+        </>
       )}
 
       {/* Questionnaire d'auto-évaluation (type autoevaluation) */}

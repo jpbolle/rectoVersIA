@@ -4,6 +4,7 @@ import { verifyAuth } from '@/lib/api-auth';
 import { decrypt } from '@/lib/crypto';
 import { accesTravail, peutAgir } from '@/lib/classe-acces';
 import { nettoyerConsignesCochees } from '@/lib/consignes-etapes';
+import { lireContenuEleve } from '@/lib/portfolio-etat';
 import type { Travail, UpdateTravailData } from '@/types/travail';
 
 // GET - Recuperer un travail par ID
@@ -132,7 +133,7 @@ export async function PATCH(
     }
 
     // Un travail soumis ne peut plus etre modifie par l'eleve
-    if (auth.role === 'eleve' && data.status === 'submitted' && body.content !== undefined) {
+    if (auth.role === 'eleve' && data.status === 'submitted' && (body.content !== undefined || body.portfolio !== undefined)) {
       return NextResponse.json(
         { success: false, message: 'Le travail a deja ete soumis et ne peut plus etre modifie' },
         { status: 403 }
@@ -145,6 +146,27 @@ export async function PATCH(
 
     if (body.content !== undefined) {
       updateData.content = body.content;
+    }
+
+    // PORTFOLIO : un champ à la fois, fusionné dans le JSON de la copie. Deux
+    // élèves (ou deux onglets) dans deux champs voisins ne s'écrasent jamais.
+    if (body.portfolio !== undefined && body.portfolio && typeof body.portfolio === 'object') {
+      const p = body.portfolio;
+      const actuel = lireContenuEleve(typeof data.content === 'string' ? data.content : '');
+      const reponses = { ...actuel.reponses };
+      if (p.reponses && typeof p.reponses === 'object') {
+        for (const [cle, texte] of Object.entries(p.reponses)) {
+          if (typeof cle !== 'string' || cle.length > 120) continue;
+          if (typeof texte === 'string' && texte.trim() !== '') reponses[cle] = texte.slice(0, 20000);
+          else delete reponses[cle];
+        }
+      }
+      const cochees = Array.isArray(p.cochees)
+        ? [...new Set(p.cochees.filter((c): c is string => typeof c === 'string').map((c) => c.slice(0, 40)))]
+        : actuel.cochees;
+      const derniereEtape =
+        typeof p.derniereEtape === 'string' && p.derniereEtape ? p.derniereEtape.slice(0, 40) : actuel.derniereEtape;
+      updateData.content = JSON.stringify({ type: 'portfolio', reponses, cochees, derniereEtape: derniereEtape ?? null });
     }
 
     if (body.selfEvaluation !== undefined) {

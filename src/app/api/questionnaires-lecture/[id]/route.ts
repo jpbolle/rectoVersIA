@@ -25,9 +25,10 @@ export async function GET(
     if (!q) {
       return NextResponse.json({ success: false, message: 'Introuvable' }, { status: 404 });
     }
-    // Le sien, ou un exemple partagé qu'il peut lire (et dupliquer) sans
-    // pouvoir le modifier — même doctrine que les grilles.
-    if (q.profId !== auth.uid && !q.shared) {
+    // Le sien, un exemple partagé, ou celui d'un collègue non archivé : lisible
+    // (et duplicable) sans être modifiable — même doctrine que les grilles
+    // (bloc « Questionnaires des professeurs », JP 2026-10-09).
+    if (q.profId !== auth.uid && !q.shared && q.archive) {
       return NextResponse.json({ success: false, message: 'Accès refusé' }, { status: 403 });
     }
     return NextResponse.json({ success: true, data: q });

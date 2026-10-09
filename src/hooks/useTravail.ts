@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth';
-import type { Travail, UpdateTravailData } from '@/types/travail';
+import type { PortfolioPatch, Travail, UpdateTravailData } from '@/types/travail';
+import { lireContenuEleve } from '@/lib/portfolio-etat';
 import { basculerConsigne } from '@/lib/consignes-etapes';
 
 const DEBOUNCE_DELAY = 2500; // 2.5 secondes
@@ -211,6 +212,32 @@ export function useTravail(devoirId: string | null) {
     }
   }, [saveNow]);
 
+  // PORTFOLIO : un champ écrit tout de suite, fusionné localement comme le
+  // serveur le fera — optimiste, retour arrière si refus
+  const patchPortfolio = useCallback(async (patch: PortfolioPatch) => {
+    const t = travailRef.current;
+    if (!t) return false;
+    const avant = t.content;
+    const actuel = lireContenuEleve(avant);
+    const reponses = { ...actuel.reponses };
+    for (const [cle, texte] of Object.entries(patch.reponses ?? {})) {
+      if (texte.trim() !== '') reponses[cle] = texte;
+      else delete reponses[cle];
+    }
+    const apres = JSON.stringify({
+      type: 'portfolio',
+      reponses,
+      cochees: patch.cochees ?? actuel.cochees,
+      derniereEtape: patch.derniereEtape ?? actuel.derniereEtape ?? null,
+    });
+    setTravail(prev => prev ? { ...prev, content: apres } : null);
+    const ok = await saveNow({ portfolio: patch });
+    if (!ok) {
+      setTravail(prev => prev ? { ...prev, content: avant } : null);
+    }
+    return ok;
+  }, [saveNow]);
+
   // Soumission du travail (immediate)
   const submit = useCallback(async () => {
     // D'abord sauvegarder les changements en attente
@@ -259,6 +286,7 @@ export function useTravail(devoirId: string | null) {
     updateRessourceNotes,
     updateRessourceImageShapes,
     toggleConsigneCochee,
+    patchPortfolio,
     submit,
     refetch: fetchTravail,
   };

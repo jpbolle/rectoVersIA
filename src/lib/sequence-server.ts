@@ -12,6 +12,7 @@ import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import { etatEffectif, sessionsDeLEleve } from '@/lib/session-server';
 import { concerne, generateEtapeId } from '@/types/sequence-fle';
 import type { SequenceFleContenu, SequenceFleEtape } from '@/types/sequence-fle';
+import { lirePortfolioContenu } from '@/lib/portfolio-server';
 
 function idsOuNull(v: unknown): string[] | null {
   if (!Array.isArray(v)) return null;
@@ -135,7 +136,14 @@ export async function ouvertParSequence(uid: string, email: string, devoirId: st
   const identite = await identiteEleve(uid, email);
   if (identite.eleveIds.length === 0 || identite.classeNoms.length === 0) return false;
 
-  const snap = await adminDb.collection('devoirs').where('typeTravail', '==', 'sequence').get();
+  // Les séquences FLE ET les portfolios d'apprentissage (2026-10-09) : les deux
+  // contiennent des renvois vers des activités
+  const snap = await adminDb.collection('devoirs').where('typeTravail', 'in', ['sequence', 'portfolio']).get();
+  // Les étapes-activités d'un conteneur, quel qu'il soit
+  const renvois = (data: FirebaseFirestore.DocumentData): { devoirId?: string; eleves?: string[] | null }[] =>
+    data.typeTravail === 'portfolio'
+      ? lirePortfolioContenu(data.portfolio).etapes.filter((e) => e.nature === 'activite')
+      : lireSequenceFle(data.sequenceFle).etapes.filter((e) => e.nature === 'activite');
   // Séquences de ses classes, qui le concernent, dont une étape (qui le
   // concerne) est cette activité
   const candidates = snap.docs
@@ -145,11 +153,7 @@ export async function ouvertParSequence(uid: string, email: string, devoirId: st
       return !s.data.archive && classes.some((nom) => identite.classeNoms.includes(nom));
     })
     .filter((s) => !eleveExclu(s.data.eleves, identite.eleveIds))
-    .filter((s) =>
-      lireSequenceFle(s.data.sequenceFle).etapes.some(
-        (e) => e.nature === 'activite' && e.devoirId === devoirId && concerne(e.eleves, identite.eleveIds)
-      )
-    );
+    .filter((s) => renvois(s.data).some((e) => e.devoirId === devoirId && concerne(e.eleves, identite.eleveIds)));
 
   for (const s of candidates) {
     if (await sequenceOuverteA({ id: s.id, ...s.data }, identite)) return true;

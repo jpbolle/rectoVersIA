@@ -25,7 +25,8 @@
 // rangée impaire s'affiche en `row-reverse`, et un trait vertical relie la
 // fin d'une rangée au début de la suivante.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import Serpentin from './Serpentin';
 import { useAuth } from '@/hooks/useAuth';
 import { useClasses } from '@/hooks/useClasses';
 import { estClasseFle } from '@/types/classe';
@@ -54,11 +55,6 @@ interface Props {
   // activité) — l'atelier de Mes Ressources › Modules FLE › Séquences de cours
   onOuvrirEtape?: (etape: SequenceFleEtape) => void;
 }
-
-// Géométrie de la ligne (doit suivre le CSS) : encadré 200, « + » 34, écarts 10
-const LARGEUR_ENCADRE = 200;
-const LARGEUR_PLUS = 34;
-const ECART = 10;
 
 function iconeEtape(e: SequenceFleEtape): string {
   if (e.nature === 'theorie') return iconeTypeModule(e.type ?? '');
@@ -92,22 +88,6 @@ export default function SequenceFleBuilder({
 
   // Étape dont on choisit les élèves ; null = popup fermée
   const [elevesDe, setElevesDe] = useState<string | null>(null);
-
-  // Encadrés par rangée, mesurés sur la largeur disponible
-  const ligneRef = useRef<HTMLDivElement>(null);
-  const [parRangee, setParRangee] = useState(3);
-  useEffect(() => {
-    const el = ligneRef.current;
-    if (!el) return;
-    const mesurer = () => {
-      const largeur = el.clientWidth - 12;
-      setParRangee(Math.max(1, Math.floor((largeur - LARGEUR_PLUS) / (LARGEUR_ENCADRE + LARGEUR_PLUS + 2 * ECART))));
-    };
-    mesurer();
-    const obs = new ResizeObserver(mesurer);
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
 
   const poser = useCallback(
     (patch: Partial<SequenceFleContenu>) => onChange({ ...contenu, ...patch }),
@@ -220,39 +200,6 @@ export default function SequenceFleBuilder({
   const lienCreer =
     nature === 'theorie' ? '/parcours-fle?section=theorie' : '/parcours-fle?section=activites';
 
-  // ── La ligne, découpée en rangées ──
-  type Element = { kind: 'plus'; index: number } | { kind: 'etape'; etape: SequenceFleEtape; index: number };
-  const suite: Element[] = [{ kind: 'plus', index: 0 }];
-  contenu.etapes.forEach((e, i) => {
-    suite.push({ kind: 'etape', etape: e, index: i });
-    suite.push({ kind: 'plus', index: i + 1 });
-  });
-  const rangees: Element[][] = [];
-  let curseur = 0;
-  let premiere = true;
-  while (curseur < suite.length) {
-    const taille = premiere ? 2 * parRangee + 1 : 2 * parRangee;
-    rangees.push(suite.slice(curseur, curseur + taille));
-    curseur += taille;
-    premiere = false;
-  }
-
-  const rendrePlus = (index: number) =>
-    disabled ? (
-      <span key={`p${index}`} className={styles.plusVide} />
-    ) : (
-      <button
-        key={`p${index}`}
-        type="button"
-        className={styles.plus}
-        onClick={() => ouvrirPlus(index)}
-        title="Ajouter une étape ici"
-        aria-label="Ajouter une étape ici"
-      >
-        +
-      </button>
-    );
-
   const rendreEtape = (e: SequenceFleEtape, i: number) => {
     const restreint = e.eleves !== null;
     return (
@@ -311,43 +258,14 @@ export default function SequenceFleBuilder({
           </span>
         </p>
 
-        {/* ── La ligne du temps en serpentin ── */}
-        <div className={styles.ligne} ref={ligneRef}>
-          {contenu.etapes.length === 0 ? (
-            // Séquence vide : un grand « + » bien visible, et le début du
-            // serpentin pour dire ce qui va se construire
-            <div className={styles.depart}>
-              {!disabled && (
-                <button
-                  type="button"
-                  className={`${styles.plus} ${styles.plusDepart}`}
-                  onClick={() => ouvrirPlus(0)}
-                  title="Ajouter la première étape"
-                  aria-label="Ajouter la première étape"
-                >
-                  +
-                </button>
-              )}
-              <span className={styles.departTrait} aria-hidden="true" />
-              <span className={styles.departVirage} aria-hidden="true" />
-              <span className={styles.departRetour} aria-hidden="true" />
-              <p className={styles.departAide}>
-                {disabled ? 'Aucune étape.' : 'Première étape : une théorie ou une activité.'}
-              </p>
-            </div>
-          ) : (
-            rangees.map((rangee, r) => (
-            <div
-              key={r}
-              className={`${styles.rangee} ${r % 2 === 1 ? styles.rangeeRetour : ''} ${
-                r < rangees.length - 1 ? styles.rangeeAvecVirage : ''
-              }`}
-            >
-              {rangee.map((el) => (el.kind === 'plus' ? rendrePlus(el.index) : rendreEtape(el.etape, el.index)))}
-            </div>
-            ))
-          )}
-        </div>
+        {/* ── La ligne du temps en serpentin (mécanisme partagé avec le portfolio) ── */}
+        <Serpentin
+          items={contenu.etapes}
+          cle={(e) => e.id}
+          rendreItem={rendreEtape}
+          onPlus={disabled ? undefined : ouvrirPlus}
+          aideDepart="Première étape : une théorie ou une activité."
+        />
       </div>
 
       {/* ── Le « + » : la nature, puis l'existant ── */}

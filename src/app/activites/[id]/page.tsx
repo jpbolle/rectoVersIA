@@ -25,7 +25,11 @@ import LectureQuizActivity from '@/components/LectureQuizActivity/LectureQuizAct
 import CompetitionActivity from '@/components/Competition/CompetitionActivity';
 import SondageActivity from '@/components/Sondage/SondageActivity';
 import SondageLibreActivity from '@/components/Sondage/SondageLibreActivity';
-import { estSequenceFle, estSondageEnDirect, estSondageLibre, reglagesSondage } from '@/types/didactique';
+import { estPortfolio, estSequenceFle, estSondageEnDirect, estSondageLibre, reglagesSondage } from '@/types/didactique';
+import PortfolioActivity from '@/components/Portfolio/PortfolioActivity';
+import PortfolioSommaire from '@/components/Portfolio/PortfolioSommaire';
+import PortfolioRessourcesEtape from '@/components/Portfolio/PortfolioRessourcesEtape';
+import { usePortfolioEleve } from '@/hooks/usePortfolioEleve';
 import SequenceFleActivity from '@/components/SequenceFleActivity/SequenceFleActivity';
 import OeuvreReader from '@/components/OeuvreReader/OeuvreReader';
 import OeuvreSommaire from '@/components/OeuvreReader/OeuvreSommaire';
@@ -118,7 +122,16 @@ export default function TravailPage() {
     updateRessourceImageShapes,
     toggleConsigneCochee,
     submit,
+    patchPortfolio,
   } = useTravail(isPreviewMode ? null : devoirId);
+  // PORTFOLIO : le parcours, l'étape ouverte et les gestes — partagés par la
+  // colonne 1 et le sommaire du rail. Inerte pour tout autre dispositif.
+  const portfolioEleve = usePortfolioEleve({
+    devoirId: devoir && estPortfolio(devoir) ? devoirId : null,
+    content: travail?.content,
+    patchPortfolio: isPreviewMode ? undefined : patchPortfolio,
+    lectureSeule: isPreviewMode || travail?.status === 'submitted',
+  });
 
   const {
     grille,
@@ -542,6 +555,9 @@ export default function TravailPage() {
   // Atelier de conceptualisation : la colonne de gauche devient l'éditeur de
   // schéma ; la base documentaire est dans le rail (onglet Ressources).
   const isSchema = devoir?.typeTravail === 'schematiser';
+  // Portfolio d'apprentissage : la colonne 1 montre l'étape où l'élève en
+  // était, le rail son sommaire cochable (plan du 2026-10-09)
+  const isPortfolio = estPortfolio(devoir);
 
   // ── Configuration du rail : icones + visibilite par type d'activite ──
   const hasAiSuggestions = aiSuggestions
@@ -558,16 +574,17 @@ export default function TravailPage() {
   // dans la gouttière de correction, question par question), auto-évaluation
   // (il n'y a pas de copie ; le regard du prof se lit dans l'onglet Évaluation,
   // en face de celui de l'élève).
-  const showRemarques = !isVocabulaire && !isRecherche && !isLecture && !isAutoEval && !isSondage && !isSondageLibre && !isSchema;
+  const showRemarques = !isVocabulaire && !isRecherche && !isLecture && !isAutoEval && !isSondage && !isSondageLibre && !isSchema && !isPortfolio;
 
   // Ordre : Consignes → Ressources → Aide IA → Remarques → Recherche → Évaluation
   const railTabs: RailTab[] = [];
   // Lecture d'une œuvre : le sommaire du livre s'installe sous la consigne —
   // l'onglet doit dire qu'on y navigue, sans quoi l'élève ne l'ouvre jamais.
-  const labelConsignes = isOeuvre ? 'Consignes et navigation' : 'Consignes';
+  const labelConsignes = isPortfolio ? 'Sommaire du portfolio' : isOeuvre ? 'Consignes et navigation' : 'Consignes';
   railTabs.push({ id: 'consignes', label: labelConsignes, icon: ICON_CONSIGNES });
   railTabs.push({ id: 'ressources', label: 'Ressources', icon: ICON_RESSOURCES });
-  if (!isRecherche && !isLectureQuiz && (accesIA || showAiData)) {
+  // Portfolio : le statut IA est PAR ÉTAPE, affiché dans la colonne 1 — pas d'onglet
+  if (!isRecherche && !isLectureQuiz && !isPortfolio && (accesIA || showAiData)) {
     railTabs.push({
       id: 'ia',
       label: 'Aide IA à la réécriture',
@@ -645,7 +662,7 @@ export default function TravailPage() {
           // Le VOCABULAIRE rejoint la liste : l'élève y coche des mots et fait
           // ses exercices pendant des semaines, il n'y a jamais rien à remettre.
           // Le bouton promettait une fin qui n'existe pas (demande JP, 2026-09-20).
-          isRecherche || isLectureQuiz || isAutoEval || isOeuvre || isSondage || isSondageLibre || isVocabulaire
+          isRecherche || isLectureQuiz || isAutoEval || isOeuvre || isSondage || isSondageLibre || isVocabulaire || isPortfolio
         }
         submitOutsideApp={isRecherche}
       />
@@ -671,7 +688,14 @@ export default function TravailPage() {
           }
         >
         {/* Colonne 1 : zone de travail (prend l'espace restant) */}
-        {isVocabulaire ? (
+        {isPortfolio ? (
+          <PortfolioActivity
+            eleve={portfolioEleve}
+            isPreviewMode={isPreviewMode}
+            lectureSeule={isDisabled}
+            accesIA={devoir?.accesIA === true}
+          />
+        ) : isVocabulaire ? (
           <div className={styles.editorSection}>
             <div className={styles.editorHeader}>
               <h2>Vocabulaire</h2>
@@ -909,6 +933,10 @@ export default function TravailPage() {
                   ).length
                 : undefined
             }
+            consignesRemplacement={
+              isPortfolio ? <PortfolioSommaire eleve={portfolioEleve} lectureSeule={isDisabled} /> : undefined
+            }
+            ressourcesPrefixe={isPortfolio && devoir ? <PortfolioRessourcesEtape devoir={devoir} eleve={portfolioEleve} /> : undefined}
             oeuvreNav={
               isOeuvre && oeuvreLecture.oeuvre ? (
                 <OeuvreSommaire

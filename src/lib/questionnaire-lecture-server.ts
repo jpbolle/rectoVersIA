@@ -49,11 +49,15 @@ export async function lireQuestionnaire(id: string): Promise<QuestionnaireLectur
 /** La bibliothèque d'un prof : les siens, plus les exemples partagés. */
 export async function listerQuestionnaires(
   profId: string
-): Promise<{ miens: QuestionnaireLectureResume[]; exemples: QuestionnaireLectureResume[] }> {
-  const [aMoi, partages] = await Promise.all([
-    adminDb.collection(COLLECTION).where('profId', '==', profId).get(),
-    adminDb.collection(COLLECTION).where('shared', '==', true).get(),
-  ]);
+): Promise<{
+  miens: QuestionnaireLectureResume[];
+  exemples: QuestionnaireLectureResume[];
+  /** Ceux des collègues, non archivés, non partagés — à dupliquer (bloc « des professeurs », JP 2026-10-09) */
+  autres: QuestionnaireLectureResume[];
+}> {
+  const tous = await adminDb.collection(COLLECTION).get();
+  const aMoi = { docs: tous.docs.filter((d) => d.data().profId === profId) };
+  const partages = { docs: tous.docs.filter((d) => d.data().shared === true) };
 
   const resumer = (id: string, data: Record<string, unknown>): QuestionnaireLectureResume => {
     const quiz = lectureQuizDepuisFirestore(data.quiz);
@@ -79,9 +83,13 @@ export async function listerQuestionnaires(
     .filter((d) => !aMoiIds.has(d.id))
     .map((d) => resumer(d.id, d.data()));
 
+  const autres = tous.docs
+    .filter((d) => d.data().profId !== profId && d.data().shared !== true && d.data().archive !== true)
+    .map((d) => resumer(d.id, d.data()));
+
   const parNom = (a: QuestionnaireLectureResume, b: QuestionnaireLectureResume) =>
     a.nom.localeCompare(b.nom);
-  return { miens: miens.sort(parNom), exemples: exemples.sort(parNom) };
+  return { miens: miens.sort(parNom), exemples: exemples.sort(parNom), autres: autres.sort(parNom) };
 }
 
 /** Prépare le document Firestore (la matrice multiple s'y emballe). */
