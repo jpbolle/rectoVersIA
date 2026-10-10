@@ -17,7 +17,7 @@ import CreationForm from '@/components/CreationForm/CreationForm';
 import EditDevoirModal from '@/components/EditDevoirModal/EditDevoirModal';
 import PortfolioBuilder from './PortfolioBuilder';
 import type { CreateDevoirData, Devoir } from '@/types/devoir';
-import { nouvelleEtape, type PortfolioEtape, type PortfolioMatrice } from '@/types/portfolio';
+import type { PortfolioEtape, PortfolioMatrice } from '@/types/portfolio';
 import ed from '@/components/ModuleFleEditor/ModuleFleEditor.module.css';
 import styles from './Portfolio.module.css';
 
@@ -57,11 +57,21 @@ export default function PortfolioAtelier({
     etapes: matrice.etapes,
     ressources: matrice.ressources,
   });
+  // Consignes générales et ressources du portfolio : facultatives (chaque
+  // étape a déjà les siennes) — l'encadré n'apparaît que si le prof coche.
+  // Décocher vide le champ ; recocher dans la même séance le rend.
+  const [avecConsignes, setAvecConsignes] = useState(!!matrice.consignes?.trim());
   const [ressourcesOuvertes, setRessourcesOuvertes] = useState(!!matrice.ressources);
+  const mise = useRef<{ consignes: string; ressources: PortfolioMatrice['ressources'] }>({
+    consignes: matrice.consignes ?? '',
+    ressources: matrice.ressources ?? null,
+  });
   const [etat, setEtat] = useState<Etat>('enregistre');
   const [message, setMessage] = useState<string | null>(null);
   // « Créer une activité » : la position où l'insérer, le formulaire prend la page
-  const [creationA, setCreationA] = useState<number | null>(null);
+  // « Créer une nouvelle activité » depuis la popup d'étape : où la poser, et
+  // l'étape telle que le prof l'a réglée (section, échéance, IA…)
+  const [creationA, setCreationA] = useState<{ index: number; modele: PortfolioEtape; remplace: boolean } | null>(null);
   const [envoiCreation, setEnvoiCreation] = useState(false);
   const [activiteOuverte, setActiviteOuverte] = useState<Devoir | null>(null);
 
@@ -123,20 +133,19 @@ export default function PortfolioAtelier({
       const json = await createDevoir(data);
       const id = json?.data?.id;
       if (id && creationA !== null) {
+        const { index, modele, remplace } = creationA;
         const liste = [...fiche.etapes];
-        const precedente = liste[creationA - 1];
-        liste.splice(
-          creationA,
-          0,
-          nouvelleEtape({
-            nature: 'activite',
-            devoirId: id,
-            titre: data.intitule,
-            atelier: data.atelier,
-            typeTravail: data.typeTravail,
-            section: precedente?.section ?? '',
-          })
-        );
+        const etape: PortfolioEtape = {
+          ...modele,
+          nature: 'activite',
+          devoirId: id,
+          titre: modele.titre.trim() || data.intitule,
+          atelier: data.atelier,
+          typeTravail: data.typeTravail,
+          depots: [],
+        };
+        if (remplace && index >= 0) liste[index] = etape;
+        else liste.splice(Math.max(0, index), 0, etape);
         poser({ etapes: liste });
       }
       setCreationA(null);
@@ -224,26 +233,53 @@ export default function PortfolioAtelier({
           onChange={(e) => poser({ description: e.target.value })}
           placeholder="Certification de Noël, 4ᵉ…"
         />
-        <label className={styles.lab}>
-          Consignes générales <span className={styles.labNote}>— en tête du sommaire de l’élève, une ligne par consigne</span>
+        <label className={styles.ficheOption}>
+          <input
+            type="checkbox"
+            checked={avecConsignes}
+            onChange={(e) => {
+              setAvecConsignes(e.target.checked);
+              if (e.target.checked) poser({ consignes: mise.current.consignes });
+              else {
+                mise.current.consignes = fiche.consignes;
+                poser({ consignes: '' });
+              }
+            }}
+          />
+          <span>
+            <b>Consignes générales</b>
+            <span className={styles.labNote}> — en tête du sommaire de l’élève, en plus des consignes de chaque étape</span>
+          </span>
         </label>
-        <ConsignesEditor value={fiche.consignes} onChange={(v) => poser({ consignes: v })} />
-        <label className={styles.lab}>
-          Ressources du portfolio <span className={styles.labNote}>— anthologie, base documentaire… reprises par l’activité</span>
+        {avecConsignes && <ConsignesEditor value={fiche.consignes} onChange={(v) => poser({ consignes: v })} />}
+        <label className={styles.ficheOption}>
+          <input
+            type="checkbox"
+            checked={ressourcesOuvertes}
+            onChange={(e) => {
+              setRessourcesOuvertes(e.target.checked);
+              if (e.target.checked) poser({ ressources: mise.current.ressources });
+              else {
+                mise.current.ressources = fiche.ressources;
+                poser({ ressources: null });
+              }
+            }}
+          />
+          <span>
+            <b>Ressources du portfolio</b>
+            <span className={styles.labNote}> — anthologie, base documentaire… en plus des ressources de chaque étape</span>
+          </span>
         </label>
-        {ressourcesOuvertes ? (
+        {ressourcesOuvertes && (
           <RessourcesInput ressources={fiche.ressources} onRessourcesChange={(r) => poser({ ressources: r })} />
-        ) : (
-          <button type="button" className={styles.ajout} onClick={() => setRessourcesOuvertes(true)}>
-            + Ajouter des ressources
-          </button>
         )}
       </div>
 
       <PortfolioBuilder
         etapes={etapesAffichees}
         onChange={(etapes) => poser({ etapes })}
-        onCreerActivite={setCreationA}
+        onCreerActivite={(index, modele, remplace) => setCreationA({ index, modele, remplace })}
+        tacheFinale={fiche.tacheFinale}
         onOuvrirActivite={ouvrirActivite}
       />
 

@@ -7,10 +7,18 @@ import type { DevoirRessource } from '@/types/devoir';
 import {
   generateDepotId,
   generateEtapePortfolioId,
+  generateValeurId,
+  MAX_COLONNES_TABLEAU,
+  typesDuDepot,
   type PortfolioContenu,
   type PortfolioDepot,
   type PortfolioEtape,
   type PortfolioMatrice,
+  type TypeDepot,
+  type AffichageValeur,
+  type GenreValeur,
+  type ValeurDeclaree,
+  type ValidationEtape,
 } from '@/types/portfolio';
 
 type Doc = FirebaseFirestore.DocumentSnapshot | FirebaseFirestore.QueryDocumentSnapshot;
@@ -39,16 +47,65 @@ function depotsPourFirestore(input: unknown): PortfolioDepot[] {
     let id = texte(item.id, 40) || generateDepotId();
     while (vus.has(id)) id = generateDepotId();
     vus.add(id);
+    const types = typesDuDepot({
+      types: Array.isArray(item.types) ? (item.types as TypeDepot[]) : undefined,
+      type: typeof item.type === 'string' ? (item.type as TypeDepot) : undefined,
+    });
+    const colonnes = Array.isArray(item.colonnes)
+      ? item.colonnes.map((c) => texte(c, 80)).filter(Boolean).slice(0, MAX_COLONNES_TABLEAU)
+      : [];
     depots.push({
       id,
       libelle: texte(item.libelle, 200),
       consigne: texte(item.consigne, 2000),
       exemple: texte(item.exemple, 2000),
       obligatoire: item.obligatoire !== false,
-      type: item.type === 'groupe' ? 'groupe' : 'texte',
+      // Ancienne forme (`type` seul) convertie ici : ce qui sort du serveur
+      // porte toujours `types`.
+      types,
+      // Un tableau sans colonne nommée en garde une, pour qu'il s'affiche
+      ...(types.includes('tableau') ? { colonnes: colonnes.length > 0 ? colonnes : ['Réponse'] } : {}),
     });
   }
   return depots;
+}
+
+const GENRES_VALEUR: GenreValeur[] = ['oeuvre', 'lien', 'video', 'integration'];
+
+function validationPourFirestore(input: unknown): ValidationEtape | null {
+  if (!input || typeof input !== 'object') return null;
+  const v = input as Record<string, unknown>;
+  const vus = new Set<string>();
+  const attribue: ValeurDeclaree[] = [];
+  for (const a of Array.isArray(v.attribue) ? v.attribue.slice(0, 6) : []) {
+    if (!a || typeof a !== 'object') continue;
+    const item = a as Record<string, unknown>;
+    const nom = texte(item.nom, 80);
+    if (!nom) continue;
+    let id = texte(item.id, 40) || generateValeurId();
+    while (vus.has(id)) id = generateValeurId();
+    vus.add(id);
+    const genre = GENRES_VALEUR.includes(item.genre as GenreValeur) ? (item.genre as GenreValeur) : 'lien';
+    attribue.push({ id, nom, genre });
+  }
+  const bloquante = v.bloquante === true;
+  // Rien de réglé : pas d'objet (l'étape se soumet quand même, sans bloquer)
+  return bloquante || attribue.length > 0 ? { bloquante, attribue } : null;
+}
+
+function affichePourFirestore(input: unknown): AffichageValeur[] {
+  if (!Array.isArray(input)) return [];
+  const vus = new Set<string>();
+  const affiche: AffichageValeur[] = [];
+  for (const a of input.slice(0, 12)) {
+    if (!a || typeof a !== 'object') continue;
+    const item = a as Record<string, unknown>;
+    const valeurId = texte(item.valeurId, 40);
+    if (!valeurId || vus.has(valeurId)) continue;
+    vus.add(valeurId);
+    affiche.push({ valeurId, place: item.place === 'ressources' ? 'ressources' : 'travail' });
+  }
+  return affiche;
 }
 
 export function etapesPortfolioPourFirestore(
@@ -87,6 +144,8 @@ export function etapesPortfolioPourFirestore(
       verrouille: item.verrouille === true,
       ressources: item.ressources ? sanitizeRessources(item.ressources, { codeAutorise: options.codeAutorise === true }) : null,
       depots: nature === 'etape' ? depotsPourFirestore(item.depots) : [],
+      validation: validationPourFirestore(item.validation),
+      affiche: affichePourFirestore(item.affiche),
     });
   }
   return etapes;

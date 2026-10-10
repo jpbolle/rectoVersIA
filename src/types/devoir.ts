@@ -100,7 +100,7 @@ export interface DevoirRessource {
   outils?: string;      // HTML avec liens cliquables (onglet Lien)
   document?: string;    // Rich HTML content from Tiptap editor (onglet Texte)
   files?: RessourceFile[]; // Fichiers Drive (onglet Fichier)
-  /** URLs YouTube — lues via `normaliserVideos` (deux formes en base) */
+  /** URLs YouTube ou Google Drive — lues via `normaliserVideos` (deux formes en base) */
   videos?: RessourceVideoStockee[];
   interactifs?: RessourceInteractif[]; // Contenus embarqués (onglet Interactif)
   /** Titres des deux blocs uniques ; à défaut « Outils » et « Document » */

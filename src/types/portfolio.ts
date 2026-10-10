@@ -21,9 +21,20 @@ import { generateEtapeId } from './sequence-fle';
 export type NaturePortfolioEtape = 'etape' | 'activite';
 export type StatutIA = 'libre' | 'partielle' | 'aucune';
 export type PorteeEtape = 'personnelle' | 'collective';
-// Étape 1 du chantier : texte et groupe. Tableau, image, lien, commentaires
-// viendront aux étapes 3 à 5.
-export type TypeDepot = 'texte' | 'groupe';
+// Un dépôt combine un ou plusieurs types (plan 2026-10-10-portfolio-depots-
+// multitypes) : « texte + lien » = un seul bloc chez l'élève, une zone par
+// type. `groupe` ne se combine avec rien (circuit d'acceptation propre).
+export type TypeDepot = 'texte' | 'lien' | 'image' | 'tableau' | 'groupe';
+
+// Ordre d'affichage des zones chez l'élève, et des cases chez le prof
+export const ORDRE_TYPES_DEPOT: TypeDepot[] = ['texte', 'lien', 'image', 'tableau', 'groupe'];
+
+// Les types que le prof peut cocher aujourd'hui (les autres : « bientôt »)
+export const TYPES_DEPOT_DISPONIBLES: TypeDepot[] = ['texte', 'lien', 'image', 'tableau', 'groupe'];
+
+// Tableau : le prof fixe les colonnes, l'élève ajoute les lignes
+export const MAX_COLONNES_TABLEAU = 8;
+export const MAX_LIGNES_TABLEAU = 60;
 
 export interface PortfolioDepot {
   id: string; // DEP-…
@@ -32,7 +43,141 @@ export interface PortfolioDepot {
   // Le gris à effacer du Google Docs : affiché en filigrane, jamais enregistré
   exemple?: string;
   obligatoire?: boolean;
-  type: TypeDepot;
+  types: TypeDepot[];
+  // Les intitulés des colonnes — dépôt avec la partie « tableau » seulement
+  colonnes?: string[];
+  // ⚠ ANCIENNE FORME (avant le 2026-10-10) : un seul type. Lire les types
+  // par `typesDuDepot()`, jamais `type` ni `types` directement.
+  type?: TypeDepot;
+}
+
+/** Les types d'un dépôt, quelle que soit sa forme en base (`type` seul, ou `types`). */
+export function typesDuDepot(d: { types?: TypeDepot[]; type?: TypeDepot }): TypeDepot[] {
+  const brut: unknown[] = Array.isArray(d.types) && d.types.length > 0 ? d.types : d.type ? [d.type] : [];
+  const types = ORDRE_TYPES_DEPOT.filter((t) => brut.includes(t));
+  if (types.includes('groupe')) return ['groupe'];
+  return types.length > 0 ? types : ['texte'];
+}
+
+/**
+ * La clé d'une PARTIE de dépôt dans `PortfolioContenuEleve.reponses`.
+ * Le texte garde la clé historique `{etapeId}/{depotId}` (les textes déjà
+ * déposés restent lisibles) ; les autres parties ajoutent `/{type}`.
+ */
+export function clePartie(etapeId: string, depotId: string, type: TypeDepot): string {
+  const base = cleChamp(etapeId, depotId);
+  return type === 'texte' ? base : `${base}/${type}`;
+}
+
+// ─── Validation du prof et VALEURS ATTRIBUÉES (plan 2026-10-10-portfolio-
+// validation-variables) ───
+//
+// Chaque étape à dépôts ou à activité se SOUMET au prof ; le prof valide ✓ ou
+// refuse ✗, avec une appréciation et un commentaire. En validant, il peut
+// ATTRIBUER au groupe des valeurs déclarées dans l'étape (« Le sketch » : une
+// scène d'une œuvre ; « La captation » : un lien…), que les étapes suivantes
+// affichent. Ce qui revient au groupe vit dans `portfolioSuivi` (serveur).
+
+export type GenreValeur = 'oeuvre' | 'lien' | 'video' | 'integration';
+
+export const GENRE_VALEUR_LABELS: Record<GenreValeur, string> = {
+  oeuvre: 'Texte de la bibliothèque',
+  lien: 'Lien',
+  video: 'Vidéo (YouTube, Drive)',
+  integration: 'Page intégrée (Genially…)',
+};
+
+/** Une valeur que l'étape ATTRIBUE à la validation — déclarée par le prof. */
+export interface ValeurDeclaree {
+  id: string; // VAL-…
+  nom: string; // « Le sketch »
+  genre: GenreValeur;
+}
+
+export interface ValidationEtape {
+  // true = l'étape suivante reste fermée tant que le prof n'a pas validé
+  bloquante: boolean;
+  attribue: ValeurDeclaree[];
+}
+
+/** Une valeur attribuée plus tôt, affichée dans CETTE étape. */
+export interface AffichageValeur {
+  valeurId: string;
+  place: 'travail' | 'ressources';
+}
+
+export type Appreciation = 'bien' | 'moyen' | 'faible';
+export const APPRECIATIONS: Record<Appreciation, { emoji: string; label: string }> = {
+  bien: { emoji: '😀', label: 'Très bien' },
+  moyen: { emoji: '😐', label: 'Correct' },
+  faible: { emoji: '🙁', label: 'Insuffisant' },
+};
+
+export interface SoumissionEtape {
+  date: string; // ISO
+  n: number; // 1re, 2e… soumission (après un refus, on resoumet)
+}
+
+export interface RetourEtape {
+  decision: 'valide' | 'refuse';
+  appreciation?: Appreciation | null;
+  commentaire?: string;
+  date: string;
+  // La soumission sur laquelle porte ce retour : une soumission plus récente
+  // = l'étape est « à revoir »
+  soumissionN: number;
+}
+
+export interface ValeurAttribuee {
+  genre: GenreValeur;
+  oeuvreId?: string;
+  sectionId?: string | null; // absent / null = l'œuvre entière
+  url?: string;
+  titre?: string; // « Les Fourberies de Scapin — Acte II, scène 7 »
+}
+
+/** Ce qui revient à un groupe (ou à un élève sans groupe) — `portfolioSuivi`. */
+export interface SuiviPortfolio {
+  soumissions: Record<string, SoumissionEtape>;
+  retours: Record<string, RetourEtape>;
+  valeurs: Record<string, ValeurAttribuee>;
+}
+
+export const SUIVI_VIDE: SuiviPortfolio = { soumissions: {}, retours: {}, valeurs: {} };
+
+/** Une valeur prête à afficher dans une étape : son nom, son genre, ce qui a été attribué. */
+export interface ValeurAffichee {
+  valeurId: string;
+  nom: string;
+  genre: GenreValeur;
+  valeur: ValeurAttribuee | null; // null = pas encore attribuée à ce groupe
+  place?: 'travail' | 'ressources';
+}
+
+/** Ce qu'affiche une étape, résolu : déclaration (dans une étape quelconque) + valeur du groupe. */
+export function valeursAffichees(
+  etapes: Pick<PortfolioEtape, 'validation'>[],
+  etape: Pick<PortfolioEtape, 'affiche'>,
+  suivi: SuiviPortfolio | null | undefined,
+  place?: 'travail' | 'ressources'
+): ValeurAffichee[] {
+  const declarees = new Map(etapes.flatMap((e) => e.validation?.attribue ?? []).map((v) => [v.id, v]));
+  const resultat: ValeurAffichee[] = [];
+  for (const a of etape.affiche ?? []) {
+    if (place && a.place !== place) continue;
+    const d = declarees.get(a.valeurId);
+    if (d) resultat.push({ valeurId: d.id, nom: d.nom, genre: d.genre, valeur: suivi?.valeurs[d.id] ?? null, place: a.place });
+  }
+  return resultat;
+}
+
+export function generateValeurId(): string {
+  return `VAL-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/** L'étape se soumet-elle au prof ? (dépôts ou activité — pas une étape sans trace) */
+export function etapeASoumettre(e: Pick<PortfolioEtape, 'nature' | 'depots'>): boolean {
+  return e.nature === 'activite' || (e.depots?.length ?? 0) > 0;
 }
 
 export interface PortfolioEtape {
@@ -55,6 +200,10 @@ export interface PortfolioEtape {
   ressources?: DevoirRessource | null;
   // Vide ou absent sur une étape propre = étape SANS TRACE (cochée à la main)
   depots?: PortfolioDepot[];
+  // Validation du prof : bloque-t-elle la suite, quelles valeurs attribue-t-elle
+  validation?: ValidationEtape | null;
+  // Les valeurs attribuées plus tôt qu'affiche cette étape, et où
+  affiche?: AffichageValeur[];
 }
 
 /** Le contenu d'une ACTIVITÉ portfolio (`Devoir.portfolio`). */
@@ -86,13 +235,20 @@ export interface PortfolioMatrice {
 /** Ce que l'élève dépose — `Travail.content`, JSON. */
 export interface PortfolioContenuEleve {
   type: 'portfolio';
-  reponses: Record<string, string>; // `${etapeId}/${depotId}` → texte
+  reponses: Record<string, string>; // `clePartie()` → texte, adresse…
   cochees: string[]; // étapes sans trace cochées à la main
+  // La consigne d'une étape = une liste de tâches (2026-10-10) : les tâches
+  // cochées, clé `cleTache(etapeId, cle de la ligne)` — la clé d'une ligne
+  // est son TEXTE (`decouperConsignes`), jamais sa position
+  taches?: string[];
   derniereEtape?: string; // là où l'élève en était
   // DÉRIVÉ, jamais stocké : le statut du groupe de l'élève (collection
   // `portfolioGroupes`), posé par le hook pour que `faite()` sache si un
   // dépôt « groupe » est rempli
   groupeStatut?: GroupeStatut | null;
+  // DÉRIVÉ, jamais stocké dans la copie : soumissions, retours du prof et
+  // valeurs attribuées du groupe (`portfolioSuivi`), posés par le hook
+  suivi?: SuiviPortfolio | null;
 }
 
 // ─── Le GROUPE (dépôt de type `groupe`, 2026-10-09) ───
@@ -132,7 +288,7 @@ export function generateGroupeId(): string {
 
 /** Les étapes portent-elles un dépôt « groupe » ? (sinon, rien à charger) */
 export function aUnDepotGroupe(etapes: { depots?: PortfolioDepot[] }[]): boolean {
-  return etapes.some((e) => (e.depots ?? []).some((d) => d.type === 'groupe'));
+  return etapes.some((e) => (e.depots ?? []).some((d) => typesDuDepot(d).includes('groupe')));
 }
 
 export const GROUPE_STATUT_LABELS: Record<GroupeStatut, string> = {
@@ -153,6 +309,10 @@ export function generateDepotId(): string {
   return `DEP-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
+export function cleTache(etapeId: string, cleLigne: string): string {
+  return `${etapeId}|${cleLigne}`;
+}
+
 export function cleChamp(etapeId: string, depotId: string): string {
   return `${etapeId}/${depotId}`;
 }
@@ -166,8 +326,8 @@ export function nouvelleEtape(patch: Partial<PortfolioEtape> = {}): PortfolioEta
   return { id: generateEtapePortfolioId(), nature: 'etape', titre: '', ...patch };
 }
 
-export function nouveauDepot(type: TypeDepot = 'texte'): PortfolioDepot {
-  return { id: generateDepotId(), libelle: '', type, obligatoire: true };
+export function nouveauDepot(types: TypeDepot[] = ['texte']): PortfolioDepot {
+  return { id: generateDepotId(), libelle: '', types, obligatoire: true };
 }
 
 /** Les étapes regroupées par section CONSÉCUTIVE (une section vide = « sans section »). */
@@ -187,10 +347,12 @@ export function sectionsDuPortfolio<T extends PortfolioEtape>(etapes: T[]): Sect
   return sections;
 }
 
-export const STATUT_IA_LABELS: Record<StatutIA, { court: string; long: string; picto: string }> = {
-  libre: { court: 'IA libre', long: 'Les outils d’IA sont permis', picto: '🟢' },
-  partielle: { court: 'IA partielle', long: 'IA pour reformuler ou s’aider, pas pour produire à ta place', picto: '🟠' },
-  aucune: { court: 'Sans IA', long: 'Aucun outil d’IA dans cette étape', picto: '🔴' },
+// Les images (public/ia-statut/) sont les pictogrammes de JP : leur couleur
+// fait foi — vert = non-recours, jaune = aide, rouge = généré par l'IA.
+export const STATUT_IA_LABELS: Record<StatutIA, { court: string; long: string; image: string }> = {
+  libre: { court: 'Généré par l’IA', long: 'Les outils d’IA sont permis', image: '/ia-statut/libre.png' },
+  partielle: { court: 'Aide de l’IA', long: 'IA pour reformuler ou s’aider, pas pour produire à ta place', image: '/ia-statut/partielle.png' },
+  aucune: { court: 'Non-recours à l’IA', long: 'Aucun outil d’IA dans cette étape', image: '/ia-statut/aucune.png' },
 };
 
 export const PORTEE_LABELS: Record<PorteeEtape, string> = {
@@ -200,5 +362,8 @@ export const PORTEE_LABELS: Record<PorteeEtape, string> = {
 
 export const TYPE_DEPOT_LABELS: Record<TypeDepot, string> = {
   texte: 'Texte',
-  groupe: 'Groupe (déclaration des partenaires)',
+  lien: 'Lien',
+  image: 'Image',
+  tableau: 'Tableau',
+  groupe: 'Groupe',
 };

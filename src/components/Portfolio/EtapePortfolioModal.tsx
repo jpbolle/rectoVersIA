@@ -6,28 +6,45 @@
 // « Verrouille l'étape suivante » (le réglage « Marquer comme terminé » de
 // VibeCoding, transposé), et les dépôts.
 //
-// Un RENVOI vers une activité existante n'a ni consigne ni dépôt ici — ils
-// sont dans l'activité — mais garde section, objectifs, échéance et IA.
+// Ce que l'élève FAIT dans l'étape (2026-10-10, « l'activité doit être proposée
+// comme alternative aux dépôts ») : des DÉPÔTS dans le portfolio, OU une
+// ACTIVITÉ de Mes Activités (existante, ou créée sur place depuis l'atelier).
+// Le « + » du serpentin ouvre directement cette popup.
+// Un RENVOI n'a ni consigne ni dépôt ici — ils sont dans l'activité — mais
+// garde section, objectifs, échéance et IA.
 //
 // Popup de l'application (jamais `prompt()` / `confirm()`), sur le gabarit
 // des popups de l'éditeur FLE (`ModuleFleEditor.module.css`).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import type { Devoir } from '@/types/devoir';
 import ConsignesEditor from '@/components/ConsignesEditor/ConsignesEditor';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
 import { atelierLabel } from '@/types/didactique';
 import { iconeAtelier } from '@/types/sequence-fle';
 import {
   nouveauDepot,
+  ORDRE_TYPES_DEPOT,
   STATUT_IA_LABELS,
   TYPE_DEPOT_LABELS,
+  MAX_COLONNES_TABLEAU,
+  TYPES_DEPOT_DISPONIBLES,
+  typesDuDepot,
   type PorteeEtape,
   type PortfolioDepot,
   type PortfolioEtape,
   type StatutIA,
   type TypeDepot,
+  generateValeurId,
+  GENRE_VALEUR_LABELS,
+  type AffichageValeur,
+  type GenreValeur,
+  type ValeurDeclaree,
+  type ValidationEtape,
 } from '@/types/portfolio';
 import base from '@/components/ModuleFleEditor/ModuleFleEditor.module.css';
+import IaPicto from './IaPicto';
 import styles from './Portfolio.module.css';
 
 interface Props {
@@ -40,10 +57,29 @@ interface Props {
   onClose: () => void;
   // Renvoi : ouvrir l'activité elle-même (popup ✏️) — atelier seulement
   onOuvrirActivite?: (devoirId: string) => void;
+  // Créer une activité sur place (atelier pleine page) : la popup se ferme,
+  // le formulaire de création prend la page, l'étape garde ses réglages
+  onCreerActivite?: (brouillon: PortfolioEtape) => void;
+  // Les valeurs attribuées par les étapes PRÉCÉDENTES (« Le sketch »), que
+  // celle-ci peut afficher
+  valeursDisponibles?: (ValeurDeclaree & { etapeTitre: string })[];
   disabled?: boolean;
 }
 
-const STATUTS: (StatutIA | null)[] = [null, 'libre', 'partielle', 'aucune'];
+// Pas de choix « comme l'activité » : une étape sans statut (anciennes
+// données) retombe encore sur le réglage de l'activité côté élève.
+const STATUTS: StatutIA[] = ['libre', 'partielle', 'aucune'];
+
+// Cocher / décocher un type sur un dépôt. « Groupe » est exclusif ; il reste
+// toujours au moins un type coché.
+function basculerType(types: TypeDepot[], t: TypeDepot): TypeDepot[] {
+  if (types.includes(t)) {
+    const reste = types.filter((x) => x !== t);
+    return reste.length > 0 ? reste : types;
+  }
+  if (t === 'groupe') return ['groupe'];
+  return ORDRE_TYPES_DEPOT.filter((x) => x !== 'groupe' && (x === t || types.includes(x)));
+}
 
 export default function EtapePortfolioModal({
   etape,
@@ -52,8 +88,11 @@ export default function EtapePortfolioModal({
   onSave,
   onClose,
   onOuvrirActivite,
+  onCreerActivite,
+  valeursDisponibles = [],
   disabled = false,
 }: Props) {
+  const { getAuthHeaders } = useAuth();
   const [brouillon, setBrouillon] = useState<PortfolioEtape>({
     ...etape,
     objectifs: etape.objectifs ?? [],
@@ -63,10 +102,74 @@ export default function EtapePortfolioModal({
   const renvoi = brouillon.nature === 'activite';
   const depots = brouillon.depots ?? [];
 
+  // Le choix d'une activité : la liste de Mes Activités, chargée à la demande
+  const [choixActivite, setChoixActivite] = useState(renvoi && !brouillon.devoirId);
+  const [devoirs, setDevoirs] = useState<Devoir[] | null>(null);
+  const [recherche, setRecherche] = useState('');
+  useEffect(() => {
+    if (!choixActivite || devoirs !== null) return;
+    let annule = false;
+    (async () => {
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers) return;
+        const res = await fetch('/api/devoirs', { headers });
+        const json = await res.json();
+        if (annule) return;
+        setDevoirs(
+          json.success
+            ? (json.data as Devoir[]).filter((d) => !d.archive && d.typeTravail !== 'sequence' && d.typeTravail !== 'portfolio')
+            : []
+        );
+      } catch {
+        if (!annule) setDevoirs([]);
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [choixActivite, devoirs, getAuthHeaders]);
+  const q = recherche.trim().toLowerCase();
+  const candidats = (devoirs ?? []).filter((d) => !q || d.intitule.toLowerCase().includes(q));
+
+  // ── Validation du prof : bloque-t-elle la suite, quelles valeurs attribue-t-elle ──
+  const validation = brouillon.validation ?? { bloquante: false, attribue: [] };
+  const poserValidation = (patch: Partial<ValidationEtape>) => poser({ validation: { ...validation, ...patch } });
+  const modifierValeur = (id: string, patch: Partial<ValeurDeclaree>) =>
+    poserValidation({ attribue: validation.attribue.map((v) => (v.id === id ? { ...v, ...patch } : v)) });
+  const affiche = brouillon.affiche ?? [];
+  const basculerAffiche = (valeurId: string, coche: boolean) =>
+    poser({
+      affiche: coche
+        ? [...affiche.filter((a) => a.valeurId !== valeurId), { valeurId, place: 'travail' }]
+        : affiche.filter((a) => a.valeurId !== valeurId),
+    });
+  const soumissible = renvoi || depots.length > 0;
+
+  const passerAuxDepots = () => {
+    poser({ nature: 'etape', devoirId: undefined, atelier: undefined, typeTravail: undefined });
+    setChoixActivite(false);
+  };
+  const passerAUneActivite = () => {
+    poser({ nature: 'activite' });
+    if (!brouillon.devoirId) setChoixActivite(true);
+  };
+  const choisirActivite = (d: Devoir) => {
+    poser({
+      nature: 'activite',
+      devoirId: d.id,
+      atelier: d.atelier,
+      typeTravail: d.typeTravail,
+      // Le titre de l'activité, sauf si le prof en a déjà donné un
+      titre: brouillon.titre.trim() ? brouillon.titre : d.intitule,
+    });
+    setChoixActivite(false);
+  };
+
   const modifierDepot = (id: string, patch: Partial<PortfolioDepot>) =>
     poser({ depots: depots.map((d) => (d.id === id ? { ...d, ...patch } : d)) });
   const retirerDepot = (id: string) => poser({ depots: depots.filter((d) => d.id !== id) });
-  const ajouterDepot = () => poser({ depots: [...depots, nouveauDepot('texte')] });
+  const ajouterDepot = () => poser({ depots: [...depots, nouveauDepot(['texte'])] });
 
   const enregistrer = () => {
     const titre = brouillon.titre.trim();
@@ -76,7 +179,15 @@ export default function EtapePortfolioModal({
       titre,
       section: (brouillon.section ?? '').trim(),
       objectifs: (brouillon.objectifs ?? []).map((o) => o.trim()).filter(Boolean),
-      depots: renvoi ? [] : depots.filter((d) => d.libelle.trim()),
+      // Une valeur sans nom n'est pas enregistrée
+      validation: brouillon.validation
+        ? { ...brouillon.validation, attribue: brouillon.validation.attribue.filter((v) => v.nom.trim()) }
+        : null,
+      depots: renvoi
+        ? []
+        : depots
+            .filter((d) => d.libelle.trim())
+            .map((d) => (d.colonnes ? { ...d, colonnes: d.colonnes.map((c) => c.trim()).filter(Boolean) } : d)),
     });
   };
 
@@ -87,30 +198,12 @@ export default function EtapePortfolioModal({
     <div className={base.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`${base.popup} ${styles.popupLarge}`}>
         <header className={base.popupEntete}>
-          <h3>{renvoi ? 'Étape — activité du portfolio' : 'Étape du portfolio'}</h3>
+          <h3>Étape du portfolio</h3>
           <button type="button" className={base.popupFermer} onClick={onClose} aria-label="Fermer">
             ✕
           </button>
         </header>
         <div className={base.popupCorps}>
-          {renvoi && (
-            <div className={styles.renvoiBloc}>
-              <span className={styles.picto} aria-hidden="true">{iconeAtelier(brouillon.atelier)}</span>
-              <div>
-                <b>{brouillon.titre || 'Activité'}</b>
-                <small>
-                  {atelierLabel(brouillon.atelier ?? '', true) || brouillon.typeTravail} — l’élève la fait dans son
-                  activité ; l’étape est cochée quand elle est remise.
-                </small>
-              </div>
-              {onOuvrirActivite && brouillon.devoirId && (
-                <button type="button" className={`${styles.btnGhost} ${styles.btn}`} onClick={() => onOuvrirActivite(brouillon.devoirId!)}>
-                  ✏️ Ouvrir l’activité
-                </button>
-              )}
-            </div>
-          )}
-
           <div className={styles.deuxColonnes}>
             <div>
               <label className={styles.lab} htmlFor="etp-section">Section</label>
@@ -139,15 +232,91 @@ export default function EtapePortfolioModal({
                 onChange={(e) => poser({ titre: e.target.value })}
                 placeholder="2.2 Mon personnage"
                 disabled={disabled}
-                autoFocus={!renvoi}
+                autoFocus
               />
             </div>
           </div>
+
+          {/* Le choix structurant de l’étape, juste après section et titre (JP, 2026-10-11) */}
+          <label className={styles.lab}>Ce que l’élève fait dans cette étape</label>
+          <div className={styles.seg} role="radiogroup" aria-label="Ce que l’élève fait">
+            <button type="button" className={!renvoi ? styles.segActif : ''} onClick={passerAuxDepots} disabled={disabled}>
+              📥 Des dépôts dans le portfolio
+            </button>
+            <button type="button" className={renvoi ? styles.segActif : ''} onClick={passerAUneActivite} disabled={disabled}>
+              🎯 Une activité de Mes Activités
+            </button>
+          </div>
+
+          {renvoi && !choixActivite && brouillon.devoirId && (
+            <div className={styles.renvoiBloc}>
+              <span className={styles.picto} aria-hidden="true">{iconeAtelier(brouillon.atelier)}</span>
+              <div>
+                <b>{brouillon.titre || 'Activité'}</b>
+                <small>
+                  {atelierLabel(brouillon.atelier ?? '', true) || brouillon.typeTravail} — l’élève la fait dans son
+                  activité ; l’étape est cochée quand elle est remise.
+                </small>
+              </div>
+              {!disabled && (
+                <button type="button" className={`${styles.btnGhost} ${styles.btn}`} onClick={() => setChoixActivite(true)}>
+                  Changer
+                </button>
+              )}
+              {onOuvrirActivite && (
+                <button type="button" className={`${styles.btnGhost} ${styles.btn}`} onClick={() => onOuvrirActivite(brouillon.devoirId!)}>
+                  ✏️ Ouvrir l’activité
+                </button>
+              )}
+            </div>
+          )}
+
+          {renvoi && choixActivite && (
+            <div className={styles.choixActivite}>
+              <div className={styles.choixActiviteTete}>
+                <input
+                  type="search"
+                  className={styles.recherche}
+                  value={recherche}
+                  onChange={(e) => setRecherche(e.target.value)}
+                  placeholder="Rechercher dans Mes Activités…"
+                />
+                <button
+                  type="button"
+                  className={`${styles.btnGhost} ${styles.btn}`}
+                  onClick={() => onCreerActivite?.({ ...brouillon, nature: 'activite' })}
+                  disabled={!onCreerActivite || disabled}
+                  title={onCreerActivite ? 'Le formulaire de création prend la page ; l’étape garde ses réglages' : 'Depuis l’atelier du portfolio (Mes Ressources › Portfolios)'}
+                >
+                  ➕ Créer une nouvelle activité
+                </button>
+              </div>
+              {devoirs === null ? (
+                <p className={base.vide}>Chargement…</p>
+              ) : candidats.length === 0 ? (
+                <p className={base.vide}>{q ? 'Aucune activité ne correspond.' : 'Aucune activité pour l’instant.'}</p>
+              ) : (
+                <div className={base.liste}>
+                  {candidats.map((d) => (
+                    <button key={d.id} type="button" className={base.item} onClick={() => choisirActivite(d)}>
+                      <span>{iconeAtelier(d.atelier)}</span>
+                      <span className={base.activiteNom}>{d.intitule}</span>
+                      <span className={base.itemClasses}>
+                        {atelierLabel(d.atelier ?? '', true) || d.typeTravail}
+                        {d.classes.length ? ` · ${d.classes.join(', ')}` : ' · sans classe'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <label className={styles.lab}>
             Objectifs <span className={styles.labNote}>— un par ligne, Entrée pour le suivant</span>
           </label>
           <ConsignesEditor
+            nature="objectif"
             value={(brouillon.objectifs ?? []).join('\n')}
             onChange={(v) => poser({ objectifs: v.split('\n') })}
             disabled={disabled}
@@ -155,13 +324,12 @@ export default function EtapePortfolioModal({
 
           {!renvoi && (
             <>
-              <label className={styles.lab} htmlFor="etp-consigne">Consigne de l’étape</label>
-              <textarea
-                id="etp-consigne"
-                className={`${styles.input} ${styles.textarea}`}
+              <label className={styles.lab}>
+                Consigne de l’étape <span className={styles.labNote}>— la liste des tâches que l’élève coche au fil du travail</span>
+              </label>
+              <ConsignesEditor
                 value={brouillon.consigne ?? ''}
-                onChange={(e) => poser({ consigne: e.target.value })}
-                placeholder="Ce que l’élève fait dans cette étape…"
+                onChange={(v) => poser({ consigne: v })}
                 disabled={disabled}
               />
             </>
@@ -182,17 +350,18 @@ export default function EtapePortfolioModal({
             </div>
             <div>
               <label className={styles.lab}>Intelligence artificielle</label>
-              <div className={styles.seg} role="radiogroup" aria-label="Statut IA">
+              <div className={`${styles.seg} ${styles.segIa}`} role="radiogroup" aria-label="Statut IA">
                 {STATUTS.map((s) => (
                   <button
-                    key={s ?? 'activite'}
+                    key={s}
                     type="button"
-                    className={(brouillon.ia ?? null) === s ? styles.segActif : ''}
+                    className={brouillon.ia === s ? styles.segActif : ''}
                     onClick={() => poser({ ia: s })}
                     disabled={disabled}
-                    title={s ? STATUT_IA_LABELS[s].long : 'Le réglage IA de l’activité'}
+                    title={STATUT_IA_LABELS[s].long}
                   >
-                    {s ? `${STATUT_IA_LABELS[s].picto} ${STATUT_IA_LABELS[s].court}` : 'Celui de l’activité'}
+                    <IaPicto statut={s} className={styles.iaImage} />
+                    {STATUT_IA_LABELS[s].court}
                   </button>
                 ))}
               </div>
@@ -239,10 +408,10 @@ export default function EtapePortfolioModal({
 
           {!renvoi && (
             <>
-              <label className={styles.lab}>
-                Dépôts <span className={styles.labNote}>— ce que l’élève laisse dans cette étape · aucun = étape sans trace, cochée par l’élève</span>
-              </label>
-              {depots.map((d, i) => (
+              <p className={styles.hint}>Aucun dépôt = étape sans trace, cochée par l’élève lui-même.</p>
+              {depots.map((d, i) => {
+                const types = typesDuDepot(d);
+                return (
                 <div key={d.id} className={styles.depot}>
                   <div className={styles.depotTete}>
                     <span className={styles.depotNum}>{i + 1}</span>
@@ -253,32 +422,94 @@ export default function EtapePortfolioModal({
                       placeholder="Libellé du dépôt (« Costume et maquillage »)"
                       disabled={disabled}
                     />
-                    <select
-                      value={d.type}
-                      onChange={(e) => modifierDepot(d.id, { type: e.target.value as TypeDepot })}
-                      disabled={disabled}
-                      aria-label="Type de dépôt"
-                    >
-                      {(Object.keys(TYPE_DEPOT_LABELS) as TypeDepot[]).map((t) => (
-                        <option key={t} value={t}>{TYPE_DEPOT_LABELS[t]}</option>
-                      ))}
-                      <option disabled>Tableau — bientôt</option>
-                      <option disabled>Image — bientôt</option>
-                      <option disabled>Lien — bientôt</option>
-                    </select>
                     {!disabled && (
                       <button type="button" className={styles.depotSup} onClick={() => retirerDepot(d.id)} title="Retirer ce dépôt">
                         ✕
                       </button>
                     )}
                   </div>
-                  {d.type === 'groupe' ? (
+                  <div className={styles.depotTypes} role="group" aria-label="Ce que l’élève dépose">
+                    <span className={styles.depotTypesLab}>L’élève dépose :</span>
+                    {ORDRE_TYPES_DEPOT.map((t) => {
+                      const dispo = TYPES_DEPOT_DISPONIBLES.includes(t);
+                      const coche = types.includes(t);
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          className={`${styles.depotType} ${coche ? styles.depotTypeOn : ''}`}
+                          aria-pressed={coche}
+                          onClick={() => {
+                            const suivants = basculerType(types, t);
+                            // Tableau coché pour la première fois : deux colonnes à nommer
+                            const colonnes =
+                              suivants.includes('tableau') && !(d.colonnes && d.colonnes.length > 0) ? ['', ''] : d.colonnes;
+                            modifierDepot(d.id, { types: suivants, type: undefined, colonnes });
+                          }}
+                          disabled={disabled || !dispo}
+                          title={
+                            !dispo
+                              ? 'Bientôt disponible'
+                              : t === 'groupe'
+                                ? 'Déclaration des partenaires — ne se combine avec aucun autre type'
+                                : 'Plusieurs types possibles : une zone par type, dans le même bloc'
+                          }
+                        >
+                          {coche && '✓ '}
+                          {TYPE_DEPOT_LABELS[t]}
+                          {!dispo && ' · bientôt'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {types.includes('tableau') && (
+                    <div className={styles.colonnesEdit}>
+                      <span className={styles.depotTypesLab}>Colonnes du tableau :</span>
+                      {(d.colonnes ?? []).map((c, ci) => (
+                        <span key={ci} className={styles.colonneChamp}>
+                          <input
+                            className={styles.input}
+                            value={c}
+                            onChange={(e) =>
+                              modifierDepot(d.id, {
+                                colonnes: (d.colonnes ?? []).map((x, j) => (j === ci ? e.target.value : x)),
+                              })
+                            }
+                            placeholder={ci === 0 ? 'Réplique' : ci === 1 ? 'Didascalie' : `Colonne ${ci + 1}`}
+                            disabled={disabled}
+                            aria-label={`Colonne ${ci + 1}`}
+                          />
+                          {!disabled && (d.colonnes ?? []).length > 1 && (
+                            <button
+                              type="button"
+                              className={styles.depotSup}
+                              onClick={() => modifierDepot(d.id, { colonnes: (d.colonnes ?? []).filter((_, j) => j !== ci) })}
+                              title="Retirer cette colonne"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                      {!disabled && (d.colonnes ?? []).length < MAX_COLONNES_TABLEAU && (
+                        <button
+                          type="button"
+                          className={styles.depotType}
+                          onClick={() => modifierDepot(d.id, { colonnes: [...(d.colonnes ?? []), ''] })}
+                        >
+                          + Colonne
+                        </button>
+                      )}
+                      <span className={styles.hint}>L’élève ajoute les lignes lui-même.</span>
+                    </div>
+                  )}
+                  {types.includes('groupe') ? (
                     <p className={styles.hint}>
                       L’élève y liste ses partenaires (élèves de la classe) ; chacun confirme, puis vous acceptez ou
                       refusez le groupe depuis sa copie.
                     </p>
                   ) : (
-                    <div className={styles.deuxColonnes}>
+                    <div className={types.includes('texte') ? styles.deuxColonnes : undefined}>
                       <input
                         className={styles.input}
                         value={d.consigne ?? ''}
@@ -286,13 +517,16 @@ export default function EtapePortfolioModal({
                         placeholder="Consigne du dépôt"
                         disabled={disabled}
                       />
-                      <input
-                        className={styles.input}
-                        value={d.exemple ?? ''}
-                        onChange={(e) => modifierDepot(d.id, { exemple: e.target.value })}
-                        placeholder="Exemple (en filigrane chez l’élève)"
-                        disabled={disabled}
-                      />
+                      {/* L'exemple en filigrane n'a de sens que dans la zone de texte */}
+                      {types.includes('texte') && (
+                        <input
+                          className={styles.input}
+                          value={d.exemple ?? ''}
+                          onChange={(e) => modifierDepot(d.id, { exemple: e.target.value })}
+                          placeholder="Exemple (en filigrane chez l’élève)"
+                          disabled={disabled}
+                        />
+                      )}
                     </div>
                   )}
                   <label className={styles.depotObligatoire}>
@@ -303,14 +537,135 @@ export default function EtapePortfolioModal({
                       disabled={disabled}
                     />
                     Obligatoire — l’étape n’est faite que si ce dépôt est rempli
+                    {types.length > 1 && ' (toutes ses parties)'}
                   </label>
                 </div>
-              ))}
+                );
+              })}
               {!disabled && (
                 <button type="button" className={styles.ajout} onClick={ajouterDepot}>
                   + Ajouter un dépôt
                 </button>
               )}
+            </>
+          )}
+
+          {soumissible && (
+            <>
+              <label className={styles.lab}>
+                Validation du professeur{' '}
+                <span className={styles.labNote}>— l’élève soumet l’étape ; vous validez ✓ ou refusez ✗</span>
+              </label>
+              <div className={styles.validationBloc}>
+                <label className={styles.ficheOption}>
+                  <input
+                    type="checkbox"
+                    checked={validation.bloquante}
+                    onChange={(e) => poserValidation({ bloquante: e.target.checked })}
+                    disabled={disabled}
+                  />
+                  <span>
+                    <b>La suite attend ma validation</b>
+                    <span className={styles.labNote}> — l’étape suivante reste fermée tant que je n’ai pas validé</span>
+                  </span>
+                </label>
+                <p className={styles.validationSousTitre}>En validant, j’attribue au groupe :</p>
+                {validation.attribue.map((v) => (
+                  <div key={v.id} className={styles.valeurDeclaree}>
+                    <input
+                      className={styles.input}
+                      value={v.nom}
+                      onChange={(e) => modifierValeur(v.id, { nom: e.target.value })}
+                      placeholder="Nom (« Le sketch »)"
+                      disabled={disabled}
+                      aria-label="Nom de la valeur"
+                    />
+                    <select
+                      value={v.genre}
+                      onChange={(e) => modifierValeur(v.id, { genre: e.target.value as GenreValeur })}
+                      disabled={disabled}
+                      aria-label="Genre de la valeur"
+                    >
+                      {(Object.keys(GENRE_VALEUR_LABELS) as GenreValeur[]).map((g) => (
+                        <option key={g} value={g}>
+                          {GENRE_VALEUR_LABELS[g]}
+                        </option>
+                      ))}
+                    </select>
+                    {!disabled && (
+                      <button
+                        type="button"
+                        className={styles.depotSup}
+                        onClick={() => poserValidation({ attribue: validation.attribue.filter((x) => x.id !== v.id) })}
+                        title="Retirer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {!disabled && validation.attribue.length < 6 && (
+                  <button
+                    type="button"
+                    className={styles.depotType}
+                    onClick={() =>
+                      poserValidation({
+                        attribue: [...validation.attribue, { id: generateValeurId(), nom: '', genre: 'oeuvre' }],
+                      })
+                    }
+                  >
+                    + Une valeur à attribuer (texte, lien, vidéo…)
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          {valeursDisponibles.length > 0 && (
+            <>
+              <label className={styles.lab}>
+                Afficher dans cette étape{' '}
+                <span className={styles.labNote}>— ce qui a été attribué au groupe plus tôt dans le portfolio</span>
+              </label>
+              <div className={styles.validationBloc}>
+                {valeursDisponibles.map((v) => {
+                  const a = affiche.find((x) => x.valeurId === v.id);
+                  return (
+                    <div key={v.id} className={styles.valeurDeclaree}>
+                      <label className={styles.afficheCase}>
+                        <input
+                          type="checkbox"
+                          checked={!!a}
+                          onChange={(e) => basculerAffiche(v.id, e.target.checked)}
+                          disabled={disabled}
+                        />
+                        <span>
+                          <b>{v.nom || '(sans nom)'}</b>
+                          <span className={styles.labNote}> — {GENRE_VALEUR_LABELS[v.genre].toLowerCase()}, attribué à « {v.etapeTitre} »</span>
+                        </span>
+                      </label>
+                      {a && (
+                        <select
+                          value={a.place}
+                          onChange={(e) =>
+                            poser({
+                              affiche: affiche.map((x) =>
+                                x.valeurId === v.id ? { ...x, place: e.target.value as AffichageValeur['place'] } : x
+                              ),
+                            })
+                          }
+                          disabled={disabled}
+                          aria-label="Où l’afficher"
+                        >
+                          <option value="travail">Colonne de travail (gauche)</option>
+                          <option value="ressources">Onglet Ressources (droite)</option>
+                        </select>
+                      )}
+                    </div>
+                  );
+                })}
+                {renvoi && <p className={styles.hint}>Pour une activité, la valeur apparaît aussi dans son onglet Ressources quand l’élève l’ouvre depuis le portfolio.</p>}
+              </div>
             </>
           )}
 
@@ -336,7 +691,13 @@ export default function EtapePortfolioModal({
           <button type="button" className={base.btnGhost} onClick={onClose}>
             Annuler
           </button>
-          <button type="button" className={base.btnPrimary} onClick={enregistrer} disabled={disabled || !brouillon.titre.trim()}>
+          <button
+            type="button"
+            className={base.btnPrimary}
+            onClick={enregistrer}
+            disabled={disabled || !brouillon.titre.trim() || (renvoi && !brouillon.devoirId)}
+            title={renvoi && !brouillon.devoirId ? 'Choisis d’abord l’activité' : undefined}
+          >
             Enregistrer l’étape
           </button>
         </footer>

@@ -17,7 +17,7 @@
 import { useState } from 'react';
 import type { PortfolioEleve } from '@/hooks/usePortfolioEleve';
 import { decouperConsignes } from '@/lib/consignes-etapes';
-import { avancement, echeanceLisible, enCours, enRetard, faite, fermee } from '@/lib/portfolio-etat';
+import { avancement, echeanceLisible, enCours, enRetard, etatEtape, faite, fermee } from '@/lib/portfolio-etat';
 import { estEtapeSansTrace, sectionsDuPortfolio } from '@/types/portfolio';
 import styles from './Portfolio.module.css';
 
@@ -75,6 +75,7 @@ export default function PortfolioSommaire({ eleve, lectureSeule = false }: Props
         <span>☑ cochée toute seule quand c’est fait</span>
         <span>🔒 fermée</span>
         <span>👥 collective</span>
+        <span>✓ validée · 💬 commentaire du professeur</span>
       </div>
 
       {sections.map((s, si) => {
@@ -99,6 +100,9 @@ export default function PortfolioSommaire({ eleve, lectureSeule = false }: Props
                 const courante = etape?.id === e.id;
                 const sansTrace = estEtapeSansTrace(e);
                 const retard = enRetard(e, contenu);
+                // Le retour du prof (2026-10-10) : ✓ validée, ✗ à reprendre, 💬 commentaire
+                const retour = contenu.suivi?.retours[e.id];
+                const etat = sansTrace ? null : etatEtape(e, contenu);
                 return (
                   <div
                     key={e.id}
@@ -135,8 +139,24 @@ export default function PortfolioSommaire({ eleve, lectureSeule = false }: Props
                     >
                       {e.titre}
                       {sansTrace && <small> · sans trace</small>}
-                      {!estFaite && !sansTrace && enCours(e, contenu) && <small> · en cours</small>}
+                      {!estFaite && !sansTrace && etat === 'a-reprendre' && <small className={styles.sommaireReprendre}> · à reprendre</small>}
+                      {!estFaite && !sansTrace && etat !== 'a-reprendre' && enCours(e, contenu) && <small> · en cours</small>}
                     </button>
+                    {etat === 'validee' && (
+                      <span className={styles.sommaireValide} title="Validée par ton professeur" aria-label="Validée">
+                        ✓
+                      </span>
+                    )}
+                    {etat === 'a-reprendre' && (
+                      <span className={styles.sommaireRefuse} title="À reprendre" aria-label="À reprendre">
+                        ✗
+                      </span>
+                    )}
+                    {retour?.commentaire && (
+                      <span className={styles.sommaireBulle} title={retour.commentaire} aria-label="Commentaire du professeur">
+                        💬
+                      </span>
+                    )}
                     {e.echeance && (
                       <span className={`${styles.sommaireDate} ${retard ? styles.sommaireDateRetard : ''}`}>
                         {echeanceLisible(e.echeance)}

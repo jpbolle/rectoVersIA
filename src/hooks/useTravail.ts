@@ -228,6 +228,7 @@ export function useTravail(devoirId: string | null) {
       type: 'portfolio',
       reponses,
       cochees: patch.cochees ?? actuel.cochees,
+      taches: patch.taches ?? actuel.taches ?? [],
       derniereEtape: patch.derniereEtape ?? actuel.derniereEtape ?? null,
     });
     setTravail(prev => prev ? { ...prev, content: apres } : null);

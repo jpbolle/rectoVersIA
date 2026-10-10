@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import DictionaryPanel from '@/components/DictionaryPanel';
 import { DrawToolbar, DrawCanvas } from '@/components/DrawTools/DrawTools';
-import { parseYoutubeId, youtubeEmbedUrl } from '@/lib/youtube';
+import { videoEmbedUrl } from '@/lib/youtube';
 import { integrationAutorisee } from '@/lib/integration';
 import type { DrawTool, DrawShape } from '@/types/draw';
 import { normaliserVideos } from '@/types/devoir';
@@ -333,7 +333,7 @@ export default function RessourcesTab({
   // Deux formes en base (adresse nue, ou objet avec titre) : `normaliserVideos`
   // les ramène à une seule. Voir src/types/devoir.ts.
   const ressourceVideos = normaliserVideos(devoir.ressources.videos).filter((v) =>
-    parseYoutubeId(v.url)
+    videoEmbedUrl(v.url)
   );
   const hasOutils = outilsContent.trim().length > 0;
   const hasDocument = documentContent.trim().length > 0 && documentContent !== '<p></p>';
@@ -405,17 +405,17 @@ export default function RessourcesTab({
     });
   });
 
-  // Vidéos YouTube du prof — lecteurs intégrés (variante nocookie)
+  // Vidéos du prof — lecteurs intégrés (YouTube nocookie ou lecteur Drive)
   ressourceVideos.forEach((video, index) => {
-    const id = parseYoutubeId(video.url)!;
+    const embed = videoEmbedUrl(video.url)!;
     volets.push({
-      cle: `video-${id}-${index}`,
+      cle: `video-${embed}-${index}`,
       icone: '🎬',
       titre: video.titre?.trim() || `Vidéo ${index + 1}`,
       contenu: (
         <div className={styles.videoFrame}>
           <iframe
-            src={youtubeEmbedUrl(id)}
+            src={embed}
             title={video.titre?.trim() || `Vidéo ${index + 1}`}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen

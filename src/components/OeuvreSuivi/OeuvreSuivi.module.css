@@ -510,3 +510,11 @@
 .btnGhost:hover {
   background: var(--c-bg-element);
 }
+
+/* Le cœur brisé du rappel, à côté du cœur rouge de la félicitation : les deux
+   se confondaient (JP, 2026-10-10). Même dessin, autre couleur — un bleu-gris,
+   obtenu en tournant la teinte de l'émoji. */
+.iconeRappel {
+  display: inline-block;
+  filter: hue-rotate(200deg) saturate(0.6);
+}

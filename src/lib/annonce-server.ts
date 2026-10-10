@@ -23,6 +23,7 @@ interface PoserAnnonce {
   destinataireUid?: string;
   destinataireEmail?: string;
   ton?: 'felicitation' | 'rappel' | null;
+  etiquette?: string;
 }
 
 /**
@@ -45,6 +46,7 @@ export async function poserAnnonce(a: PoserAnnonce): Promise<Annonce | null> {
     ...(a.destinataireUid ? { destinataireUid: a.destinataireUid } : {}),
     ...(a.destinataireEmail ? { destinataireEmail: a.destinataireEmail.toLowerCase() } : {}),
     ...(a.ton ? { ton: a.ton } : {}),
+    ...(a.etiquette ? { etiquette: a.etiquette.slice(0, 60) } : {}),
   };
 
   try {

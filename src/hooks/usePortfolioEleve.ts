@@ -19,7 +19,15 @@ import {
   lireContenuEleve,
   type ParcoursPortfolio,
 } from '@/lib/portfolio-etat';
-import { aUnDepotGroupe, cleChamp, type CamaradeVue, type GroupeVue, type PortfolioContenuEleve } from '@/types/portfolio';
+import {
+  aUnDepotGroupe,
+  clePartie,
+  type CamaradeVue,
+  type GroupeVue,
+  type PortfolioContenuEleve,
+  type SuiviPortfolio,
+  type TypeDepot,
+} from '@/types/portfolio';
 import type { PortfolioPatch } from '@/types/travail';
 
 const DELAI_FRAPPE_MS = 800;
@@ -121,13 +129,67 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
     [appelGroupe]
   );
 
+  // ── Le SUIVI (soumissions, retours du prof, valeurs attribuées au groupe) ──
+  const [suivi, setSuivi] = useState<SuiviPortfolio | null>(null);
+  const [soumission, setSoumission] = useState<{ etapeId: string; erreur: string | null } | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated || !devoirId) return;
+    let annule = false;
+    (async () => {
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers) return;
+        const res = await fetch(`/api/portfolio/suivi?devoirId=${encodeURIComponent(devoirId)}`, { headers });
+        const json = await res.json();
+        // Aperçu du prof : pas de suivi (la route demande un élève) — rien à afficher
+        if (!annule && json.success) setSuivi(json.data.suivi as SuiviPortfolio);
+      } catch {
+        // Le suivi reste tel qu'il était
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [isAuthenticated, getAuthHeaders, devoirId, fraicheur]);
+
+  const soumettre = useCallback(
+    async (etapeId: string) => {
+      if (lectureSeule || !devoirId) return false;
+      setSoumission({ etapeId, erreur: null });
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers) return false;
+        const res = await fetch('/api/portfolio/suivi', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ devoirId, etapeId }),
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || 'Soumission impossible');
+        setSuivi(json.data as SuiviPortfolio);
+        setSoumission(null);
+        return true;
+      } catch (e) {
+        setSoumission({ etapeId, erreur: e instanceof Error ? e.message : 'Soumission impossible' });
+        return false;
+      }
+    },
+    [lectureSeule, devoirId, getAuthHeaders]
+  );
+
   // Le contenu de la copie, avec les frappes pas encore envoyées par-dessus,
-  // et le statut du groupe (dérivé) pour que `faite()` lise un dépôt « groupe »
+  // le statut du groupe (dérivé) pour que `faite()` lise un dépôt « groupe »,
+  // et le suivi (soumissions, retours, valeurs)
   const contenuBase = useMemo(() => lireContenuEleve(content), [content]);
   const [brouillon, setBrouillon] = useState<Record<string, string>>({});
   const contenu: PortfolioContenuEleve = useMemo(
-    () => ({ ...contenuBase, reponses: { ...contenuBase.reponses, ...brouillon }, groupeStatut: groupe?.statut ?? null }),
-    [contenuBase, brouillon, groupe]
+    () => ({
+      ...contenuBase,
+      reponses: { ...contenuBase.reponses, ...brouillon },
+      groupeStatut: groupe?.statut ?? null,
+      suivi,
+    }),
+    [contenuBase, brouillon, groupe, suivi]
   );
 
   // L'étape ouverte : là où l'élève en était, tant qu'il n'en choisit pas une autre
@@ -159,9 +221,10 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
   );
 
   const deposer = useCallback(
-    (etapeId: string, depotId: string, texte: string) => {
+    // `type` : la PARTIE du dépôt (texte par défaut, lien…)
+    (etapeId: string, depotId: string, texte: string, type: TypeDepot = 'texte') => {
       if (lectureSeule || !patchPortfolio) return;
-      const cle = cleChamp(etapeId, depotId);
+      const cle = clePartie(etapeId, depotId, type);
       setBrouillon((b) => ({ ...b, [cle]: texte }));
       const m = minuteries.current;
       const existante = m.get(cle);
@@ -202,6 +265,17 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
     [lectureSeule, patchPortfolio, contenu.cochees]
   );
 
+  // Une tâche de la consigne d'étape, cochée ou décochée par l'élève
+  const cocherTache = useCallback(
+    (cle: string) => {
+      if (lectureSeule || !patchPortfolio) return;
+      const actuelles = contenu.taches ?? [];
+      const taches = actuelles.includes(cle) ? actuelles.filter((c) => c !== cle) : [...actuelles, cle];
+      void patchPortfolio({ taches });
+    },
+    [lectureSeule, patchPortfolio, contenu.taches]
+  );
+
   return {
     parcours,
     erreur,
@@ -212,6 +286,10 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
     allerA,
     deposer,
     cocher,
+    cocherTache,
+    // La soumission au professeur
+    soumettre,
+    soumission,
     recharger: () => setFraicheur((n) => n + 1),
     // Le groupe
     groupe,

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/useAuth';
 import { compressImage } from '@/lib/image-compress';
-import { parseYoutubeId, youtubeEmbedUrl } from '@/lib/youtube';
+import { videoEmbedUrl } from '@/lib/youtube';
 import { normaliserVideos } from '@/types/devoir';
 import type {
   DevoirRessource,
@@ -277,7 +277,7 @@ export default function RessourcesInput({
     [majInteractif]
   );
 
-  // ── Champ Vidéo : une URL YouTube par ligne, resynchronisé comme le champ Lien ──
+  // ── Champ Vidéo : une URL YouTube ou Drive par ligne, resynchronisé comme le champ Lien ──
   const [videoText, setVideoText] = useState(() => videosValue.map((v) => v.url).join('\n'));
   const videoTextRef = useRef(videoText);
   videoTextRef.current = videoText;
@@ -373,7 +373,7 @@ export default function RessourcesInput({
 
   // Aperçus des vidéos reconnues (les lignes invalides sont signalées)
   const videoLines = videoText.split('\n').map((l) => l.trim()).filter(Boolean);
-  const invalidVideoLines = videoLines.filter((l) => !parseYoutubeId(l));
+  const invalidVideoLines = videoLines.filter((l) => !videoEmbedUrl(l));
 
   // ── Upload d'images (compressées dans le navigateur, stockées en Firestore) ──
 
@@ -642,38 +642,40 @@ export default function RessourcesInput({
         </div>
       )}
 
-      {/* ── Onglet Vidéo : une URL YouTube par ligne, lecteur intégré côté élève ── */}
+      {/* ── Onglet Vidéo : une URL YouTube ou Drive par ligne, lecteur intégré côté élève ── */}
       {activeTab === 'video' && (
         <div className={styles.tabPanel}>
           <p className={styles.tabHint}>
-            Une URL YouTube par ligne — chaque vidéo apparaît en lecteur intégré dans
-            l&apos;onglet Ressources des élèves.
+            Une URL YouTube ou Google Drive par ligne — chaque vidéo apparaît en
+            lecteur intégré dans l&apos;onglet Ressources des élèves. Pour Drive, le
+            fichier doit être partagé avec les élèves (école ou «&nbsp;toute personne
+            disposant du lien&nbsp;»).
           </p>
           <textarea
             className={styles.lienTextarea}
             value={videoText}
             onChange={(e) => handleVideoChange(e.target.value)}
-            placeholder={'https://www.youtube.com/watch?v=...\nhttps://youtu.be/...'}
+            placeholder={'https://www.youtube.com/watch?v=...\nhttps://drive.google.com/file/d/.../view'}
             rows={3}
             disabled={disabled}
             spellCheck={false}
           />
           {invalidVideoLines.length > 0 && (
             <p className={styles.uploadError}>
-              URL non reconnue comme vidéo YouTube :{' '}
+              URL non reconnue comme vidéo YouTube ou Drive :{' '}
               {invalidVideoLines.join(', ')}
             </p>
           )}
-          {videoLines.some((l) => parseYoutubeId(l)) && (
+          {videoLines.some((l) => videoEmbedUrl(l)) && (
             <div className={styles.videoGrid}>
               {videoLines.map((line, index) => {
-                const id = parseYoutubeId(line);
-                if (!id) return null;
+                const embed = videoEmbedUrl(line);
+                if (!embed) return null;
                 const titre = videosValue.find((v) => v.url === line)?.titre ?? '';
                 return (
-                  <div key={`${id}-${index}`} className={styles.videoItem}>
+                  <div key={`${embed}-${index}`} className={styles.videoItem}>
                     <iframe
-                      src={youtubeEmbedUrl(id)}
+                      src={embed}
                       title={titre || `Vidéo ${index + 1}`}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen

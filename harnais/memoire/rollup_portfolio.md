@@ -5,6 +5,105 @@
 > **`2026-10-09-portfolio-etape-1-squelette.md`** (étape 1, v2 validée) et la maquette
 > `maquette-portfolio-eleve.html` (v2, 4 vues).
 
+## 2026-10-11 — retouches après test de JP
+
+- Popup d'étape : le choix **Des dépôts / Une activité** est remonté juste sous Section / Titre ;
+  bug corrigé : le sélecteur (`.seg`, `overflow: hidden`) était écrasé à 0 px quand il est posé
+  directement dans le corps flex de la popup → `flex-shrink: 0`.
+- Serpentin : écarts **étirés** pour que la rangée prenne toute la largeur (`--serp-ecart-x`,
+  même écart pour toutes les rangées).
+- Encadrés du portfolio : **flèches ◀ ▶ retirées** (JP), seul le glisser-déposer réordonne —
+  ⚠ inopérant au doigt (écran tactile). La séquence FLE garde ses flèches.
+- **Encadré du serpentin rééquilibré** : icône de NATURE en tête (🎯 activité · 📥 dépôts ·
+  🎭 hors de l'app — trois icônes seulement, JP), numéro vert (la règle `.encadreEtape .numero`
+  ne s'appliquait pas : autre feuille CSS), pied à filet avec poignée ⋯ (glisser) à gauche et ✕ à
+  droite, pastilles de 20 px, hauteur minimale commune.
+- **Tâche finale = CIBLE** au bout du serpentin (`Serpentin.fin`) : disque à anneaux ambre/crème
+  de 200 px (largeur d'un encadré), devant le trait (`z-index`, l'enveloppe `display: contents`
+  échappe à `.rangee > *`). Passée par `tacheFinale` depuis l'atelier, la création et la popup
+  de modification.
+- **Rien n'a encore été vu à l'écran pour les phases 1-4 du plan validation-variables** : test
+  complet à faire (scénario dans la section du 2026-10-10 nuit).
+
+## 2026-10-10 (nuit) — validation, valeurs attribuées, progression ÉCRITES (« fais tout, je teste demain »)
+
+Plan **`2026-10-10-portfolio-validation-variables.md`** validé, les 4 phases écrites d'un coup.
+`tsc`, lint, **`npm run build` OK** ; logique des états testée sur données factices ; **rien vu à l'écran**.
+- **Soumettre au professeur** (toute étape à dépôts ou activité) : ligne d'action à deux traits
+  dans la colonne 1 ; actif quand l'étape est prête ; notifie le prof (cloche, `etiquette`
+  « 🗂️ Portfolio — à valider », sans nom d'élève). Étape **faite = soumise** (+ validée si bloquante).
+  ⚠ Changement de règle : une étape à dépôts remplis n'est plus « faite » tant qu'elle n'est pas soumise.
+- **Retour du prof** (`PortfolioRetourProf`, dans la copie) : ✓ / ✗, 😀 😐 🙁, commentaire, valeurs.
+  Un retour sans soumission vaut soumission. Élève : **encadré ambre** en tête de l'étape ; sommaire
+  ✓ / ✗ / 💬. Refus → « à reprendre » → resoumission → « à revoir ».
+- **Popup d'étape** : « La suite attend ma validation » (ferme la suite comme `verrouille`) ;
+  « En validant, j'attribue : nom + genre » (œuvre · lien · vidéo · page intégrée) ; « Afficher dans
+  cette étape » les valeurs des étapes précédentes, colonne de travail ou onglet Ressources.
+- **Valeurs** : œuvre = référence (scène ou œuvre entière, menu des scènes), texte servi par
+  `/api/portfolio/valeur` après contrôle de l'attribution ; lien / vidéo / iframe validés serveur.
+- **Activités renvoyées** : le lien porte `?portfolio=&etape=` ; l'onglet Ressources de l'activité
+  montre « De ton portfolio » (`PortfolioValeursActivite`).
+- **Tableau d'évolution** (page des travaux de l'activité, au-dessus des statistiques) : ● à valider,
+  ✓, ✗, ✎, ◔, retard encadré rouge ; clic → la copie ; ❤️ / 💔 bleu-gris / 💬 par la cloche.
+- Même jour : 💔 du **suivi de lecture** passé en bleu-gris (filtre CSS) — demande de JP.
+
+## 2026-10-10 (soir) — premier test de JP (matrice Molière) → retouches ÉCRITES, non vues
+
+- **Atelier** : consignes générales et ressources du portfolio derrière une **case à cocher**
+  (décocher vide le champ, recocher le rend dans la séance).
+- **Serpentin** (partagé avec la séquence FLE !) : virages **arrondis**, écart de 56 px entre
+  rangées, rangées de hauteur égale (grille `1fr`), chaque rangée après la première ouvre sur un
+  emplacement vide sous le dernier « + ». **Glisser-déposer** natif (`onDeplacer`) : lâcher sur un
+  « + » insère, sur un encadré prend sa place. Pas de badge IA sur les encadrés.
+- **Le « + » ouvre directement la popup d'étape** ; dans la popup, « Ce que l'élève fait » :
+  **Des dépôts** | **Une activité de Mes Activités** (liste filtrable, « Changer », « ➕ Créer une
+  nouvelle activité » → l'atelier prend la page et pose l'activité dans l'étape en gardant ses
+  réglages). Plus de popup « trois choix ».
+- **Objectifs** : puces (pas de cases) dans l'éditeur ; **consigne d'étape = liste de tâches**
+  (`ConsignesEditor`) cochée par l'élève, `PortfolioContenuEleve.taches` (clé `cleTache(etapeId,
+  texte de la ligne)`), compteur « 2 / 5 ». Les tâches n'entrent PAS dans « étape faite ».
+- Point **g** (retour du prof sur un dépôt) : plan à faire, questions en cours.
+
+## 2026-10-10 (suite) — séances b et c ÉCRITES (« fais tout d'un coup », JP testera après)
+
+- **Tableau** : `PortfolioDepot.colonnes` (prof, ≤ 8, vides filtrées, repli `['Réponse']`), lignes
+  ajoutées par l'élève (≤ 60), JSON `string[][]` dans `…/tableau`, relu et borné par le PATCH.
+  Personnel (pas de co-édition). `PortfolioDepotTableau`.
+- **Image** : collection `portfolioImages`, `POST /api/portfolio/image` (élève, copie non remise,
+  ≤ 700 Ko, écrit la clé `…/image` dans la copie par transaction, supprime l'ancienne),
+  `GET|DELETE /api/portfolio/image/[id]` (lecture : élève auteur ou `accesTravail`). Le PATCH
+  refuse un id d'image qui n'appartient pas à cette copie. Affichage par `fetch` + jeton →
+  `createObjectURL` (`PortfolioDepotImage`).
+- `tsc`, lint et **`npm run build` OK**. Rien vu à l'écran.
+- ⚠ Comme les `travaux`, les images ne sont **pas** supprimées quand une activité ou un élève est
+  supprimé (aucune cascade n'existe dans le projet aujourd'hui).
+
+### Scénario de test (séances a, b, c)
+1. Prof : dépôt « Texte + Lien » ; dépôt « Tableau » (colonnes Réplique / Didascalie) ; dépôt « Image ».
+2. Élève : texte + lien Drive → lecteur ; l'étape ne se coche qu'avec les deux. Tableau : 3 lignes,
+   recharger → elles restent. Image : photo de téléphone (> 700 Ko) → compressée, affichée,
+   « Remplacer », « Retirer ».
+3. Prof : la copie montre texte, lecteur, tableau, image. Un ancien dépôt texte s'affiche toujours.
+
+## 2026-10-10 — dépôts multi-types, séance a ÉCRITE (pas encore vue par JP)
+
+Plan **`2026-10-10-portfolio-depots-multitypes.md`** validé (« go »). JP a choisi
+l'option **A : un dépôt, plusieurs types** (texte + lien dans un seul bloc).
+- **Modèle** : `PortfolioDepot.types: TypeDepot[]` (`texte | lien | image | tableau | groupe`)
+  remplace `type`. **Toujours lire par `typesDuDepot(d)`** (accepte l'ancienne forme ; le
+  serveur convertit à chaque passage). `groupe` exclusif. Pas de migration.
+- **Clés élève** : `clePartie(etapeId, depotId, type)` — texte = clé historique
+  `{etapeId}/{depotId}`, les autres `…/{type}`. Dépôt **rempli = toutes ses parties** (un
+  lien compte s'il passe `lienValide`, partagé écran + serveur : jamais `javascript:`).
+- **Prof** : rangée de pastilles « L'élève dépose : Texte · Lien · Image · Tableau · Groupe »
+  (`TYPES_DEPOT_DISPONIBLES` = texte, lien, groupe ; image et tableau « bientôt » →
+  séances b et c).
+- **Élève / lecture prof** : `PortfolioDepotLien` (YouTube/Drive → lecteur, liste blanche
+  d'intégration → cadre, sinon lien cliquable).
+- Même jour : pictogrammes IA de JP (`public/ia-statut/`, composant `IaPicto`), intitulés
+  « Généré par l'IA / Aide de l'IA / Non-recours à l'IA », choix « Celui de l'activité »
+  retiré ; vidéos Drive acceptées dans les ressources (`videoEmbedUrl`).
+
 ## 2026-10-09 — étape 1 ÉCRITE EN ENTIER (séances 1a, 1b, 1c) ; 1a VALIDÉE par JP, 1b et 1c PAS VUES
 
 JP a validé le plan v2 et les deux maquettes à midi (« elles me plaisent toutes 2 »),

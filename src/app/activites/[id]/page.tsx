@@ -29,6 +29,7 @@ import { estPortfolio, estSequenceFle, estSondageEnDirect, estSondageLibre, regl
 import PortfolioActivity from '@/components/Portfolio/PortfolioActivity';
 import PortfolioSommaire from '@/components/Portfolio/PortfolioSommaire';
 import PortfolioRessourcesEtape from '@/components/Portfolio/PortfolioRessourcesEtape';
+import PortfolioValeursActivite from '@/components/Portfolio/PortfolioValeursActivite';
 import { usePortfolioEleve } from '@/hooks/usePortfolioEleve';
 import SequenceFleActivity from '@/components/SequenceFleActivity/SequenceFleActivity';
 import OeuvreReader from '@/components/OeuvreReader/OeuvreReader';
@@ -694,6 +695,7 @@ export default function TravailPage() {
             isPreviewMode={isPreviewMode}
             lectureSeule={isDisabled}
             accesIA={devoir?.accesIA === true}
+            travailId={travail?.id}
           />
         ) : isVocabulaire ? (
           <div className={styles.editorSection}>
@@ -936,7 +938,14 @@ export default function TravailPage() {
             consignesRemplacement={
               isPortfolio ? <PortfolioSommaire eleve={portfolioEleve} lectureSeule={isDisabled} /> : undefined
             }
-            ressourcesPrefixe={isPortfolio && devoir ? <PortfolioRessourcesEtape devoir={devoir} eleve={portfolioEleve} /> : undefined}
+            ressourcesPrefixe={
+              isPortfolio && devoir ? (
+                <PortfolioRessourcesEtape devoir={devoir} eleve={portfolioEleve} />
+              ) : !isPreviewMode ? (
+                // Ouverte depuis un portfolio : les valeurs du groupe (« Le sketch »)
+                <PortfolioValeursActivite devoirId={devoirId} />
+              ) : undefined
+            }
             oeuvreNav={
               isOeuvre && oeuvreLecture.oeuvre ? (
                 <OeuvreSommaire

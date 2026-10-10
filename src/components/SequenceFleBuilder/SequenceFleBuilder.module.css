@@ -6,12 +6,24 @@
 }
 
 /* ── La ligne du temps en serpentin ── */
+/* Le cadre prend toute la largeur (c'est lui qu'on mesure) ; la ligne prend
+   la largeur de ses rangées, pour que les rangées aller et retour aient les
+   mêmes bords et que les virages tombent juste. */
+.cadreLigne {
+  width: 100%;
+}
+
+/* Grille à rangées ÉGALES : le virage (hauteur d'une rangée + l'écart) relie
+   exactement le centre d'une rangée au centre de la suivante. */
 .ligne {
+  --serp-ecart: 56px;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 14px 0;
+  display: grid;
+  grid-auto-rows: 1fr;
+  row-gap: var(--serp-ecart);
+  width: max-content;
+  max-width: 100%;
+  padding: 14px 18px;
 }
 
 /* Une rangée : le trait horizontal passe derrière les encadrés */
@@ -19,7 +31,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  /* Étiré par le serpentin pour occuper toute la largeur (`--serp-ecart-x`) */
+  gap: var(--serp-ecart-x, 10px);
   padding: 0 6px;
   min-height: 60px;
 }
@@ -41,22 +54,30 @@
   flex-direction: row-reverse;
 }
 
-/* Le virage : un trait vertical du bout de la rangée au début de la suivante,
-   à droite pour une rangée aller, à gauche pour une rangée retour */
+/* Le virage : un demi-cercle allongé qui part du centre du dernier « + » et
+   revient au centre de l'emplacement vide qui ouvre la rangée suivante — à
+   droite pour une rangée aller, à gauche pour une rangée retour. */
 .rangeeAvecVirage::after {
   content: '';
   position: absolute;
   top: 50%;
-  width: 4px;
-  height: calc(100% + 18px);
-  background: var(--c-border);
-  border-radius: 2px;
-  right: calc(6px + 17px - 2px);
+  margin-top: -2px;
+  width: 36px;
+  height: calc(100% + var(--serp-ecart));
+  box-sizing: border-box;
+  border: 4px solid var(--c-border);
+  border-left: none;
+  border-radius: 0 48px 48px 0;
+  right: calc(6px + 17px - 36px);
+  z-index: 0;
 }
 
 .rangeeRetour.rangeeAvecVirage::after {
   right: auto;
-  left: calc(6px + 17px - 2px);
+  left: calc(6px + 17px - 36px);
+  border-left: 4px solid var(--c-border);
+  border-right: none;
+  border-radius: 48px 0 0 48px;
 }
 
 /* Les encadrés et les « + » passent devant les traits */
@@ -73,7 +94,28 @@
 }
 
 .rangeeRetour {
-  margin-left: auto;
+  justify-self: end;
+}
+
+/* Glisser-déposer : l'encadré attrapé s'estompe ; la cible survolée s'éclaire */
+.glissable {
+  cursor: grab;
+  border-radius: 12px;
+}
+
+.glisse {
+  opacity: 0.4;
+}
+
+.glissableCible {
+  outline: 3px dashed #4a7ba7;
+  outline-offset: 3px;
+}
+
+.plusCible {
+  border-style: solid;
+  background: rgba(74, 123, 167, 0.2);
+  transform: scale(1.2);
 }
 
 /* ── Un encadré ── */

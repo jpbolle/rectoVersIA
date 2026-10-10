@@ -1142,6 +1142,7 @@ export default function CreationForm({
             etapes={portfolio?.etapes ?? []}
             onChange={(etapes) => setPortfolio({ ...(portfolio ?? PORTFOLIO_VIDE), etapes })}
             disabled={isSubmitting}
+            tacheFinale={portfolio?.tacheFinale}
           />
         </>
       )}

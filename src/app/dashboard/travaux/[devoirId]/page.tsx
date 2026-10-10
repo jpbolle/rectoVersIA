@@ -21,6 +21,7 @@ import Toggle from '@/components/Toggle/Toggle';
 import Link from 'next/link';
 import Footer from '@/components/Footer/Footer';
 import OeuvreSuivi from '@/components/OeuvreSuivi/OeuvreSuivi';
+import PortfolioProgression from '@/components/Portfolio/PortfolioProgression';
 import styles from './travaux.module.css';
 
 export default function TravauxPage() {
@@ -650,6 +651,14 @@ export default function TravauxPage() {
           </section>
         ) : (
         <>
+        {/* ── Portfolio : le tableau d'évolution (étapes à valider, retards, gestes) ── */}
+        {devoir?.typeTravail === 'portfolio' && (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Progression du portfolio</h2>
+            <PortfolioProgression devoirId={devoirId} titreActivite={devoir?.intitule} sessionId={sessionActive} />
+          </section>
+        )}
+
         {/* ── Section Statistiques ── */}
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Statistiques</h2>

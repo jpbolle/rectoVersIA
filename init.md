@@ -356,7 +356,20 @@ interface Questionnaire {
   déchiffrés à la lecture, `src/lib/portfolio-groupe-server.ts`). Serveur seulement.
 - Copie d'un portfolio : `travaux.content` = JSON `{type:'portfolio', reponses{clé→texte},
   cochees[], derniereEtape}` — écrit **champ par champ** (`PATCH /api/travaux/[id]` avec
-  `portfolio: {...}`, fusion serveur).
+  `portfolio: {...}`, fusion serveur). Un dépôt combine **plusieurs types** (2026-10-10 :
+  `types[]` texte · lien · image · tableau · groupe, lus par **`typesDuDepot()`**) ; clé d'une
+  partie = `clePartie()` (texte = `{etape}/{depot}`, autres = `…/{type}` ; tableau = JSON
+  `string[][]`, image = id `portfolioImages`).
+- `portfolioSuivi/{devoirId}__G-{groupeId}` ou `…__U-{uid}` — le **suivi** d'un portfolio (2026-10-10) :
+  `soumissions{etapeId→{date,n}}`, `retours{etapeId→{decision valide|refuse, appreciation, commentaire,
+  soumissionN}}`, `valeurs{valeurId→{genre oeuvre|lien|video|integration, oeuvreId, sectionId, url, titre}}`.
+  **Un document par groupe accepté** (sinon par élève). Étape faite = **soumise** (et **validée** si
+  `validation.bloquante`). Le texte d'une œuvre n'est jamais recopié (référence + route qui vérifie
+  l'attribution). Serveur seulement (`src/lib/portfolio-suivi-server.ts`).
+- `portfolioImages/{auto}` — **images déposées par les élèves** dans un portfolio (2026-10-10) :
+  `data` (base64 ≤ 700 Ko), `mimeType`, `travailId`, `devoirId`, `eleveUid`. ⚠ RGPD : **jamais**
+  dans `ressourceImages` (route publique) — servies par une route **authentifiée** (élève auteur,
+  profs de la copie via `accesTravail`). Serveur seulement.
 - `schemasPersonnels/{id}` — schémas personnels (2026-10-04) : `uid`, `titre`, `type`, `diagram` (JSON `Diagram`), `thumbnail` (data URL PNG ou null), `createdAt`, `updatedAt`. Jamais lu côté client : routes `/api/schemas/personnel*`.
 - `manches` + `manches/{id}/reponses` : **une partie jouée en direct** (mode Compétition
   du questionnaire de lecture). `id = MAN-{sessionId}` — déterministe, une manche par
@@ -576,6 +589,11 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
 | `/api/devoirs`, `/api/devoirs/[id]`, `/api/devoirs/upload` | CRUD | Devoirs + upload fichiers |
 | `/api/portfolios`, `/api/portfolios/[id]` | GET POST / GET PATCH DELETE | Matrices de portfolio (prof ; DELETE = archive) |
 | `/api/devoirs/[id]/parcours-portfolio` | GET | Le portfolio prêt à afficher : renvois résolus + états (élève) ; prof : `?eleve=uid` |
+| `/api/portfolio/image`, `/api/portfolio/image/[id]` | POST / GET DELETE | Image d'un dépôt de portfolio : envoi (élève, écrit aussi la clé dans la copie, supprime l'ancienne) ; lecture **authentifiée** (élève auteur, prof de la copie) ; retrait (élève) |
+| `/api/portfolio/suivi` | GET POST PATCH | Suivi d'un portfolio : lire (élève : le sien ; prof : `?eleve=uid`) ; **soumettre** une étape (élève, notifie le prof) ; **retour** du prof ✓/✗ + appréciation + commentaire + valeurs attribuées (notifie le groupe) |
+| `/api/portfolio/valeur` | GET | Texte d'une valeur « œuvre » attribuée (blocs d'une scène, jamais les questions) — élève du groupe ou prof |
+| `/api/portfolio/valeurs-etape` | GET | Valeurs qu'une étape-renvoi transmet à son activité (`/activites/X?portfolio=P&etape=E`) |
+| `/api/portfolio/progression` | GET | Tableau d'évolution (prof) : élève × étape, à valider / validée / à reprendre / retard |
 | `/api/portfolio/groupe` | GET POST PATCH | Groupe d'un portfolio : camarades + mon groupe (élève), tous les groupes (prof) ; déclarer ; confirmer/décliner/quitter (élève), accepter/refuser/annuler (prof) |
 | `/api/schemas/personnel`, `/api/schemas/personnel/[id]` | GET POST / GET PUT DELETE | Schémas personnels (`schemasPersonnels`, propriétaire = uid ; POST `{type,titre}` ou `{duplicateOf}` ; PUT `{diagram?, thumbnail?}`, vignette ≤ 200 Ko). Pas d'index : tri en mémoire |
 | `/api/travaux`, `/api/travaux/[id]`, `/api/travaux/mine` | CRUD | GET prof déclenche `ensureTravaux()` |
@@ -627,6 +645,11 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
   (section · titre · objectifs · consigne · échéance · IA 3 états · portée · **verrou** · dépôts ·
   ressources), `PortfolioActivity` (colonne 1 élève), `PortfolioSommaire` (rail, remplace
   Consignes via `AssistancePanel.consignesRemplacement`), `PortfolioDepotGroupe`,
+  `PortfolioRetourProf` (encadré de validation dans la copie), `PortfolioValeur` (une valeur attribuée),
+  `PortfolioValeursActivite` (Ressources d'une activité ouverte depuis le portfolio),
+  `PortfolioProgression` (tableau d'évolution, page des travaux),
+  `PortfolioDepotLien` / `PortfolioDepotImage` / `PortfolioDepotTableau` (parties d'un dépôt, saisie
+  élève et lecture prof), `IaPicto` (pictogrammes `public/ia-statut/`),
   `PortfolioRessourcesEtape` (`AssistancePanel.ressourcesPrefixe`), `PortfolioLecture` (page de
   correction, groupe à accepter). **Serpentin partagé** : `SequenceFleBuilder/Serpentin.tsx`
   (mécanisme ; la séquence FLE et le portfolio rendent leurs propres encadrés). État : `src/lib/portfolio-etat.ts` (pur).

@@ -65,6 +65,7 @@ async function annonceNotifications(
       destinataireUid?: string;
       destinataireEmail?: string;
       ton?: string | null;
+      etiquette?: string;
     })
     .filter((a) => {
       if (!a.message) return false;
@@ -80,8 +81,9 @@ async function annonceNotifications(
       id: `ann-${a.id}`,
       type: 'annonce' as const,
       title: a.message!,
-      sub:
-        a.cible === 'eleve'
+      sub: a.etiquette
+        ? a.etiquette
+        : a.cible === 'eleve'
           ? a.ton === 'felicitation'
             ? '❤️ Message de ton professeur'
             : a.ton === 'rappel'

@@ -100,6 +100,8 @@ export interface CreateTravailData {
 export interface PortfolioPatch {
   reponses?: Record<string, string>;
   cochees?: string[];
+  // Les tâches cochées des consignes d'étape (liste complète)
+  taches?: string[];
   derniereEtape?: string;
 }
 

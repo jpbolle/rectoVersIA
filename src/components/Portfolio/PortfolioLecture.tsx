@@ -11,11 +11,29 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import EmptyState from '@/components/EmptyState/EmptyState';
-import { cequiManque, echeanceLisible, enCours, enRetard, faite, fermee, lireContenuEleve, reponseDe, type ParcoursPortfolio } from '@/lib/portfolio-etat';
+import { cequiManque, echeanceLisible, enCours, enRetard, etatEtape, faite, fermee, lireContenuEleve, reponseDe, type ParcoursPortfolio } from '@/lib/portfolio-etat';
 import { atelierLabel } from '@/types/didactique';
 import type { Travail } from '@/types/travail';
-import { aUnDepotGroupe, estEtapeSansTrace, GROUPE_STATUT_LABELS, sectionsDuPortfolio, STATUT_IA_LABELS, type GroupeVue } from '@/types/portfolio';
+import {
+  aUnDepotGroupe,
+  estEtapeSansTrace,
+  GROUPE_STATUT_LABELS,
+  sectionsDuPortfolio,
+  STATUT_IA_LABELS,
+  TYPE_DEPOT_LABELS,
+  typesDuDepot,
+  etapeASoumettre,
+  valeursAffichees,
+  type GroupeVue,
+  type SuiviPortfolio,
+} from '@/types/portfolio';
+import PortfolioDepotLien from './PortfolioDepotLien';
+import PortfolioRetourProf from './PortfolioRetourProf';
+import PortfolioValeur from './PortfolioValeur';
+import PortfolioDepotImage from './PortfolioDepotImage';
+import PortfolioDepotTableau from './PortfolioDepotTableau';
 import { iconeAtelier } from '@/types/sequence-fle';
+import IaPicto from './IaPicto';
 import styles from './Portfolio.module.css';
 
 interface Props {
@@ -31,15 +49,24 @@ export default function PortfolioLecture({ devoirId, travail, getAuthHeaders }: 
   const [motif, setMotif] = useState('');
   const [refusEnCours, setRefusEnCours] = useState(false);
   const [envoi, setEnvoi] = useState(false);
+  // Le suivi (soumissions, retours, valeurs) du groupe de cet élève
+  const [suivi, setSuivi] = useState<SuiviPortfolio | null>(null);
+  const [suiviGroupe, setSuiviGroupe] = useState(false);
 
   const charger = useCallback(async () => {
     try {
       const headers = await getAuthHeaders();
       if (!headers) return;
-      const [p, g] = await Promise.all([
-        fetch(`/api/devoirs/${devoirId}/parcours-portfolio?eleve=${encodeURIComponent(travail.studentId)}`, { headers }).then((r) => r.json()),
+      const eleve = encodeURIComponent(travail.studentId);
+      const [p, g, sv] = await Promise.all([
+        fetch(`/api/devoirs/${devoirId}/parcours-portfolio?eleve=${eleve}`, { headers }).then((r) => r.json()),
         fetch(`/api/portfolio/groupe?devoirId=${encodeURIComponent(devoirId)}`, { headers }).then((r) => r.json()),
+        fetch(`/api/portfolio/suivi?devoirId=${encodeURIComponent(devoirId)}&eleve=${eleve}`, { headers }).then((r) => r.json()),
       ]);
+      if (sv.success) {
+        setSuivi(sv.data.suivi as SuiviPortfolio);
+        setSuiviGroupe(sv.data.groupe === true);
+      }
       if (p.success) setParcours(p.data as ParcoursPortfolio);
       else setErreur(p.message || 'Portfolio introuvable');
       if (g.success) setGroupes((g.data?.groupes as GroupeVue[]) ?? []);
@@ -58,7 +85,7 @@ export default function PortfolioLecture({ devoirId, travail, getAuthHeaders }: 
   // Le groupe de CET élève : celui où figure son uid (non refusé d'abord)
   const siens = groupes.filter((g) => g.membres.some((m) => m.uid === travail.studentId));
   const groupe = siens.find((g) => g.statut !== 'refuse') ?? siens[0] ?? null;
-  const contenu = { ...lireContenuEleve(travail.content), groupeStatut: groupe?.statut ?? null };
+  const contenu = { ...lireContenuEleve(travail.content), groupeStatut: groupe?.statut ?? null, suivi };
   const etapes = parcours.etapes;
   const sections = sectionsDuPortfolio(etapes);
   const nbFaites = etapes.filter((e) => faite(e, contenu)).length;
@@ -178,10 +205,14 @@ export default function PortfolioLecture({ devoirId, travail, getAuthHeaders }: 
                 </header>
                 <div className={styles.badges} style={{ justifyContent: 'flex-start', marginBottom: 6 }}>
                   {e.echeance && <span className={`${styles.badge} ${retard ? styles.badgeRetard : ''}`}>📅 {echeanceLisible(e.echeance)}{retard && ' · en retard'}</span>}
-                  {e.ia && <span className={styles.badge}>{STATUT_IA_LABELS[e.ia].picto} {STATUT_IA_LABELS[e.ia].court}</span>}
+                  {e.ia && <span className={styles.badge}><IaPicto statut={e.ia} className={styles.iaPicto} /> {STATUT_IA_LABELS[e.ia].court}</span>}
                   {e.portee === 'collective' && <span className={`${styles.badge} ${styles.badgeCollectif}`}>👥 collective</span>}
                   {e.verrouille && <span className={`${styles.badge} ${styles.badgeVerrou}`}>🔒 verrouille la suivante</span>}
+                  {e.validation?.bloquante && <span className={`${styles.badge} ${styles.badgeVerrou}`}>✓🔒 la suite attend votre validation</span>}
                 </div>
+                {valeursAffichees(etapes, e, suivi).map((v) => (
+                  <PortfolioValeur key={v.valeurId} valeur={v} devoirId={devoirId} eleveUid={travail.studentId} />
+                ))}
                 {renvoi && (
                   <p className={styles.lectureRenvoi}>
                     <span aria-hidden="true">{iconeAtelier(e.atelier)}</span> Activité « {e.titre} » ({atelierLabel(e.atelier ?? '', true) || e.typeTravail}) —{' '}
@@ -191,23 +222,58 @@ export default function PortfolioLecture({ devoirId, travail, getAuthHeaders }: 
                 {sansTrace && <p className={styles.lectureRenvoi}>Étape sans trace — {contenu.cochees.includes(e.id) ? 'cochée par l’élève' : 'pas encore cochée'}.</p>}
                 {!renvoi &&
                   (e.depots ?? []).map((d) => {
-                    const texte = reponseDe(contenu, e.id, d.id);
+                    const types = typesDuDepot(d);
+                    const remplies = types.filter((t) => reponseDe(contenu, e.id, d.id, t).trim());
                     return (
                       <div key={d.id} className={styles.lectureDepot}>
                         <div className={styles.lectureDepotLib}>
                           {d.libelle}
                           {d.obligatoire !== false && <span className={styles.depotObl}>· obligatoire</span>}
                         </div>
-                        {d.type === 'groupe' ? (
+                        {types.includes('groupe') ? (
                           <p className={styles.depotAide}>Dépôt « groupe » — voir le bloc en tête.</p>
-                        ) : texte.trim() ? (
-                          <div className={styles.lectureTexte}>{texte}</div>
-                        ) : (
+                        ) : remplies.length === 0 ? (
                           <p className={styles.lectureVide}>Rien déposé.</p>
+                        ) : (
+                          types.map((t) => {
+                            const valeur = reponseDe(contenu, e.id, d.id, t);
+                            return (
+                              <div key={t}>
+                                {types.length > 1 && <span className={styles.partieLib}>{TYPE_DEPOT_LABELS[t]}</span>}
+                                {!valeur.trim() ? (
+                                  <p className={styles.lectureVide}>Rien déposé.</p>
+                                ) : t === 'lien' ? (
+                                  <PortfolioDepotLien valeur={valeur} lectureSeule />
+                                ) : t === 'image' ? (
+                                  <PortfolioDepotImage valeur={valeur} lectureSeule />
+                                ) : t === 'tableau' ? (
+                                  <PortfolioDepotTableau
+                                    valeur={valeur}
+                                    colonnes={d.colonnes?.length ? d.colonnes : ['Réponse']}
+                                    lectureSeule
+                                  />
+                                ) : (
+                                  <div className={styles.lectureTexte}>{valeur}</div>
+                                )}
+                              </div>
+                            );
+                          })
                         )}
                       </div>
                     );
                   })}
+                {etapeASoumettre(e) && (
+                  <PortfolioRetourProf
+                    devoirId={devoirId}
+                    eleveUid={travail.studentId}
+                    etape={e}
+                    etat={etatEtape(e, contenu)}
+                    suivi={suivi}
+                    groupe={suiviGroupe}
+                    getAuthHeaders={getAuthHeaders}
+                    onSuivi={setSuivi}
+                  />
+                )}
                 {!estFaite && !estFermee && cequiManque(e, contenu).length > 0 && (
                   <p className={styles.lectureManque}>Il manque : {cequiManque(e, contenu).join(', ')}.</p>
                 )}

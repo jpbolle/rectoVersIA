@@ -31,6 +31,9 @@ export interface Annonce {
   destinataireEmail?: string;
   // Ton du message : un cœur ne s'affiche pas comme un rappel. Absent = neutre.
   ton?: 'felicitation' | 'rappel' | null;
+  // Sous-titre de la notification posé par le serveur (« 🗂️ Portfolio ») —
+  // absent = celui de la cible (« Ressource partagée »…)
+  etiquette?: string;
 }
 
 export interface CreateAnnonceData {

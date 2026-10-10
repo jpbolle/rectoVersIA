@@ -49,55 +49,6 @@
   white-space: nowrap;
 }
 
-/* ── Le « + » : les trois choix ── */
-.natures {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.natureBtn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 14px 10px;
-  border: 2px solid var(--c-border);
-  border-radius: var(--c-radius-lg);
-  background: var(--c-bg-card);
-  cursor: pointer;
-  font: inherit;
-  color: var(--c-text);
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.natureBtn:hover {
-  border-color: var(--c-primary);
-}
-
-.natureActive {
-  border-color: var(--c-primary);
-  background: #e8f0ed;
-}
-
-.natureIcone {
-  font-size: 26px;
-  line-height: 1;
-}
-
-.natureTitre {
-  font-weight: 600;
-  font-size: 13px;
-  text-align: center;
-}
-
-.natureAide {
-  font-size: 11.5px;
-  color: var(--c-text-muted);
-  text-align: center;
-}
-
 .recherche {
   width: 100%;
   padding: 9px 12px;
@@ -106,6 +57,29 @@
   font: inherit;
   margin-bottom: 10px;
   box-sizing: border-box;
+}
+
+/* Popup d'étape : le choix d'une activité de Mes Activités */
+.choixActivite {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg);
+}
+
+.choixActiviteTete {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.choixActiviteTete .recherche {
+  flex: 1;
+}
+
+.choixActiviteTete .btn {
+  white-space: nowrap;
 }
 
 /* ── Popup d'étape ── */
@@ -136,8 +110,13 @@
   margin: 4px 0 0;
 }
 
+/* `flex-shrink: 0` + `align-self` : posé DIRECTEMENT dans le corps d'une popup
+   (colonne flex qui défile), un sélecteur à `overflow: hidden` se laissait
+   écraser à 0 px — il n'en restait qu'un trait (bug vu par JP, 2026-10-11). */
 .seg {
   display: inline-flex;
+  flex-shrink: 0;
+  align-self: flex-start;
   border: 1px solid var(--c-border);
   border-radius: var(--c-radius);
   overflow: hidden;
@@ -162,7 +141,38 @@
   background: var(--c-bg-element);
 }
 
+/* Sélecteur IA : pictogramme au-dessus de l'intitulé */
+.segIa button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  padding: 6px 8px;
+  line-height: 1.2;
+}
+
+.iaImage {
+  width: 52px;
+  height: 41px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+/* Petit pictogramme IA dans les pastilles (sommaire, lecture) */
+.iaPicto {
+  width: 20px;
+  height: 16px;
+  object-fit: cover;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+/* `.seg button` impose la couleur du texte : sans le sélecteur complet, le
+   bouton actif restait en texte sombre sur fond vert (illisible). */
 .segActif,
+.seg button.segActif,
 .seg button.segActif:hover:not(:disabled) {
   background: var(--c-primary) !important;
   color: #fff;
@@ -255,6 +265,49 @@
   border-radius: 4px;
   padding: 6px 8px;
   background: #fff;
+}
+
+.depotTypes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px 22px;
+}
+
+.depotTypesLab {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  margin-right: 2px;
+}
+
+.depotType {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+.depotType:hover:not(:disabled) {
+  border-color: var(--c-primary);
+}
+
+.depotType:disabled {
+  cursor: default;
+  color: var(--c-text-dim);
+  border-style: dashed;
+}
+
+.depotTypeOn,
+.depotType.depotTypeOn:hover:not(:disabled) {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+  font-weight: 600;
 }
 
 .depotSup {
@@ -625,10 +678,12 @@
   background: #f8ecec;
 }
 
+/* Couleurs alignées sur les pictogrammes (public/ia-statut/) :
+   rouge = généré par l'IA, jaune = aide, vert = non-recours */
 .tagIa_libre {
-  border-color: var(--c-success);
-  color: var(--c-success);
-  background: #eaf5ee;
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+  background: #f8ecec;
 }
 
 .tagIa_partielle {
@@ -638,9 +693,18 @@
 }
 
 .tagIa_aucune {
-  border-color: var(--c-danger);
-  color: var(--c-danger);
-  background: #f8ecec;
+  border-color: var(--c-success);
+  color: var(--c-success);
+  background: #eaf5ee;
+}
+
+/* Pictogramme IA dans l'étiquette de l'étape (côté élève) */
+.iaTagImage {
+  width: 30px;
+  height: 24px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .tagPerso {
@@ -680,6 +744,56 @@
   border-radius: 0 var(--c-radius) var(--c-radius) 0;
   white-space: pre-line;
   line-height: 1.5;
+}
+
+/* Consigne d'étape = liste de tâches cochables */
+.taches {
+  list-style: none;
+  white-space: normal;
+  margin: 0;
+}
+
+.taches li + li {
+  margin-top: 6px;
+}
+
+.taches label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.taches input {
+  margin-top: 3px;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  accent-color: var(--c-success);
+}
+
+.tacheFaite span {
+  color: var(--c-text-muted);
+  text-decoration: line-through;
+}
+
+.tacheTitre {
+  font-weight: 600;
+}
+
+.tachesCompteur {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: var(--c-bg-element);
+  color: var(--c-text-muted);
+}
+
+.tachesCompteurOk {
+  background: #eaf5ee;
+  color: var(--c-success);
 }
 
 .renvoiCarte {
@@ -794,6 +908,236 @@
 .depotEtatOk {
   color: var(--c-success);
   font-weight: 600;
+}
+
+.lienDepot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lienErreur {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-danger);
+}
+
+.lienCadre {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--c-radius);
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-element);
+}
+
+.lienCadre iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.lienOuvrir {
+  align-self: flex-start;
+  font-size: 13px;
+  color: var(--c-primary);
+  word-break: break-all;
+}
+
+.colonnesEdit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px 22px;
+}
+
+.colonneChamp {
+  display: inline-flex;
+  align-items: center;
+}
+
+.colonneChamp input {
+  width: 140px;
+}
+
+.colonnesEdit .hint {
+  margin: 0;
+  flex-basis: 100%;
+}
+
+/* Tableau de l'élève (dépôt « tableau ») — défile sur un petit écran */
+.tableauDefile {
+  overflow-x: auto;
+}
+
+.tableau {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.tableau th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--c-border-strong);
+  white-space: nowrap;
+}
+
+.tableau td {
+  padding: 4px;
+  border-bottom: 1px solid var(--c-border);
+  vertical-align: top;
+  min-width: 140px;
+}
+
+.tableau .tableauActionCol {
+  min-width: 0;
+  width: 32px;
+  padding: 4px 0;
+  border-bottom-color: transparent;
+  vertical-align: middle;
+}
+
+.tableauCellule {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--c-text);
+  background: var(--c-bg);
+  line-height: 1.4;
+  resize: none;
+}
+
+.tableauCellule:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  background: #fff;
+}
+
+.tableauTexte {
+  display: block;
+  padding: 4px 6px;
+  white-space: pre-wrap;
+}
+
+.tableauAjout {
+  margin-top: 8px;
+  background: none;
+  border: 1px dashed var(--c-border-strong);
+  border-radius: var(--c-radius);
+  padding: 6px 12px;
+  color: var(--c-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tableauAjout:hover {
+  background: var(--c-bg-element);
+}
+
+/* Image de l'élève (dépôt « image ») */
+.imageDepot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.imageCadre {
+  max-width: 480px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  overflow: hidden;
+  background: var(--c-bg-element);
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imageCadre img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.imageAttente {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  padding: 12px;
+}
+
+.imageActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.imageBouton {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: var(--c-radius);
+  border: 1px solid var(--c-primary);
+  background: var(--c-bg-card);
+  color: var(--c-primary);
+  cursor: pointer;
+}
+
+.imageBouton:hover:not(:disabled) {
+  background: var(--c-bg-element);
+}
+
+.imageRetirer {
+  font: inherit;
+  font-size: 12px;
+  background: none;
+  border: none;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.imageRetirer:hover:not(:disabled) {
+  color: var(--c-danger);
+}
+
+.ficheOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 16px 0 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ficheOption input {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--c-primary);
+}
+
+.partieLib {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-text-muted);
+  margin: 10px 0 4px;
 }
 
 .depotAide {
@@ -1422,4 +1766,656 @@
   color: var(--c-primary);
   text-transform: uppercase;
   letter-spacing: 0.3px;
+}
+
+/* ── Retour du professeur (encadré ambre, en tête de l'étape — JP 2026-10-10) ── */
+.retourProf {
+  margin: 14px 0 6px;
+  padding: 12px 16px;
+  border: 1px solid var(--c-accent);
+  border-radius: var(--c-radius-lg);
+  background: #fdf5e6;
+}
+
+.retourRefuse {
+  border-color: var(--c-danger);
+  background: #fbefec;
+}
+
+.retourTete {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.retourDecision {
+  font-weight: 700;
+  color: var(--c-accent-dark);
+}
+
+.retourRefuse .retourDecision {
+  color: var(--c-danger);
+}
+
+.retourAppreciation {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.retourDate {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--c-text-muted);
+}
+
+.retourCommentaire {
+  margin: 8px 0 0;
+  white-space: pre-line;
+  line-height: 1.5;
+}
+
+.retourNote {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+/* ── Une valeur attribuée au groupe (« Le sketch ») ── */
+.valeur {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg-card);
+}
+
+.valeurTete {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.valeurNom {
+  font-weight: 700;
+}
+
+.valeurTitre {
+  font-size: 13px;
+  color: var(--c-text-muted);
+}
+
+.valeurSelect {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  background: #fff;
+  margin-bottom: 8px;
+  max-width: 100%;
+}
+
+.valeurTexte {
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* ── « Soumettre au professeur » : ligne d'action à deux traits (init.md §
+   conventions) — un trait, le bouton, un trait, sur la même ligne, sans
+   toucher les bords de la colonne ── */
+.soumettreBarre {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 28px 0 8px;
+}
+
+.soumettreTrait {
+  flex: 1;
+  height: 1px;
+  background: var(--c-border);
+}
+
+.soumettreCentre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 70%;
+  text-align: center;
+}
+
+.soumettreBtn {
+  min-height: 42px;
+  padding: 0 22px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--c-radius);
+  background: var(--c-primary);
+  color: #fff;
+  cursor: pointer;
+}
+
+.soumettreBtn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.soumettreBtn:disabled {
+  background: var(--c-bg-element);
+  color: var(--c-text-dim);
+  cursor: default;
+}
+
+.soumettreEtat {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-success);
+}
+
+.soumettreAide {
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+/* Sommaire : le retour du prof sur la ligne d'une étape */
+.sommaireValide,
+.sommaireRefuse {
+  font-weight: 800;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.sommaireValide {
+  color: var(--c-success);
+}
+
+.sommaireRefuse {
+  color: var(--c-danger);
+}
+
+.sommaireBulle {
+  font-size: 13px;
+  flex-shrink: 0;
+  cursor: help;
+}
+
+.sommaireReprendre {
+  color: var(--c-danger);
+}
+
+/* Popup d'étape : validation du prof et valeurs attribuées */
+.validationBloc {
+  padding: 10px 14px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg);
+}
+
+.validationBloc .ficheOption {
+  margin-top: 0;
+}
+
+.validationSousTitre {
+  margin: 10px 0 6px;
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.valeurDeclaree {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.valeurDeclaree .input {
+  flex: 1;
+  min-width: 160px;
+}
+
+.valeurDeclaree select {
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  background: #fff;
+}
+
+.afficheCase {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+  min-width: 220px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.afficheCase input {
+  margin-top: 2px;
+  accent-color: var(--c-primary);
+}
+
+/* ── Copie (prof) : l'encadré de validation d'une étape ── */
+.retourEdition {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-accent);
+  border-radius: var(--c-radius-lg);
+  background: #fdf5e6;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.retourEditionTete {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.retourEditionEtat {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-accent-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.retourActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.retourBtn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: var(--c-radius);
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-bg-card);
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+.retourBtnValide {
+  background: var(--c-success);
+  border-color: var(--c-success);
+  color: #fff;
+}
+
+.retourBtnRefuse {
+  background: var(--c-danger);
+  border-color: var(--c-danger);
+  color: #fff;
+}
+
+.retourSmileys {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.retourSmiley {
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  opacity: 0.45;
+}
+
+.retourSmiley:hover,
+.retourSmileyOn {
+  opacity: 1;
+}
+
+.retourSmileyOn {
+  border-color: var(--c-accent);
+  background: var(--c-bg-card);
+}
+
+.retourValeur {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.retourValeur select {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  background: #fff;
+  max-width: 100%;
+}
+
+.retourValeur .input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.retourValeurNom {
+  font-weight: 600;
+  font-size: 13px;
+  min-width: 140px;
+}
+
+.retourValeurNom small {
+  font-weight: 400;
+  color: var(--c-text-muted);
+}
+
+.retourPied {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Tableau d'évolution du portfolio (prof) ── */
+.progression {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.progressionTete {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.progressionAValider {
+  font-weight: 700;
+  color: var(--c-accent-dark);
+}
+
+.progressionDefile {
+  overflow-x: auto;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg-card);
+}
+
+.progressionTable {
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 100%;
+}
+
+.progressionTable th {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-text-muted);
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--c-border-strong);
+  text-align: center;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.progressionTable th small {
+  margin-left: 1px;
+  font-size: 9px;
+}
+
+.progressionTable td {
+  padding: 3px 4px;
+  border-bottom: 1px solid var(--c-border);
+  text-align: center;
+}
+
+.progressionTable .progressionNom {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  padding: 6px 12px;
+  background: var(--c-bg-card);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.progressionDebutGroupe td {
+  border-top: 2px solid var(--c-border-strong);
+}
+
+.progressionGroupe {
+  margin-right: 6px;
+  font-size: 12px;
+}
+
+.progressionCase {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.progressionCase:hover {
+  border-color: var(--c-border-strong);
+}
+
+.caseVide {
+  color: var(--c-text-dim);
+}
+
+.caseCours {
+  color: var(--c-text-muted);
+}
+
+.caseAValider {
+  color: var(--c-accent);
+  font-size: 16px;
+}
+
+.caseValidee {
+  color: var(--c-success);
+}
+
+.caseRefusee {
+  color: var(--c-danger);
+}
+
+.caseRetard {
+  border-color: var(--c-danger);
+  background: #fbefec;
+}
+
+.caseRetardLegende {
+  padding: 0 6px;
+  border: 1px solid var(--c-danger);
+  border-radius: 4px;
+  background: #fbefec;
+}
+
+.progressionFaites {
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-muted);
+  white-space: nowrap;
+  padding: 0 10px;
+}
+
+.progressionGestes {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.progressionGeste {
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: var(--c-radius);
+  background: none;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.progressionGeste:hover {
+  background: var(--c-bg-element);
+  border-color: var(--c-border);
+}
+
+/* Le cœur brisé du rappel, en bleu-gris (comme dans le suivi de lecture) */
+.iconeRappel {
+  display: inline-block;
+  filter: hue-rotate(200deg) saturate(0.6);
+}
+
+/* ── Encadrés du serpentin du portfolio (rééquilibrés le 2026-10-11) ──
+   - hauteur MINIMALE commune : les encadrés d'une rangée s'alignent, qu'ils
+     portent des pastilles ou non ;
+   - un PIED séparé d'un filet : poignée à gauche, retrait à droite, même
+     taille, même gris — ni l'un ni l'autre ne pèse plus que le contenu. */
+/* Sélecteurs doublés : ces règles doivent l'emporter sur `.encadre` /
+   `.numero` du serpentin (autre feuille, ordre de chargement non garanti) */
+.encadreMobile.encadreMobile {
+  min-height: 172px;
+  padding-bottom: 40px;
+}
+
+.numeroEtape.numeroEtape {
+  background: var(--c-primary);
+}
+
+.piedEncadre {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 30px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--c-border);
+}
+
+.poignee,
+.retirerEncadre {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--c-text-dim);
+}
+
+.poignee {
+  cursor: grab;
+}
+
+.encadreMobile:hover .poignee {
+  color: var(--c-primary);
+}
+
+.retirerEncadre {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.retirerEncadre:hover {
+  color: var(--c-danger);
+  background: #fbefec;
+}
+
+/* Les pastilles d'un encadré : une seule hauteur, émoji compris */
+.encadreMobile .badges {
+  margin-top: 4px;
+}
+
+.encadreMobile .badge {
+  height: 20px;
+  box-sizing: border-box;
+  line-height: 1;
+  font-size: 11px;
+}
+
+/* ── La CIBLE : la tâche finale au bout du serpentin — un disque à anneaux,
+   pour trancher avec les encadrés rectangulaires (JP, 2026-10-11). Le cadre
+   garde la largeur d'un encadré (200 px, cf. LARGEUR_ENCADRE du serpentin) :
+   la géométrie des rangées et des virages ne bouge pas.
+   ⚠ `position` + `z-index` : la cible passe DEVANT le trait de la rangée
+   (les encadrés le font par `.rangee > *`, mais la cible est enveloppée d'un
+   élément `display: contents` qui échappe à cette règle) ; et le disque prend
+   toute la largeur, sinon le trait dépasse sur ses flancs. ── */
+.cible {
+  position: relative;
+  z-index: 1;
+  width: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cibleDisque {
+  width: 200px;
+  height: 200px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 6px solid var(--c-accent);
+  background: #fff;
+  /* Les anneaux, de l'extérieur vers le cœur : ambre (la bordure), crème,
+     ambre, crème, ambre — puis le cœur blanc où se lit la tâche */
+  box-shadow:
+    inset 0 0 0 9px #fdf5e6,
+    inset 0 0 0 15px var(--c-accent),
+    inset 0 0 0 24px #fdf5e6,
+    inset 0 0 0 30px var(--c-accent),
+    var(--c-shadow-card);
+  padding: 40px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.cibleLabel {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--c-accent-dark);
+}
+
+.cibleTexte {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--c-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

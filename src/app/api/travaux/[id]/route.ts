@@ -4,7 +4,8 @@ import { verifyAuth } from '@/lib/api-auth';
 import { decrypt } from '@/lib/crypto';
 import { accesTravail, peutAgir } from '@/lib/classe-acces';
 import { nettoyerConsignesCochees } from '@/lib/consignes-etapes';
-import { lireContenuEleve } from '@/lib/portfolio-etat';
+import { lireContenuEleve, lireTableau } from '@/lib/portfolio-etat';
+import { MAX_COLONNES_TABLEAU, MAX_LIGNES_TABLEAU } from '@/types/portfolio';
 import type { Travail, UpdateTravailData } from '@/types/travail';
 
 // GET - Recuperer un travail par ID
@@ -157,8 +158,33 @@ export async function PATCH(
       if (p.reponses && typeof p.reponses === 'object') {
         for (const [cle, texte] of Object.entries(p.reponses)) {
           if (typeof cle !== 'string' || cle.length > 120) continue;
-          if (typeof texte === 'string' && texte.trim() !== '') reponses[cle] = texte.slice(0, 20000);
-          else delete reponses[cle];
+          if (typeof texte !== 'string' || texte.trim() === '') {
+            delete reponses[cle];
+          } else if (cle.endsWith('/lien')) {
+            // Partie « lien » : on garde la saisie de l'élève telle quelle (il
+            // tape encore), mais jamais autre chose qu'une adresse http(s)
+            // une fois complète — `javascript:` & co. sont refusés.
+            const brut = texte.trim().slice(0, 2000);
+            if (/^[a-z][a-z0-9+.-]*:/i.test(brut) && !/^https?:/i.test(brut)) continue;
+            reponses[cle] = brut;
+          } else if (cle.endsWith('/tableau')) {
+            // Partie « tableau » : relue et réécrite — lignes et colonnes bornées
+            const lignes = lireTableau(texte)
+              .slice(0, MAX_LIGNES_TABLEAU)
+              .map((l) => l.slice(0, MAX_COLONNES_TABLEAU).map((c) => c.slice(0, 2000)));
+            const json = JSON.stringify(lignes);
+            if (json.length <= 60000) reponses[cle] = json;
+          } else if (cle.endsWith('/image')) {
+            // Partie « image » : l'identifiant d'une image de `portfolioImages`
+            // déposée par CET élève dans CETTE copie — jamais celle d'un autre.
+            const imageId = texte.trim();
+            if (!/^[A-Za-z0-9]{10,40}$/.test(imageId)) continue;
+            const image = await adminDb.collection('portfolioImages').doc(imageId).get();
+            if (!image.exists || image.data()?.travailId !== id || image.data()?.eleveUid !== data.studentId) continue;
+            reponses[cle] = imageId;
+          } else {
+            reponses[cle] = texte.slice(0, 20000);
+          }
         }
       }
       const cochees = Array.isArray(p.cochees)
@@ -166,7 +192,11 @@ export async function PATCH(
         : actuel.cochees;
       const derniereEtape =
         typeof p.derniereEtape === 'string' && p.derniereEtape ? p.derniereEtape.slice(0, 40) : actuel.derniereEtape;
-      updateData.content = JSON.stringify({ type: 'portfolio', reponses, cochees, derniereEtape: derniereEtape ?? null });
+      // Tâches cochées des consignes d'étape : `{etapeId}|{texte de la ligne}`
+      const taches = Array.isArray(p.taches)
+        ? [...new Set(p.taches.filter((c): c is string => typeof c === 'string').map((c) => c.slice(0, 1100)))].slice(0, 500)
+        : actuel.taches ?? [];
+      updateData.content = JSON.stringify({ type: 'portfolio', reponses, cochees, taches, derniereEtape: derniereEtape ?? null });
     }
 
     if (body.selfEvaluation !== undefined) {

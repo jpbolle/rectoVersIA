@@ -406,7 +406,7 @@ export default function OeuvreSuivi({ devoirId, titreActivite, sessionId }: Prop
                             setEnvoi({ eleve: e, geste: g, texte: GESTES[g].defaut })
                           }
                         >
-                          {GESTES[g].icone}
+                          <span className={g === 'rappel' ? styles.iconeRappel : undefined}>{GESTES[g].icone}</span>
                         </button>
                       ))}
                     </div>
@@ -476,7 +476,8 @@ export default function OeuvreSuivi({ devoirId, titreActivite, sessionId }: Prop
             <header className={styles.popupEntete}>
               <div>
                 <h3>
-                  {GESTES[envoi.geste].icone} À {envoi.eleve.studentName}
+                  <span className={envoi.geste === 'rappel' ? styles.iconeRappel : undefined}>{GESTES[envoi.geste].icone}</span> À{' '}
+                  {envoi.eleve.studentName}
                 </h3>
                 <p className={styles.popupSous}>
                   {titreActivite ? `${titreActivite} · ` : ''}

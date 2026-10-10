@@ -815,6 +815,7 @@ export default function EditDevoirModal({
           etapes={portfolio?.etapes ?? []}
           onChange={(etapes) => setPortfolio({ ...(portfolio ?? PORTFOLIO_VIDE), etapes })}
           disabled={isSaving}
+          tacheFinale={portfolio?.tacheFinale}
         />
       )}
 

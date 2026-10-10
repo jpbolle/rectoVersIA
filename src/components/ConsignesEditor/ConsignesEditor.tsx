@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
-import { Plus, Square, Text, X } from 'lucide-react';
+import { Dot, Plus, Square, Text, X } from 'lucide-react';
 import styles from './ConsignesEditor.module.css';
 
 /**
@@ -21,14 +21,36 @@ interface ConsignesEditorProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  // Ce que nomme chaque ligne : les objectifs d'une étape de portfolio
+  // utilisent le même éditeur que les consignes.
+  nature?: 'consigne' | 'objectif';
 }
+
+const LIBELLES = {
+  consigne: {
+    premiere: 'Première consigne… (Entrée pour la suivante)',
+    suivante: 'Consigne suivante…',
+    retirer: 'Retirer cette consigne',
+    ajouter: 'Ajouter une consigne',
+    aide: 'Une ligne = une case à cocher pour l’élève. Une ligne qui se termine par « : » sert de titre.',
+  },
+  objectif: {
+    premiere: 'Premier objectif… (Entrée pour le suivant)',
+    suivante: 'Objectif suivant…',
+    retirer: 'Retirer cet objectif',
+    ajouter: 'Ajouter un objectif',
+    // Un objectif se lit, il ne se coche pas : une puce, pas une case
+    aide: 'Une ligne = un objectif, affiché en liste à puces chez l’élève.',
+  },
+};
 
 function versLignes(value: string): string[] {
   const lignes = value.split('\n');
   return lignes.length > 0 ? lignes : [''];
 }
 
-export default function ConsignesEditor({ value, onChange, disabled = false }: ConsignesEditorProps) {
+export default function ConsignesEditor({ value, onChange, disabled = false, nature = 'consigne' }: ConsignesEditorProps) {
+  const libelles = LIBELLES[nature];
   const [lignes, setLignes] = useState<string[]>(() => versLignes(value));
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   // Ligne à mettre au clavier après le prochain rendu (ajout / suppression)
@@ -139,8 +161,12 @@ export default function ConsignesEditor({ value, onChange, disabled = false }: C
               key={index}
               className={`${styles.ligne} ${estTitre ? styles.ligneTitre : ''} ${estVide ? styles.ligneVide : ''}`}
             >
-              <span className={styles.icone} aria-hidden="true" title={estTitre ? 'Titre (sans case)' : 'Tâche à cocher'}>
-                {estTitre ? <Text size={14} /> : <Square size={14} />}
+              <span
+                className={styles.icone}
+                aria-hidden="true"
+                title={nature === 'objectif' ? 'Objectif' : estTitre ? 'Titre (sans case)' : 'Tâche à cocher'}
+              >
+                {nature === 'objectif' ? <Dot size={14} strokeWidth={6} /> : estTitre ? <Text size={14} /> : <Square size={14} />}
               </span>
               <input
                 ref={(el) => {
@@ -152,7 +178,7 @@ export default function ConsignesEditor({ value, onChange, disabled = false }: C
                 onChange={(e) => modifier(index, e.target.value)}
                 onKeyDown={(e) => auClavier(index, e)}
                 onPaste={(e) => auCollage(index, e)}
-                placeholder={index === 0 && lignes.length === 1 ? 'Première consigne… (Entrée pour la suivante)' : 'Consigne suivante…'}
+                placeholder={index === 0 && lignes.length === 1 ? libelles.premiere : libelles.suivante}
                 disabled={disabled}
                 spellCheck
               />
@@ -161,7 +187,7 @@ export default function ConsignesEditor({ value, onChange, disabled = false }: C
                 className={styles.retirer}
                 onClick={() => retirer(index)}
                 disabled={disabled || (lignes.length === 1 && estVide)}
-                aria-label="Retirer cette consigne"
+                aria-label={libelles.retirer}
                 title="Retirer"
               >
                 <X size={14} />
@@ -178,10 +204,10 @@ export default function ConsignesEditor({ value, onChange, disabled = false }: C
           disabled={disabled}
         >
           <Plus size={14} />
-          Ajouter une consigne
+          {libelles.ajouter}
         </button>
         <span className={styles.aide}>
-          Une ligne = une case à cocher pour l’élève. Une ligne qui se termine par « : » sert de titre.
+          {libelles.aide}
         </span>
       </div>
     </div>
