@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useAffichage } from '@/hooks/useAffichage';
 import Toggle from '@/components/Toggle/Toggle';
 import type { Session } from '@/types/session';
 import styles from './SessionsModal.module.css';
@@ -57,6 +58,10 @@ export default function SessionsModal({
   partagee = false,
 }: Props) {
   const { getAuthHeaders } = useAuth();
+  // Gestion de l'affichage : « Jouer » (compétition) et « Ouvrir » (sondage en direct) masquables
+  const { vue: vueAffichage } = useAffichage();
+  const competitionMasquee = vueAffichage('outil:competition').bloque;
+  const sondageMasque = vueAffichage('outil:sondage-direct').bloque;
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   // Classes dont la bascule est en vol — on les fige le temps de l'aller-retour
@@ -157,7 +162,7 @@ export default function SessionsModal({
                 {lecture && <span className={styles.lectureSeule}> · lecture seule</span>}
               </span>
               <div className={styles.bascules}>
-                {competition && !lecture && (
+                {competition && !lecture && !competitionMasquee && (
                   <a
                     href={`/direct/${s.id}`}
                     target="_blank"
@@ -168,7 +173,7 @@ export default function SessionsModal({
                     🏁 Jouer
                   </a>
                 )}
-                {sondage && !lecture && (
+                {sondage && !lecture && !sondageMasque && (
                   <a
                     href={`/sondage/${s.id}`}
                     target="_blank"

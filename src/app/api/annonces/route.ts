@@ -5,8 +5,8 @@ import { generateAnnonceId, normalizeLien } from '@/types/annonce';
 import type { Annonce, AnnonceCible } from '@/types/annonce';
 
 // Annonces de l'administration — écrites ici, lues par /api/notifications.
-// GET reste réservé à l'admin : personne d'autre n'a à voir la liste complète
-// (une annonce aux profs n'existe pas pour un élève).
+// GET reste réservé à l'admin et ne liste QUE les annonces de l'administration
+// (Vue d'ensemble) : une annonce aux profs n'existe pas pour un élève.
 //
 // POST connaît DEUX auteurs possibles :
 //   - l'admin, qui s'adresse à un public (profs / élèves / tout le monde) ;
@@ -28,12 +28,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const snap = await adminDb
-      .collection('annonces')
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get();
-    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Annonce);
+    // Seulement ce que l'ADMINISTRATION a envoyé (profs / élèves / tous) — pas
+    // les mots d'un prof à un de ses élèves (`cible: 'eleve'`), qui partagent
+    // la collection (JP, 2026-10-11 : « que les notifs envoyées depuis ce poste
+    // d'admin »). Tri en mémoire : un `in` + `orderBy` demanderait un index
+    // composite, pour une liste qui reste courte.
+    const snap = await adminDb.collection('annonces').where('cible', 'in', CIBLES_ADMIN).get();
+    const data = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as Annonce)
+      .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
+      .slice(0, 50);
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('Erreur GET /api/annonces:', error);

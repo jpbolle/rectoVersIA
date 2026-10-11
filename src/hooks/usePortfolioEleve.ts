@@ -121,7 +121,8 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
     [getAuthHeaders]
   );
   const declarerGroupe = useCallback(
-    (membres: string[]) => appelGroupe('POST', { devoirId, membres }),
+    // `seul` : l'élève déclare travailler seul (aucun partenaire)
+    (membres: string[], seul = false) => appelGroupe('POST', { devoirId, membres, seul }),
     [appelGroupe, devoirId]
   );
   const repondreGroupe = useCallback(
@@ -264,6 +265,18 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
     },
     [lectureSeule, patchPortfolio, contenu.cochees]
   );
+
+  // L'INTRODUCTION est faite dès que l'élève l'a ouverte (JP, 2026-10-11) :
+  // l'afficher la coche. Une seule demande par étape (la copie met un instant
+  // à revenir avec la case cochée)
+  const introDemandee = useRef<string | null>(null);
+  const etapeOuverte = etapes[index] ?? null;
+  useEffect(() => {
+    if (!parcours || !etapeOuverte?.introduction || lectureSeule || !patchPortfolio) return;
+    if (contenu.cochees.includes(etapeOuverte.id) || introDemandee.current === etapeOuverte.id) return;
+    introDemandee.current = etapeOuverte.id;
+    void patchPortfolio({ cochees: [...new Set([...contenu.cochees, etapeOuverte.id])] });
+  }, [parcours, etapeOuverte, lectureSeule, patchPortfolio, contenu.cochees]);
 
   // Une tâche de la consigne d'étape, cochée ou décochée par l'élève
   const cocherTache = useCallback(

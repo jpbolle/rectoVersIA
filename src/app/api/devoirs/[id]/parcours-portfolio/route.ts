@@ -69,7 +69,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       e.nature === 'activite'
         ? {
             ...e,
-            titre: titres.get(e.devoirId!) ?? e.titre,
+            // Le titre donné à l'étape l'emporte ; l'intitulé de l'activité à défaut
+            titre: e.titre.trim() || titres.get(e.devoirId!) || '',
             etatRenvoi: uidEtats ? etats.get(e.devoirId!) ?? 'a-faire' : undefined,
           }
         : e

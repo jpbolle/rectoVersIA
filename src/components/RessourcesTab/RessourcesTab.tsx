@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import DictionaryPanel from '@/components/DictionaryPanel';
 import { DrawToolbar, DrawCanvas } from '@/components/DrawTools/DrawTools';
@@ -32,6 +32,12 @@ interface RessourcesTabProps {
   /** Aide dictionnaire permanente (élève) — bloc affiché si le callback est fourni */
   dictionaryEnabled?: boolean;
   onDictionaryEnabledChange?: (value: boolean) => void;
+  /** Un intitulé au-dessus des ressources, seulement s'il y en a (portfolio :
+   *  « Pour tout le portfolio ») */
+  titre?: ReactNode;
+  /** Rien du tout (pas de « Aucune ressource ») quand il n'y en a pas — le
+   *  portfolio dont seule l'étape porte des ressources */
+  rienSiVide?: boolean;
 }
 
 // ── Image de ressource : atelier de tracé (élève) ou tracés en lecture seule (prof) ──
@@ -61,20 +67,30 @@ function RessourceImageWorkspace({
           direction="horizontal"
         />
       )}
-      <DrawCanvas
-        imageUrl={url}
-        alt={name}
-        shapes={shapes}
-        onShapesChange={onShapesChange}
-        tool={tool}
-        selectedShapeId={selectedShapeId}
-        setSelectedShapeId={setSelectedShapeId}
-        readOnly={readOnly}
-      />
-      <figcaption className={styles.imageCaption}>
-        <button type="button" className={styles.imageZoomBtn} onClick={() => setZoomed(true)}>
+      {/* L'icône d'agrandissement dans le coin SUPÉRIEUR DROIT de l'image
+          (JP, 2026-10-11 — elle était sous l'image, à gauche) */}
+      <div className={styles.imageCadre}>
+        <DrawCanvas
+          imageUrl={url}
+          alt={name}
+          shapes={shapes}
+          onShapesChange={onShapesChange}
+          tool={tool}
+          selectedShapeId={selectedShapeId}
+          setSelectedShapeId={setSelectedShapeId}
+          readOnly={readOnly}
+        />
+        <button
+          type="button"
+          className={styles.imageZoomBtn}
+          onClick={() => setZoomed(true)}
+          title="Agrandir l’image"
+          aria-label="Agrandir l’image"
+        >
           🔍
         </button>
+      </div>
+      <figcaption className={styles.imageCaption}>
         {name}
         {readOnly && shapes.length > 0 && (
           <span className={styles.imageShapesTag}>
@@ -279,6 +295,8 @@ export default function RessourcesTab({
   studentRessourceImageShapes,
   dictionaryEnabled = false,
   onDictionaryEnabledChange,
+  titre,
+  rienSiVide = false,
 }: RessourcesTabProps) {
   // ── LE ZOOM D'UNE ANIMATION ──
   // On ne peut RIEN piloter à l'intérieur du cadre : le bac à sable coupe tout
@@ -314,6 +332,7 @@ export default function RessourcesTab({
   ) : null;
 
   if (!devoir.ressources) {
+    if (rienSiVide) return dictionaryBlock ? <div className={styles.container}>{dictionaryBlock}</div> : null;
     return (
       <div className={styles.container}>
         {dictionaryBlock}
@@ -350,6 +369,7 @@ export default function RessourcesTab({
   const hasInteractifs = ressourceInteractifs.length > 0;
 
   if (!hasOutils && !hasDocument && !hasLegacy && !hasFiles && !hasVideos && !hasInteractifs) {
+    if (rienSiVide) return dictionaryBlock ? <div className={styles.container}>{dictionaryBlock}</div> : null;
     return (
       <div className={styles.container}>
         {dictionaryBlock}
@@ -561,6 +581,7 @@ export default function RessourcesTab({
     return (
       <div className={styles.container}>
         {dictionaryBlock}
+        {titre}
         {volets.map((v, i) => (
           <Volet
             key={v.cle}

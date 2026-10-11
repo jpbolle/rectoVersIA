@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { isAdmin } from '@/lib/auth-utils';
@@ -9,22 +9,17 @@ import Header, { ADMIN_TABS } from '@/components/Header/Header';
 import type { AdminHeaderTab } from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import DidactiquePanel from '@/components/DidactiquePanel/DidactiquePanel';
+import AffichagePanel from '@/components/AffichagePanel/AffichagePanel';
 import DidactiqueFlePanel from '@/components/DidactiquePanel/DidactiqueFlePanel';
 import AnnonceModal from '@/components/AnnonceModal/AnnonceModal';
+import ProfFiche from '@/components/ProfFiche/ProfFiche';
+import { Pencil, Trash2 } from 'lucide-react';
+import type { ActiviteProf } from '@/app/api/admin/profs-activite/route';
 import type { CreateProfesseurData } from '@/types/professeur';
 import { CIBLE_LABELS } from '@/types/annonce';
 import type { Annonce, AnnonceCible } from '@/types/annonce';
+import popup from '@/components/ModuleFleEditor/ModuleFleEditor.module.css';
 import styles from './admin.module.css';
-
-interface ClasseStat { id: string; nom: string; nbEleves: number; }
-interface DevoirStat { id: string; titre: string; accesIA: boolean; nbSoumis: number; nbCorrections: number; nbGridIA: number; }
-interface GrilleStat { id: string; nom: string; nbCriteres: number; }
-interface ProfStats {
-  classes: ClasseStat[];
-  devoirs: DevoirStat[];
-  grilles: GrilleStat[];
-  aiStats: { devoirsAvecIA: number; totalGridIA: number };
-}
 
 interface AdminStats {
   professeurs: number;
@@ -50,6 +45,7 @@ export default function AdminPage() {
     professeurs,
     isLoading: profsLoading,
     createProfesseur,
+    updateProfesseur,
     deleteProfesseur,
   } = useProfesseurs();
 
@@ -70,14 +66,19 @@ export default function AdminPage() {
 
   // Panel stats prof
   const [selectedProfEmail, setSelectedProfEmail] = useState<string | null>(null);
-  const [profStats, setProfStats] = useState<ProfStats | null>(null);
-  const [profStatsLoading, setProfStatsLoading] = useState(false);
 
   // Champs du formulaire
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
   const [email, setEmail] = useState('');
-  const [accessDuration, setAccessDuration] = useState<'permanent' | '1day' | '1week'>('permanent');
+  // Durées d'accès (JP, 2026-10-11) : permanent, 1 semaine, 1 mois — plus de « 1 jour »
+  const [accessDuration, setAccessDuration] = useState<'permanent' | '1week' | '1month'>('permanent');
+  // L'ACTIVITÉ de chaque prof (classes, devoirs, grilles) pour le filtre
+  // « Profs sans aucune activité » — chargée avec l'onglet Membres
+  const [activite, setActivite] = useState<Record<string, ActiviteProf> | null>(null);
+  const [seulementInactifs, setSeulementInactifs] = useState(false);
+  // L'école : demandée pour un accès PERMANENT seulement (JP, 2026-10-11)
+  const [ecole, setEcole] = useState('');
 
   useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 100);
@@ -166,41 +167,93 @@ export default function AdminPage() {
     [getAuthHeaders]
   );
 
-  const openProfPanel = useCallback(async (profEmail: string) => {
+  // `enEdition` : ouverte par le crayon de l'étiquette, la fiche s'ouvre en modification
+  const [ficheEnEdition, setFicheEnEdition] = useState(false);
+  const openProfPanel = useCallback((profEmail: string, enEdition = false) => {
+    setFicheEnEdition(enEdition);
     setSelectedProfEmail(profEmail);
-    setProfStats(null);
-    setProfStatsLoading(true);
-    const headers = await getAuthHeaders();
-    if (!headers) { setProfStatsLoading(false); return; }
-    try {
-      const res = await fetch(`/api/admin/prof-stats/${encodeURIComponent(profEmail)}`, { headers });
-      const json = await res.json();
-      if (json.success) setProfStats(json.data);
-    } catch {
-      // Silently fail
-    } finally {
-      setProfStatsLoading(false);
-    }
-  }, [getAuthHeaders]);
+  }, []);
+  const fermerProfPanel = useCallback(() => setSelectedProfEmail(null), []);
 
   const resetForm = () => {
     setNom('');
     setPrenom('');
     setEmail('');
+    setEcole('');
     setAccessDuration('permanent');
   };
 
-  const computeExpiresAt = (duration: 'permanent' | '1day' | '1week'): string | null => {
+  // L'activité : chargée à l'ouverture de l'onglet Membres, et à chaque
+  // changement de la liste (un prof ajouté n'a encore rien créé)
+  useEffect(() => {
+    if (activeTab !== 'membres' || !isAuthenticated) return;
+    let annule = false;
+    (async () => {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      try {
+        const res = await fetch('/api/admin/profs-activite', { headers });
+        const json = await res.json();
+        if (!annule && json.success) setActivite(json.data as Record<string, ActiviteProf>);
+      } catch {
+        // Le filtre reste indisponible
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [activeTab, isAuthenticated, getAuthHeaders, professeurs.length]);
+
+  const sansActivite = useCallback(
+    (p: { email: string }) => {
+      const a = activite?.[p.email.toLowerCase()];
+      return !!a && a.classes === 0 && a.devoirs === 0 && a.grilles === 0;
+    },
+    [activite]
+  );
+
+  // Les profs groupés PAR ÉCOLE (ordre alphabétique, « non renseignée » en dernier)
+  const groupesEcole = useMemo(() => {
+    const liste = seulementInactifs ? professeurs.filter(sansActivite) : professeurs;
+    const parEcole = new Map<string, typeof professeurs>();
+    for (const p of liste) {
+      const cle = (p.ecole ?? '').trim();
+      parEcole.set(cle, [...(parEcole.get(cle) ?? []), p]);
+    }
+    return [...parEcole.entries()]
+      .sort(([a], [b]) => (!a ? 1 : !b ? -1 : a.localeCompare(b, 'fr')))
+      .map(([ecole, profs]) => ({ ecole, profs }));
+  }, [professeurs, seulementInactifs, sansActivite]);
+
+  const fermerFormulaire = useCallback(() => {
+    setShowForm(false);
+    setNom('');
+    setPrenom('');
+    setEmail('');
+    setEcole('');
+    setAccessDuration('permanent');
+  }, []);
+
+  // La popup « Nouveau professeur » se ferme aussi avec Échap
+  useEffect(() => {
+    if (!showForm) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && fermerFormulaire();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showForm, fermerFormulaire]);
+
+  const computeExpiresAt = (duration: 'permanent' | '1week' | '1month'): string | null => {
     if (duration === 'permanent') return null;
     const now = new Date();
-    if (duration === '1day') now.setDate(now.getDate() + 1);
     if (duration === '1week') now.setDate(now.getDate() + 7);
+    if (duration === '1month') now.setMonth(now.getMonth() + 1);
     return now.toISOString();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nom.trim() || !prenom.trim() || !email.trim()) return;
+    if (accessDuration === 'permanent' && !ecole.trim()) return;
 
     setIsSubmitting(true);
     try {
@@ -209,11 +262,12 @@ export default function AdminPage() {
         prenom: prenom.trim(),
         email: email.trim(),
         expiresAt: computeExpiresAt(accessDuration),
+        ecole: accessDuration === 'permanent' ? ecole.trim() : '',
       };
       await createProfesseur(data);
       const durationLabel =
-        accessDuration === '1day' ? ' (accès 1 jour)' :
-        accessDuration === '1week' ? ' (accès 1 semaine)' : '';
+        accessDuration === '1week' ? ' (accès 1 semaine)' :
+        accessDuration === '1month' ? ' (accès 1 mois)' : '';
       setMessage({ text: `Professeur ajouté${durationLabel}`, type: 'success' });
       resetForm();
       setShowForm(false);
@@ -259,18 +313,6 @@ export default function AdminPage() {
       </div>
     );
   }
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString('fr-BE', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
-  };
 
   const getExpirationLabel = (expiresAt?: string | null) => {
     if (!expiresAt) return null;
@@ -419,6 +461,9 @@ export default function AdminPage() {
           </>
         )}
 
+        {/* Gestion de l'affichage : ce que voient les autres profs (plan 2026-10-11) */}
+        {activeTab === 'affichage' && <AffichagePanel />}
+
         {/* Gestion des coûts : usage de l'IA */}
         {activeTab === 'couts' && (
           <section className={styles.statsSection}>
@@ -461,154 +506,125 @@ export default function AdminPage() {
             )}
           </div>
 
-          <div className={styles.professeursGrid}>
-            {profsLoading ? (
-              <div className={styles.emptyState}>Chargement...</div>
-            ) : professeurs.length === 0 ? (
-              <div className={styles.emptyState}>
-                Aucun professeur enregistré. Ajoutez-en un pour commencer.
-              </div>
-            ) : (
-              professeurs.map((prof) => {
-                const expirationLabel = getExpirationLabel(prof.expiresAt);
-                const isSelected = selectedProfEmail === prof.email;
-                return (
-                  <div
-                    key={prof.id}
-                    className={`${styles.profCard} ${isSelected ? styles.profCardSelected : ''}`}
-                    onClick={() => openProfPanel(prof.email)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && openProfPanel(prof.email)}
-                  >
-                    <h3 className={styles.profName}>{prof.prenom} {prof.nom}</h3>
-                    <p className={styles.profEmail}>{prof.email}</p>
-                    {expirationLabel && (
-                      <span className={styles.expirationBadge}>{expirationLabel}</span>
-                    )}
-                    <div className={styles.profFooter}>
-                      <span className={styles.profDate}>Ajouté le {formatDate(prof.createdAt)}</span>
-                      <button
-                        type="button"
-                        className={styles.deleteButton}
-                        onClick={(e) => { e.stopPropagation(); handleDelete(prof.id, `${prof.prenom} ${prof.nom}`); }}
+          {/* Filtre (JP, 2026-10-11) : repérer les profs qui n'ont jamais rien créé */}
+          {!profsLoading && professeurs.length > 0 && (
+            <div className={styles.membresOutils}>
+              <label className={styles.filtreInactifs}>
+                <input
+                  type="checkbox"
+                  checked={seulementInactifs}
+                  onChange={(e) => setSeulementInactifs(e.target.checked)}
+                  disabled={!activite}
+                />
+                Profs sans aucune activité
+                {activite && <span className={styles.filtreCompte}>{professeurs.filter(sansActivite).length}</span>}
+              </label>
+              <span className={styles.filtreAide}>
+                {activite ? 'Aucune classe, aucun devoir, aucune grille.' : 'Calcul de l’activité…'}
+              </span>
+            </div>
+          )}
+
+          {profsLoading ? (
+            <div className={styles.emptyState}>Chargement...</div>
+          ) : professeurs.length === 0 ? (
+            <div className={styles.emptyState}>
+              Aucun professeur enregistré. Ajoutez-en un pour commencer.
+            </div>
+          ) : groupesEcole.length === 0 ? (
+            <div className={styles.emptyState}>Aucun professeur sans activité : tout le monde a créé quelque chose.</div>
+          ) : (
+            // Tri PAR ÉCOLE : un filet et l'intitulé de l'école au-dessus de ses étiquettes
+            groupesEcole.map(({ ecole: nomEcole, profs }) => (
+              <div key={nomEcole || '__sans'} className={styles.groupeEcole}>
+                <div className={styles.groupeEcoleTitre}>
+                  <span>{nomEcole || 'École non renseignée'}</span>
+                  <small>{profs.length}</small>
+                </div>
+                <div className={styles.professeursGrid}>
+                  {profs.map((prof) => {
+                    const expirationLabel = getExpirationLabel(prof.expiresAt);
+                    const isSelected = selectedProfEmail === prof.email;
+                    const act = activite?.[prof.email.toLowerCase()];
+                    return (
+                      <div
+                        key={prof.id}
+                        className={`${styles.profCard} ${isSelected ? styles.profCardSelected : ''}`}
+                        onClick={() => openProfPanel(prof.email)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && openProfPanel(prof.email)}
                       >
-                        Supprimer
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                        {/* L'étiquette : le nom seul (l'adresse est dans la fiche) et la
+                            pastille chiffrée ; en 2e ligne, à droite, les petits gestes */}
+                        <div className={styles.profLigne}>
+                          <h3 className={styles.profName} title={prof.email}>{prof.prenom} {prof.nom}</h3>
+                          {/* Pastille CHIFFRÉE (JP, 2026-10-11) : ce que le prof a
+                              créé (classes + devoirs + grilles), détail au survol ;
+                              orange à 0 */}
+                          {act && (
+                            <span
+                              className={`${styles.activitePastille} ${sansActivite(prof) ? styles.activitePastilleVide : ''}`}
+                              title={`${act.classes} classe${act.classes > 1 ? 's' : ''} · ${act.devoirs} devoir${act.devoirs > 1 ? 's' : ''} · ${act.grilles} grille${act.grilles > 1 ? 's' : ''}${act.connecte ? '' : ' — jamais connecté'}`}
+                            >
+                              {act.classes + act.devoirs + act.grilles}
+                            </span>
+                          )}
+                        </div>
+                        <div className={styles.profLigne}>
+                          {expirationLabel ? <span className={styles.expirationBadge}>{expirationLabel}</span> : <span />}
+                          <span className={styles.profGestes}>
+                            <button
+                              type="button"
+                              className={styles.profAction}
+                              onClick={(e) => { e.stopPropagation(); openProfPanel(prof.email, true); }}
+                              title="Modifier"
+                              aria-label={`Modifier ${prof.prenom} ${prof.nom}`}
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.profAction}
+                              onClick={(e) => { e.stopPropagation(); handleDelete(prof.id, `${prof.prenom} ${prof.nom}`); }}
+                              title="Supprimer"
+                              aria-label={`Supprimer ${prof.prenom} ${prof.nom}`}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
         </section>
         )}
 
-        {/* Panel stats prof */}
-        {activeTab === 'membres' && selectedProfEmail && (
-          <section className={styles.profStatsPanel}>
-            <div className={styles.profStatsPanelHeader}>
-              <h2 className={styles.sectionTitle}>
-                Statistiques — {professeurs.find(p => p.email === selectedProfEmail)?.prenom}{' '}
-                {professeurs.find(p => p.email === selectedProfEmail)?.nom}
-              </h2>
-              <button
-                type="button"
-                className={styles.closePanelBtn}
-                onClick={() => { setSelectedProfEmail(null); setProfStats(null); }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {profStatsLoading && <div className={styles.panelLoading}>Chargement...</div>}
-
-            {!profStatsLoading && profStats && (
-              <div className={styles.profStatsContent}>
-                {/* IA résumé */}
-                {profStats.aiStats.devoirsAvecIA > 0 && (
-                  <div className={styles.aiSummaryBar}>
-                    <span>🤖</span>
-                    <span>
-                      <strong>{profStats.aiStats.devoirsAvecIA}</strong> devoir{profStats.aiStats.devoirsAvecIA > 1 ? 's' : ''} avec IA activée
-                      {profStats.aiStats.totalGridIA > 0 && (
-                        <> · <strong>{profStats.aiStats.totalGridIA}</strong> évaluation{profStats.aiStats.totalGridIA > 1 ? 's' : ''} IA de grille utilisée{profStats.aiStats.totalGridIA > 1 ? 's' : ''}</>
-                      )}
-                    </span>
-                  </div>
-                )}
-
-                <div className={styles.profStatsColumns}>
-                  {/* Classes */}
-                  <div className={styles.profStatBlock}>
-                    <h3 className={styles.profStatBlockTitle}>Classes ({profStats.classes.length})</h3>
-                    {profStats.classes.length === 0 ? (
-                      <p className={styles.profStatEmpty}>Aucune classe</p>
-                    ) : (
-                      <ul className={styles.profStatList}>
-                        {profStats.classes.map((c) => (
-                          <li key={c.id} className={styles.profStatItem}>
-                            <span className={styles.profStatItemName}>{c.nom}</span>
-                            <span className={styles.profStatItemMeta}>{c.nbEleves} élève{c.nbEleves > 1 ? 's' : ''}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  {/* Grilles */}
-                  <div className={styles.profStatBlock}>
-                    <h3 className={styles.profStatBlockTitle}>Grilles ({profStats.grilles.length})</h3>
-                    {profStats.grilles.length === 0 ? (
-                      <p className={styles.profStatEmpty}>Aucune grille</p>
-                    ) : (
-                      <ul className={styles.profStatList}>
-                        {profStats.grilles.map((g) => (
-                          <li key={g.id} className={styles.profStatItem}>
-                            <span className={styles.profStatItemName}>{g.nom}</span>
-                            <span className={styles.profStatItemMeta}>{g.nbCriteres} critère{g.nbCriteres > 1 ? 's' : ''}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-
-                {/* Devoirs */}
-                <div className={styles.profStatBlock}>
-                  <h3 className={styles.profStatBlockTitle}>Devoirs ({profStats.devoirs.length})</h3>
-                  {profStats.devoirs.length === 0 ? (
-                    <p className={styles.profStatEmpty}>Aucun devoir</p>
-                  ) : (
-                    <div className={styles.devoirsTable}>
-                      <div className={styles.devoirsTableHead}>
-                        <span>Titre</span>
-                        <span>Soumis</span>
-                        <span>Corrections</span>
-                        <span>Grille IA</span>
-                        <span>IA</span>
-                      </div>
-                      {profStats.devoirs.map((d) => (
-                        <div key={d.id} className={styles.devoirsTableRow}>
-                          <span className={styles.devoirTitre}>{d.titre}</span>
-                          <span className={styles.devoirStat}>{d.nbSoumis}</span>
-                          <span className={styles.devoirStat}>{d.nbCorrections}</span>
-                          <span className={styles.devoirStat}>{d.accesIA ? d.nbGridIA : '—'}</span>
-                          <span>{d.accesIA ? <span className={styles.iaBadge}>✓</span> : <span className={styles.iaOff}>—</span>}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </section>
+        {/* La fiche d'un prof : une POPUP à deux onglets (JP, 2026-10-11) */}
+        {activeTab === 'membres' && selectedProfEmail && professeurs.find((p) => p.email === selectedProfEmail) && (
+          <ProfFiche
+            prof={professeurs.find((p) => p.email === selectedProfEmail)!}
+            onClose={fermerProfPanel}
+            ouvrirEnEdition={ficheEnEdition}
+            onModifier={(data) => updateProfesseur(selectedProfEmail, data)}
+          />
         )}
 
+        {/* Nouveau professeur : une POPUP (JP, 2026-10-11 — plus un bloc) */}
         {activeTab === 'membres' && showForm && (
-          <section className={styles.formSection}>
-            <h3 className={styles.formTitle}>Nouveau professeur</h3>
-            <form onSubmit={handleSubmit}>
+          <div className={popup.overlay} onClick={(e) => e.target === e.currentTarget && fermerFormulaire()}>
+          <div className={`${popup.popup} ${styles.formPopup}`} role="dialog" aria-modal="true" aria-label="Nouveau professeur">
+            <header className={styles.ficheEntete}>
+              <h3>Nouveau professeur</h3>
+              <button type="button" className={styles.ficheFermer} onClick={fermerFormulaire} aria-label="Fermer">
+                ✕
+              </button>
+            </header>
+            <form onSubmit={handleSubmit} className={styles.formPopupCorps}>
               <div className={styles.formGrid}>
                 <div className={styles.formField}>
                   <label className={styles.formLabel} htmlFor="prof-nom">Nom</label>
@@ -662,17 +678,6 @@ export default function AdminPage() {
                     />
                     Permanent
                   </label>
-                  <label className={`${styles.durationOption} ${accessDuration === '1day' ? styles.durationActive : ''}`}>
-                    <input
-                      type="radio"
-                      name="duration"
-                      value="1day"
-                      checked={accessDuration === '1day'}
-                      onChange={() => setAccessDuration('1day')}
-                      className={styles.durationRadio}
-                    />
-                    1 jour
-                  </label>
                   <label className={`${styles.durationOption} ${accessDuration === '1week' ? styles.durationActive : ''}`}>
                     <input
                       type="radio"
@@ -684,27 +689,62 @@ export default function AdminPage() {
                     />
                     1 semaine
                   </label>
+                  <label className={`${styles.durationOption} ${accessDuration === '1month' ? styles.durationActive : ''}`}>
+                    <input
+                      type="radio"
+                      name="duration"
+                      value="1month"
+                      checked={accessDuration === '1month'}
+                      onChange={() => setAccessDuration('1month')}
+                      className={styles.durationRadio}
+                    />
+                    1 mois
+                  </label>
                 </div>
               </div>
+
+              {/* L'école : pour un accès permanent seulement */}
+              {accessDuration === 'permanent' && (
+                <div className={styles.formField}>
+                  <label className={styles.formLabel} htmlFor="prof-ecole">École</label>
+                  <input
+                    id="prof-ecole"
+                    type="text"
+                    className={styles.formInput}
+                    value={ecole}
+                    onChange={(e) => setEcole(e.target.value)}
+                    placeholder="Collège Notre-Dame de Dinant"
+                    maxLength={120}
+                    required
+                  />
+                </div>
+              )}
 
               <div className={styles.formActions}>
                 <button
                   type="submit"
                   className={styles.submitButton}
-                  disabled={isSubmitting || !nom.trim() || !prenom.trim() || !email.trim()}
+                  disabled={
+                    isSubmitting ||
+                    !nom.trim() ||
+                    !prenom.trim() ||
+                    !email.trim() ||
+                    (accessDuration === 'permanent' && !ecole.trim())
+                  }
                 >
                   {isSubmitting ? 'Ajout en cours...' : 'Ajouter'}
                 </button>
                 <button
                   type="button"
                   className={styles.cancelButton}
-                  onClick={() => { setShowForm(false); resetForm(); }}
+                  onClick={fermerFormulaire}
                 >
                   Annuler
                 </button>
               </div>
             </form>
-          </section>
+          </div>
+          </div>
         )}
       </main>
 

@@ -59,6 +59,26 @@ export function useProfesseurs() {
     [getAuthHeaders]
   );
 
+  // Modifier une fiche (admin) : prénom, nom, école, accès — jamais l'adresse
+  const updateProfesseur = useCallback(
+    async (id: string, data: Partial<Pick<Professeur, 'nom' | 'prenom' | 'ecole' | 'expiresAt'>>): Promise<Professeur> => {
+      const headers = await getAuthHeaders();
+      if (!headers) throw new Error('Non authentifié');
+      const res = await fetch(`/api/professeurs/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Erreur lors de la modification');
+      setProfesseurs((prev) =>
+        prev.map((p) => (p.id === id ? (json.data as Professeur) : p)).sort((a, b) => a.nom.localeCompare(b.nom))
+      );
+      return json.data as Professeur;
+    },
+    [getAuthHeaders]
+  );
+
   const deleteProfesseur = useCallback(
     async (id: string): Promise<void> => {
       const headers = await getAuthHeaders();
@@ -91,6 +111,7 @@ export function useProfesseurs() {
     isLoading,
     error,
     createProfesseur,
+    updateProfesseur,
     deleteProfesseur,
     refetch: fetchProfesseurs,
   };

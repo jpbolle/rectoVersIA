@@ -402,12 +402,34 @@
   line-height: 1.4;
 }
 
+/* L'image et son icône d'agrandissement, posée dans le coin supérieur droit */
+.imageCadre {
+  position: relative;
+}
+
 .imageZoomBtn {
-  border: none;
-  background: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--c-shadow-card);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imageZoomBtn:hover {
+  background: #fff;
+  border-color: var(--c-accent);
 }
 
 .imageShapesTag {

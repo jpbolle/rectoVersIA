@@ -382,3 +382,15 @@
   font-size: 13px;
   color: var(--c-text-secondary);
 }
+
+/* Portfolio, onglet Ressources : l'intitulé du bloc « Pour tout le portfolio »
+   (même allure que « Pour l'étape … », PortfolioRessourcesEtape) */
+.ressourcesTitrePortfolio {
+  margin: 0;
+  padding: 10px 16px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}

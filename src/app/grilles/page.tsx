@@ -21,10 +21,22 @@ import VocabCard from '@/components/VocabCard/VocabCard';
 import VocabListEditor from '@/components/VocabListEditor/VocabListEditor';
 import MessageBox from '@/components/MessageBox/MessageBox';
 import EmptyState from '@/components/EmptyState/EmptyState';
+import AffichageBadge from '@/components/AffichageBadge/AffichageBadge';
+import { useAffichage } from '@/hooks/useAffichage';
 import type { Grille, GrilleCriterion } from '@/types/grille';
 import styles from './grilles.module.css';
 
 type Tab = 'grilles' | 'vocabulaire' | 'questionnaires' | 'oeuvres' | 'portfolios' | 'conceptualisations' | 'scenarisation';
+
+const ONGLETS: { id: Tab; label: string }[] = [
+  { id: 'grilles', label: 'Grilles d’évaluation' },
+  { id: 'vocabulaire', label: 'Listes de vocabulaire' },
+  { id: 'questionnaires', label: 'Questionnaires de lecture' },
+  { id: 'oeuvres', label: 'Bibliothèque d’œuvres' },
+  { id: 'portfolios', label: 'Portfolios' },
+  { id: 'conceptualisations', label: 'Conceptualisations' },
+  { id: 'scenarisation', label: 'Design & scénarisation didactique' },
+];
 
 export default function GrillesPage() {
   const { isAuthenticated, isLoading: authLoading, role, isAdmin: userIsAdmin, getAuthHeaders } = useAuth();
@@ -41,6 +53,14 @@ export default function GrillesPage() {
 
   // Onglet actif
   const [activeTab, setActiveTab] = useState<Tab>('grilles');
+  // Gestion de l'affichage : l'onglet ouvert ne peut pas être un onglet masqué
+  // (lien `?onglet=…`, ou masqué pendant la session) → le premier ouvert.
+  // Dérivé à chaque rendu (pas d'effet) : `ongletAffiche` remplace `activeTab`
+  // partout où on lit l'onglet
+  const { vue: vueAffichage } = useAffichage();
+  const ongletAffiche: Tab | null = !vueAffichage(`ressource:${activeTab}`).bloque
+    ? activeTab
+    : ONGLETS.find((o) => !vueAffichage(`ressource:${o.id}`).bloque)?.id ?? null;
   // L'onglet « Modules FLE » a déménagé dans « Mes parcours FLE » (2026-10-08) :
   // les anciens liens `?onglet=fle&section=…` y sont renvoyés.
   useEffect(() => {
@@ -306,54 +326,28 @@ export default function GrillesPage() {
         ) : (
         <>
 
-        {/* Onglets */}
+        {/* Onglets — un onglet MASQUÉ (Gestion de l'affichage) reste visible,
+            grisé et non cliquable ; « en test » porte un badge */}
         <div className={styles.tabBar}>
-          <button
-            className={`${styles.tabButton} ${activeTab === 'grilles' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('grilles')}
-          >
-            Grilles d&apos;évaluation
-          </button>
-          <button
-            className={`${styles.tabButton} ${activeTab === 'vocabulaire' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('vocabulaire')}
-          >
-            Listes de vocabulaire
-          </button>
-          <button
-            className={`${styles.tabButton} ${activeTab === 'questionnaires' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('questionnaires')}
-          >
-            Questionnaires de lecture
-          </button>
-          <button
-            className={`${styles.tabButton} ${activeTab === 'oeuvres' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('oeuvres')}
-          >
-            Bibliothèque d&apos;œuvres
-          </button>
-          <button
-            className={`${styles.tabButton} ${activeTab === 'portfolios' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('portfolios')}
-          >
-            Portfolios
-          </button>
-          <button
-            className={`${styles.tabButton} ${activeTab === 'conceptualisations' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('conceptualisations')}
-          >
-            Conceptualisations
-          </button>
-          <button
-            className={`${styles.tabButton} ${activeTab === 'scenarisation' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('scenarisation')}
-          >
-            Design &amp; scénarisation didactique
-          </button>
+          {ONGLETS.map((o) => {
+            const v = vueAffichage(`ressource:${o.id}`);
+            return (
+              <button
+                key={o.id}
+                className={`${styles.tabButton} ${ongletAffiche === o.id ? styles.tabActive : ''} ${v.bloque ? styles.tabBloque : ''}`}
+                onClick={() => !v.bloque && setActiveTab(o.id)}
+                disabled={v.bloque}
+                title={v.bloque ? v.note : undefined}
+              >
+                {o.label}
+                <AffichageBadge vue={v} compact />
+              </button>
+            );
+          })}
         </div>
 
         {/* ===== TAB QUESTIONNAIRES DE LECTURE ===== */}
-        {activeTab === 'questionnaires' && (
+        {ongletAffiche === 'questionnaires' && (
           <QuestionnaireLecturePanel
             onUtiliser={(q) =>
               setUtiliser({ atelier: 'lecture', preselection: { lectureQuizId: q.id, intitule: q.nom } })
@@ -362,7 +356,7 @@ export default function GrillesPage() {
         )}
 
         {/* ===== TAB BIBLIOTHÈQUE D'ŒUVRES ===== */}
-        {activeTab === 'oeuvres' && (
+        {ongletAffiche === 'oeuvres' && (
           <OeuvrePanel
             onUtiliser={(o) =>
               setUtiliser({ atelier: 'lecture-oeuvre', preselection: { oeuvreId: o.id, intitule: o.titre } })
@@ -371,16 +365,16 @@ export default function GrillesPage() {
         )}
 
         {/* ===== TAB PORTFOLIOS (matrices) ===== */}
-        {activeTab === 'portfolios' && <PortfolioPanel />}
+        {ongletAffiche === 'portfolios' && <PortfolioPanel />}
 
         {/* ===== TAB CONCEPTUALISATIONS (corrigés du prof, 2026-10-11) ===== */}
-        {activeTab === 'conceptualisations' && <ConceptualisationsPanel />}
+        {ongletAffiche === 'conceptualisations' && <ConceptualisationsPanel />}
 
         {/* ===== TAB SCÉNARISATION ===== */}
-        {activeTab === 'scenarisation' && <ScenarisationPanel />}
+        {ongletAffiche === 'scenarisation' && <ScenarisationPanel />}
 
         {/* ===== TAB GRILLES ===== */}
-        {activeTab === 'grilles' && (
+        {ongletAffiche === 'grilles' && (
           <>
             {viewingGrille && (
               <section className={styles.builderSection}>
@@ -465,7 +459,7 @@ export default function GrillesPage() {
         )}
 
         {/* ===== TAB VOCABULAIRE ===== */}
-        {activeTab === 'vocabulaire' && (
+        {ongletAffiche === 'vocabulaire' && (
           <>
             {/* Editeur / Viewer de liste (apparait au-dessus des cards) */}
             {vocabEditorMode === 'create' && (

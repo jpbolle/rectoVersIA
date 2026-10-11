@@ -641,7 +641,7 @@ export async function POST(request: NextRequest) {
 
     // Portfolio d'apprentissage : ses étapes (copiées depuis la matrice, ou composées)
     if (typeTravail === 'portfolio') {
-      devoirData.portfolio = portfolioContenuPourFirestore(portfolio ?? {}, { codeAutorise: auth.isAdmin });
+      devoirData.portfolio = portfolioContenuPourFirestore(portfolio ?? {}, { codeAutorise: auth.isAdmin, assurerIntroduction: true });
     }
 
     // Atelier de conceptualisation : type de départ + liberté de transformer

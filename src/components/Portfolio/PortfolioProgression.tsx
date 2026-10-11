@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthContext';
 import type { CaseProgression, LigneProgression } from '@/app/api/portfolio/progression/route';
+import { nombreEtapes, numeroEtape } from '@/types/portfolio';
 import base from '@/components/ModuleFleEditor/ModuleFleEditor.module.css';
 import styles from './Portfolio.module.css';
 
@@ -19,6 +20,7 @@ interface EtapeColonne {
   titre: string;
   section: string;
   sansTrace: boolean;
+  introduction?: boolean;
   bloquante: boolean;
   echeance: string | null;
 }
@@ -143,7 +145,7 @@ export default function PortfolioProgression({ devoirId, titreActivite, sessionI
               <th className={styles.progressionNom}>Élève</th>
               {etapes.map((e, i) => (
                 <th key={e.id} title={`${e.section ? `${e.section} — ` : ''}${e.titre}${e.bloquante ? ' (la suite attend votre validation)' : ''}`}>
-                  {i + 1}
+                  {numeroEtape(etapes, i) ?? 'Intro'}
                   {e.bloquante && <small>🔒</small>}
                 </th>
               ))}
@@ -185,7 +187,7 @@ export default function PortfolioProgression({ devoirId, titreActivite, sessionI
                     );
                   })}
                   <td className={styles.progressionFaites}>
-                    {l.faites}/{etapes.length}
+                    {l.faites}/{nombreEtapes(etapes)}
                   </td>
                   <td>
                     <span className={styles.progressionGestes}>

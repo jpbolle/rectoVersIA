@@ -12,9 +12,14 @@ import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import ModuleFlePanel from '@/components/ModuleFlePanel/ModuleFlePanel';
 import ActiviteFlePanel from '@/components/ActiviteFlePanel/ActiviteFlePanel';
+import AffichageBadge from '@/components/AffichageBadge/AffichageBadge';
+import { useAffichage } from '@/hooks/useAffichage';
 import styles from '../parcours-fle/parcours-fle.module.css';
 
 type Section = 'theorie' | 'activites';
+
+// Une section masquée (Gestion de l'affichage) : grisée, non cliquable
+const BLOQUE = { opacity: 0.4, cursor: 'not-allowed' } as const;
 
 export default function RessourcesFlePage() {
   const { isAuthenticated, isLoading: authLoading, role } = useAuth();
@@ -26,6 +31,17 @@ export default function RessourcesFlePage() {
     if (typeof window === 'undefined') return 'theorie';
     return new URLSearchParams(window.location.search).get('section') === 'activites' ? 'activites' : 'theorie';
   });
+
+  // Gestion de l'affichage : une section masquée reste visible, grisée, non
+  // cliquable ; l'affichée ne peut pas l'être (→ l'autre, si elle est libre)
+  const { vue: vueAffichage } = useAffichage();
+  const vTheorie = vueAffichage('ressource:fle-theorie');
+  const vActivites = vueAffichage('ressource:fle-activites');
+  const affichee: Section | null = !(section === 'theorie' ? vTheorie : vActivites).bloque
+    ? section
+    : !(section === 'theorie' ? vActivites : vTheorie).bloque
+      ? section === 'theorie' ? 'activites' : 'theorie'
+      : null;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -60,14 +76,32 @@ export default function RessourcesFlePage() {
       <main className={styles.mainContent}>
         <h1 className={styles.pageTitle}>Mes ressources FLE</h1>
         <div className={styles.bascule} role="tablist" aria-label="Ressources FLE">
-          <button type="button" role="tab" aria-selected={section === 'theorie'} className={`${styles.basculeBtn} ${section === 'theorie' ? styles.basculeActive : ''}`} onClick={() => setSection('theorie')}>
-            📖 Points de théorie
+          <button
+            type="button"
+            role="tab"
+            aria-selected={affichee === 'theorie'}
+            className={`${styles.basculeBtn} ${affichee === 'theorie' ? styles.basculeActive : ''}`}
+            style={vTheorie.bloque ? BLOQUE : undefined}
+            onClick={() => !vTheorie.bloque && setSection('theorie')}
+            disabled={vTheorie.bloque}
+            title={vTheorie.bloque ? vTheorie.note : undefined}
+          >
+            📖 Points de théorie <AffichageBadge vue={vTheorie} compact />
           </button>
-          <button type="button" role="tab" aria-selected={section === 'activites'} className={`${styles.basculeBtn} ${section === 'activites' ? styles.basculeActive : ''}`} onClick={() => setSection('activites')}>
-            🎯 Activités FLE
+          <button
+            type="button"
+            role="tab"
+            aria-selected={affichee === 'activites'}
+            className={`${styles.basculeBtn} ${affichee === 'activites' ? styles.basculeActive : ''}`}
+            style={vActivites.bloque ? BLOQUE : undefined}
+            onClick={() => !vActivites.bloque && setSection('activites')}
+            disabled={vActivites.bloque}
+            title={vActivites.bloque ? vActivites.note : undefined}
+          >
+            🎯 Activités FLE <AffichageBadge vue={vActivites} compact />
           </button>
         </div>
-        {section === 'theorie' ? <ModuleFlePanel /> : <ActiviteFlePanel />}
+        {affichee === 'theorie' ? <ModuleFlePanel /> : affichee === 'activites' ? <ActiviteFlePanel /> : null}
       </main>
       <Footer />
     </div>

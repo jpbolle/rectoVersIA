@@ -13,7 +13,9 @@ import QuestionnairePreviewModal from '@/components/QuestionnairePreviewModal/Qu
 import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import SequenceFleBuilder from '@/components/SequenceFleBuilder/SequenceFleBuilder';
 import PortfolioBuilder from '@/components/Portfolio/PortfolioBuilder';
-import { PORTFOLIO_VIDE, type PortfolioContenu, type PortfolioMatrice } from '@/types/portfolio';
+import VersoGroupe from '@/components/VersoGroupe/VersoGroupe';
+import { ressourcesPresentes } from '@/lib/ressources-presentes';
+import { nombreEtapes, PORTFOLIO_VIDE, type PortfolioContenu, type PortfolioMatrice } from '@/types/portfolio';
 import ElevesChoix from '@/components/ElevesChoix/ElevesChoix';
 import type { EleveAvecClasse } from '@/components/ElevesChoix/ElevesChoix';
 import { classesPartageesPourActivite, useClasses } from '@/hooks/useClasses';
@@ -30,6 +32,7 @@ import MessageBox from '@/components/MessageBox/MessageBox';
 import { getTodayString } from '@/lib/devoir-utils';
 import { createPlanItem, planHasContent } from '@/lib/draft-utils';
 import { useVocabulaireThemes } from '@/hooks/useVocabulaireThemes';
+import { useAffichage } from '@/hooks/useAffichage';
 import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail, EvaluationType, CorrigeReference, SchemaCorrige } from '@/types/devoir';
 import type { LectureQuiz, LectureQuizMode } from '@/types/lecture';
 import type { AutoEvalQuestionnaire, SondageReglages } from '@/types/autoevaluation';
@@ -99,6 +102,11 @@ interface CreationFormProps {
   // échéance. Pas de type « Séquence » non plus : une séquence ne s'emboîte
   // pas dans une autre.
   modeFle?: boolean;
+  // Activité créée DANS un portfolio (atelier pleine page, « Créer une nouvelle
+  // activité ») : ni classes, ni élèves, ni échéance, ni « Disponible » (JP,
+  // 2026-10-11) — l'élève l'ouvre par le portfolio (`ouvertParSequence`),
+  // l'échéance est celle de l'étape
+  dansPortfolio?: boolean;
   // Type d'activité présélectionné (ex. « sequence-fle » depuis Mes Ressources
   // › Modules FLE › Séquences de cours). Absent = écriture, comme toujours.
   atelierInitial?: string;
@@ -134,6 +142,7 @@ export default function CreationForm({
   onClose,
   getAuthHeaders,
   modeFle = false,
+  dansPortfolio = false,
   atelierInitial,
   portfolioInitial = null,
   schemaCorrigeInitial = null,
@@ -315,6 +324,8 @@ export default function CreationForm({
     updateWords,
     updateThemeMeta,
   } = useVocabulaireThemes();
+  // Gestion de l'affichage : un atelier masqué reste grisé dans le menu
+  const { vue: vueAffichage } = useAffichage();
 
   // Toggles (initialement à false)
   const [accesIA, setAccesIA] = useState(false);
@@ -363,7 +374,24 @@ export default function CreationForm({
   // Atelier de conceptualisation : le contenu, c'est le point de départ du
   // schéma (concept central, autres concepts — 2026-10-11).
   const aContenus = atelier !== 'lecture-oeuvre';
-  const aDeuxGroupes = aRessources && aContenus;
+  // Le verso en trois groupes à case à cocher (JP, 2026-10-11). `null` =
+  // l'état par défaut : ressources et corrigé ouverts s'ils sont remplis,
+  // contenus ouverts
+  const aCorrige = typeTravail === 'ecrire' || typeTravail === 'schematiser';
+  const aContenusGroupe = aContenus && typeTravail !== 'ecrire';
+  const [voir, setVoir] = useState<{ ressources: boolean | null; corrige: boolean | null; contenus: boolean | null }>({
+    ressources: null,
+    corrige: null,
+    contenus: null,
+  });
+  const ressourcesRemplies = ressourcesPresentes(ressources);
+  const corrigeRempli =
+    typeTravail === 'schematiser'
+      ? !!schemaCorrige
+      : !!profProduction.trim() || !!profTheme.trim() || planHasContent(profDraft.plan);
+  const voirRessources = voir.ressources ?? ressourcesRemplies;
+  const voirCorrige = voir.corrige ?? corrigeRempli;
+  const voirContenus = voir.contenus ?? true;
 
   const grilleValid = !usesGrille || grille;
   const isValid = baseValid && grilleValid
@@ -386,7 +414,8 @@ export default function CreationForm({
     (typeTravail === 'lire' && (lectureQuiz?.questions.length ?? 0) > 0) ||
     (typeTravail === 'autoevaluation' && (autoEvalQuiz?.questions.length ?? 0) > 0) ||
     (typeTravail === 'sequence' && (sequenceFle?.etapes.length ?? 0) > 0) ||
-    (typeTravail === 'portfolio' && (portfolio?.etapes.length ?? 0) > 0);
+    // L'introduction seule ne suffit pas : au moins une vraie étape
+    (typeTravail === 'portfolio' && nombreEtapes(portfolio?.etapes ?? []) > 0);
 
   // Bascule animée recto ↔ verso
   const flip = useCallback(() => {
@@ -444,16 +473,20 @@ export default function CreationForm({
     setShowHideCriteria(false);
   };
 
+  // Sans classe : une activité FLE (ressource des séquences) ou une activité
+  // intégrée à un portfolio
+  const sansClasse = modeFle || dansPortfolio;
+
   function buildData(): CreateDevoirData {
     const data: CreateDevoirData = {
-      classes: modeFle ? [] : selectedClasses,
-      dateRemise: modeFle ? '' : dateRemise,
+      classes: sansClasse ? [] : selectedClasses,
+      dateRemise: sansClasse ? '' : dateRemise,
       grille,
       intitule: intitule.trim(),
       consignes: showConsignes ? consignes.trim() : '',
       ressources,
       accesIA,
-      disponible: modeFle ? false : disponible,
+      disponible: sansClasse ? false : disponible,
       typeTravail,
       ...(modeFle ? { referentiel: 'fle' as const } : {}),
       // Toujours transmis : « absent = activé » ne vaut que pour les activités
@@ -593,17 +626,9 @@ export default function CreationForm({
   const renderRecto = () => (
     <>
       <div className={styles.formHeader}>
-        <h2 className={styles.formTitle}>{modeFle ? 'Créer une activité FLE' : 'Créer une nouvelle activité'}</h2>
-        {onClose && (
-          <button
-            type="button"
-            className={styles.closeButton}
-            onClick={onClose}
-            title="Fermer"
-          >
-            &times;
-          </button>
-        )}
+        <h2 className={styles.formTitle}>
+          {modeFle ? 'Créer une activité FLE' : dansPortfolio ? 'Créer une activité du portfolio' : 'Créer une nouvelle activité'}
+        </h2>
       </div>
 
       {/* Ligne 1 : Type d'activité + Intitulé (double largeur). En vocabulaire,
@@ -630,11 +655,20 @@ export default function CreationForm({
             {/* La séquence FLE ne se crée que depuis « Mes parcours FLE » :
                 elle reste dans la liste seulement si le formulaire s'est
                 ouvert pour elle */}
-            {ATELIERS.filter((a) => a.dispositif !== 'sequence' || typeTravail === 'sequence').map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.label}
-              </option>
-            ))}
+            {/* Un atelier masqué (Gestion de l'affichage) reste listé, grisé —
+                sauf s'il est déjà celui du formulaire */}
+            {/* Dans un portfolio : pas de portfolio dans le portfolio */}
+            {ATELIERS.filter(
+              (a) => (a.dispositif !== 'sequence' || typeTravail === 'sequence') && !(dansPortfolio && a.dispositif === 'portfolio')
+            ).map((a) => {
+              const v = vueAffichage(`atelier:${a.id}`);
+              return (
+                <option key={a.id} value={a.id} disabled={v.bloque && a.id !== atelier}>
+                  {a.label}
+                  {v.bloque ? ` — ${v.note.toLowerCase()}` : v.enTest ? ' — en test' : v.masqueAuxProfs ? ' — masqué aux profs' : ''}
+                </option>
+              );
+            })}
           </select>
           {/* Le mode principal découle du type d'activité — chercher, c'est lire */}
           <p className={styles.modeNote}>
@@ -731,7 +765,7 @@ export default function CreationForm({
       {/* Ligne 2 : Classes + Échéance + Évaluation. Sous la ligne, les élèves
           concernés dès qu'une classe est cochée (toute la classe ou une partie). */}
       <div className={supporteAutoEval ? styles.formRowFour : styles.formRowThree}>
-        {!modeFle && (
+        {!sansClasse && (
         <div className={styles.formGroup}>
           <label className={styles.label}>
             Classe(s) <span className={styles.optional}>— facultatif</span>
@@ -756,7 +790,7 @@ export default function CreationForm({
         </div>
         )}
 
-        {!modeFle && (
+        {!sansClasse && (
         <div className={styles.formGroup}>
           <DatePicker
             /* « Échéance » et non « date de remise » : la date est facultative
@@ -838,7 +872,7 @@ export default function CreationForm({
         )}
       </div>
 
-      {!modeFle && (
+      {!sansClasse && (
         <ElevesChoix
           classesNoms={selectedClasses}
           value={eleves}
@@ -1016,6 +1050,9 @@ export default function CreationForm({
 
       {/* Toggles */}
       <div className={styles.toggleSection}>
+        {/* Pas d'« Accès IA » pour un PORTFOLIO (JP, 2026-10-11) : il compose des
+            ateliers qui ont chacun le leur ; le statut IA se règle par étape */}
+        {typeTravail !== 'portfolio' && (
         <div className={styles.toggleGroup}>
           <Toggle
             checked={accesIA}
@@ -1028,8 +1065,9 @@ export default function CreationForm({
             Permet aux élèves d&apos;utiliser l&apos;assistant IA pour cette activité
           </p>
         </div>
+        )}
 
-        {!modeFle && (
+        {!sansClasse && (
           <div className={styles.toggleGroup}>
             <Toggle
               checked={disponible}
@@ -1045,15 +1083,8 @@ export default function CreationForm({
         )}
       </div>
 
-      {/* Actions */}
-      <div className={styles.formActions}>
-        <button
-          className={`${styles.btn} ${styles.btnPrimary}`}
-          onClick={handleSubmit}
-          disabled={isSubmitting || !isValid}
-        >
-          {isSubmitting ? 'Création en cours...' : 'Créer l’activité'}
-        </button>
+      {/* Actions — à DROITE, l'action principale en dernier (JP, 2026-10-11) */}
+      <div className={`${styles.formActions} ${styles.formActionsDroite}`}>
         <button
           className={`${styles.btn} ${styles.btnSecondary}`}
           onClick={resetForm}
@@ -1061,6 +1092,13 @@ export default function CreationForm({
           disabled={isSubmitting}
         >
           Réinitialiser
+        </button>
+        <button
+          className={`${styles.btn} ${styles.btnPrimary}`}
+          onClick={handleSubmit}
+          disabled={isSubmitting || !isValid}
+        >
+          {isSubmitting ? 'Création en cours...' : 'Créer l’activité'}
         </button>
       </div>
     </>
@@ -1083,71 +1121,47 @@ export default function CreationForm({
         </span>
       </div>
 
+      {/* LE VERSO EN TROIS GROUPES À CASE À COCHER (JP, 2026-10-11) : cochée,
+          l'encadré s'ouvre ; décocher replie sans rien effacer. Ressources et
+          corrigé s'ouvrent d'eux-mêmes s'ils sont remplis ; les contenus,
+          toujours au départ. */}
       {aRessources && (
-        <>
-          {/* Les intertitres n'existent que pour SÉPARER les deux groupes.
-              Quand un seul est affiché, ils répètent le titre du verso — d'où
-              le `aDeuxGroupes`. */}
-          {aDeuxGroupes && (
-            <div className={styles.versoGroup}>
-              <h4 className={styles.versoGroupTitle}>Ressources pour l’élève</h4>
-              <p className={styles.versoGroupHint}>
-                Visibles par l’élève dans l’onglet «&nbsp;Ressources&nbsp;» de sa colonne de droite.
-              </p>
+        <VersoGroupe
+          titre="Ressources pour l’élève"
+          aide="Visibles par l’élève dans l’onglet « Ressources » de sa colonne de droite."
+          ouvert={voirRessources}
+          onBascule={(v) => setVoir((x) => ({ ...x, ressources: v }))}
+          rempli={ressourcesRemplies}
+          disabled={isSubmitting}
+        >
+            <div className={styles.versoSection}>
+              <div className={styles.versoSectionHeader}>
+                <h3 className={styles.versoSectionTitle}>{ressourceLabel}</h3>
+                {typeTravail === 'ecrire' && renderIaToggle(ressourcesToIA, setRessourcesToIA)}
+              </div>
+              <RessourcesInput
+                ressources={ressources}
+                onRessourcesChange={setRessources}
+                disabled={isSubmitting}
+              />
             </div>
-          )}
-          <div className={styles.versoSection}>
-            <div className={styles.versoSectionHeader}>
-              <h3 className={styles.versoSectionTitle}>{ressourceLabel}</h3>
-              {typeTravail === 'ecrire' && renderIaToggle(ressourcesToIA, setRessourcesToIA)}
-            </div>
-            <RessourcesInput
-              ressources={ressources}
-              onRessourcesChange={setRessources}
-              disabled={isSubmitting}
-            />
-          </div>
-        </>
+        </VersoGroupe>
       )}
 
-      {aContenus && aDeuxGroupes && (
-      <div className={styles.versoGroup}>
-        <h4 className={styles.versoGroupTitle}>
-          Contenus de l’activité
-          <span
-            className={styles.versoGroupInfo}
-            title={
-              typeTravail === 'ecrire'
-                ? 'Corrigé de référence : transmis à l’IA selon les interrupteurs « Corrigé IA » ; seule la production est montrée à l’élève, quand le corrigé est disponible.'
-                : typeTravail === 'lire'
-                  ? 'Le questionnaire de lecture : rempli par l’élève dans sa colonne de gauche. QCM corrigés automatiquement, le reste par vous. Les compétences cochées alimenteront le profil de lecteur.'
-                  : typeTravail === 'rechercher'
-                    ? 'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'
-                    : typeTravail === 'sequence'
-                      ? 'Les modules du parcours, dans l’ordre où l’élève les fera. Chaque module apporte sa théorie et ses activités ; les élèves qui suivent la séquence se choisissent au recto.'
-                    : typeTravail === 'portfolio'
-                      ? 'Les étapes du portfolio, dans l’ordre où l’élève les fera : étapes propres (objectifs, consigne, dépôts) ou renvois vers d’autres activités. Un clic sur une étape règle son échéance, son statut IA, sa portée et son verrou.'
-                    : typeTravail === 'schematiser'
-                      ? 'Le point de départ du schéma : le concept central apparaît dans le canevas de l’élève, les autres concepts l’attendent dans l’onglet « À placer », sous son schéma.'
-                      : 'La liste sert de support à l’activité (apprentissage et évaluation). Elle est aussi enregistrée dans Mes Ressources.'
-            }
-          >
-            i
-          </span>
-        </h4>
-      </div>
-      )}
-
-      {/* Atelier de conceptualisation : le point de départ du schéma (2026-10-11) */}
-      {typeTravail === 'schematiser' && (
-        <div className={styles.versoSection}>
-          <div className={styles.versoSectionHeader}>
-            <h3 className={styles.versoSectionTitle}>🧩 Point de départ du schéma</h3>
-          </div>
-          <SchemaDepartInput valeur={schemaDepart} onChange={setSchemaDepart} disabled={isSubmitting} />
-        </div>
-      )}
-
+      {/* Le CORRIGÉ de l'activité (écriture, conceptualisation) : distinct des contenus */}
+      {aCorrige && (
+        <VersoGroupe
+          titre="Corrigé de l’activité"
+          info={
+            typeTravail === 'ecrire'
+              ? 'Corrigé de référence : transmis à l’IA selon les interrupteurs « Corrigé IA » ; seule la production est montrée à l’élève, quand le corrigé est disponible.'
+              : 'Le schéma corrigé : comparé à la copie de l’élève (pastilles, aide IA) ; montré à l’élève quand sa copie lui est rendue comme corrigé.'
+          }
+          ouvert={voirCorrige}
+          onBascule={(v) => setVoir((x) => ({ ...x, corrige: v }))}
+          rempli={corrigeRempli}
+          disabled={isSubmitting}
+        >
       {/* Atelier de conceptualisation : le corrigé du prof (2026-10-11) */}
       {typeTravail === 'schematiser' && (
         <div className={styles.versoSection}>
@@ -1159,6 +1173,82 @@ export default function CreationForm({
           ) : (
             <p className={styles.modeNote}>Le corrigé se choisit depuis Mes Ressources › Conceptualisations.</p>
           )}
+        </div>
+      )}
+
+      {/* Corrigé de référence (type ecrire uniquement) */}
+      {typeTravail === 'ecrire' && (
+        <>
+          <div className={styles.versoSection}>
+            <div className={styles.versoSectionHeader}>
+              <h3 className={styles.versoSectionTitle}>🗂️ Espace de planification</h3>
+              {renderIaToggle(planToIA, setPlanToIA)}
+            </div>
+            <div className={styles.themeRow}>
+              <label className={styles.themeLabel}>Thème ou thèse :</label>
+              <input
+                className={styles.input}
+                type="text"
+                value={profTheme}
+                onChange={(e) => setProfTheme(e.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
+            <PlanDraft
+              draft={profDraft}
+              onChange={setProfDraft}
+              disabled={isSubmitting}
+              hideHeader
+            />
+          </div>
+
+          <div className={styles.versoSection}>
+            <div className={styles.versoSectionHeader}>
+              <h3 className={styles.versoSectionTitle}>✒️ Production du professeur</h3>
+              {renderIaToggle(productionToIA, setProductionToIA)}
+            </div>
+            <textarea
+              className={styles.textarea}
+              value={profProduction}
+              onChange={(e) => setProfProduction(e.target.value)}
+              placeholder="Rédigez ici votre version de référence..."
+              rows={6}
+              disabled={isSubmitting}
+            />
+          </div>
+        </>
+      )}
+
+        </VersoGroupe>
+      )}
+
+      {aContenusGroupe && (
+        <VersoGroupe
+          titre="Contenus de l’activité"
+          info={
+            typeTravail === 'lire'
+                  ? 'Le questionnaire de lecture : rempli par l’élève dans sa colonne de gauche. QCM corrigés automatiquement, le reste par vous. Les compétences cochées alimenteront le profil de lecteur.'
+                  : typeTravail === 'rechercher'
+                    ? 'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'
+                    : typeTravail === 'sequence'
+                      ? 'Les modules du parcours, dans l’ordre où l’élève les fera. Chaque module apporte sa théorie et ses activités ; les élèves qui suivent la séquence se choisissent au recto.'
+                    : typeTravail === 'portfolio'
+                      ? 'Les étapes du portfolio, dans l’ordre où l’élève les fera : étapes propres (objectifs, consigne, dépôts) ou renvois vers d’autres activités. Un clic sur une étape règle son échéance, son statut IA, sa portée et son verrou.'
+                    : typeTravail === 'schematiser'
+                      ? 'Le point de départ du schéma : le concept central apparaît dans le canevas de l’élève, les autres concepts l’attendent dans l’onglet « À placer », sous son schéma.'
+                      : 'La liste sert de support à l’activité (apprentissage et évaluation). Elle est aussi enregistrée dans Mes Ressources.'
+          }
+          ouvert={voirContenus}
+          onBascule={(v) => setVoir((x) => ({ ...x, contenus: v }))}
+          disabled={isSubmitting}
+        >
+      {/* Atelier de conceptualisation : le point de départ du schéma (2026-10-11) */}
+      {typeTravail === 'schematiser' && (
+        <div className={styles.versoSection}>
+          <div className={styles.versoSectionHeader}>
+            <h3 className={styles.versoSectionTitle}>🧩 Point de départ du schéma</h3>
+          </div>
+          <SchemaDepartInput valeur={schemaDepart} onChange={setSchemaDepart} disabled={isSubmitting} />
         </div>
       )}
 
@@ -1189,7 +1279,7 @@ export default function CreationForm({
                 <option value="">— Composer de zéro —</option>
                 {(matrices ?? []).map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.titre} ({m.etapes.length} étape{m.etapes.length > 1 ? 's' : ''})
+                    {m.titre} ({nombreEtapes(m.etapes)} étape{nombreEtapes(m.etapes) > 1 ? 's' : ''})
                   </option>
                 ))}
               </select>
@@ -1200,6 +1290,7 @@ export default function CreationForm({
             onChange={(etapes) => setPortfolio({ ...(portfolio ?? PORTFOLIO_VIDE), etapes })}
             disabled={isSubmitting}
             tacheFinale={portfolio?.tacheFinale}
+            titrePortfolio={intitule}
           />
         </>
       )}
@@ -1256,49 +1347,6 @@ export default function CreationForm({
         </>
       )}
 
-      {/* Corrigé de référence (type ecrire uniquement) */}
-      {typeTravail === 'ecrire' && (
-        <>
-          <div className={styles.versoSection}>
-            <div className={styles.versoSectionHeader}>
-              <h3 className={styles.versoSectionTitle}>🗂️ Espace de planification</h3>
-              {renderIaToggle(planToIA, setPlanToIA)}
-            </div>
-            <div className={styles.themeRow}>
-              <label className={styles.themeLabel}>Thème ou thèse :</label>
-              <input
-                className={styles.input}
-                type="text"
-                value={profTheme}
-                onChange={(e) => setProfTheme(e.target.value)}
-                disabled={isSubmitting}
-              />
-            </div>
-            <PlanDraft
-              draft={profDraft}
-              onChange={setProfDraft}
-              disabled={isSubmitting}
-              hideHeader
-            />
-          </div>
-
-          <div className={styles.versoSection}>
-            <div className={styles.versoSectionHeader}>
-              <h3 className={styles.versoSectionTitle}>✒️ Production du professeur</h3>
-              {renderIaToggle(productionToIA, setProductionToIA)}
-            </div>
-            <textarea
-              className={styles.textarea}
-              value={profProduction}
-              onChange={(e) => setProfProduction(e.target.value)}
-              placeholder="Rédigez ici votre version de référence..."
-              rows={6}
-              disabled={isSubmitting}
-            />
-          </div>
-        </>
-      )}
-
       {/* Questionnaire NavigKid (type rechercher) */}
       {typeTravail === 'rechercher' && (
         <div className={styles.versoSection}>
@@ -1344,6 +1392,9 @@ export default function CreationForm({
             Choisissez une série lexicale au recto — ou «&nbsp;➕ Nouvelle liste…&nbsp;» pour en créer une ici.
           </div>
         )
+      )}
+
+        </VersoGroupe>
       )}
 
       {/* Prévisualisation. Sur une activité de recherche, la page élève est
@@ -1423,6 +1474,13 @@ export default function CreationForm({
             {versoHasContent && <span className={styles.flipToggleDot} />}
           </button>
         </div>
+        {/* La croix : dans l'EN-TÊTE, à droite — visible au recto comme au verso
+            (JP, 2026-10-11) ; ferme sans enregistrer */}
+        {onClose && (
+          <button type="button" className={styles.closeButton} onClick={onClose} title="Fermer sans enregistrer" aria-label="Fermer sans enregistrer">
+            &times;
+          </button>
+        )}
       </div>
 
       {/* Carte animée */}

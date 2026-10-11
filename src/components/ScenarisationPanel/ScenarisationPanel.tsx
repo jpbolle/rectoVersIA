@@ -83,6 +83,7 @@ import CertificationNotesModal, {
   CeinturePicker,
 } from '@/components/CertificationNotesModal/CertificationNotesModal';
 import blocs from '@/components/OeuvrePanel/OeuvrePanel.module.css';
+import { useAffichage } from '@/hooks/useAffichage';
 import styles from './ScenarisationPanel.module.css';
 
 
@@ -104,6 +105,10 @@ export default function ScenarisationPanel() {
     scenarisations, isLoading, isSaving, dirty, error,
     modifier, creer, dupliquer, supprimer, vider,
   } = useScenarisations();
+  // Gestion de l'affichage : ceintures masquées → pas de « Ceinture accordée »
+  // sur une certification (la valeur déjà posée est gardée)
+  const { vue: vueAffichage } = useAffichage();
+  const ceinturesMasquees = vueAffichage('outil:ceintures').bloque;
   const { config } = useDidactique();
   const { classes } = useClasses();
 
@@ -1141,6 +1146,7 @@ export default function ScenarisationPanel() {
                                               />
                                             </label>
 
+                                            {!ceinturesMasquees && (
                                             <label className={styles.certField}>
                                               <span className={styles.certLabel}>
                                                 Ceinture accordée
@@ -1166,6 +1172,7 @@ export default function ScenarisationPanel() {
                                                 />
                                               </span>
                                             </label>
+                                            )}
 
                                             {/* Toutes les certifications ne se
                                                 notent pas : un carnet de lecture

@@ -5,6 +5,98 @@
 > **`2026-10-09-portfolio-etape-1-squelette.md`** (étape 1, v2 validée) et la maquette
 > `maquette-portfolio-eleve.html` (v2, 4 vues).
 
+## 2026-10-11 (fin de soirée) — deux bugs vus dans la matrice Molière, CORRIGÉS et TESTÉS par JP (titre de la section 7 retapé)
+
+- **Titre d'une étape « activité »** : l'atelier (`etapesAffichees`) et le parcours élève remplaçaient TOUJOURS le
+  titre de l'étape par l'intitulé de l'activité — et l'autosave l'écrivait en base. Désormais le titre de l'étape
+  l'emporte, l'intitulé de l'activité seulement à défaut. ⚠ Les titres déjà écrasés restent à retaper une fois.
+- **Activité créée DANS le portfolio** : `CreationForm dansPortfolio` — ni classes, ni élèves, ni échéance, ni
+  « Disponible » (envoyés vides / `false`) ; pas d'atelier « Portfolio » dans le menu. L'élève l'ouvre par le
+  portfolio (`ouvertParSequence`, qui ignore `disponible`).
+- Idem pour la MODIFICATION (« ✏️ Ouvrir l'activité » depuis l'atelier) : `EditDevoirModal dansPortfolio` masque
+  classes / élèves / échéance / Disponible, SANS effacer les valeurs déjà enregistrées (les vider retirerait les
+  sessions d'une activité déjà donnée — décision à prendre avec JP si besoin).
+
+## 2026-10-11 (nuit, 2e test de JP) — retouches ÉCRITES
+
+- Étiquettes : une BANDE à elles en haut à droite (plus de `float` : elles chevauchaient les encadrés) ;
+  image IA **entière** (`object-fit: contain`, 76 px ≈ 2 cm — elle porte le message).
+- Ligne « **Consulter les ressources** » (trait — bouton ambre — trait) avant les encadrés, si l'étape a des
+  ressources → onglet Ressources de la colonne de droite (`onOuvrirRessources`).
+- Ligne d'action : **tous les boutons DANS le trait**, au centre — trait | ← · gestes · → | trait (JP : « le
+  bouton reculer à gauche du bouton central, avancer à sa droite », pas aux extrémités).
+- Image IA de l'élève : la **CARTE ENTIÈRE** (cadre noir + texte — JP : « elle porte le message »), fichiers
+  `public/ia-statut/{libre,partielle,aucune}-carte.png` recadrés des originaux `N copie.png` (2 = non-recours,
+  3 = aide, 4 = généré) ; `STATUT_IA_LABELS[x].carte`, `IaPicto carte`. Les `x.png` (scène seule) restent pour
+  les mini-icônes (popup d'étape, badges). ⚠ Ressources « présentes » : `ressourcesPresentes()`
+  (`src/lib/ressources-presentes.ts`), jamais `compterRessources` (FLE) qui ignore `content` et les documents
+  sans texte — il a masqué les ressources générales à tort.
+- Introduction : « Consulter les ressources » dans la ligne finale, à côté du bouton de la 1re étape (si le
+  portfolio ou l'intro a des ressources). Onglet Ressources : **d'abord « Pour tout le portfolio », puis « Pour
+  l'étape … »** (`ressourcesTitre` / `ressourcesSuffixe` / `ressourcesRienSiVide` d'AssistancePanel). Les
+  ressources de l'**INTRODUCTION** comptent comme générales (JP) : sous « Pour tout le portfolio », visibles
+  depuis toutes les étapes (`PortfolioRessourcesEtape`).
+- Ligne d'action : plus aucune marge négative (portfolio ET vocabulaire alignés sur la règle d'init.md).
+- Formulaire de création (toutes activités) : la croix dans l'en-tête (barre recto/verso), à droite ;
+  « Prévisualiser… » dans le coin inférieur droit. Verso à cases + boutons du recto : testés et approuvés.
+
+## 2026-10-11 (nuit, suite) — refonte après test de JP, ÉCRITE (pas vue côté élève)
+
+- **Élève** : objectifs + consigne d'une ÉTAPE dans l'onglet **Consignes** (colonne de droite,
+  `PortfolioConsignesEtape`, ouvert à chaque nouvelle étape) ; **Sommaire du portfolio** = onglet à part
+  (`TabType 'sommaire'`). Intro : garde ses infos sur sa page ; son onglet Consignes = tâche finale + consignes
+  générales. Étiquettes en haut à droite (pile échéance/portée + image IA du prof). « Encadré(s) à compléter ».
+  **Une seule ligne d'action** (motif `bottomActions` du vocabulaire, traits bord à bord) : ← à gauche, → à
+  droite, Soumettre / « J'ai fait cette étape » au centre, un bouton seul au centre.
+- **Décision JP (règle « faite »)** : on garde **B** — une étape à encadrés n'est faite (et n'ouvre une suite
+  verrouillée) qu'une fois **soumise** ; la soumission n'est possible que si les encadrés obligatoires sont
+  remplis. Le blocage vu par JP venait de « Verrouille l'étape suivante » coché + étape non soumise + groupe
+  pas encore accepté.
+- **Décision JP (encadré Groupe)** : un groupe **déclaré** (en attente) compte comme rempli — l'élève soumet
+  sans attendre ; le prof accepte le groupe et valide l'étape d'un même passage. ⚠ Le suivi d'un élève vit dans
+  `__U-{uid}` tant que son groupe n'est pas accepté, puis dans `__G-{groupeId}` : à l'**acceptation**,
+  `fusionnerSuivisDansGroupe` recopie soumissions / retours / valeurs des membres dans le doc du groupe (sinon
+  l'étape soumise « disparaissait »). « Remettre en attente » ne refait pas le chemin inverse.
+- **Prof** (création + modification) : boutons du recto à droite (Réinitialiser, puis Créer) ; pas d'« Accès
+  IA » pour un portfolio ; verso en trois groupes à case à cocher (`VersoGroupe`) — Ressources, **Corrigé de
+  l'activité** (écriture : planif + production ; conceptualisation : schéma corrigé), Contenus. Décocher replie
+  sans effacer.
+
+## 2026-10-11 (nuit) — « Je travaille seul » (option A de JP), ÉCRIT (pas vu)
+
+- JP : « même si une étape est collective, un élève peut être seul ». Avant : le dépôt « Groupe » exigeait
+  un partenaire (bouton + serveur) ⇒ un élève seul ne finissait JAMAIS l'étape (et restait bloqué si
+  elle verrouillait la suite). La portée « collective » n'est encore qu'une étiquette (pas bloquante).
+- Bouton **🙋 Je travaille seul** (quand aucun partenaire n'est choisi) → `POST /api/portfolio/groupe`
+  `{seul: true}` = un groupe d'**un seul membre** (`groupeSolo`), soumis au prof comme un groupe :
+  « Accepter le travail seul » / « Refuser le travail seul » + motif ; « Changer d'avis » côté élève.
+  Pas de 👥 au tableau d'évolution pour un solo.
+
+## 2026-10-11 (soir) — INTRODUCTION obligatoire — côté PROF (disque, popup, cadrage) TESTÉ OK par JP ; côté élève à voir
+
+- Le serpentin **commence** par l'introduction comme il **finit** par la cible : disque vert de 200 px
+  (image de couverture recadrée `object-fit: cover`, sinon le titre du portfolio). Pas de « + » avant,
+  ni glisser, ni retrait (`Serpentin.debutFixe`).
+- Modèle : `PortfolioEtape.introduction` + `couverture` (id `ressourceImages`, route publique — ce
+  n'est pas une donnée d'élève). Toujours en tête (`ordonnerIntroduction`) ; **créée seulement à
+  l'ÉCRITURE** (`assurerIntroduction` sur les 4 routes d'écriture, `avecIntroduction` dans le
+  constructeur) — jamais à la lecture, sinon son id changerait à chaque lecture.
+- Popup : la même, réduite (titre, couverture, objectifs, « Informations générales » = UAA,
+  planification…, ressources). « Retirer l'image » ne supprime pas le document (matrices dupliquées).
+- Élève (option **A** de JP) : **faite dès qu'elle est ouverte** — le hook la coche (`cochees`) à
+  l'affichage. Couverture ronde en tête, informations en simple liste (rien à cocher), vignette ronde
+  dans le sommaire. Numérotation : l'intro n'a pas de numéro, les étapes partent de 1 ; elle n'entre
+  dans aucun compteur « N étapes faites sur M » (`avancement`, `nombreEtapes`).
+- **Cadrage de la couverture** (JP, « permettre le travail de la taille de l'image ») : dans la popup,
+  on fait glisser l'image dans l'aperçu rond (événements pointer : souris ET doigt) et un curseur
+  « Taille » de 30 % (image réduite, fond du cercle autour) à 400 % ; « Recentrer ». `couvertureCadrage {zoom, x, y, ratio}`
+  sur l'étape, appliqué partout par `styleCouverture` : l'<img> garde SES proportions (`ratio` relevé au
+  chargement dans la popup), taille et place en % du cercle (conteneur `relative` + `overflow: hidden`).
+  ⚠ Première version (`object-fit: cover` + `scale`) abandonnée : réduire rétrécissait une image déjà
+  rognée au carré (signalé par JP).
+- Un portfolio d'avant reçoit son introduction quand le prof ouvre l'atelier / le verso (autosave).
+  Une activité jamais réouverte par le prof n'en a pas : l'élève la voit comme avant.
+
 ## 2026-10-11 — retouches après test de JP
 
 - Popup d'étape : le choix **Des dépôts / Une activité** est remonté juste sous Section / Titre ;
@@ -12,8 +104,9 @@
   directement dans le corps flex de la popup → `flex-shrink: 0`.
 - Serpentin : écarts **étirés** pour que la rangée prenne toute la largeur (`--serp-ecart-x`,
   même écart pour toutes les rangées).
-- Encadrés du portfolio : **flèches ◀ ▶ retirées** (JP), seul le glisser-déposer réordonne —
-  ⚠ inopérant au doigt (écran tactile). La séquence FLE garde ses flèches.
+- Encadrés du portfolio : **flèches ◀ ▶ retirées** (JP), seul le glisser-déposer réordonne (poignée ⋯,
+  testé à la souris par JP). Glisser-déposer HTML5 natif : au doigt, à vérifier sur un Chromebook tactile.
+  La séquence FLE garde ses flèches.
 - **Encadré du serpentin rééquilibré** : icône de NATURE en tête (🎯 activité · 📥 dépôts ·
   🎭 hors de l'app — trois icônes seulement, JP), numéro vert (la règle `.encadreEtape .numero`
   ne s'appliquait pas : autre feuille CSS), pied à filet avec poignée ⋯ (glisser) à gauche et ✕ à
@@ -62,7 +155,8 @@ Plan **`2026-10-10-portfolio-validation-variables.md`** validé, les 4 phases é
 - **Objectifs** : puces (pas de cases) dans l'éditeur ; **consigne d'étape = liste de tâches**
   (`ConsignesEditor`) cochée par l'élève, `PortfolioContenuEleve.taches` (clé `cleTache(etapeId,
   texte de la ligne)`), compteur « 2 / 5 ». Les tâches n'entrent PAS dans « étape faite ».
-- Point **g** (retour du prof sur un dépôt) : plan à faire, questions en cours.
+- Point **g** (retour du prof sur un dépôt) : couvert par le plan validation-variables (retour ✓/✗ +
+  commentaire par étape) — clos.
 
 ## 2026-10-10 (suite) — séances b et c ÉCRITES (« fais tout d'un coup », JP testera après)
 

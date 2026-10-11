@@ -15,6 +15,9 @@
   copie** (écriture, conceptualisation, portfolio) : Renvoyer pour réécriture | En mode correction | Rendre comme
   corrigé, + « Verrouiller la copie » ; **onglet « Corrigé »** (écriture et schéma). Cards de Mes Ressources
   unifiées (`RessourceCard`).
+- **Administration › Gestion de l'affichage** (2026-10-11) : ce que voient les autres profs et leurs élèves
+  (ateliers, onglets de Mes Ressources, outils) — visible / en test / masqué (grisé), testeurs. `useAffichage().vue(cle)`
+  avant d'afficher un atelier, un onglet ou un outil NOUVEAU (clés dans `src/types/affichage.ts`).
 - **Portfolio d'apprentissage** (2026-10-09, étape 1 du chantier écrite ; 1a validée, 1b/1c à voir) :
   dispositif propre `portfolio`, matrice dans Mes Ressources › Portfolios, activité = copie ;
   élève **dans** l'espace à 2 colonnes (étape à gauche, « Sommaire du portfolio » cochable à droite) ;
@@ -132,7 +135,7 @@ Paniers servis par les routes (`otherProfs` / `autres` / `autresFle`), jamais fi
 
 | Situation qui revient | Forme imposée | Exemple à recopier |
 |---|---|---|
-| Ligne de boutons d'action encadrée par 2 traits horizontaux — ⚠️ **UN TRAIT À GAUCHE, LES BOUTONS, UN TRAIT À DROITE, sur la MÊME ligne**, et non un trait au-dessus et un en dessous (erreur commise le 2026-09-07 : aller LIRE le fichier cité avant d'en écrire une) | Convention couleurs : **vert** (`--c-primary`) = bouton qui **génère** du contenu (IA, exercices, évaluation) ; **amber** (`--c-accent`) = bouton qui **affiche** ou **navigue**. Verts groupés d'abord, ambers ensuite. Boutons `min-height:42px / padding:0 22px / font:14px 600`. ⚠️ **La ligne ne touche JAMAIS les bords de la colonne** : pas de marge négative annulant le padding du conteneur (règle rappelée plusieurs fois par l'utilisateur) | `bottomActions` dans `VocabulaireActivity.module.css`, `actionBar` dans `VocabulaireExercises.module.css` |
+| Ligne de boutons d'action encadrée par 2 traits horizontaux — ⚠️ **UN TRAIT À GAUCHE, LES BOUTONS, UN TRAIT À DROITE, sur la MÊME ligne**, et non un trait au-dessus et un en dessous (erreur commise le 2026-09-07 : aller LIRE le fichier cité avant d'en écrire une) | Convention couleurs : **vert** (`--c-primary`) = bouton qui **génère** du contenu (IA, exercices, évaluation) ; **amber** (`--c-accent`) = bouton qui **affiche** ou **navigue**. Verts groupés d'abord, ambers ensuite. Boutons `min-height:42px / padding:0 22px / font:14px 600`. ⚠️ **La ligne ne touche JAMAIS les bords de la colonne** : pas de marge négative annulant le padding du conteneur (règle rappelée plusieurs fois par l'utilisateur — encore le 2026-10-11 sur le portfolio). ⚠️ **TOUS les boutons sont DANS le trait, groupés au centre** : trait — [← reculer] [gestes] [avancer →] — trait ; reculer à GAUCHE du geste central, avancer à sa DROITE, jamais aux extrémités de la ligne (JP, 2026-10-11) | `ligneAction` dans `Portfolio.module.css` (`PortfolioActivity`) ; `bottomActions` dans `VocabulaireActivity.module.css`, `actionBar` dans `VocabulaireExercises.module.css` (⚠ ces deux-là gardent une marge négative héritée, à ne pas recopier) |
 | Accès à un objet instable (`user`, `travail`) dans un callback mémoïsé | Pattern `ref` (jamais l'objet dans les deps — règle AGENTS.md) | `userRef` dans `AuthContext.tsx`, `travailRef` dans `useTravail` |
 | Page avec `router.replace()` | State `redirecting` : `if (redirecting) return;` avant le replace, `return null;` dans le render | pages protégées existantes |
 | Nouvelle façon d'évaluer une activité | **Grille pour l'écriture, habiletés partout ailleurs** — jamais les deux. La grille n'est exigée que pour `typeTravail === 'ecrire'`, client ET serveur | `usesGrille` dans `CreationForm` / `EditDevoirModal` |
@@ -476,6 +479,12 @@ interface Questionnaire {
 - `vocabulaireFle/{uid}` (2026-10-08, soir) : la liste de vocabulaire de l'**espace FLE** de l'élève — les mots cliqués dans **Daspalecte** (`write.ts`, file d'attente versée ici), même forme que `vocabulairePersonnel` qui reste à l'espace classique (NavigKid, dictionnaire). Lecture `/api/fle/vocabulaire` (élève, prof `?studentId=`) ; page `/fle/ressources` (« Mes ressources personnelles › Mon vocabulaire »). Migration des anciens mots : `scripts/migrate-vocabulaire-fle.ts`
 - `lecturesCours/{id}` (`LEC-YYYYMMDD-XXXX`, 2026-10-08) : **lecture d'une séquence de cours** d'un élève FLE — `eleveUid`, `eleveId`, `classeId`, `titre`, `source` (gdoc/gslides/gsheet/pdf/web/texte), `texte` (≤ 25 000 car.), `langue` et `niveau` copiés à l'import, `sections` (6 clés : `resume`, `saillants`, `vocabulaire`, `reformulation`, `grammaire`, `passerelle` — chacune `{statut, contenu, generatedAt, usage}`), `reponses` (clés `ref_p{i}_q{j}`, `passerelle`, `vocab_<type>`). Serveur seul (`src/lib/lecture-cours-server.ts`), aucune règle Firestore, aucun index composite (tri en mémoire). Types : `src/types/lecture-cours.ts`
 - `configuration/didactique-fle` : référentiel **FLE** (compétences du radar, niveaux du CECR avec `rang`, descripteurs « Je peux… », types de module) — `src/types/didactique-fle.ts`, route `/api/didactique-fle`, hook `useDidactiqueFle` (cache séparé de `useDidactique`)
+- `configuration/affichage` (2026-10-11) : **Gestion de l'affichage** — `elements{cle→{etat visible|test|masque, note}}`,
+  `testeurs[uid]`, `adminUids[]` (posé à chaque PUT : les élèves de l'admin sont reconnus par le `profId` de leurs
+  classes). Clés et libellés : `src/types/affichage.ts` (`ELEMENTS_AFFICHAGE`). Route `/api/affichage` (GET résolu
+  pour l'appelant — `voitMasque` : admin, prof testeur, élève dont un prof est admin/testeur ; `?admin=1` : config +
+  liste des profs ; PUT admin), hook `useAffichage` (cache par uid) → `vue(cle)` : `bloque` · `enTest` ·
+  `masqueAuxProfs` · `note`. Masquer = **interface seulement**. Badge commun `AffichageBadge`.
 - `configuration/didactique` : UAA + **habiletés** + **méthodes d'enseignement**
   (`methodes`, liste ouverte tenue par l'admin, lue par la colonne Méthode des
   modules). Une habileté =
@@ -626,6 +635,7 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
 | `/api/fle/lectures/[id]/sections/[cle]` | POST | Génère UNE section (prompts `src/lib/prompts-lecture-cours.ts`, helper `src/lib/claude.ts` : client unique, **cache de prompt** sur le texte du cours, usage stocké). `grammaire` : l'arbre emboîté devient un `Diagram` hierarchy (`src/lib/lecture-cours-arbre.ts`). 409 si déjà en cours (< 3 min) |
 | `/api/fle/traduire` | POST | `{texte, langue}` → traduction au clic d'un mot : Google Translate **non officiel** (comme l'extension), repli Claude, cache mémoire |
 | `/api/fle/verifier-phrase` | POST | `{phrase, mots, niveau}` → verdict Claude de l'exercice « Phrase avec le vocabulaire » (forme `verify_sentence` de Daspalecte, prompt réécrit) |
+| `/api/affichage` | GET, PUT | Gestion de l'affichage — doc `configuration/affichage` ; GET résolu pour l'appelant (`voitMasque`), `?admin=1` config + profs (admin), PUT admin |
 | `/api/didactique-fle` | GET, PUT | Référentiel FLE — doc `configuration/didactique-fle`, GET tout connecté, PUT admin ; défauts servis pour un document jamais enregistré ; hook client `useDidactiqueFle` (cache **séparé**) |
 | `/api/ingest` | POST | **Extension Daspalecte** (chemin imposé par `analytics.js` : `${apiBase}/api/ingest`). Jeton **d'accès Google** (pas Firebase) vérifié par `tokeninfo` contre `ALLOWED_AUDIENCES` ; contrat `IngestBody` de daspa-app inchangé (`src/lib/daspalecte/schema.ts`) ; lot idempotent en une transaction. Prof → 200 ignoré ; aucune fiche `eleves` → 403 `unknown_account` (l'extension coupe alors son suivi) |
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |

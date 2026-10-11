@@ -1026,7 +1026,8 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  margin: 100px -16px 0;
+  /* Jamais jusqu'aux bords de la colonne (init.md § Patterns imposés) */
+  margin: 100px 0 0;
   padding: 0 0 18px;
   flex-shrink: 0;
 }

@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
         const vue: EtapePortfolioVue =
           e.nature === 'activite' && e.devoirId ? { ...e, etatRenvoi: etatsRenvoi.get(`TRV-${e.devoirId}-${uid}`) ?? 'a-faire' } : e;
         cases[e.id] = estEtapeSansTrace(e) ? (contenu.cochees.includes(e.id) ? 'cochee' : 'non-cochee') : etatEtape(vue, contenu);
-        if (faite(vue, contenu)) faites += 1;
+        if (!e.introduction && faite(vue, contenu)) faites += 1;
         if (enRetard(vue, contenu)) retards.push(e.id);
       }
       return {
@@ -142,7 +142,8 @@ export async function GET(request: NextRequest) {
         studentId: uid,
         // studentName est chiffré en base (RGPD) — jamais renvoyé tel quel
         studentName: decrypt(t.studentName) || 'Élève',
-        groupe: groupe?.id ?? null,
+        // Un élève qui travaille SEUL n'est pas « membre d'un groupe » au tableau
+        groupe: groupe && groupe.membres.length > 1 ? groupe.id : null,
         cases,
         copies,
         retards,
@@ -160,6 +161,7 @@ export async function GET(request: NextRequest) {
           titre: e.titre,
           section: e.section ?? '',
           sansTrace: estEtapeSansTrace(e),
+          introduction: e.introduction === true,
           bloquante: e.validation?.bloquante === true,
           echeance: e.echeance ?? null,
         })),

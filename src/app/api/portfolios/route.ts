@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       tacheFinale: typeof body.tacheFinale === 'string' ? body.tacheFinale.trim().slice(0, 2000) : '',
       consignes: typeof body.consignes === 'string' ? body.consignes.slice(0, 10000) : '',
       ressources: body.ressources ? sanitizeRessources(body.ressources, { codeAutorise: auth.isAdmin }) : null,
-      etapes: etapesPortfolioPourFirestore(body.etapes, { codeAutorise: auth.isAdmin }),
+      etapes: etapesPortfolioPourFirestore(body.etapes, { codeAutorise: auth.isAdmin, assurerIntroduction: true }),
       profId: auth.uid,
       archive: false,
       anneeScolaire: calculateSchoolYear(),

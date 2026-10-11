@@ -22,6 +22,7 @@ import { habileteLabel } from '@/types/didactique';
 import { LECTURE_COMPETENCE_LABELS } from '@/types/lecture';
 import type { LectureCompetence } from '@/types/lecture';
 import type { DaspalecteStats } from '@/types/daspalecte';
+import { useAffichage } from '@/hooks/useAffichage';
 import styles from '@/app/profil/profil.module.css';
 
 // ─── Onglets ─────────────────────────────────────────────────────────────────
@@ -680,6 +681,9 @@ function CertificationsBlock({ data }: { data: ProfilCertifications }) {
 
 // ─── Onglet Général ──────────────────────────────────────────────────────────
 function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab: TabId) => void }) {
+  // Gestion de l'affichage : les ceintures masquées → pas de bloc des certifications par UAA
+  const { vue: vueAffichage } = useAffichage();
+  const ceinturesMasquees = vueAffichage('outil:ceintures').bloque;
   const voc = data.vocabulaire;
   const rech = data.rechercher;
   const vocTotal = voc?.total || 1;
@@ -824,7 +828,7 @@ function GeneralTab({ data, onOpenTab }: { data: ProfilGeneral; onOpenTab: (tab:
         ))}
       </div>
 
-      {data.certifications && <CertificationsBlock data={data.certifications} />}
+      {data.certifications && !ceinturesMasquees && <CertificationsBlock data={data.certifications} />}
     </>
   );
 }

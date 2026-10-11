@@ -13,15 +13,25 @@
 // déplacent par glisser-déposer (flèches retirées le 2026-10-11, JP — ⚠ le
 // glisser-déposer natif ne réagit pas au doigt : pas de réordonnancement sur
 // écran tactile).
+//
+// L'INTRODUCTION (JP, 2026-10-11) : le serpentin COMMENCE obligatoirement par
+// elle, comme il finit par la cible — un disque (l'image de couverture
+// recadrée, ou le titre du portfolio). Ni « + » avant, ni glisser, ni retrait.
+// Un portfolio qui n'en a pas encore la reçoit à l'ouverture (`avecIntroduction`).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GripHorizontal, X } from 'lucide-react';
 import Serpentin from '@/components/SequenceFleBuilder/Serpentin';
 import EtapePortfolioModal from './EtapePortfolioModal';
 import { atelierLabel } from '@/types/didactique';
 import {
+  avecIntroduction,
   estEtapeSansTrace,
   nouvelleEtape,
+  numeroEtape,
+  ordonnerIntroduction,
+  styleCouverture,
+  urlCouverture,
   type PortfolioEtape,
 } from '@/types/portfolio';
 import base from '@/components/ModuleFleEditor/ModuleFleEditor.module.css';
@@ -39,6 +49,8 @@ interface Props {
   onOuvrirActivite?: (devoirId: string) => void;
   // La tâche finale : l'encadré CIBLE au bout du serpentin
   tacheFinale?: string;
+  // Le titre du portfolio : dans le disque de l'introduction, sans image
+  titrePortfolio?: string;
 }
 
 function echeanceCourte(iso: string): string {
@@ -47,13 +59,22 @@ function echeanceCourte(iso: string): string {
 }
 
 export default function PortfolioBuilder({
-  etapes,
+  etapes: etapesBrutes,
   onChange,
   disabled = false,
   onCreerActivite,
   onOuvrirActivite,
   tacheFinale,
+  titrePortfolio,
 }: Props) {
+  // L'introduction manque (portfolio d'avant le 2026-10-11) : on la pose en
+  // tête — l'enregistrement suivant l'écrit
+  useEffect(() => {
+    if (disabled || etapesBrutes[0]?.introduction) return;
+    onChange(avecIntroduction(etapesBrutes));
+  }, [disabled, etapesBrutes, onChange]);
+  const etapes = ordonnerIntroduction(etapesBrutes);
+
   // La popup d'étape : l'étape en cours d'édition, et sa position si elle
   // est NOUVELLE (sinon elle remplace celle qui porte son id)
   const [edition, setEdition] = useState<{ etape: PortfolioEtape; insertion: number | null } | null>(null);
@@ -100,7 +121,34 @@ export default function PortfolioBuilder({
 
   const sections = [...new Set(etapes.map((e) => (e.section ?? '').trim()).filter(Boolean))];
 
+  // L'introduction : un disque, symétrique de la cible
+  const rendreIntroduction = (e: PortfolioEtape) => {
+    const url = urlCouverture(e.couverture);
+    return (
+      <div key={e.id} className={styles.intro}>
+        <button
+          type="button"
+          className={`${styles.introDisque} ${url ? styles.introDisqueImage : ''}`}
+          onClick={() => setEdition({ etape: e, insertion: null })}
+          title="Régler l’introduction (image, objectifs, informations générales)"
+        >
+          {url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="" className={styles.introImage} style={styleCouverture(e.couvertureCadrage)} />
+          ) : (
+            <>
+              <span className={styles.cibleLabel}>{e.titre || 'Introduction'}</span>
+              <span className={styles.introTitre}>{titrePortfolio?.trim() || 'Le titre du portfolio'}</span>
+            </>
+          )}
+        </button>
+        {url && <span className={styles.introEtiquette}>{e.titre || 'Introduction'}</span>}
+      </div>
+    );
+  };
+
   const rendreEtape = (e: PortfolioEtape, i: number) => {
+    if (e.introduction) return rendreIntroduction(e);
     const renvoi = e.nature === 'activite';
     const sansTrace = estEtapeSansTrace(e);
     const nbDepots = e.depots?.length ?? 0;
@@ -109,7 +157,7 @@ export default function PortfolioBuilder({
         key={e.id}
         className={`${serp.encadre} ${renvoi ? serp.encadreActivite : styles.encadreEtape} ${disabled ? '' : styles.encadreMobile}`}
       >
-        <span className={`${serp.numero} ${renvoi ? '' : styles.numeroEtape}`}>{i + 1}</span>
+        <span className={`${serp.numero} ${renvoi ? '' : styles.numeroEtape}`}>{numeroEtape(etapes, i)}</span>
         {/* Trois natures, trois icônes (JP, 2026-10-11) — les mêmes que les choix
             de la popup : 🎯 une activité de Mes Activités, 📥 des dépôts dans le
             portfolio, 🎭 une performance hors de l'application (sans trace) */}
@@ -202,6 +250,7 @@ export default function PortfolioBuilder({
           rendreItem={rendreEtape}
           onPlus={disabled ? undefined : ouvrirPlus}
           onDeplacer={disabled ? undefined : glisser}
+          debutFixe={etapes[0]?.introduction === true}
           // Le bout du chemin : la tâche finale, encadré CIBLE (JP, 2026-10-11)
           fin={
             etapes.length > 0 ? (
@@ -230,6 +279,7 @@ export default function PortfolioBuilder({
           valeursDisponibles={etapes
             .slice(0, Math.max(0, indexEdition))
             .flatMap((x) => (x.validation?.attribue ?? []).map((v) => ({ ...v, etapeTitre: x.titre })))}
+          titrePortfolio={titrePortfolio}
           disabled={disabled}
         />
       )}

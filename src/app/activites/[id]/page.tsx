@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useAffichage } from '@/hooks/useAffichage';
 import { useStudentClasses } from '@/hooks/useStudentClasses';
 import { useTravail } from '@/hooks/useTravail';
 import { useGrille } from '@/hooks/useGrille';
@@ -27,6 +28,8 @@ import SondageActivity from '@/components/Sondage/SondageActivity';
 import SondageLibreActivity from '@/components/Sondage/SondageLibreActivity';
 import { estPortfolio, estSequenceFle, estSondageEnDirect, estSondageLibre, reglagesSondage } from '@/types/didactique';
 import PortfolioActivity from '@/components/Portfolio/PortfolioActivity';
+import { ressourcesPresentes } from '@/lib/ressources-presentes';
+import PortfolioConsignesEtape from '@/components/Portfolio/PortfolioConsignesEtape';
 import PortfolioSommaire from '@/components/Portfolio/PortfolioSommaire';
 import PortfolioRessourcesEtape from '@/components/Portfolio/PortfolioRessourcesEtape';
 import PortfolioValeursActivite from '@/components/Portfolio/PortfolioValeursActivite';
@@ -52,6 +55,17 @@ const ICON_CONSIGNES = (
     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
     <line x1="9" y1="12" x2="15" y2="12" />
     <line x1="9" y1="16" x2="13" y2="16" />
+  </svg>
+);
+// Le sommaire d'un portfolio : une liste à puces cochées
+const ICON_SOMMAIRE = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 4.5 7.5 7 5" />
+    <polyline points="3 12 4.5 13.5 7 11" />
+    <polyline points="3 18 4.5 19.5 7 17" />
+    <line x1="10" y1="6" x2="21" y2="6" />
+    <line x1="10" y1="12" x2="21" y2="12" />
+    <line x1="10" y1="18" x2="21" y2="18" />
   </svg>
 );
 const ICON_RESSOURCES = (
@@ -160,12 +174,26 @@ export default function TravailPage() {
   } = useGrille(devoir?.grille || null);
 
   // IA - state et hook remontés ici pour orchestrer FlipEditor ↔ AssistancePanel
+  // Gestion de l'affichage : l'aide IA de l'élève MASQUÉE par l'admin (et
+  // l'élève n'a ni l'admin ni un testeur pour prof) = comme si l'activité ne
+  // l'ouvrait pas
+  const { vue: vueAffichage } = useAffichage();
+  const iaEleveMasquee = vueAffichage('outil:aide-ia-eleve').bloque;
   // accesIA : peut demander de nouvelles analyses (pas soumis)
-  const accesIA = !isPreviewMode && travail?.status !== 'submitted' && devoir?.accesIA === true;
+  const accesIA = !isPreviewMode && !iaEleveMasquee && travail?.status !== 'submitted' && devoir?.accesIA === true;
   // showAiData : charger les résultats IA existants (même après soumission)
-  const showAiData = !isPreviewMode && devoir?.accesIA === true;
+  const showAiData = !isPreviewMode && !iaEleveMasquee && devoir?.accesIA === true;
   const [activeTab, setActiveTab] = useState<TabType>('consignes');
   const [panelOpen, setPanelOpen] = useState<boolean>(true);
+  // Chaque NOUVELLE ÉTAPE ouvre l'onglet Consignes de la colonne de droite
+  // (JP, 2026-10-11 : ses objectifs et sa consigne y vivent). Clé = l'id de
+  // l'étape (une chaîne) — jamais l'objet, instable.
+  const etapePortfolioId = portfolioEleve.etape?.id ?? null;
+  useEffect(() => {
+    if (!etapePortfolioId) return;
+    setActiveTab('consignes');
+    setPanelOpen(true);
+  }, [etapePortfolioId]);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   // Conseils IA affichés dans le panneau (ids composites `type:itemId`) —
   // quand l'onglet Aide IA est ouvert, seules leurs bulles restent visibles
@@ -603,8 +631,11 @@ export default function TravailPage() {
   const railTabs: RailTab[] = [];
   // Lecture d'une œuvre : le sommaire du livre s'installe sous la consigne —
   // l'onglet doit dire qu'on y navigue, sans quoi l'élève ne l'ouvre jamais.
-  const labelConsignes = isPortfolio ? 'Sommaire du portfolio' : isOeuvre ? 'Consignes et navigation' : 'Consignes';
+  // Portfolio (JP, 2026-10-11) : « Consignes » = celles de l'ÉTAPE ouverte
+  // (objectifs, liste de tâches) ; le sommaire a son propre onglet
+  const labelConsignes = isOeuvre ? 'Consignes et navigation' : 'Consignes';
   railTabs.push({ id: 'consignes', label: labelConsignes, icon: ICON_CONSIGNES });
+  if (isPortfolio) railTabs.push({ id: 'sommaire', label: 'Sommaire du portfolio', icon: ICON_SOMMAIRE });
   railTabs.push({ id: 'ressources', label: 'Ressources', icon: ICON_RESSOURCES });
   // Portfolio : le statut IA est PAR ÉTAPE, affiché dans la colonne 1 — pas d'onglet
   if (!isRecherche && !isLectureQuiz && !isPortfolio && (accesIA || showAiData)) {
@@ -642,6 +673,7 @@ export default function TravailPage() {
 
   const PANEL_TITLES: Partial<Record<TabType, string>> = {
     consignes: labelConsignes,
+    sommaire: 'Sommaire du portfolio',
     ressources: 'Ressources',
     grille: 'Évaluation',
     ia: isSchema ? 'Aide IA' : 'Aide IA à la réécriture',
@@ -737,6 +769,11 @@ export default function TravailPage() {
             lectureSeule={isDisabled}
             accesIA={devoir?.accesIA === true}
             travailId={travail?.id}
+            ressourcesPortfolio={ressourcesPresentes(devoir?.ressources)}
+            onOuvrirRessources={() => {
+              setActiveTab('ressources');
+              setPanelOpen(true);
+            }}
           />
         ) : isVocabulaire ? (
           <div className={styles.editorSection}>
@@ -996,15 +1033,25 @@ export default function TravailPage() {
               ) : undefined
             }
             consignesRemplacement={
-              isPortfolio ? <PortfolioSommaire eleve={portfolioEleve} lectureSeule={isDisabled} /> : undefined
+              isPortfolio ? <PortfolioConsignesEtape eleve={portfolioEleve} lectureSeule={isDisabled} /> : undefined
             }
+            sommaire={isPortfolio ? <PortfolioSommaire eleve={portfolioEleve} lectureSeule={isDisabled} /> : undefined}
+            // Portfolio : d'abord ce qui vaut pour TOUT le portfolio, puis
+            // ce qui est lié à l'étape ouverte (JP, 2026-10-11)
             ressourcesPrefixe={
-              isPortfolio && devoir ? (
-                <PortfolioRessourcesEtape devoir={devoir} eleve={portfolioEleve} />
-              ) : !isPreviewMode ? (
+              isPortfolio ? undefined : !isPreviewMode ? (
                 // Ouverte depuis un portfolio : les valeurs du groupe (« Le sketch »)
                 <PortfolioValeursActivite devoirId={devoirId} />
               ) : undefined
+            }
+            ressourcesSuffixe={isPortfolio && devoir ? <PortfolioRessourcesEtape devoir={devoir} eleve={portfolioEleve} /> : undefined}
+            ressourcesTitre={isPortfolio ? <p className={styles.ressourcesTitrePortfolio}>Pour tout le portfolio</p> : undefined}
+            // Pas de « Aucune ressource » si l'introduction (ressources générales)
+            // ou l'étape ouverte en portent
+            ressourcesRienSiVide={
+              isPortfolio &&
+              (ressourcesPresentes(portfolioEleve.etapes.find((e) => e.introduction)?.ressources) ||
+                ressourcesPresentes(portfolioEleve.etape?.ressources))
             }
             oeuvreNav={
               isOeuvre && oeuvreLecture.oeuvre ? (

@@ -5,10 +5,12 @@
 // casse — règle du projet au-delà de cinq choix), chacun confirme de son
 // côté, puis le professeur accepte ou refuse depuis la copie. Tant que le
 // groupe n'est pas accepté, l'étape n'est pas faite.
+// « Je travaille seul » (2026-10-11) : un groupe d'un seul élève, accepté ou
+// refusé par le prof comme les autres (`groupeSolo`).
 
 import { useMemo, useState } from 'react';
 import type { PortfolioEleve } from '@/hooks/usePortfolioEleve';
-import { GROUPE_STATUT_LABELS } from '@/types/portfolio';
+import { GROUPE_STATUT_LABELS, groupeSolo } from '@/types/portfolio';
 import styles from './Portfolio.module.css';
 
 function plat(s: string): string {
@@ -46,12 +48,16 @@ export default function PortfolioDepotGroupe({ eleve, lectureSeule = false }: Pr
   }
 
   const moi = groupe?.membres.find((m) => m.moi);
+  const solo = !!groupe && groupeSolo(groupe);
   const peutRecomposer = !lectureSeule && (!groupe || groupe.statut === 'refuse');
 
   return (
     <div className={styles.groupe}>
       {groupe && (
         <>
+          {solo ? (
+            <p className={styles.depotAide}>🙋 Tu as choisi de travailler seul.</p>
+          ) : (
           <div className={styles.membres}>
             {groupe.membres.map((m) => (
               <div key={m.eleveId} className={styles.membre}>
@@ -74,14 +80,15 @@ export default function PortfolioDepotGroupe({ eleve, lectureSeule = false }: Pr
               </div>
             ))}
           </div>
+          )}
 
           <div className={`${styles.statut} ${groupe.statut === 'accepte' ? styles.statutOk : groupe.statut === 'refuse' ? styles.statutNon : styles.statutAtt}`}>
             {groupe.statut === 'accepte' && '✓ '}
             {groupe.statut === 'attente' && '⏳ '}
             {groupe.statut === 'refuse' && '✕ '}
-            {GROUPE_STATUT_LABELS[groupe.statut]}
+            {solo ? (groupe.statut === 'accepte' ? 'Travail seul accepté' : groupe.statut === 'refuse' ? 'Travail seul refusé' : 'En attente du professeur') : GROUPE_STATUT_LABELS[groupe.statut]}
             {groupe.statut === 'refuse' && groupe.motif && <> — « {groupe.motif} »</>}
-            {groupe.statut === 'attente' && ' — tant qu’il ne l’est pas, les étapes collectives restent personnelles.'}
+            {groupe.statut === 'attente' && !solo && ' — tant qu’il ne l’est pas, les étapes collectives restent personnelles.'}
           </div>
 
           {!lectureSeule && groupe.statut !== 'accepte' && moi && !moi.createur && moi.statut === 'attente' && (
@@ -97,7 +104,7 @@ export default function PortfolioDepotGroupe({ eleve, lectureSeule = false }: Pr
           {!lectureSeule && groupe.statut === 'attente' && moi && (moi.createur || moi.statut !== 'attente') && (
             <div className={styles.groupeActions}>
               <button type="button" className={styles.btnGhost} disabled={envoi} onClick={() => envoyer(() => repondreGroupe(groupe.id, 'quitter'))}>
-                {moi.createur ? 'Dissoudre et recomposer' : 'Quitter ce groupe'}
+                {solo ? 'Changer d’avis' : moi.createur ? 'Dissoudre et recomposer' : 'Quitter ce groupe'}
               </button>
             </div>
           )}
@@ -161,6 +168,17 @@ export default function PortfolioDepotGroupe({ eleve, lectureSeule = false }: Pr
             >
               Déclarer mon groupe ({choisis.length + 1} élève{choisis.length + 1 > 1 ? 's' : ''})
             </button>
+            {choisis.length === 0 && (
+              <button
+                type="button"
+                className={styles.btnGhost}
+                disabled={envoi}
+                onClick={() => envoyer(() => declarerGroupe([], true))}
+                title="Ton professeur accepte ou refuse, comme pour un groupe"
+              >
+                🙋 Je travaille seul
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -17,7 +17,7 @@ import EmptyState from '@/components/EmptyState/EmptyState';
 import PortfolioAtelier from './PortfolioAtelier';
 import { ATELIER_PORTFOLIO } from '@/types/didactique';
 import type { CreateDevoirData, Devoir } from '@/types/devoir';
-import type { PortfolioMatrice } from '@/types/portfolio';
+import { nombreEtapes, type PortfolioMatrice } from '@/types/portfolio';
 import base from '@/components/ModuleFleEditor/ModuleFleEditor.module.css';
 import styles from './Portfolio.module.css';
 
@@ -211,7 +211,7 @@ export default function PortfolioPanel() {
     const nbCollectives = m.etapes.filter((e) => e.portee === 'collective').length;
     const sections = new Set(m.etapes.map((e) => (e.section ?? '').trim()).filter(Boolean)).size;
     const etiquettes = [
-      `${m.etapes.length} étape${m.etapes.length > 1 ? 's' : ''}`,
+      `${nombreEtapes(m.etapes)} étape${nombreEtapes(m.etapes) > 1 ? 's' : ''}`,
       ...(sections > 0 ? [`${sections} section${sections > 1 ? 's' : ''}`] : []),
       ...(nbRenvois > 0 ? [`${nbRenvois} activité${nbRenvois > 1 ? 's' : ''}`] : []),
       ...(nbCollectives > 0 ? [`${nbCollectives} collective${nbCollectives > 1 ? 's' : ''}`] : []),

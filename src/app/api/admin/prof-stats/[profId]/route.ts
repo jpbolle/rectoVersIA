@@ -38,9 +38,15 @@ export async function GET(
   try {
     // Résoudre email → UID Firebase
     let profUid: string;
+    // La DERNIÈRE CONNEXION (JP, 2026-10-11) : la dernière fois que l'application
+    // a renouvelé son jeton (= dernière utilisation) — à défaut, la dernière
+    // ouverture de session Google
+    let derniereConnexion: string | null = null;
     try {
       const userRecord = await adminAuth.getUserByEmail(profEmail);
       profUid = userRecord.uid;
+      const quand = userRecord.metadata.lastRefreshTime || userRecord.metadata.lastSignInTime;
+      derniereConnexion = quand ? new Date(quand).toISOString() : null;
     } catch {
       // Compte Firebase non encore créé (prof jamais connecté)
       return NextResponse.json({
@@ -50,6 +56,7 @@ export async function GET(
           devoirs: [],
           grilles: [],
           aiStats: { devoirsAvecIA: 0, totalGridIA: 0 },
+          derniereConnexion: null,
         },
       });
     }
@@ -95,7 +102,8 @@ export async function GET(
             ]);
             return {
               id: doc.id,
-              titre: data.titre || 'Sans titre',
+              // Le titre d'une activité est son `intitule` (`titre` : anciens documents)
+              titre: data.intitule || data.titre || 'Sans titre',
               accesIA: data.accesIA ?? false,
               nbSoumis: travauxSnap.data().count,
               nbCorrections: correctionsSnap.data().count,
@@ -130,6 +138,7 @@ export async function GET(
           devoirsAvecIA: nbDevoirsIA,
           totalGridIA: nbGridIA,
         },
+        derniereConnexion,
       },
     });
   } catch (error) {

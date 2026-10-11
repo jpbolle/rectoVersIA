@@ -24,6 +24,8 @@ import HabiletesPicker from '@/components/HabiletesPicker/HabiletesPicker';
 import { atelierParDispositif, findAtelier, reglagesSondage, TYPES_MODAUX } from '@/types/didactique';
 import SequenceFleBuilder from '@/components/SequenceFleBuilder/SequenceFleBuilder';
 import PortfolioBuilder from '@/components/Portfolio/PortfolioBuilder';
+import VersoGroupe from '@/components/VersoGroupe/VersoGroupe';
+import { ressourcesPresentes } from '@/lib/ressources-presentes';
 import { PORTFOLIO_VIDE, type PortfolioContenu } from '@/types/portfolio';
 import ElevesChoix from '@/components/ElevesChoix/ElevesChoix';
 import type { EleveAvecClasse } from '@/components/ElevesChoix/ElevesChoix';
@@ -84,6 +86,11 @@ interface EditDevoirModalProps {
   onSave: (id: string, data: Partial<Devoir>, silencieux?: boolean) => Promise<boolean>;
   isSaving: boolean;
   getAuthHeaders: () => Promise<Record<string, string> | null>;
+  // Activité INTÉGRÉE à un portfolio (ouverte depuis son atelier, JP 2026-10-11) :
+  // ni classes, ni élèves, ni échéance, ni « Disponible » — comme à la création
+  // (`CreationForm dansPortfolio`). Les valeurs déjà enregistrées ne sont pas
+  // touchées (les effacer retirerait les sessions d'une activité déjà donnée)
+  dansPortfolio?: boolean;
 }
 
 export default function EditDevoirModal({
@@ -96,6 +103,7 @@ export default function EditDevoirModal({
   onSave,
   isSaving,
   getAuthHeaders,
+  dansPortfolio = false,
 }: EditDevoirModalProps) {
   // Face affichée (recto : description, verso : ressources)
   const [face, setFace] = useState<FormFace>('recto');
@@ -281,7 +289,23 @@ export default function EditDevoirModal({
   // MES activités (coprofesseur, 2026-10-04). Pas pour une séquence FLE.
   const partageesActivite = classesPartageesPourActivite(toutesMesClasses, classesPartagees);
   const classeNamesFle = toutesMesClasses.filter((c) => estClasseFle(c) && !c.archive).map((c) => c.nom);
-  const aDeuxGroupes = aRessources && aContenus;
+  const aCorrige = typeTravail === 'ecrire' || typeTravail === 'schematiser';
+  const aContenusGroupe = aContenus && typeTravail !== 'ecrire';
+  // Le verso en trois groupes à case à cocher (2026-10-11). `null` = par défaut :
+  // ressources et corrigé ouverts s'ils sont remplis, contenus ouverts
+  const [voir, setVoir] = useState<{ ressources: boolean | null; corrige: boolean | null; contenus: boolean | null }>({
+    ressources: null,
+    corrige: null,
+    contenus: null,
+  });
+  const ressourcesRemplies = ressourcesPresentes(ressources);
+  const corrigeRempli =
+    typeTravail === 'schematiser'
+      ? !!schemaCorrige
+      : !!profProduction.trim() || !!profTheme.trim() || planHasContent(profDraft.plan);
+  const voirRessources = voir.ressources ?? ressourcesRemplies;
+  const voirCorrige = voir.corrige ?? corrigeRempli;
+  const voirContenus = voir.contenus ?? true;
   const grillesDeLAtelier = grilles.length
     ? grilles.filter((g) => !g.ateliers.length || g.ateliers.includes(atelierId)).map((g) => g.name)
     : grilleTypes;
@@ -498,11 +522,13 @@ export default function EditDevoirModal({
   // ni habiletés, ni « Disponible » — la séquence qui la contient porte tout
   // cela. Le serveur ignore d'ailleurs ces champs pour elle (PATCH).
   const estFle = devoir?.referentiel === 'fle';
+  // Sans classe : activité FLE, ou intégrée à un portfolio
+  const sansClasse = estFle || dansPortfolio;
 
   // ── Recto : description de l'activité ──
   const renderRecto = () => (
     <>
-      {!estFle && (
+      {!sansClasse && (
         <>
           {/* Classes */}
           <div className={styles.formGroup}>
@@ -672,7 +698,7 @@ export default function EditDevoirModal({
           />
         </div>
 
-        {!estFle && (
+        {!sansClasse && (
           <div className={styles.formGroup}>
             <DatePicker
               /* « Échéance » et non « date de remise » : la date est facultative
@@ -733,6 +759,8 @@ export default function EditDevoirModal({
 
       {/* Toggles */}
       <div className={styles.toggleSection}>
+        {/* Pas d'« Accès IA » pour un portfolio : le statut IA se règle par étape */}
+        {typeTravail !== 'portfolio' && (
         <div className={styles.toggleGroup}>
           <Toggle
             checked={accesIA}
@@ -742,7 +770,8 @@ export default function EditDevoirModal({
             disabled={isSaving}
           />
         </div>
-        {!estFle && (
+        )}
+        {!sansClasse && (
           <div className={styles.toggleGroup}>
             <Toggle
               checked={disponible}
@@ -768,19 +797,17 @@ export default function EditDevoirModal({
         </span>
       </div>
 
+      {/* LE VERSO EN TROIS GROUPES À CASE À COCHER (JP, 2026-10-11) — même
+          règle qu'à la création (`VersoGroupe`) */}
       {aRessources && (
-        <>
-          {/* Les intertitres n'existent que pour SÉPARER les deux groupes.
-              Quand un seul est affiché, « Contenus de l'activité » se répétait
-              mot pour mot sous le titre du verso, dans deux styles différents. */}
-          {aDeuxGroupes && (
-            <div className={styles.versoGroup}>
-              <h4 className={styles.versoGroupTitle}>Ressources pour l’élève</h4>
-              <p className={styles.versoGroupHint}>
-                Visibles par l’élève dans l’onglet «&nbsp;Ressources&nbsp;» de sa colonne de droite.
-              </p>
-            </div>
-          )}
+        <VersoGroupe
+          titre="Ressources pour l’élève"
+          aide="Visibles par l’élève dans l’onglet « Ressources » de sa colonne de droite."
+          ouvert={voirRessources}
+          onBascule={(v) => setVoir((x) => ({ ...x, ressources: v }))}
+          rempli={ressourcesRemplies}
+          disabled={isSaving}
+        >
           <div className={styles.versoSection}>
             <div className={styles.versoSectionHeader}>
               <h3 className={styles.versoSectionTitle}>{ressourceLabel}</h3>
@@ -792,45 +819,22 @@ export default function EditDevoirModal({
               disabled={isSaving}
             />
           </div>
-        </>
+        </VersoGroupe>
       )}
 
-      {aContenus && aDeuxGroupes && (
-        <div className={styles.versoGroup}>
-          <h4 className={styles.versoGroupTitle}>
-            Contenus de l’activité
-            <span
-              className={styles.versoGroupInfo}
-              title={
-                typeTravail === 'ecrire'
-                  ? 'Corrigé de référence : transmis à l’IA selon les interrupteurs « Corrigé IA » ; seule la production est montrée à l’élève, quand le corrigé est disponible.'
-                  : typeTravail === 'lire'
-                    ? 'Le questionnaire de lecture : rempli par l’élève dans sa colonne de gauche. QCM corrigés automatiquement, le reste par vous. Les compétences cochées alimenteront le profil de lecteur.'
-                    : typeTravail === 'sequence'
-                      ? 'Les modules du parcours, dans l’ordre où l’élève les fera. Les élèves qui suivent la séquence se choisissent au recto.'
-                    : typeTravail === 'portfolio'
-                      ? 'Les étapes du portfolio, dans l’ordre où l’élève les fera. Un clic sur une étape règle son échéance, son statut IA, sa portée et son verrou.'
-                    : typeTravail === 'schematiser'
-                      ? 'Le point de départ du schéma : le concept central apparaît dans le canevas de l’élève, les autres concepts l’attendent dans l’onglet « À placer », sous son schéma.'
-                    : 'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'
-              }
-            >
-              i
-            </span>
-          </h4>
-        </div>
-      )}
-
-      {/* Atelier de conceptualisation : le point de départ du schéma (2026-10-11) */}
-      {typeTravail === 'schematiser' && (
-        <div className={styles.versoSection}>
-          <div className={styles.versoSectionHeader}>
-            <h3 className={styles.versoSectionTitle}>🧩 Point de départ du schéma</h3>
-          </div>
-          <SchemaDepartInput valeur={schemaDepart} onChange={setSchemaDepart} disabled={isSaving} />
-        </div>
-      )}
-
+      {aCorrige && (
+        <VersoGroupe
+          titre="Corrigé de l’activité"
+          info={
+            typeTravail === 'ecrire'
+              ? 'Corrigé de référence : transmis à l’IA selon les interrupteurs « Corrigé IA » ; seule la production est montrée à l’élève, quand le corrigé est disponible.'
+              : 'Le schéma corrigé : comparé à la copie de l’élève (pastilles, aide IA) ; montré à l’élève quand sa copie lui est rendue comme corrigé.'
+          }
+          ouvert={voirCorrige}
+          onBascule={(v) => setVoir((x) => ({ ...x, corrige: v }))}
+          rempli={corrigeRempli}
+          disabled={isSaving}
+        >
       {/* Atelier de conceptualisation : le corrigé du prof (2026-10-11) */}
       {typeTravail === 'schematiser' && (
         <div className={styles.versoSection}>
@@ -843,62 +847,6 @@ export default function EditDevoirModal({
             <p className={styles.modeNote}>Le corrigé se choisit depuis Mes Ressources › Conceptualisations.</p>
           )}
         </div>
-      )}
-
-      {/* Séquence FLE (type sequence) : élèves choisis + modules du parcours */}
-      {isSequence && (
-        <SequenceFleBuilder
-          value={sequenceFle}
-          onChange={setSequenceFle}
-          elevesDeLaSequence={eleves === null ? elevesDesClasses : elevesDesClasses.filter((e) => eleves.includes(e.id))}
-          plusieursClasses={selectedClasses.length > 1}
-          disabled={isSaving}
-        />
-      )}
-
-      {/* Portfolio d'apprentissage : ses étapes */}
-      {typeTravail === 'portfolio' && (
-        <PortfolioBuilder
-          etapes={portfolio?.etapes ?? []}
-          onChange={(etapes) => setPortfolio({ ...(portfolio ?? PORTFOLIO_VIDE), etapes })}
-          disabled={isSaving}
-          tacheFinale={portfolio?.tacheFinale}
-        />
-      )}
-
-      {/* Questionnaire d'auto-évaluation (type autoevaluation) */}
-      {typeTravail === 'autoevaluation' && (
-        <AutoEvalBuilder
-          quiz={autoEvalQuiz}
-          onChange={setAutoEvalQuiz}
-          disabled={isSaving}
-          allowedHabiletes={habiletes}
-          reglages={sondageReglages}
-          onReglagesChange={(r) => {
-            if (r.anonyme !== sondageReglages.anonyme) setModePrincipal(r.anonyme ? 'parler' : 'reflexif');
-            setSondageReglages(r);
-          }}
-        />
-      )}
-
-      {/* Questionnaire de lecture (type lire) — sauf lecture d'une œuvre, dont
-          les vérifications se construisent section par section dans l'œuvre */}
-      {typeTravail === 'lire' && !isOeuvre && (
-        <LectureQuizBuilder
-          value={lectureQuiz}
-          onChange={setLectureQuiz}
-          disabled={isSaving}
-          getAuthHeaders={getAuthHeaders}
-          allowedHabiletes={habiletes}
-          mode={lectureMode}
-          onModeChange={setLectureMode}
-          hiddenQuestions={hiddenQuestions}
-          onToggleHidden={(id) =>
-            setHiddenQuestions((h) =>
-              h.includes(id) ? h.filter((x) => x !== id) : [...h, id]
-            )
-          }
-        />
       )}
 
       {/* Corrigé de référence (type ecrire uniquement) */}
@@ -944,6 +892,94 @@ export default function EditDevoirModal({
         </>
       )}
 
+        </VersoGroupe>
+      )}
+
+      {aContenusGroupe && (
+        <VersoGroupe
+          titre="Contenus de l’activité"
+          info={
+            typeTravail === 'lire'
+                    ? 'Le questionnaire de lecture : rempli par l’élève dans sa colonne de gauche. QCM corrigés automatiquement, le reste par vous. Les compétences cochées alimenteront le profil de lecteur.'
+                    : typeTravail === 'sequence'
+                      ? 'Les modules du parcours, dans l’ordre où l’élève les fera. Les élèves qui suivent la séquence se choisissent au recto.'
+                    : typeTravail === 'portfolio'
+                      ? 'Les étapes du portfolio, dans l’ordre où l’élève les fera. Un clic sur une étape règle son échéance, son statut IA, sa portée et son verrou.'
+                    : typeTravail === 'schematiser'
+                      ? 'Le point de départ du schéma : le concept central apparaît dans le canevas de l’élève, les autres concepts l’attendent dans l’onglet « À placer », sous son schéma.'
+                    : 'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'
+          }
+          ouvert={voirContenus}
+          onBascule={(v) => setVoir((x) => ({ ...x, contenus: v }))}
+          disabled={isSaving}
+        >
+      {/* Atelier de conceptualisation : le point de départ du schéma (2026-10-11) */}
+      {typeTravail === 'schematiser' && (
+        <div className={styles.versoSection}>
+          <div className={styles.versoSectionHeader}>
+            <h3 className={styles.versoSectionTitle}>🧩 Point de départ du schéma</h3>
+          </div>
+          <SchemaDepartInput valeur={schemaDepart} onChange={setSchemaDepart} disabled={isSaving} />
+        </div>
+      )}
+
+      {/* Séquence FLE (type sequence) : élèves choisis + modules du parcours */}
+      {isSequence && (
+        <SequenceFleBuilder
+          value={sequenceFle}
+          onChange={setSequenceFle}
+          elevesDeLaSequence={eleves === null ? elevesDesClasses : elevesDesClasses.filter((e) => eleves.includes(e.id))}
+          plusieursClasses={selectedClasses.length > 1}
+          disabled={isSaving}
+        />
+      )}
+
+      {/* Portfolio d'apprentissage : ses étapes */}
+      {typeTravail === 'portfolio' && (
+        <PortfolioBuilder
+          etapes={portfolio?.etapes ?? []}
+          onChange={(etapes) => setPortfolio({ ...(portfolio ?? PORTFOLIO_VIDE), etapes })}
+          disabled={isSaving}
+          tacheFinale={portfolio?.tacheFinale}
+          titrePortfolio={intitule}
+        />
+      )}
+
+      {/* Questionnaire d'auto-évaluation (type autoevaluation) */}
+      {typeTravail === 'autoevaluation' && (
+        <AutoEvalBuilder
+          quiz={autoEvalQuiz}
+          onChange={setAutoEvalQuiz}
+          disabled={isSaving}
+          allowedHabiletes={habiletes}
+          reglages={sondageReglages}
+          onReglagesChange={(r) => {
+            if (r.anonyme !== sondageReglages.anonyme) setModePrincipal(r.anonyme ? 'parler' : 'reflexif');
+            setSondageReglages(r);
+          }}
+        />
+      )}
+
+      {/* Questionnaire de lecture (type lire) — sauf lecture d'une œuvre, dont
+          les vérifications se construisent section par section dans l'œuvre */}
+      {typeTravail === 'lire' && !isOeuvre && (
+        <LectureQuizBuilder
+          value={lectureQuiz}
+          onChange={setLectureQuiz}
+          disabled={isSaving}
+          getAuthHeaders={getAuthHeaders}
+          allowedHabiletes={habiletes}
+          mode={lectureMode}
+          onModeChange={setLectureMode}
+          hiddenQuestions={hiddenQuestions}
+          onToggleHidden={(id) =>
+            setHiddenQuestions((h) =>
+              h.includes(id) ? h.filter((x) => x !== id) : [...h, id]
+            )
+          }
+        />
+      )}
+
       {/* Questionnaire NavigKid (type rechercher) */}
       {typeTravail === 'rechercher' && (
         <div className={styles.versoSection}>
@@ -966,6 +1002,9 @@ export default function EditDevoirModal({
             👁 Aperçu du questionnaire — tel que l’élève le lira dans NavigKid!
           </button>
         </div>
+      )}
+
+        </VersoGroupe>
       )}
 
       {showQuestionnairePreview && (

@@ -13,10 +13,16 @@
 // Deux formes : `AtelierChoiceGrid` (la grille seule, à poser dans une popup
 // déjà ouverte — cf. ModuleActivitesModal) et `AtelierChoiceModal` (la grille
 // dans sa propre popup centrée, fond assombri).
+//
+// Gestion de l'affichage (2026-10-11) : un atelier MASQUÉ par l'admin reste
+// dans la grille, grisé et non cliquable (« Bientôt disponible » ou la note) ;
+// « en test » porte un badge.
 
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ATELIERS } from '@/types/didactique';
+import { useAffichage } from '@/hooks/useAffichage';
+import AffichageBadge from '@/components/AffichageBadge/AffichageBadge';
 import AtelierPicto from './AtelierPicto';
 import styles from './AtelierChoiceModal.module.css';
 
@@ -31,23 +37,36 @@ interface AtelierChoiceGridProps {
 
 export function AtelierChoiceGrid({ onChoose }: AtelierChoiceGridProps) {
   const ateliers = ATELIERS.filter((a) => a.dispositif !== 'sequence');
+  const { vue } = useAffichage();
   return (
     <div className={styles.grid}>
-      {ateliers.map((a) => (
+      {ateliers.map((a) => {
+        const v = vue(`atelier:${a.id}`);
+        return (
         <button
           key={a.id}
           type="button"
-          className={styles.carte}
-          onClick={() => onChoose(a.id)}
+          className={`${styles.carte} ${v.bloque ? styles.carteBloquee : ''}`}
+          onClick={() => !v.bloque && onChoose(a.id)}
+          disabled={v.bloque}
+          aria-disabled={v.bloque}
+          title={v.bloque ? v.note : undefined}
           data-atelier={a.id}
         >
+          {(v.enTest || v.masqueAuxProfs) && (
+            <span className={styles.badgeAffichage}>
+              <AffichageBadge vue={v} />
+            </span>
+          )}
+          {v.bloque && <span className={styles.bientot}>{v.note}</span>}
           <span className={styles.picto}>
             <AtelierPicto atelierId={a.id} />
           </span>
           <span className={styles.titre}>{a.label}</span>
           <span className={styles.desc}>{a.description}</span>
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 }

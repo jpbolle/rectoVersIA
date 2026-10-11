@@ -42,6 +42,9 @@ interface Props<T> {
   // Ce vers quoi la ligne mène, posé après le dernier « + » (la tâche finale
   // d'un portfolio). Même largeur qu'un encadré : la géométrie ne change pas.
   fin?: ReactNode;
+  // Le PREMIER élément est fixe (l'introduction d'un portfolio, 2026-10-11) :
+  // pas de « + » avant lui, il ne se déplace pas, rien ne prend sa place
+  debutFixe?: boolean;
   // Texte sous le début de ligne quand il n'y a encore rien
   aideDepart: string;
   aideVide?: string;
@@ -54,6 +57,7 @@ export default function Serpentin<T>({
   onPlus,
   onDeplacer,
   fin,
+  debutFixe = false,
   aideDepart,
   aideVide = 'Aucune étape.',
 }: Props<T>) {
@@ -130,7 +134,7 @@ export default function Serpentin<T>({
       : {};
 
   const rendrePlus = (index: number) =>
-    onPlus ? (
+    onPlus && !(debutFixe && index === 0) ? (
       <button
         key={`p${index}`}
         type="button"
@@ -148,7 +152,7 @@ export default function Serpentin<T>({
     );
 
   const rendreEncadre = (item: T, index: number) =>
-    onDeplacer ? (
+    onDeplacer && !(debutFixe && index === 0) ? (
       <div
         key={cle(item)}
         className={`${styles.glissable} ${attrape === index ? styles.glisse : ''} ${

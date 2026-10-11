@@ -13,6 +13,11 @@
 // Un RENVOI n'a ni consigne ni dépôt ici — ils sont dans l'activité — mais
 // garde section, objectifs, échéance et IA.
 //
+// L'INTRODUCTION (2026-10-11) : la même popup, réduite à ce qu'une page
+// d'information porte — titre, image de couverture, objectifs, informations
+// générales (UAA évaluées, planification…), ressources. Ni section, ni dépôt,
+// ni échéance, ni verrou : elle est faite dès que l'élève l'ouvre.
+//
 // Popup de l'application (jamais `prompt()` / `confirm()`), sur le gabarit
 // des popups de l'éditeur FLE (`ModuleFleEditor.module.css`).
 
@@ -42,9 +47,11 @@ import {
   type GenreValeur,
   type ValeurDeclaree,
   type ValidationEtape,
+  nettoyerIntroduction,
 } from '@/types/portfolio';
 import base from '@/components/ModuleFleEditor/ModuleFleEditor.module.css';
 import IaPicto from './IaPicto';
+import PortfolioCouverture from './PortfolioCouverture';
 import styles from './Portfolio.module.css';
 
 interface Props {
@@ -63,6 +70,8 @@ interface Props {
   // Les valeurs attribuées par les étapes PRÉCÉDENTES (« Le sketch »), que
   // celle-ci peut afficher
   valeursDisponibles?: (ValeurDeclaree & { etapeTitre: string })[];
+  // Introduction : le titre du portfolio, montré dans le cercle sans image
+  titrePortfolio?: string;
   disabled?: boolean;
 }
 
@@ -90,6 +99,7 @@ export default function EtapePortfolioModal({
   onOuvrirActivite,
   onCreerActivite,
   valeursDisponibles = [],
+  titrePortfolio,
   disabled = false,
 }: Props) {
   const { getAuthHeaders } = useAuth();
@@ -99,7 +109,8 @@ export default function EtapePortfolioModal({
     depots: etape.depots ?? [],
   });
   const poser = (patch: Partial<PortfolioEtape>) => setBrouillon((b) => ({ ...b, ...patch }));
-  const renvoi = brouillon.nature === 'activite';
+  const intro = brouillon.introduction === true;
+  const renvoi = !intro && brouillon.nature === 'activite';
   const depots = brouillon.depots ?? [];
 
   // Le choix d'une activité : la liste de Mes Activités, chargée à la demande
@@ -174,11 +185,25 @@ export default function EtapePortfolioModal({
   const enregistrer = () => {
     const titre = brouillon.titre.trim();
     if (!titre) return;
+    if (intro) {
+      onSave(
+        nettoyerIntroduction({
+          ...brouillon,
+          titre,
+          section: '',
+          objectifs: (brouillon.objectifs ?? []).map((o) => o.trim()).filter(Boolean),
+          echeance: null,
+          ia: null,
+        })
+      );
+      return;
+    }
     onSave({
       ...brouillon,
       titre,
       section: (brouillon.section ?? '').trim(),
       objectifs: (brouillon.objectifs ?? []).map((o) => o.trim()).filter(Boolean),
+      iaPrecision: brouillon.ia === 'partielle' ? (brouillon.iaPrecision ?? '').trim() : '',
       // Une valeur sans nom n'est pas enregistrée
       validation: brouillon.validation
         ? { ...brouillon.validation, attribue: brouillon.validation.attribue.filter((v) => v.nom.trim()) }
@@ -198,13 +223,29 @@ export default function EtapePortfolioModal({
     <div className={base.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`${base.popup} ${styles.popupLarge}`}>
         <header className={base.popupEntete}>
-          <h3>Étape du portfolio</h3>
+          <h3>{intro ? 'Introduction du portfolio' : 'Étape du portfolio'}</h3>
           <button type="button" className={base.popupFermer} onClick={onClose} aria-label="Fermer">
             ✕
           </button>
         </header>
         <div className={base.popupCorps}>
-          <div className={styles.deuxColonnes}>
+          {intro && (
+            <>
+              <label className={styles.lab}>
+                Image de couverture <span className={styles.labNote}>— le cercle en tête du serpentin et de la page de l’élève</span>
+              </label>
+              <PortfolioCouverture
+                valeur={brouillon.couverture}
+                onChange={(id) => poser({ couverture: id })}
+                cadrage={brouillon.couvertureCadrage}
+                onCadrage={(cadrage) => poser({ couvertureCadrage: cadrage })}
+                titrePortfolio={titrePortfolio}
+                disabled={disabled}
+              />
+            </>
+          )}
+          <div className={intro ? undefined : styles.deuxColonnes}>
+            {!intro && (
             <div>
               <label className={styles.lab} htmlFor="etp-section">Section</label>
               <input
@@ -223,6 +264,7 @@ export default function EtapePortfolioModal({
               </datalist>
               <p className={styles.hint}>Les étapes qui portent la même section se regroupent dans le sommaire de l’élève.</p>
             </div>
+            )}
             <div>
               <label className={styles.lab} htmlFor="etp-titre">{renvoi ? 'Titre de l’étape dans le portfolio' : 'Titre de l’étape'}</label>
               <input
@@ -230,7 +272,7 @@ export default function EtapePortfolioModal({
                 className={styles.input}
                 value={brouillon.titre}
                 onChange={(e) => poser({ titre: e.target.value })}
-                placeholder="2.2 Mon personnage"
+                placeholder={intro ? 'Introduction' : '2.2 Mon personnage'}
                 disabled={disabled}
                 autoFocus
               />
@@ -238,6 +280,8 @@ export default function EtapePortfolioModal({
           </div>
 
           {/* Le choix structurant de l’étape, juste après section et titre (JP, 2026-10-11) */}
+          {!intro && (
+          <>
           <label className={styles.lab}>Ce que l’élève fait dans cette étape</label>
           <div className={styles.seg} role="radiogroup" aria-label="Ce que l’élève fait">
             <button type="button" className={!renvoi ? styles.segActif : ''} onClick={passerAuxDepots} disabled={disabled}>
@@ -247,6 +291,8 @@ export default function EtapePortfolioModal({
               🎯 Une activité de Mes Activités
             </button>
           </div>
+          </>
+          )}
 
           {renvoi && !choixActivite && brouillon.devoirId && (
             <div className={styles.renvoiBloc}>
@@ -325,7 +371,16 @@ export default function EtapePortfolioModal({
           {!renvoi && (
             <>
               <label className={styles.lab}>
-                Consigne de l’étape <span className={styles.labNote}>— la liste des tâches que l’élève coche au fil du travail</span>
+                {intro ? (
+                  <>
+                    Informations générales{' '}
+                    <span className={styles.labNote}>— UAA évaluées, planification, déroulement… (lues par l’élève, rien à cocher)</span>
+                  </>
+                ) : (
+                  <>
+                    Consigne de l’étape <span className={styles.labNote}>— la liste des tâches que l’élève coche au fil du travail</span>
+                  </>
+                )}
               </label>
               <ConsignesEditor
                 value={brouillon.consigne ?? ''}
@@ -335,6 +390,8 @@ export default function EtapePortfolioModal({
             </>
           )}
 
+          {!intro && (
+          <>
           <div className={styles.deuxColonnes}>
             <div>
               <label className={styles.lab} htmlFor="etp-echeance">Échéance</label>
@@ -365,6 +422,24 @@ export default function EtapePortfolioModal({
                   </button>
                 ))}
               </div>
+              {/* « Aide de l'IA » : préciser COMMENT (lu par l'élève au survol de la carte IA) */}
+              {brouillon.ia === 'partielle' && (
+                <>
+                  <label className={styles.lab} htmlFor="etp-ia-precision">
+                    Comment l’élève peut utiliser l’IA <span className={styles.labNote}>— au survol de la carte IA, chez l’élève</span>
+                  </label>
+                  <textarea
+                    id="etp-ia-precision"
+                    className={styles.input}
+                    rows={2}
+                    maxLength={500}
+                    value={brouillon.iaPrecision ?? ''}
+                    onChange={(e) => poser({ iaPrecision: e.target.value })}
+                    placeholder="Ex. : pour reformuler une phrase ou vérifier l’orthographe, pas pour écrire ta réplique"
+                    disabled={disabled}
+                  />
+                </>
+              )}
             </div>
           </div>
 
@@ -405,8 +480,10 @@ export default function EtapePortfolioModal({
               </label>
             </div>
           </div>
+          </>
+          )}
 
-          {!renvoi && (
+          {!renvoi && !intro && (
             <>
               <p className={styles.hint}>Aucun dépôt = étape sans trace, cochée par l’élève lui-même.</p>
               {depots.map((d, i) => {
@@ -686,7 +763,11 @@ export default function EtapePortfolioModal({
         </div>
         <footer className={base.popupPied}>
           <span className={base.popupNote}>
-            {renvoi ? 'Les réglages de l’activité elle-même se font dans sa popup ✏️.' : 'Sans titre, l’étape n’est pas enregistrée.'}
+            {intro
+              ? 'La première page du portfolio : faite dès que l’élève l’ouvre.'
+              : renvoi
+                ? 'Les réglages de l’activité elle-même se font dans sa popup ✏️.'
+                : 'Sans titre, l’étape n’est pas enregistrée.'}
           </span>
           <button type="button" className={base.btnGhost} onClick={onClose}>
             Annuler

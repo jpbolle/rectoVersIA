@@ -6,11 +6,13 @@ import { useRouter } from 'next/navigation';
 import UserAvatar from '@/components/UserAvatar';
 import NotificationBell from '@/components/NotificationBell/NotificationBell';
 import { useEspace } from '@/context/EspaceContext';
+import { useAffichage } from '@/hooks/useAffichage';
+import AffichageBadge from '@/components/AffichageBadge/AffichageBadge';
 import type { Espace } from '@/context/EspaceContext';
 import styles from './Header.module.css';
 
 // Onglets de la page /admin, pilotés par le header (variant admin)
-export type AdminHeaderTab = 'vue' | 'membres' | 'didactique' | 'couts';
+export type AdminHeaderTab = 'vue' | 'membres' | 'didactique' | 'affichage' | 'couts';
 
 // DEUX ESPACES (JP, 2026-10-08) : classique et FLE, choisis par un double
 // bouton ambre à côté de la cloche. Le prof a toujours ce bouton ; l'élève ne
@@ -38,6 +40,7 @@ export const ADMIN_TABS: { key: AdminHeaderTab; label: string }[] = [
   { key: 'vue', label: 'Vue d’ensemble' },
   { key: 'membres', label: 'Gestion des membres' },
   { key: 'didactique', label: 'Gestion didactique' },
+  { key: 'affichage', label: 'Gestion de l’affichage' },
   { key: 'couts', label: 'Gestion des coûts' },
 ];
 
@@ -97,6 +100,11 @@ export default function Header({
   // Pour l'élève, l'espace courant se lit aussi dans le header qu'on lui sert
   const espaceEleve: Espace = variant === 'fle' ? 'fle' : 'classique';
   const espaceAffiche: Espace = estProf ? espace : espaceEleve;
+  // Gestion de l'affichage : l'espace FLE masqué → plus de bascule… sauf pour
+  // qui s'y trouve encore (il doit pouvoir en revenir)
+  const { vue: vueAffichage } = useAffichage();
+  const vFle = vueAffichage('outil:espace-fle');
+  const basculeMasquee = vFle.bloque && espaceAffiche === 'classique';
   const avecBascule = estProf || variant === 'fle' || (variant === 'student' && !!avecCoursFle);
 
   const basculer = (e: Espace) => {
@@ -214,7 +222,7 @@ export default function Header({
       </div>
 
       <div className={styles.headerActions}>
-        {avecBascule && (estProf || estEleve) && (
+        {avecBascule && (estProf || estEleve) && !basculeMasquee && (
           <div className={styles.espaces} role="tablist" aria-label="Espace de travail">
             <button
               type="button"
@@ -233,6 +241,7 @@ export default function Header({
               onClick={() => basculer('fle')}
             >
               Espace FLE
+              <AffichageBadge vue={vFle} compact />
             </button>
           </div>
         )}

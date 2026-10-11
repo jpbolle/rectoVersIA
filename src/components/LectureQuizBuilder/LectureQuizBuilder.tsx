@@ -38,6 +38,7 @@ import {
   EditeurMatrice,
   EditeurOrdre,
 } from './TypeEditors';
+import { useAffichage } from '@/hooks/useAffichage';
 import styles from './LectureQuizBuilder.module.css';
 import { focaliserChamp, insererChoix } from '@/lib/choix-liste';
 
@@ -164,6 +165,8 @@ export function LectureModeRow({
   /** Absent quand le questionnaire vient de la bibliothèque : on ne l'a pas ici */
   totalPoints?: number;
 }) {
+  const { vue: vueAffichage } = useAffichage();
+  const competitionMasquee = vueAffichage('outil:competition').bloque;
   const opt = (
     valeur: LectureQuizMode,
     label: string,
@@ -196,7 +199,9 @@ export function LectureModeRow({
         '🎯 Quiz',
         'Une question à la fois, navigation ‹ › et barre de progression. Remise unique à la fin.'
       )}
-      {opt(
+      {/* Gestion de l'affichage : la compétition masquée n'est plus proposée
+          (sauf si ce questionnaire l'est déjà) */}
+      {(mode === 'competition' || !competitionMasquee) && opt(
         'competition',
         '🏁 Compétition',
         "C'est VOUS qui lancez les questions, une à une : toute la classe les reçoit au même instant, sous chrono. Podium et score de rapidité. Formatif — jamais une cote."

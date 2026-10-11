@@ -18,6 +18,9 @@ import {
   aUnDepotGroupe,
   estEtapeSansTrace,
   GROUPE_STATUT_LABELS,
+  groupeSolo,
+  nombreEtapes,
+  numeroEtape,
   sectionsDuPortfolio,
   STATUT_IA_LABELS,
   TYPE_DEPOT_LABELS,
@@ -88,7 +91,7 @@ export default function PortfolioLecture({ devoirId, travail, getAuthHeaders }: 
   const contenu = { ...lireContenuEleve(travail.content), groupeStatut: groupe?.statut ?? null, suivi };
   const etapes = parcours.etapes;
   const sections = sectionsDuPortfolio(etapes);
-  const nbFaites = etapes.filter((e) => faite(e, contenu)).length;
+  const nbFaites = etapes.filter((e) => !e.introduction && faite(e, contenu)).length;
 
   const decider = async (action: 'accepter' | 'refuser' | 'annuler') => {
     if (!groupe) return;
@@ -116,13 +119,13 @@ export default function PortfolioLecture({ devoirId, travail, getAuthHeaders }: 
   return (
     <div className={styles.lecture}>
       <div className={styles.lectureCompteur}>
-        {nbFaites} étape{nbFaites > 1 ? 's' : ''} faite{nbFaites > 1 ? 's' : ''} sur {etapes.length}
+        {nbFaites} étape{nbFaites > 1 ? 's' : ''} faite{nbFaites > 1 ? 's' : ''} sur {nombreEtapes(etapes)}
         {parcours.tacheFinale && <span> · Tâche finale : {parcours.tacheFinale}</span>}
       </div>
 
       {aUnDepotGroupe(etapes) && (
         <div className={styles.lectureGroupe}>
-          <h3 className={styles.lectureH3}>👥 Groupe de l’élève</h3>
+          <h3 className={styles.lectureH3}>{groupe && groupeSolo(groupe) ? '🙋 L’élève travaille seul' : '👥 Groupe de l’élève'}</h3>
           {!groupe ? (
             <p className={styles.depotAide}>Aucun groupe déclaré pour l’instant.</p>
           ) : (
@@ -147,7 +150,7 @@ export default function PortfolioLecture({ devoirId, travail, getAuthHeaders }: 
               <div className={styles.groupeActions}>
                 {groupe.statut !== 'accepte' && (
                   <button type="button" className={styles.btn} disabled={envoi} onClick={() => decider('accepter')}>
-                    Accepter le groupe
+                    {groupeSolo(groupe) ? 'Accepter le travail seul' : 'Accepter le groupe'}
                   </button>
                 )}
                 {groupe.statut === 'attente' && !refusEnCours && (
@@ -172,7 +175,7 @@ export default function PortfolioLecture({ devoirId, travail, getAuthHeaders }: 
                   />
                   <div className={styles.groupeActions}>
                     <button type="button" className={styles.btnNon} disabled={envoi} onClick={() => decider('refuser')}>
-                      Refuser le groupe
+                      {groupeSolo(groupe) ? 'Refuser le travail seul' : 'Refuser le groupe'}
                     </button>
                     <button type="button" className={styles.btnGhost} onClick={() => setRefusEnCours(false)}>
                       Annuler
@@ -197,7 +200,7 @@ export default function PortfolioLecture({ devoirId, travail, getAuthHeaders }: 
             return (
               <article key={e.id} className={`${styles.lectureEtape} ${estFaite ? styles.lectureEtapeFaite : ''}`}>
                 <header className={styles.lectureEtapeTete}>
-                  <span className={styles.lectureNum}>{i + 1}</span>
+                  <span className={styles.lectureNum}>{numeroEtape(etapes, i) ?? '◎'}</span>
                   <span className={styles.lectureTitre}>{e.titre}</span>
                   <span className={`${styles.lectureEtat} ${estFaite ? styles.lectureEtatOk : estFermee ? styles.lectureEtatFerme : enCours(e, contenu) ? styles.lectureEtatCours : ''}`}>
                     {estFaite ? '✓ faite' : estFermee ? '🔒 fermée' : enCours(e, contenu) ? 'en cours' : 'à faire'}
@@ -219,7 +222,8 @@ export default function PortfolioLecture({ devoirId, travail, getAuthHeaders }: 
                     {e.etatRenvoi === 'fait' ? 'remise' : e.etatRenvoi === 'en-cours' ? 'en cours' : 'pas commencée'}.
                   </p>
                 )}
-                {sansTrace && <p className={styles.lectureRenvoi}>Étape sans trace — {contenu.cochees.includes(e.id) ? 'cochée par l’élève' : 'pas encore cochée'}.</p>}
+                {sansTrace && !e.introduction && <p className={styles.lectureRenvoi}>Étape sans trace — {contenu.cochees.includes(e.id) ? 'cochée par l’élève' : 'pas encore cochée'}.</p>}
+                {e.introduction && <p className={styles.lectureRenvoi}>Introduction — {contenu.cochees.includes(e.id) ? 'ouverte par l’élève' : 'pas encore ouverte'}.</p>}
                 {!renvoi &&
                   (e.depots ?? []).map((d) => {
                     const types = typesDuDepot(d);

@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { useAffichage } from '@/hooks/useAffichage';
 import { useEspace } from '@/context/EspaceContext';
 import AccueilProf from '@/components/AccueilProf/AccueilProf';
 import { aUneClasseFle, espaceFleSeulement, useStudentClasses } from '@/hooks/useStudentClasses';
@@ -59,6 +60,9 @@ function LigneActivite({ item, retard }: { item: ActiviteAccueil; retard: boolea
 
 export default function AccueilPage() {
   const { isAuthenticated, isLoading: authLoading, role, getAuthHeaders } = useAuth();
+  // Gestion de l'affichage : la roue disparaît si elle — ou les ceintures — est masquée
+  const { vue: vueAffichage } = useAffichage();
+  const roueMasquee = vueAffichage('outil:roue').bloque || vueAffichage('outil:ceintures').bloque;
   const router = useRouter();
   const { classes, isLoading: classesLoading } = useStudentClasses();
   const { espace, pret: espacePret } = useEspace();
@@ -209,7 +213,7 @@ export default function AccueilPage() {
                 l'entrée dans le parcours, aucune branche n'est vide, et c'est
                 au premier jour qu'elle est le plus utile : elle annonce l'année
                 à venir. */}
-            {data && data.roue.length > 0 && (
+            {data && data.roue.length > 0 && !roueMasquee && (
               <section className={styles.roue}>
                 <div className={styles.roueHead}>
                   <h2 className={styles.roueTitre}>Mes ceintures par UAA</h2>

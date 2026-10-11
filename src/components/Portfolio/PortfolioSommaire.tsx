@@ -18,7 +18,7 @@ import { useState } from 'react';
 import type { PortfolioEleve } from '@/hooks/usePortfolioEleve';
 import { decouperConsignes } from '@/lib/consignes-etapes';
 import { avancement, echeanceLisible, enCours, enRetard, etatEtape, faite, fermee } from '@/lib/portfolio-etat';
-import { estEtapeSansTrace, sectionsDuPortfolio } from '@/types/portfolio';
+import { estEtapeSansTrace, sectionsDuPortfolio, styleCouverture, urlCouverture } from '@/types/portfolio';
 import styles from './Portfolio.module.css';
 
 interface Props {
@@ -98,11 +98,12 @@ export default function PortfolioSommaire({ eleve, lectureSeule = false }: Props
                 const estFaite = faite(e, contenu);
                 const estFermee = fermee(etapes, i, contenu);
                 const courante = etape?.id === e.id;
-                const sansTrace = estEtapeSansTrace(e);
+                const intro = e.introduction === true;
+                const sansTrace = estEtapeSansTrace(e) && !intro;
                 const retard = enRetard(e, contenu);
                 // Le retour du prof (2026-10-10) : ✓ validée, ✗ à reprendre, 💬 commentaire
                 const retour = contenu.suivi?.retours[e.id];
-                const etat = sansTrace ? null : etatEtape(e, contenu);
+                const etat = sansTrace || intro ? null : etatEtape(e, contenu);
                 return (
                   <div
                     key={e.id}
@@ -110,7 +111,17 @@ export default function PortfolioSommaire({ eleve, lectureSeule = false }: Props
                       estFermee ? styles.sommaireItemFerme : ''
                     } ${!s.section ? styles.sommaireItemSansSection : ''}`}
                   >
-                    {estFermee ? (
+                    {intro ? (
+                      // L'introduction : sa vignette ronde, pas de case (l'ouvrir suffit)
+                      urlCouverture(e.couverture) ? (
+                        <span className={styles.sommaireVignette}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={urlCouverture(e.couverture)!} alt="" style={styleCouverture(e.couvertureCadrage)} />
+                        </span>
+                      ) : (
+                        <span className={styles.sommaireVignette} aria-hidden="true" />
+                      )
+                    ) : estFermee ? (
                       <span className={styles.sommaireIc} aria-hidden="true">🔒</span>
                     ) : (
                       <input
@@ -139,8 +150,8 @@ export default function PortfolioSommaire({ eleve, lectureSeule = false }: Props
                     >
                       {e.titre}
                       {sansTrace && <small> · sans trace</small>}
-                      {!estFaite && !sansTrace && etat === 'a-reprendre' && <small className={styles.sommaireReprendre}> · à reprendre</small>}
-                      {!estFaite && !sansTrace && etat !== 'a-reprendre' && enCours(e, contenu) && <small> · en cours</small>}
+                      {!estFaite && !sansTrace && !intro && etat === 'a-reprendre' && <small className={styles.sommaireReprendre}> · à reprendre</small>}
+                      {!estFaite && !sansTrace && !intro && etat !== 'a-reprendre' && enCours(e, contenu) && <small> · en cours</small>}
                     </button>
                     {etat === 'validee' && (
                       <span className={styles.sommaireValide} title="Validée par ton professeur" aria-label="Validée">

@@ -9,6 +9,9 @@ import {
   generateEtapePortfolioId,
   generateValeurId,
   MAX_COLONNES_TABLEAU,
+  avecIntroduction,
+  cadrageBorne,
+  ordonnerIntroduction,
   typesDuDepot,
   type PortfolioContenu,
   type PortfolioDepot,
@@ -108,10 +111,18 @@ function affichePourFirestore(input: unknown): AffichageValeur[] {
   return affiche;
 }
 
+// `assurerIntroduction` (ÉCRITURE seulement) : crée l'introduction si elle
+// manque. Jamais à la lecture — une introduction inventée à chaque lecture
+// changerait d'id, et l'élève qui l'a ouverte la verrait « à faire ».
 export function etapesPortfolioPourFirestore(
   input: unknown,
-  options: { codeAutorise?: boolean } = {}
+  options: { codeAutorise?: boolean; assurerIntroduction?: boolean } = {}
 ): PortfolioEtape[] {
+  const etapes = lireEtapes(input, options);
+  return options.assurerIntroduction ? avecIntroduction(etapes) : ordonnerIntroduction(etapes);
+}
+
+function lireEtapes(input: unknown, options: { codeAutorise?: boolean }): PortfolioEtape[] {
   if (!Array.isArray(input)) return [];
   const etapes: PortfolioEtape[] = [];
   const vus = new Set<string>();
@@ -140,12 +151,17 @@ export function etapesPortfolioPourFirestore(
       consigne: typeof item.consigne === 'string' ? item.consigne.slice(0, 5000) : '',
       echeance: /^\d{4}-\d{2}-\d{2}$/.test(echeance) ? echeance : null,
       ia,
+      // Seulement pour « Aide de l'IA »
+      iaPrecision: ia === 'partielle' ? texte(item.iaPrecision, 500) : '',
       portee: item.portee === 'collective' ? 'collective' : 'personnelle',
       verrouille: item.verrouille === true,
       ressources: item.ressources ? sanitizeRessources(item.ressources, { codeAutorise: options.codeAutorise === true }) : null,
       depots: nature === 'etape' ? depotsPourFirestore(item.depots) : [],
       validation: validationPourFirestore(item.validation),
       affiche: affichePourFirestore(item.affiche),
+      introduction: item.introduction === true,
+      couverture: item.introduction === true && /^[A-Za-z0-9_-]{1,60}$/.test(texte(item.couverture, 60)) ? texte(item.couverture, 60) : null,
+      couvertureCadrage: item.introduction === true && item.couvertureCadrage ? cadrageBorne(item.couvertureCadrage) : null,
     });
   }
   return etapes;
@@ -154,7 +170,7 @@ export function etapesPortfolioPourFirestore(
 /** Le contenu d'une ACTIVITÉ portfolio (`Devoir.portfolio`), nettoyé. */
 export function portfolioContenuPourFirestore(
   input: unknown,
-  options: { codeAutorise?: boolean } = {}
+  options: { codeAutorise?: boolean; assurerIntroduction?: boolean } = {}
 ): PortfolioContenu {
   const raw = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
   return {

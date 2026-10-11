@@ -173,6 +173,7 @@ export default function PortfolioAtelier({
         isSubmitting={envoiCreation}
         onClose={() => setCreationA(null)}
         getAuthHeaders={getAuthHeaders}
+        dansPortfolio
       />
     );
   }
@@ -184,11 +185,14 @@ export default function PortfolioAtelier({
     erreur: '⚠ Non enregistré',
   };
 
-  // Les titres des renvois suivent l'activité (si elle est dans la liste)
+  // Un renvoi : l'atelier suit l'activité ; le TITRE est celui que le prof a
+  // donné à l'étape (« Titre de l'étape dans le portfolio »), l'intitulé de
+  // l'activité seulement à défaut (JP, 2026-10-11 : le titre tapé était
+  // remplacé par celui de l'activité, à chaque affichage)
   const etapesAffichees: PortfolioEtape[] = fiche.etapes.map((e) => {
     if (e.nature !== 'activite' || !e.devoirId) return e;
     const d = devoirs.find((x) => x.id === e.devoirId);
-    return d ? { ...e, titre: d.intitule, atelier: d.atelier, typeTravail: d.typeTravail } : e;
+    return d ? { ...e, titre: e.titre.trim() || d.intitule, atelier: d.atelier, typeTravail: d.typeTravail } : e;
   });
 
   return (
@@ -280,6 +284,7 @@ export default function PortfolioAtelier({
         onChange={(etapes) => poser({ etapes })}
         onCreerActivite={(index, modele, remplace) => setCreationA({ index, modele, remplace })}
         tacheFinale={fiche.tacheFinale}
+        titrePortfolio={fiche.titre}
         onOuvrirActivite={ouvrirActivite}
       />
 
@@ -293,6 +298,7 @@ export default function PortfolioAtelier({
         onSave={enregistrerDevoir}
         isSaving={false}
         getAuthHeaders={getAuthHeaders}
+        dansPortfolio
       />
     </section>
   );

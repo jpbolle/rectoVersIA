@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAffichage } from '@/hooks/useAffichage';
 import { isAdmin } from '@/lib/auth-utils';
 import { usePreferences } from '@/hooks/usePreferences';
 import { useRouter } from 'next/navigation';
@@ -24,6 +25,7 @@ function getInitials(email: string | null | undefined, displayName: string | nul
 
 export default function UserAvatar() {
   const { user, role, signOut } = useAuth();
+  const { vue: vueAffichage } = useAffichage();
   const { preferences, preferencesSet, updatePreferences, markPreferencesSet } = usePreferences();
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
@@ -80,9 +82,12 @@ export default function UserAvatar() {
             <button className={styles.menuItem} onClick={handleOpenPreferences}>
               Mes préférences
             </button>
-            <button className={styles.menuItem} onClick={() => { setShowMenu(false); router.push('/roadmap'); }}>
-              Roadmap
-            </button>
+            {/* Gestion de l'affichage : la roadmap peut être masquée */}
+            {!vueAffichage('outil:roadmap').bloque && (
+              <button className={styles.menuItem} onClick={() => { setShowMenu(false); router.push('/roadmap'); }}>
+                Roadmap
+              </button>
+            )}
             <button className={styles.menuItem} onClick={() => { setShowMenu(false); router.push('/rgpd'); }}>
               Données personnelles
             </button>

@@ -74,6 +74,43 @@ export function lireSuivi(data: unknown): SuiviPortfolio {
   return { soumissions, retours, valeurs };
 }
 
+/**
+ * À l'ACCEPTATION d'un groupe (2026-10-11) : ce que ses membres ont déjà fait
+ * SEULS — soumissions, retours du prof, valeurs — passe dans le suivi du
+ * groupe. Depuis la règle « un groupe déclaré suffit pour soumettre » (JP), un
+ * élève peut soumettre AVANT l'acceptation ; sans cette fusion, son étape
+ * soumise « disparaîtrait » au moment où le prof accepte (le suivi lu devient
+ * celui du groupe). Par étape, la soumission la plus récente l'emporte ; ce
+ * que le groupe a déjà reste prioritaire pour les valeurs.
+ */
+export async function fusionnerSuivisDansGroupe(devoirId: string, groupeId: string, eleveIds: string[]): Promise<void> {
+  const fiches = await fichesParId(eleveIds);
+  const uids = [...new Set([...fiches.values()].map((f) => f.uid).filter((u): u is string => !!u))];
+  if (uids.length === 0) return;
+  const refGroupe = adminDb.collection('portfolioSuivi').doc(`${devoirId}__G-${groupeId}`);
+  const individuels = await adminDb.getAll(...uids.map((u) => adminDb.collection('portfolioSuivi').doc(`${devoirId}__U-${u}`)));
+  const sources = individuels.filter((d) => d.exists).map((d) => lireSuivi(d.data()));
+  if (sources.length === 0) return;
+  await adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(refGroupe);
+    const fusion = snap.exists ? lireSuivi(snap.data()) : lireSuivi({});
+    for (const src of sources) {
+      for (const [etapeId, s] of Object.entries(src.soumissions)) {
+        const deja = fusion.soumissions[etapeId];
+        if (!deja || s.date > deja.date) fusion.soumissions[etapeId] = s;
+      }
+      for (const [etapeId, r] of Object.entries(src.retours)) {
+        const deja = fusion.retours[etapeId];
+        if (!deja || r.date > deja.date) fusion.retours[etapeId] = r;
+      }
+      for (const [valeurId, v] of Object.entries(src.valeurs)) {
+        if (!fusion.valeurs[valeurId]) fusion.valeurs[valeurId] = v;
+      }
+    }
+    tx.set(refGroupe, { ...fusion, devoirId, groupeId, updatedAt: new Date().toISOString() }, { merge: true });
+  });
+}
+
 export async function suiviDe(cle: string): Promise<SuiviPortfolio> {
   const snap = await adminDb.collection('portfolioSuivi').doc(cle).get();
   return snap.exists ? lireSuivi(snap.data()) : SUIVI_VIDE;

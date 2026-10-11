@@ -1,0 +1,248 @@
+/* GESTION DE L'AFFICHAGE — sur le gabarit de la gestion didactique : des
+   cartes, une ligne par élément, le sélecteur à trois états à droite. */
+
+.panneau {
+  max-width: 980px;
+}
+
+.intro {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--c-text-secondary);
+}
+
+.etatGlobal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 18px;
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+.enregistrement {
+  color: var(--c-primary);
+}
+
+.erreur {
+  font-size: 13px;
+  color: #c0392b;
+}
+
+.vide {
+  font-size: 12.5px;
+  color: var(--c-text-muted);
+  padding: 16px;
+  margin: 0;
+  text-align: center;
+}
+
+.carte {
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-bg-card, #fff);
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.carteTete {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 12px 16px;
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.carteTete h2 {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.carteTete span {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.lignes {
+  display: flex;
+  flex-direction: column;
+}
+
+.ligne {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  align-items: center;
+  padding: 10px 16px;
+  border-top: 1px solid var(--c-border);
+}
+
+.ligne:first-child {
+  border-top: none;
+}
+
+/* Une ligne masquée se lit grisée, comme les profs la verront */
+.ligneMasquee .libelle {
+  opacity: 0.55;
+}
+
+.libelle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.libelle b {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.libelle small {
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.seg {
+  display: inline-flex;
+  border: 1.5px solid var(--c-border);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.segBtn {
+  padding: 6px 12px;
+  border: none;
+  border-left: 1px solid var(--c-border);
+  background: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.segBtn:first-child {
+  border-left: none;
+}
+
+.segBtn:hover {
+  background: var(--c-bg-hover, #f4f6f5);
+}
+
+.segActif_visible,
+.segActif_visible:hover {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.segActif_test,
+.segActif_test:hover {
+  background: var(--c-accent);
+  color: #fff;
+}
+
+.segActif_masque,
+.segActif_masque:hover {
+  background: #7a8590;
+  color: #fff;
+}
+
+.note {
+  grid-column: 1 / -1;
+  padding: 7px 10px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--c-text);
+  background: #fff;
+}
+
+.note:focus,
+.recherche:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.testeursOutils {
+  padding: 12px 16px 4px;
+}
+
+.recherche {
+  width: 100%;
+  max-width: 360px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.profs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 6px;
+  padding: 10px 16px 16px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.prof {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.prof input {
+  accent-color: var(--c-primary);
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.prof span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.prof b {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prof small {
+  font-size: 11.5px;
+  color: var(--c-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profTesteur {
+  border-color: var(--c-primary);
+  background: #eef4ef;
+}
+
+@media (max-width: 640px) {
+  .ligne {
+    grid-template-columns: 1fr;
+  }
+}

@@ -321,6 +321,11 @@
   margin-top: 30px;
 }
 
+/* Les boutons du recto, à droite (JP, 2026-10-11) */
+.formActionsDroite {
+  justify-content: flex-end;
+}
+
 .btn {
   padding: 14px 28px;
   border: none;
@@ -680,6 +685,17 @@
   padding-top: 16px;
   border-top: 1px solid var(--c-border);
   flex-wrap: wrap;
+}
+
+/* « Prévisualiser… » dans le coin inférieur DROIT (JP, 2026-10-11) : les
+   boutons à droite, la note explicative à leur gauche */
+.previewBar {
+  justify-content: flex-end;
+}
+
+.previewBar .previewNote {
+  order: -1;
+  margin-right: auto;
 }
 
 .previewNote {

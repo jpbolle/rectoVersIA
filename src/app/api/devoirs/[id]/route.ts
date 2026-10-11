@@ -514,7 +514,7 @@ export async function PATCH(
     // Portfolio d'apprentissage : ses étapes
     if (body.portfolio !== undefined) {
       updateData.portfolio =
-        body.portfolio === null ? null : portfolioContenuPourFirestore(body.portfolio, { codeAutorise: auth.isAdmin });
+        body.portfolio === null ? null : portfolioContenuPourFirestore(body.portfolio, { codeAutorise: auth.isAdmin, assurerIntroduction: true });
     }
 
     if (Object.keys(updateData).length === 0) {

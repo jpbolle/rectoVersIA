@@ -52,7 +52,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (body.ressources !== undefined) {
       update.ressources = body.ressources ? sanitizeRessources(body.ressources, { codeAutorise: auth.isAdmin }) : null;
     }
-    if (body.etapes !== undefined) update.etapes = etapesPortfolioPourFirestore(body.etapes, { codeAutorise: auth.isAdmin });
+    if (body.etapes !== undefined) update.etapes = etapesPortfolioPourFirestore(body.etapes, { codeAutorise: auth.isAdmin, assurerIntroduction: true });
     if (typeof body.archive === 'boolean') update.archive = body.archive;
 
     await ref.update(update);

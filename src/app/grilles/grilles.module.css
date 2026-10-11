@@ -63,6 +63,14 @@
   border-bottom-color: var(--c-primary);
 }
 
+/* Gestion de l'affichage : onglet masqué — visible, grisé, non cliquable */
+.tabBloque,
+.tabBloque:hover {
+  opacity: 0.4;
+  color: var(--c-text-secondary);
+  cursor: not-allowed;
+}
+
 /* ===== Sections (cards) ===== */
 .grillesSection {
   background: var(--c-bg-card);

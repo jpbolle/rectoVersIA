@@ -15,6 +15,7 @@
 // Ce que l'élève dépose vit dans `Travail.content` (JSON `PortfolioContenuEleve`),
 // champ par champ, clé `{etapeId}/{depotId}`.
 
+import type { CSSProperties } from 'react';
 import type { DevoirRessource } from './devoir';
 import { generateEtapeId } from './sequence-fle';
 
@@ -194,6 +195,9 @@ export interface PortfolioEtape {
   consigne?: string;
   echeance?: string | null; // ISO (AAAA-MM-JJ)
   ia?: StatutIA | null; // null / absent = le réglage IA de l'activité
+  // « Aide de l'IA » : COMMENT l'élève peut s'en servir (JP, 2026-10-11) —
+  // lu au survol de la carte IA, côté élève
+  iaPrecision?: string;
   portee?: PorteeEtape; // absent = personnelle
   // true = l'étape SUIVANTE reste fermée tant que celle-ci n'est pas faite
   verrouille?: boolean;
@@ -204,6 +208,143 @@ export interface PortfolioEtape {
   validation?: ValidationEtape | null;
   // Les valeurs attribuées plus tôt qu'affiche cette étape, et où
   affiche?: AffichageValeur[];
+  // L'INTRODUCTION (JP, 2026-10-11) : la première étape, obligatoire — un
+  // disque en tête du serpentin, symétrique de la cible. Ni dépôt, ni renvoi,
+  // ni validation : elle est FAITE dès que l'élève l'a ouverte.
+  introduction?: boolean;
+  // Son image de couverture : id `ressourceImages` (servie par
+  // `/api/ressources/image/{id}`), recadrée dans le cercle à l'affichage
+  couverture?: string | null;
+  // Son CADRAGE, réglé par le prof (taille + point visé) ; absent = centrée
+  couvertureCadrage?: CadrageCouverture | null;
+}
+
+/**
+ * Le cadrage de la couverture dans le cercle (JP, 2026-10-11) :
+ *  - `zoom` : 1 = l'image REMPLIT juste le cercle ; au-dessus elle grandit ;
+ *    en dessous elle rétrécit et se voit EN ENTIER, fond blanc autour ;
+ *  - `x`, `y` : le point de l'image (en % de l'image ENTIÈRE) posé au centre
+ *    du cercle — 50/50 = le centre de l'image ;
+ *  - `ratio` : largeur / hauteur de l'image, relevé au chargement dans la
+ *    popup. Sans lui (ou sans cadrage), l'image remplit le cercle, centrée.
+ */
+export interface CadrageCouverture {
+  zoom: number;
+  x: number;
+  y: number;
+  ratio?: number | null;
+}
+
+export const ZOOM_COUVERTURE_MIN = 0.3;
+export const ZOOM_COUVERTURE_MAX = 4;
+export const CADRAGE_CENTRE: CadrageCouverture = { zoom: 1, x: 50, y: 50 };
+
+/** Un cadrage borné (lecture tolérante : tout ce qui cloche retombe au centre). */
+export function cadrageBorne(c: unknown): CadrageCouverture {
+  const v = c && typeof c === 'object' ? (c as Record<string, unknown>) : {};
+  const n = (x: unknown, min: number, max: number, def: number) =>
+    typeof x === 'number' && Number.isFinite(x) ? Math.min(max, Math.max(min, x)) : def;
+  const ratio = typeof v.ratio === 'number' && Number.isFinite(v.ratio) && v.ratio > 0 ? Math.min(10, Math.max(0.1, v.ratio)) : null;
+  return {
+    zoom: Math.round(n(v.zoom, ZOOM_COUVERTURE_MIN, ZOOM_COUVERTURE_MAX, 1) * 100) / 100,
+    x: Math.round(n(v.x, 0, 100, 50) * 10) / 10,
+    y: Math.round(n(v.y, 0, 100, 50) * 10) / 10,
+    ratio: ratio === null ? null : Math.round(ratio * 1000) / 1000,
+  };
+}
+
+/**
+ * La taille et la place de l'image dans le cercle, en % du cercle — même
+ * rendu quelle que soit sa taille (popup, serpentin, page élève, sommaire).
+ * L'image garde ses proportions : à zoom 1, son petit côté = le cercle ; on
+ * la multiplie par le zoom, puis on pose le point (x, y) au centre.
+ * ⚠ Le conteneur doit être `position: relative; overflow: hidden`.
+ */
+export function styleCouverture(c: CadrageCouverture | null | undefined): CSSProperties {
+  const cad = c ? cadrageBorne(c) : null;
+  if (!cad?.ratio) return { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' };
+  const largeur = (cad.ratio >= 1 ? cad.ratio : 1) * 100 * cad.zoom;
+  const hauteur = (cad.ratio >= 1 ? 1 : 1 / cad.ratio) * 100 * cad.zoom;
+  return {
+    position: 'absolute',
+    width: `${largeur}%`,
+    height: `${hauteur}%`,
+    left: `${50 - (cad.x / 100) * largeur}%`,
+    top: `${50 - (cad.y / 100) * hauteur}%`,
+    maxWidth: 'none',
+    objectFit: 'fill',
+  };
+}
+
+/** La largeur rendue de l'image, en % du cercle (pour convertir un glisser en %). */
+export function largeurCouverture(c: CadrageCouverture): { largeur: number; hauteur: number } {
+  const r = c.ratio ?? 1;
+  return { largeur: (r >= 1 ? r : 1) * 100 * c.zoom, hauteur: (r >= 1 ? 1 : 1 / r) * 100 * c.zoom };
+}
+
+export const TITRE_INTRODUCTION = 'Introduction';
+
+/** Une introduction neuve, vierge. */
+export function nouvelleIntroduction(): PortfolioEtape {
+  return nouvelleEtape({ introduction: true, titre: TITRE_INTRODUCTION });
+}
+
+/** Ce qu'une introduction ne porte jamais (elle reste une page d'information). */
+export function nettoyerIntroduction(e: PortfolioEtape): PortfolioEtape {
+  return {
+    ...e,
+    nature: 'etape',
+    introduction: true,
+    // Chaînes vides, jamais `undefined` (interdit en base)
+    devoirId: '',
+    atelier: '',
+    typeTravail: '',
+    depots: [],
+    validation: null,
+    verrouille: false,
+    portee: 'personnelle',
+    affiche: [],
+  };
+}
+
+/**
+ * L'introduction en tête, et une seule — sans en CRÉER (lecture : une
+ * introduction inventée à chaque lecture changerait d'id à chaque fois).
+ * Une introduction en trop redevient une étape ordinaire.
+ */
+export function ordonnerIntroduction(etapes: PortfolioEtape[]): PortfolioEtape[] {
+  const i = etapes.findIndex((e) => e.introduction === true);
+  if (i < 0) return etapes;
+  const reste = etapes
+    .filter((_, k) => k !== i)
+    .map((e) => (e.introduction ? { ...e, introduction: false, couverture: null, couvertureCadrage: null } : e));
+  return [nettoyerIntroduction(etapes[i]), ...reste];
+}
+
+/** L'introduction en tête — créée si elle manque (écriture, constructeur). */
+export function avecIntroduction(etapes: PortfolioEtape[]): PortfolioEtape[] {
+  const ordonnees = ordonnerIntroduction(etapes);
+  return ordonnees[0]?.introduction ? ordonnees : [nouvelleIntroduction(), ...ordonnees];
+}
+
+/**
+ * Le NUMÉRO affiché d'une étape : l'introduction n'en a pas (null), les
+ * étapes qui la suivent commencent à 1. Sans introduction (ancien
+ * portfolio jamais réenregistré), on compte depuis 1 comme avant.
+ */
+export function numeroEtape(etapes: Pick<PortfolioEtape, 'introduction'>[], i: number): number | null {
+  if (etapes[i]?.introduction) return null;
+  return etapes[0]?.introduction ? i : i + 1;
+}
+
+/** Le nombre d'étapes NUMÉROTÉES (l'introduction ne compte pas). */
+export function nombreEtapes(etapes: Pick<PortfolioEtape, 'introduction'>[]): number {
+  return etapes.filter((e) => !e.introduction).length;
+}
+
+/** L'adresse de l'image de couverture (route publique des ressources du prof). */
+export function urlCouverture(id: string | null | undefined): string | null {
+  return id ? `/api/ressources/image/${encodeURIComponent(id)}` : null;
 }
 
 /** Le contenu d'une ACTIVITÉ portfolio (`Devoir.portfolio`). */
@@ -282,6 +423,16 @@ export interface CamaradeVue {
   nom: string;
 }
 
+/**
+ * Un « groupe » d'un seul élève = l'élève a déclaré TRAVAILLER SEUL (JP,
+ * 2026-10-11 : « même si une étape est collective, un élève peut être
+ * seul »). Même circuit qu'un groupe : le prof accepte ou refuse (motif) ;
+ * accepté, le dépôt est rempli et les étapes collectives restent les siennes.
+ */
+export function groupeSolo(g: Pick<GroupeVue, 'membres'>): boolean {
+  return g.membres.length === 1;
+}
+
 export function generateGroupeId(): string {
   return `PFG-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
@@ -318,6 +469,8 @@ export function cleChamp(etapeId: string, depotId: string): string {
 }
 
 /** Une étape propre sans aucun dépôt : rien à déposer, l'élève la coche lui-même. */
+// ⚠ L'introduction EN EST UNE (aucun dépôt) : même mécanisme `cochees` — sauf
+// que c'est l'ouverture qui la coche, pas l'élève (`usePortfolioEleve`).
 export function estEtapeSansTrace(e: PortfolioEtape): boolean {
   return e.nature === 'etape' && !(e.depots && e.depots.length > 0);
 }
@@ -349,10 +502,18 @@ export function sectionsDuPortfolio<T extends PortfolioEtape>(etapes: T[]): Sect
 
 // Les images (public/ia-statut/) sont les pictogrammes de JP : leur couleur
 // fait foi — vert = non-recours, jaune = aide, rouge = généré par l'IA.
-export const STATUT_IA_LABELS: Record<StatutIA, { court: string; long: string; image: string }> = {
-  libre: { court: 'Généré par l’IA', long: 'Les outils d’IA sont permis', image: '/ia-statut/libre.png' },
-  partielle: { court: 'Aide de l’IA', long: 'IA pour reformuler ou s’aider, pas pour produire à ta place', image: '/ia-statut/partielle.png' },
-  aucune: { court: 'Non-recours à l’IA', long: 'Aucun outil d’IA dans cette étape', image: '/ia-statut/aucune.png' },
+// `image` = la scène seule (mini-icône : popup, badges) ; `carte` = la CARTE
+// ENTIÈRE, cadre noir et texte compris (JP, 2026-10-11 : « elle porte le
+// message ») — recadrée des originaux « N copie.png » du même dossier.
+export const STATUT_IA_LABELS: Record<StatutIA, { court: string; long: string; image: string; carte: string }> = {
+  libre: { court: 'Généré par l’IA', long: 'Les outils d’IA sont permis', image: '/ia-statut/libre.png', carte: '/ia-statut/libre-carte.png' },
+  partielle: {
+    court: 'Aide de l’IA',
+    long: 'IA pour reformuler ou s’aider, pas pour produire à ta place',
+    image: '/ia-statut/partielle.png',
+    carte: '/ia-statut/partielle-carte.png',
+  },
+  aucune: { court: 'Non-recours à l’IA', long: 'Aucun outil d’IA dans cette étape', image: '/ia-statut/aucune.png', carte: '/ia-statut/aucune-carte.png' },
 };
 
 export const PORTEE_LABELS: Record<PorteeEtape, string> = {

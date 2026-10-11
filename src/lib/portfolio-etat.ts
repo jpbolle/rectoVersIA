@@ -9,7 +9,8 @@
 //                  dépôts ou à activité)
 //  faite(étape)  = soumise (ou à revoir, ou validée) — et VALIDÉE si la
 //                  validation du prof bloque la suite ;
-//                  sans trace → cochée à la main par l'élève
+//                  sans trace → cochée à la main par l'élève ;
+//                  introduction → cochée À L'OUVERTURE (`usePortfolioEleve`)
 //  fermee(i)     = une étape avant i verrouille la suite (`verrouille`, ou
 //                  validation bloquante) et n'est pas faite
 //
@@ -95,7 +96,9 @@ export function reponseDe(
  */
 export function depotRempli(contenu: PortfolioContenuEleve, etapeId: string, depot: PortfolioDepot): boolean {
   const types = typesDuDepot(depot);
-  if (types.includes('groupe')) return contenu.groupeStatut === 'accepte';
+  // Un groupe DÉCLARÉ suffit (en attente ou accepté — JP, 2026-10-11) : le prof
+  // accepte le groupe et valide l'étape au même moment, depuis la copie
+  if (types.includes('groupe')) return contenu.groupeStatut === 'accepte' || contenu.groupeStatut === 'attente';
   return types.every((t) => partieRemplie(t, reponseDe(contenu, etapeId, depot.id, t)));
 }
 
@@ -214,8 +217,10 @@ export function verrouilleLaSuite(etape: PortfolioEtape): boolean {
   return etape.verrouille === true || validationBloquante(etape);
 }
 
+// L'introduction ne compte pas : « 0 étape faite sur 6 » à l'ouverture, pas « 1 sur 7 »
 export function avancement(etapes: EtapePortfolioVue[], contenu: PortfolioContenuEleve): { faites: number; total: number } {
-  return { faites: etapes.filter((e) => faite(e, contenu)).length, total: etapes.length };
+  const comptees = etapes.filter((e) => !e.introduction);
+  return { faites: comptees.filter((e) => faite(e, contenu)).length, total: comptees.length };
 }
 
 /**
@@ -234,7 +239,10 @@ export function indexDepart(etapes: EtapePortfolioVue[], contenu: PortfolioConte
 
 /** Ce qu'il manque pour qu'une étape soit faite — dit en clair sous l'étape. */
 export function cequiManque(etape: EtapePortfolioVue, contenu: PortfolioContenuEleve): string[] {
-  if (estEtapeSansTrace(etape)) return contenu.cochees.includes(etape.id) ? [] : ['cocher l’étape'];
+  if (estEtapeSansTrace(etape)) {
+    if (contenu.cochees.includes(etape.id)) return [];
+    return [etape.introduction ? 'ouvrir l’introduction' : 'cocher l’étape'];
+  }
   if (faite(etape, contenu)) return [];
   const etat = etatEtape(etape, contenu);
   if (etat === 'a-reprendre') return ['reprendre l’étape selon le retour du professeur, puis la soumettre à nouveau'];
@@ -243,7 +251,7 @@ export function cequiManque(etape: EtapePortfolioVue, contenu: PortfolioContenuE
   if (etape.nature === 'activite') return ['remettre l’activité', 'puis soumettre l’étape'];
   return (etape.depots ?? [])
     .filter((d) => d.obligatoire !== false && !depotRempli(contenu, etape.id, d))
-    .map((d) => (typesDuDepot(d).includes('groupe') ? 'l’acceptation du groupe par le professeur' : d.libelle || 'un dépôt'));
+    .map((d) => (typesDuDepot(d).includes('groupe') ? 'déclarer ton groupe (ou dire que tu travailles seul)' : d.libelle || 'un dépôt'));
 }
 
 /** Échéance dépassée et étape non faite ? */

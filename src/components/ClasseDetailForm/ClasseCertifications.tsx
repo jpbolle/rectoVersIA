@@ -16,6 +16,7 @@ import CertificationNotesModal from '@/components/CertificationNotesModal/Certif
 import { ceintureParId } from '@/types/ceintures';
 import { periodeLabel } from '@/types/scenarisation';
 import type { CertificationDeClasse } from '@/types/certification';
+import { useAffichage } from '@/hooks/useAffichage';
 import styles from './ClasseCertifications.module.css';
 
 export default function ClasseCertifications({
@@ -27,6 +28,9 @@ export default function ClasseCertifications({
   lectureSeule?: boolean;
 }) {
   const { isAuthenticated, getAuthHeaders } = useAuth();
+  // Gestion de l'affichage : ceintures masquées → la pastille de ceinture disparaît
+  const { vue: vueAffichage } = useAffichage();
+  const ceinturesMasquees = vueAffichage('outil:ceintures').bloque;
   const [certifs, setCertifs] = useState<CertificationDeClasse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [ouverte, setOuverte] = useState<string | null>(null);
@@ -89,7 +93,7 @@ export default function ClasseCertifications({
               >
                 <span className={styles.cardTop}>
                   <span className={styles.cardTitle}>⭐ {c.titre || 'Certification sans titre'}</span>
-                  {ceinture && (
+                  {ceinture && !ceinturesMasquees && (
                     <span className={styles.belt}>
                       <span
                         className={styles.beltDot}

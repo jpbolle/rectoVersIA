@@ -70,6 +70,8 @@ export async function POST(request: NextRequest) {
       email: emailLower,
       createdAt: now,
       expiresAt: body.expiresAt || null,
+      // L'école : seulement pour un accès permanent (le formulaire ne la demande pas sinon)
+      ecole: !body.expiresAt && typeof body.ecole === 'string' ? body.ecole.trim().slice(0, 120) : '',
     };
 
     await adminDb.collection('professeurs').doc(docId).set(professeur);

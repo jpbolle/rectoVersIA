@@ -12,6 +12,7 @@ import {
   profPeutGerer,
 } from '@/lib/portfolio-groupe-server';
 import { generateGroupeId } from '@/types/portfolio';
+import { fusionnerSuivisDansGroupe } from '@/lib/portfolio-suivi-server';
 
 // LE GROUPE d'un portfolio (dépôt de type « groupe »).
 //  GET   ?devoirId=  élève : ses camarades + son groupe ; prof : tous les groupes
@@ -73,8 +74,10 @@ export async function POST(request: NextRequest) {
     const demandes: string[] = Array.isArray(body.membres)
       ? [...new Set((body.membres as unknown[]).filter((m): m is string => typeof m === 'string' && m.trim() !== ''))]
       : [];
+    // « Je travaille seul » : un groupe d'un seul élève, soumis au prof comme un autre
+    const seul = body.seul === true;
     if (!devoirId) return NextResponse.json({ success: false, message: 'devoirId requis' }, { status: 400 });
-    if (demandes.length === 0) {
+    if (!seul && demandes.length === 0) {
       return NextResponse.json({ success: false, message: 'Choisis au moins un partenaire' }, { status: 400 });
     }
     const ctx = await devoirOuvert(devoirId, auth);
@@ -83,8 +86,8 @@ export async function POST(request: NextRequest) {
     // Seuls des camarades de l'activité peuvent être invités
     const { camarades, mesFiches } = await camaradesDe(ctx.data, ctx.identite);
     const autorises = new Set(camarades.map((c) => c.eleveId));
-    const partenaires = demandes.filter((id) => autorises.has(id));
-    if (partenaires.length === 0) {
+    const partenaires = seul ? [] : demandes.filter((id) => autorises.has(id));
+    if (!seul && partenaires.length === 0) {
       return NextResponse.json({ success: false, message: 'Ces élèves ne sont pas dans tes classes' }, { status: 400 });
     }
     if (partenaires.length + 1 > TAILLE_MAX) {
@@ -185,6 +188,8 @@ export async function PATCH(request: NextRequest) {
         .filter((m) => m.statut !== 'decline')
         .map((m) => ({ ...m, statut: 'confirme' }));
       await ref.update({ membres, statut: 'accepte', motif: '', updatedAt: now });
+      // Ce que les membres ont déjà soumis seuls rejoint le suivi du groupe
+      await fusionnerSuivisDansGroupe(g.devoirId, g.id, membres.map((m) => m.eleveId));
     } else if (action === 'refuser') {
       const motif = typeof body.motif === 'string' ? body.motif.trim().slice(0, 500) : '';
       await ref.update({ statut: 'refuse', motif, updatedAt: now });

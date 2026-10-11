@@ -1699,9 +1699,14 @@
 }
 
 /* ═══════════ Ressources de l'étape (onglet Ressources) ═══════════ */
+/* Les ressources de l'introduction : générales, sans filet de séparation */
+.ressourcesGenerales {
+  margin-top: 4px;
+}
+
 .ressourcesEtape {
-  border-bottom: 2px solid var(--c-border);
-  margin-bottom: 8px;
+  border-top: 2px solid var(--c-border);
+  margin-top: 8px;
 }
 
 .ressourcesEtapeTitre {
@@ -2364,6 +2369,423 @@
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ── L'INTRODUCTION : le disque en TÊTE du serpentin, symétrique de la cible
+   (JP, 2026-10-11) — l'image de couverture recadrée dans le cercle, ou le
+   titre du portfolio. Vert (la couleur des étapes) là où la cible est ambre :
+   on part d'ici, on arrive là-bas. Même cadre de 200 px, même `z-index`
+   (devant le trait de la rangée, cf. `.cible`). ── */
+.intro {
+  position: relative;
+  z-index: 1;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.introDisque {
+  width: 200px;
+  height: 200px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 6px solid var(--c-primary);
+  background: #fff;
+  box-shadow: inset 0 0 0 8px #eef4ef, var(--c-shadow-card);
+  padding: 36px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  cursor: pointer;
+  font: inherit;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.introDisque:hover {
+  transform: scale(1.02);
+}
+
+.introDisque:focus-visible {
+  outline: 3px solid var(--c-accent);
+  outline-offset: 3px;
+}
+
+/* Avec image : le cercle est l'image, le filet vert la borde ; l'image se
+   place en absolu (`styleCouverture`), le cercle coupe ce qui dépasse */
+.introDisqueImage {
+  position: relative;
+  padding: 0;
+  box-shadow: var(--c-shadow-card);
+}
+
+.introImage {
+  display: block;
+}
+
+.introDisque .cibleLabel {
+  color: var(--c-primary);
+}
+
+.introTitre {
+  font-family: var(--font-display, inherit);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--c-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* L'étiquette sous le disque quand l'image occupe tout le cercle */
+.introEtiquette {
+  position: absolute;
+  bottom: -2px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* La couverture dans la popup : l'aperçu rond, puis les boutons */
+.couvertureChoix {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.couvertureApercu {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 4px solid var(--c-primary);
+  background: #fff;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.couvertureImage {
+  display: block;
+  user-select: none;
+}
+
+.couvertureTitre {
+  padding: 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--c-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Image posée : on la fait glisser (souris ou doigt — `touch-action: none`
+   empêche la page de défiler pendant le geste) */
+.couvertureApercuMobile {
+  cursor: grab;
+  touch-action: none;
+}
+
+.couvertureApercuMobile:active {
+  cursor: grabbing;
+}
+
+.couvertureTaille {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.couvertureTaille input[type='range'] {
+  flex: 1;
+  max-width: 220px;
+  accent-color: var(--c-primary);
+}
+
+.couvertureZoom {
+  min-width: 44px;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-dim);
+  font-weight: 500;
+}
+
+.couvertureActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.couvertureActions .hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* Côté élève : la couverture en tête de l'introduction */
+.eleveCouverture {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 14px;
+}
+
+.eleveCouverture > span {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  border: 5px solid var(--c-primary);
+  box-shadow: var(--c-shadow-card);
+  box-sizing: border-box;
+  /* Le zoom du cadrage agrandit l'image : le cercle coupe ce qui dépasse ;
+     réduite, elle laisse voir le fond blanc du cercle */
+  overflow: hidden;
+  background: #fff;
+}
+
+.eleveCouvertureCadre img {
+  display: block;
+}
+
+.eleveCouverture > span:not(.eleveCouvertureCadre) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--c-text);
+}
+
+/* Dans le sommaire : la vignette ronde de l'introduction, à la place de la case */
+.sommaireVignette {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--c-primary);
+  background: #eef4ef;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: inline-block;
+}
+
+.sommaireVignette img {
+  display: block;
+}
+
+.infosIntro {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+.infosIntro li {
+  margin: 2px 0;
+  line-height: 1.45;
+}
+
+.infosIntroTitre {
+  list-style: none;
+  margin-left: -18px !important;
+  margin-top: 8px !important;
+  font-weight: 700;
+}
+
+/* ── Refonte de la page élève (JP, 2026-10-11) ── */
+
+/* Les ÉTIQUETTES, coin supérieur droit : la pile (échéance, portée, état) à
+   gauche, l'image IA du prof sur toute leur hauteur à droite */
+/* Une BANDE à elle (JP : « les encadrés viennent après, aérer ») — rien ne
+   passe à côté ; alignée à droite */
+.etiquettes {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 22px;
+}
+
+.etiquettesPile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* La CARTE IA entière, cadre noir et texte compris (elle porte le message) :
+   ~2 cm de haut */
+.etiquetteIa {
+  display: block;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.etiquetteIa img {
+  height: 84px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
+/* Le titre de l'étape en tête de l'onglet Consignes (colonne de droite) */
+.consignesEtapeTitre {
+  margin: 0 0 6px;
+  font-family: var(--c-font-title);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.consignesEtapeTitre span {
+  display: block;
+  font-family: var(--c-font-body);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-text-muted);
+}
+
+/* LA LIGNE D'ACTION — motif de l'atelier de vocabulaire (`bottomActions`) :
+   les traits s'arrêtent au retrait de la colonne, jamais aux bords ; reculer à gauche, avancer à droite, les gestes
+   au centre ; un bouton seul au centre */
+.ligneAction {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  /* ⚠ Règle du projet (init.md § Patterns imposés) : la ligne ne touche
+     JAMAIS les bords de la colonne — aucune marge négative ; les traits
+     s'arrêtent au retrait de `.eleveBody` (26 px) */
+  margin: 36px 0 0;
+  padding: 0 0 6px;
+}
+
+/* La ligne « Consulter les ressources », avant les encadrés */
+.ligneAction + .h4 {
+  margin-top: 26px;
+}
+
+.ligneActionTrait {
+  flex: 1;
+  height: 1px;
+  background: var(--c-border);
+  min-width: 24px;
+}
+
+.ligneActionCentre {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  max-width: 82%;
+  text-align: center;
+}
+
+.ligneActionAide {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 22px;
+  border: none;
+  border-radius: var(--c-radius);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-sizing: border-box;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionBtnPrimary {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.actionBtnPrimary:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 106, 90, 0.3);
+}
+
+/* Reculer / avancer : contour vert, même hauteur que les gestes */
+.actionBtnNav {
+  background: transparent;
+  color: var(--c-primary);
+  border: 1.5px solid var(--c-primary);
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.actionBtnNav:hover:not(:disabled) {
+  background: var(--c-bg-element);
+}
+
+/* Consulter les ressources : l'ambre des gestes qui AFFICHENT (vocabulaire) */
+.actionBtnAmbre {
+  background: var(--c-accent);
+  color: #fff;
+}
+
+.actionBtnAmbre:hover:not(:disabled) {
+  background: #c4843c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 148, 76, 0.4);
+}
+
+/* « ✓ Étape faite » : cochée, on peut la décocher */
+.actionBtnFait {
+  background: #eaf5ee;
+  color: var(--c-success);
+  border: 1.5px solid var(--c-success);
 }
 
 /* Trois cards par ligne, de même largeur, dans TOUS les onglets de Mes

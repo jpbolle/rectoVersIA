@@ -10,6 +10,7 @@ import PortfolioLecture from '@/components/Portfolio/PortfolioLecture';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useAffichage } from '@/hooks/useAffichage';
 import { useGrille } from '@/hooks/useGrille';
 import { useCorrection, calculateScore } from '@/hooks/useCorrection';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
@@ -65,6 +66,8 @@ export default function TravailDetailPage() {
   const { devoirId, travailId } = params as { devoirId: string; travailId: string };
 
   const { isAuthenticated, role, user, isLoading: authLoading, getAuthHeaders } = useAuth();
+  const { vue: vueAffichage } = useAffichage();
+  const iaProfMasquee = vueAffichage('outil:aide-ia-prof').bloque;
   // `user` est un objet instable : on ne garde que son identifiant pour les
   // dépendances d'effet (règle AGENTS.md)
   const uid = user?.uid;
@@ -1033,7 +1036,8 @@ export default function TravailDetailPage() {
                 <AssistancePanel
                   devoir={devoir}
                   aideIaProf={
-                    devoir.typeTravail === 'schematiser' ? (
+                    // Gestion de l'affichage : l'aide IA du prof peut être masquée
+                    devoir.typeTravail === 'schematiser' && !iaProfMasquee ? (
                       <SchemaAideIA
                         comparaison={aideIa.comparaison}
                         enCours={aideIa.enCours}

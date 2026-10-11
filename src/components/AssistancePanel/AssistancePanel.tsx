@@ -25,7 +25,7 @@ import LectureEvaluation from '@/components/LectureEvaluation/LectureEvaluation'
 import OeuvreEvaluation from '@/components/OeuvreEvaluation/OeuvreEvaluation';
 import styles from './AssistancePanel.module.css';
 
-export type TabType = 'consignes' | 'ressources' | 'grille' | 'remarques' | 'ia' | 'corrige' | 'iaprof';
+export type TabType = 'consignes' | 'sommaire' | 'ressources' | 'grille' | 'remarques' | 'ia' | 'corrige' | 'iaprof';
 
 interface AssistancePanelProps {
   devoir: Devoir;
@@ -105,10 +105,12 @@ interface AssistancePanelProps {
    */
   oeuvreNav?: ReactNode;
   /**
-   * Portfolio d'apprentissage : le SOMMAIRE DU PORTFOLIO remplace l'onglet
-   * Consignes (JP, 2026-10-09 : la liste de tâches, c'est le sommaire).
+   * Portfolio d'apprentissage : l'onglet Consignes montre les consignes de
+   * l'ÉTAPE ouverte (objectifs + liste de tâches — JP, 2026-10-11) ; le
+   * sommaire du portfolio a son propre onglet (`sommaire`).
    */
   consignesRemplacement?: ReactNode;
+  sommaire?: ReactNode;
   // Correction d'un schéma : l'onglet « Aide IA » du prof (comparaison au corrigé)
   aideIaProf?: ReactNode;
   // Atelier de conceptualisation, côté élève : son aide IA (une comparaison,
@@ -118,6 +120,15 @@ interface AssistancePanelProps {
   evaluationPrefixe?: ReactNode;
   /** Portfolio : les ressources de l'étape ouverte, en tête de l'onglet Ressources. */
   ressourcesPrefixe?: ReactNode;
+  // Après les ressources de l'activité (portfolio : celles de l'ÉTAPE, après
+  // celles de tout le portfolio — JP, 2026-10-11)
+  ressourcesSuffixe?: ReactNode;
+  // L'intitulé des ressources de l'activité, seulement s'il y en a (portfolio :
+  // « Pour tout le portfolio »)
+  ressourcesTitre?: ReactNode;
+  // Pas de « Aucune ressource » quand l'activité n'en a pas (le portfolio
+  // dont seule l'étape porte des ressources)
+  ressourcesRienSiVide?: boolean;
   /**
    * Lecture d'une œuvre : change à chaque vérification terminée. Le bilan de
    * l'onglet Évaluation est calculé sur le serveur — sans ce compteur, l'élève
@@ -183,10 +194,14 @@ export default function AssistancePanel({
   hideTabs = false,
   oeuvreNav,
   consignesRemplacement,
+  sommaire,
   aideIaProf,
   aideIaEleve,
   evaluationPrefixe,
   ressourcesPrefixe,
+  ressourcesSuffixe,
+  ressourcesTitre,
+  ressourcesRienSiVide = false,
   oeuvreBilanVersion,
 }: AssistancePanelProps) {
   // Mode contrôlé vs interne.
@@ -313,10 +328,13 @@ export default function AssistancePanel({
               {oeuvreNav}
             </>
           ))}
+        {currentTab === 'sommaire' && sommaire}
         {currentTab === 'ressources' && ressourcesPrefixe}
         {currentTab === 'ressources' && (
           <RessourcesTab
             devoir={devoir}
+            titre={ressourcesTitre}
+            rienSiVide={ressourcesRienSiVide}
             ressourceAnnotations={ressourceAnnotations}
             onRessourceAnnotationsChange={onRessourceAnnotationsChange}
             ressourceNotes={ressourceNotes}
@@ -330,6 +348,7 @@ export default function AssistancePanel({
             onDictionaryEnabledChange={onDictionaryEnabledChange}
           />
         )}
+        {currentTab === 'ressources' && ressourcesSuffixe}
         {currentTab === 'grille' && evaluationPrefixe}
         {currentTab === 'grille' && devoir.typeTravail === 'vocabulaire' && (
           <VocabulaireStats
