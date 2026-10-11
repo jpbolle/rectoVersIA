@@ -37,6 +37,9 @@ le même risque.
 
 ## « ↗ Ouvrir en grand »
 
+> 2026-10-11 : le bouton est passé **au-dessus du cadre, à droite** (`.interactifHaut`, même plafond de
+> largeur que le cadre) — pas par-dessus, il masquerait le coin de l'animation. Le zoom reste dessous.
+
 Route publique `GET /api/ressources/interactif/[devoirId]/[id]`, sur le modèle
 de `/api/ressources/image/[id]` : un onglet ouvert par l'élève ne peut pas plus
 envoyer d'en-tête d'authentification qu'une balise `<img>`.

@@ -1244,10 +1244,13 @@
 
 .sommaireBarre i {
   display: block;
+  width: 100%;
   height: 100%;
   background: var(--c-success);
   border-radius: 3px;
-  transition: width 0.3s;
+  /* La progression par mise à l'échelle, pas par la largeur (aucun recalcul de mise en page) */
+  transform-origin: left center;
+  transition: transform 0.3s;
 }
 
 .sommaireLegende {
@@ -1606,11 +1609,84 @@
   border-color: var(--c-success);
 }
 
+/* L'en-tête d'une étape = le bouton qui la replie / déplie (2026-10-11) */
 .lectureEtapeTete {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 6px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lectureEtapeRepliee .lectureEtapeTete,
+.lectureEtapeRepliee .lectureEtapeLigne {
+  margin-bottom: 0;
+}
+/* En-tête + cloche sur une ligne (deux boutons distincts, jamais imbriqués) */
+.lectureEtapeLigne {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.lectureEtapeLigne .lectureEtapeTete {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.lectureCloche {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--c-border);
+  border-radius: 50%;
+  background: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.lectureCloche:hover,
+.lectureClocheOn {
+  border-color: var(--c-accent);
+  background: #fdf5e6;
+}
+.lectureClocheForm {
+  margin: 4px 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-accent);
+  border-radius: var(--c-radius-lg);
+  background: #fdf5e6;
+}
+.lectureEtapeRepliee {
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+.lectureChevron {
+  font-size: 13px;
+  color: var(--c-text-muted);
+  width: 12px;
+  text-align: center;
+}
+.lectureIci {
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--c-accent);
+}
+.lectureAValider {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #8a5a1c;
+  background: #fdf5e6;
+  border: 1px solid var(--c-accent);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
 }
 
 .lectureNum {
@@ -1750,7 +1826,7 @@
 }
 
 .retourAppreciation {
-  font-size: 20px;
+  display: inline-flex;
   line-height: 1;
 }
 
@@ -2020,14 +2096,14 @@
 }
 
 .retourSmiley {
-  font-size: 20px;
+  display: inline-flex;
   line-height: 1;
-  padding: 4px 6px;
-  border-radius: 8px;
-  border: 1px solid transparent;
+  padding: 3px;
+  border-radius: 999px;
+  border: 2px solid transparent;
   background: none;
   cursor: pointer;
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
 .retourSmiley:hover,
@@ -2035,9 +2111,9 @@
   opacity: 1;
 }
 
+/* Le choix du prof : un anneau autour du visage */
 .retourSmileyOn {
-  border-color: var(--c-accent);
-  background: var(--c-bg-card);
+  border-color: var(--c-text-secondary);
 }
 
 .retourValeur {
@@ -2800,4 +2876,293 @@
   .grille {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Dépôt « Scène d'une œuvre » (2026-10-11) : la pièce puis la scène,
+   et l'encadré qui envoie vérifier le texte dans l'onglet Ressources ── */
+.sceneChoix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sceneChoix .valeurSelect {
+  flex: 1 1 220px;
+  margin-bottom: 0;
+}
+.sceneVerif {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--c-accent);
+  border-radius: var(--c-radius-lg);
+  background: #fdf5e6;
+  font-size: 13px;
+}
+.sceneVerif p {
+  flex: 1;
+  margin: 0;
+}
+
+/* « Corriger la copie » d'une étape-activité : sa propre ligne, rien ne le chevauche */
+.lectureCorriger {
+  display: flex;
+  margin: 8px 0 10px;
+}
+
+/* La miniature d'une copie d'activité dans la copie du portfolio (prof) :
+   deux colonnes — résumé et bouton à gauche, miniature à droite (JP) */
+.apercu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 14px;
+  margin: 8px 0 4px;
+}
+.apercuInfos {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.apercuCorps {
+  flex: 0 0 auto;
+  display: block;
+  max-width: 100%;
+  padding: 6px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg-element);
+  color: inherit;
+  text-decoration: none;
+}
+.apercuCorps:hover {
+  border-color: var(--c-accent);
+}
+/* Le schéma : rendu à 900 × 520 px (le minimum du moteur), réduit au tiers (300 × 174) */
+.apercuSchema {
+  position: relative;
+  width: 300px;
+  height: 174px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #fffdf6;
+  /* Aucun geste dans la miniature : le clic va au lien */
+  pointer-events: none;
+}
+.apercuSchemaEchelle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 900px;
+  height: 520px;
+  display: flex;
+  transform: scale(0.3333);
+  transform-origin: top left;
+}
+.apercuSchemaEchelle > * {
+  flex: 1;
+  min-width: 0;
+}
+.apercuTexte {
+  margin: 0;
+  width: 300px;
+  max-width: 100%;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--c-text-secondary);
+}
+.apercuPied {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+/* Le bouton « Corriger la copie » sur le coin supérieur droit de la miniature */
+.apercuVignette {
+  position: relative;
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+.apercuBouton {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+.apercuBouton .lectureCorriger {
+  margin: 0;
+}
+.apercuBouton .btn {
+  border-radius: 0 var(--c-radius-lg) 0 var(--c-radius-lg);
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+/* La trace des retours du prof sur une étape (2026-10-11) */
+.lectureRefus {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #c9483c;
+  background: #fbe3e1;
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.lectureHistorique {
+  position: relative;
+  margin: 8px 0;
+  padding: 2px 0 2px 30px;
+  font-size: 12.5px;
+}
+/* La ligne du temps : un liseré vertical, les évaluations en sont les points */
+.lectureHistorique::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 11px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--c-border);
+}
+.lectureHistoriqueTitre {
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+.lectureHistorique ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lectureHistorique li {
+  position: relative;
+  margin: 0 0 8px;
+  min-height: 22px;
+}
+.lectureHistoriquePoint {
+  position: absolute;
+  top: 0;
+  /* Centré sur le liseré (x = 12 px du bloc ; le texte commence à 30 px) */
+  left: -29px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
+}
+.lectureHistoriquePastille {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c-text-muted);
+}
+.lectureHistoriqueRefus .lectureHistoriquePastille {
+  background: #c9483c;
+}
+.lectureHistoriqueValide .lectureHistoriquePastille {
+  background: #3f9b5f;
+}
+.lectureHistoriqueTete {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.lectureHistoriqueTete small {
+  font-weight: 400;
+  color: var(--c-text-muted);
+}
+.lectureHistoriqueRefus .lectureHistoriqueTete {
+  color: #c9483c;
+}
+.lectureHistoriqueValide .lectureHistoriqueTete {
+  color: #3f9b5f;
+}
+.lectureHistoriqueCommentaire {
+  display: block;
+  color: var(--c-text-secondary);
+  font-style: italic;
+}
+
+/* Le bilan du portfolio, en tête de l'onglet Évaluation (prof, 2026-10-11) */
+.bilan {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: #fff;
+}
+.bilanTitre {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}
+.bilanTuiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 6px;
+}
+.bilanTuile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  background: var(--c-bg-element);
+  font-size: 11.5px;
+  color: var(--c-text-muted);
+  text-align: center;
+}
+.bilanTuile b {
+  font-size: 18px;
+  color: var(--c-text);
+}
+.bilanTuileRefus {
+  background: #fbe3e1;
+}
+.bilanTuileRefus b {
+  color: #c9483c;
+}
+.bilanListe {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+/* « Corriger mon dernier retour » : un lien, pas un bouton de plus */
+.lienDiscret {
+  margin: 2px 0 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--c-text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.lienDiscret:hover {
+  color: var(--c-accent);
+}
+
+/* Le crayon du dernier retour, dans l'historique */
+.crayonRetour {
+  padding: 0 2px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.crayonRetour:hover {
+  opacity: 1;
 }

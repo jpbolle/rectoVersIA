@@ -7,6 +7,7 @@ import { basculerMarque, type GenreMarque } from '@/components/Diagram/Pastilles
 import SchemaAideIA from '@/components/SchemaAideIA/SchemaAideIA';
 import { useSchemaComparaison } from '@/hooks/useSchemaComparaison';
 import PortfolioLecture from '@/components/Portfolio/PortfolioLecture';
+import PortfolioBilan from '@/components/Portfolio/PortfolioBilan';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -356,6 +357,18 @@ export default function TravailDetailPage() {
   }, [isAuthenticated, role, uid, devoirId, travailId, getAuthHeaders]);
 
   const handleBack = () => {
+    // Ouverte depuis la copie d'un PORTFOLIO (« Corriger la copie ») : la flèche
+    // ramène à cette copie-là, à l'élève sur qui le prof travaillait (JP, 2026-10-11)
+    const retour = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('retour') : null;
+    if (retour && /^\/dashboard\/travaux\/[^/?#]+\/[^/?#]+$/.test(retour)) {
+      router.push(retour);
+      return;
+    }
+    // Activité posée dans un portfolio : retour à la copie du portfolio de l'élève
+    if (travail?.portfolioRetour) {
+      router.push(travail.portfolioRetour);
+      return;
+    }
     // ── Rendre au prof la classe d'où il vient ──
     // Sans le paramètre `session`, la liste des copies rouvre sur l'écran de
     // choix des classes : le prof qui vient de corriger doit re-sélectionner
@@ -481,8 +494,10 @@ export default function TravailDetailPage() {
   // Copie pas encore rendue : « Verrouiller la copie », sous le triple bouton,
   // empêche l'élève de la modifier sans la compter comme rendue.
   type EtatCopie = 'reecriture' | 'correction' | 'corrige';
-  const tripleEtat =
-    devoir?.typeTravail === 'ecrire' || devoir?.typeTravail === 'schematiser' || devoir?.typeTravail === 'portfolio';
+  // Pas pour le PORTFOLIO (JP, 2026-10-11) : une activité au long cours dont
+  // les phases varient — chaque étape a sa validation, la copie entière n'a
+  // pas d'état « rendue / corrigée ».
+  const tripleEtat = devoir?.typeTravail === 'ecrire' || devoir?.typeTravail === 'schematiser';
   const profACorrige =
     !!correction &&
     (!!correction.annotatedContent?.replace(/<[^>]*>/g, '').trim() ||
@@ -684,6 +699,13 @@ export default function TravailDetailPage() {
             <p className={styles.subtitle}>
               Travail de <strong>{travail.studentName}</strong>
             </p>
+            {/* Copie de GROUPE (portfolio, 2026-10-11) : une correction ici vaut pour
+                tous les membres — leurs copies portent le même texte */}
+            {travail.groupeNoms && travail.groupeNoms.length > 1 && (
+              <p className={styles.subtitle}>
+                👥 Copie du groupe : {travail.groupeNoms.join(', ')} — votre correction et vos gestes valent pour tous.
+              </p>
+            )}
           </div>
         </div>
 
@@ -770,7 +792,8 @@ export default function TravailDetailPage() {
               !tripleEtat &&
               travail.status === 'submitted' &&
               devoir?.typeTravail !== 'lire' &&
-              devoir?.typeTravail !== 'rechercher' && (
+              devoir?.typeTravail !== 'rechercher' &&
+              devoir?.typeTravail !== 'portfolio' && (
               <button
                 className={styles.returnBtn}
                 onClick={handleReturnForCorrection}
@@ -1035,6 +1058,13 @@ export default function TravailDetailPage() {
               <div className={styles.assistanceWrapper}>
                 <AssistancePanel
                   devoir={devoir}
+                  // Portfolio : le bilan (étapes faites, non faites, renvoyées, refus) en
+                  // tête de l'onglet Évaluation — de quoi noter progression et autonomie
+                  evaluationPrefixe={
+                    devoir.typeTravail === 'portfolio' ? (
+                      <PortfolioBilan devoirId={devoir.id} travail={travail} getAuthHeaders={getAuthHeaders} />
+                    ) : undefined
+                  }
                   aideIaProf={
                     // Gestion de l'affichage : l'aide IA du prof peut être masquée
                     devoir.typeTravail === 'schematiser' && !iaProfMasquee ? (

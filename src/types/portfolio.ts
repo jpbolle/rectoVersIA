@@ -25,13 +25,19 @@ export type PorteeEtape = 'personnelle' | 'collective';
 // Un dépôt combine un ou plusieurs types (plan 2026-10-10-portfolio-depots-
 // multitypes) : « texte + lien » = un seul bloc chez l'élève, une zone par
 // type. `groupe` ne se combine avec rien (circuit d'acceptation propre).
-export type TypeDepot = 'texte' | 'lien' | 'image' | 'tableau' | 'groupe';
+// `scene` (2026-10-11, JP) : l'élève choisit une scène de l'œuvre fixée par le
+// prof (`PortfolioDepot.oeuvreId`) — exclusif lui aussi. Valeur stockée : l'id
+// de la section (`oeuvres/{id}/sections/{sectionId}`).
+export type TypeDepot = 'texte' | 'lien' | 'image' | 'tableau' | 'scene' | 'groupe';
 
 // Ordre d'affichage des zones chez l'élève, et des cases chez le prof
-export const ORDRE_TYPES_DEPOT: TypeDepot[] = ['texte', 'lien', 'image', 'tableau', 'groupe'];
+export const ORDRE_TYPES_DEPOT: TypeDepot[] = ['texte', 'lien', 'image', 'tableau', 'scene', 'groupe'];
 
 // Les types que le prof peut cocher aujourd'hui (les autres : « bientôt »)
-export const TYPES_DEPOT_DISPONIBLES: TypeDepot[] = ['texte', 'lien', 'image', 'tableau', 'groupe'];
+export const TYPES_DEPOT_DISPONIBLES: TypeDepot[] = ['texte', 'lien', 'image', 'tableau', 'scene', 'groupe'];
+
+// Les types qui ne se combinent avec aucun autre
+export const TYPES_DEPOT_EXCLUSIFS: TypeDepot[] = ['scene', 'groupe'];
 
 // Tableau : le prof fixe les colonnes, l'élève ajoute les lignes
 export const MAX_COLONNES_TABLEAU = 8;
@@ -47,6 +53,8 @@ export interface PortfolioDepot {
   types: TypeDepot[];
   // Les intitulés des colonnes — dépôt avec la partie « tableau » seulement
   colonnes?: string[];
+  // L'œuvre de la bibliothèque où l'élève choisit sa scène — dépôt « scene » seulement
+  oeuvreId?: string;
   // ⚠ ANCIENNE FORME (avant le 2026-10-10) : un seul type. Lire les types
   // par `typesDuDepot()`, jamais `type` ni `types` directement.
   type?: TypeDepot;
@@ -56,7 +64,8 @@ export interface PortfolioDepot {
 export function typesDuDepot(d: { types?: TypeDepot[]; type?: TypeDepot }): TypeDepot[] {
   const brut: unknown[] = Array.isArray(d.types) && d.types.length > 0 ? d.types : d.type ? [d.type] : [];
   const types = ORDRE_TYPES_DEPOT.filter((t) => brut.includes(t));
-  if (types.includes('groupe')) return ['groupe'];
+  const exclusif = TYPES_DEPOT_EXCLUSIFS.find((t) => types.includes(t));
+  if (exclusif) return [exclusif];
   return types.length > 0 ? types : ['texte'];
 }
 
@@ -111,7 +120,8 @@ export type Appreciation = 'bien' | 'moyen' | 'faible';
 export const APPRECIATIONS: Record<Appreciation, { emoji: string; label: string }> = {
   bien: { emoji: '😀', label: 'Très bien' },
   moyen: { emoji: '😐', label: 'Correct' },
-  faible: { emoji: '🙁', label: 'Insuffisant' },
+  // Une vraie grimace (JP, 2026-10-11)
+  faible: { emoji: '😖', label: 'Insuffisant' },
 };
 
 export interface SoumissionEtape {
@@ -140,11 +150,16 @@ export interface ValeurAttribuee {
 /** Ce qui revient à un groupe (ou à un élève sans groupe) — `portfolioSuivi`. */
 export interface SuiviPortfolio {
   soumissions: Record<string, SoumissionEtape>;
+  // Le DERNIER retour du prof par étape (ce que voit l'élève)
   retours: Record<string, RetourEtape>;
+  // TOUS les retours par étape, du plus ancien au plus récent (JP, 2026-10-11 :
+  // « garder une trace des refus, nombre et remarques » — pour noter la
+  // progression et l'autonomie). Jamais réécrit, seulement allongé.
+  historique: Record<string, RetourEtape[]>;
   valeurs: Record<string, ValeurAttribuee>;
 }
 
-export const SUIVI_VIDE: SuiviPortfolio = { soumissions: {}, retours: {}, valeurs: {} };
+export const SUIVI_VIDE: SuiviPortfolio = { soumissions: {}, retours: {}, historique: {}, valeurs: {} };
 
 /** Une valeur prête à afficher dans une étape : son nom, son genre, ce qui a été attribué. */
 export interface ValeurAffichee {
@@ -526,5 +541,6 @@ export const TYPE_DEPOT_LABELS: Record<TypeDepot, string> = {
   lien: 'Lien',
   image: 'Image',
   tableau: 'Tableau',
+  scene: 'Scène d’une œuvre',
   groupe: 'Groupe',
 };

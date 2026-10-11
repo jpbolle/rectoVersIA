@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
+import { generateTravailId } from '@/lib/travail-utils';
+import { rouvrirEcriture } from '@/lib/ecriture-groupe-server';
+import { adminDb } from '@/lib/firebase/admin';
+import { soumettreEtape } from '@/lib/portfolio-activite-server';
 import { verifyAuth } from '@/lib/api-auth';
 import { accesDevoir } from '@/lib/classe-acces';
 import { poserAnnonce } from '@/lib/annonce-server';
 import { lirePortfolioContenu } from '@/lib/portfolio-server';
-import { groupeDe, profPeutGerer } from '@/lib/portfolio-groupe-server';
+import { profPeutGerer } from '@/lib/portfolio-groupe-server';
 import { cibleSuivi, lireSuivi, retourPropre, suiviDe, valeurPropre } from '@/lib/portfolio-suivi-server';
 import { identiteEleve, sequenceOuverteA } from '@/lib/sequence-server';
-import { etatEtape, lireContenuEleve, prete, type EtapePortfolioVue } from '@/lib/portfolio-etat';
-import { etapeASoumettre, type ValeurAttribuee } from '@/types/portfolio';
-import type { EtatActiviteParcours } from '@/types/sequence-fle';
+import type { ValeurAttribuee } from '@/types/portfolio';
 
 // Le SUIVI d'un portfolio (plan 2026-10-10-portfolio-validation-variables) :
 //  GET   : l'élève lit le sien ; le prof celui d'un élève (`?eleve={uid}`)
@@ -17,12 +18,6 @@ import type { EtatActiviteParcours } from '@/types/sequence-fle';
 //  PATCH : le prof donne son RETOUR — ✓ / ✗, appréciation, commentaire,
 //          valeurs attribuées (`{ devoirId, eleve, etapeId, decision, … }`)
 // Un groupe accepté partage un seul suivi (voir `portfolio-suivi-server.ts`).
-
-function etatDe(status: unknown): EtatActiviteParcours {
-  if (status === 'submitted') return 'fait';
-  if (status === 'draft') return 'en-cours';
-  return 'a-faire';
-}
 
 async function devoirPortfolio(devoirId: string) {
   if (!devoirId) return null;
@@ -82,75 +77,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Devoir non disponible' }, { status: 403 });
     }
 
-    const etape = lirePortfolioContenu(devoir.portfolio).etapes.find((e) => e.id === etapeId);
-    if (!etape || !etapeASoumettre(etape)) {
-      return NextResponse.json({ success: false, message: 'Cette étape ne se soumet pas' }, { status: 400 });
-    }
-
-    // L'étape doit être PRÊTE — vérifié ici, pas seulement à l'écran
-    const travailId = `TRV-${devoirId}-${auth.uid}`;
-    const travail = await adminDb.collection('travaux').doc(travailId).get();
-    const groupe = identite.eleveIds.length > 0 ? await groupeDe(devoirId, identite.eleveIds) : null;
-    const vue: EtapePortfolioVue = { ...etape };
-    if (etape.nature === 'activite' && etape.devoirId) {
-      const copie = await adminDb.collection('travaux').doc(`TRV-${etape.devoirId}-${auth.uid}`).get();
-      vue.etatRenvoi = copie.exists ? etatDe(copie.data()?.status) : 'a-faire';
-    }
-    const cible = await cibleSuivi(devoirId, auth.uid, auth.email);
-    const ref = adminDb.collection('portfolioSuivi').doc(cible.cle);
-
-    const resultat = await adminDb.runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
-      const suivi = snap.exists ? lireSuivi(snap.data()) : lireSuivi({});
-      const contenu = {
-        ...lireContenuEleve(typeof travail.data()?.content === 'string' ? travail.data()!.content : ''),
-        groupeStatut: groupe?.statut ?? null,
-        suivi,
-      };
-      const etat = etatEtape(vue, contenu);
-      // On soumet une étape prête, ou une étape refusée qu'on a reprise
-      if (etat !== 'prete' && etat !== 'a-reprendre') return { ok: false as const, etat };
-      if (!prete(vue, contenu)) return { ok: false as const, etat: 'en-cours' as const };
-      const n = (suivi.soumissions[etapeId]?.n ?? 0) + 1;
-      tx.set(
-        ref,
-        {
-          devoirId,
-          groupeId: cible.groupeId,
-          soumissions: { [etapeId]: { date: new Date().toISOString(), n } },
-          updatedAt: new Date().toISOString(),
-        },
-        { merge: true }
-      );
-      return { ok: true as const, n };
-    });
-
+    const resultat = await soumettreEtape(devoir, etapeId, auth, identite);
     if (!resultat.ok) {
+      if (resultat.raison === 'non-soumissible') {
+        return NextResponse.json({ success: false, message: 'Cette étape ne se soumet pas' }, { status: 400 });
+      }
       return NextResponse.json(
-        { success: false, message: resultat.etat === 'en-cours' ? 'L’étape n’est pas terminée' : 'L’étape est déjà soumise' },
+        { success: false, message: resultat.raison === 'pas-prete' ? 'L’étape n’est pas terminée' : 'L’étape est déjà soumise' },
         { status: 409 }
       );
     }
 
-    // Le prof est prévenu (cloche). Pas de nom d'élève dans la notification :
-    // la collection `annonces` ne porte aucune identité d'élève (RGPD).
-    try {
-      const profId = typeof devoir.profId === 'string' ? devoir.profId : '';
-      const prof = profId ? await adminAuth.getUser(profId) : null;
-      if (prof?.email) {
-        await poserAnnonce({
-          message: `${resultat.n > 1 ? 'Étape soumise à nouveau' : 'Étape soumise'} : « ${etape.titre} » — ${String(devoir.intitule || 'portfolio')}`,
-          cible: 'collegue',
-          destinataireEmail: prof.email,
-          auteurUid: auth.uid,
-          lien: `/dashboard/travaux/${devoirId}/${travailId}`,
-          etiquette: '🗂️ Portfolio — à valider',
-        });
-      }
-    } catch (e) {
-      console.error('Notification de soumission non écrite:', e);
-    }
-
+    const cible = await cibleSuivi(devoirId, auth.uid, auth.email);
     return NextResponse.json({ success: true, data: await suiviDe(cible.cle) });
   } catch (error) {
     console.error('Erreur POST /api/portfolio/suivi:', error);
@@ -194,8 +132,15 @@ export async function PATCH(request: NextRequest) {
       const snap = await tx.get(ref);
       const suivi = snap.exists ? lireSuivi(snap.data()) : lireSuivi({});
       const maintenant = new Date().toISOString();
-      // Un retour donné sans soumission vaut soumission (le prof a vu le travail)
-      const soumission = suivi.soumissions[etapeId] ?? { date: maintenant, n: 1 };
+      // Un retour répond à une soumission de l'élève (JP, 2026-10-11). Sauf le
+      // « + Nouveau retour » du prof (`nouveau: true`) — l'élève a fait le
+      // travail mais oublié de soumettre : ce retour VAUT soumission, il en
+      // ouvre une nouvelle (et s'ajoute donc à l'historique).
+      const soumission =
+        body.nouveau === true
+          ? { date: maintenant, n: (suivi.soumissions[etapeId]?.n ?? 0) + 1 }
+          : suivi.soumissions[etapeId];
+      if (!soumission) throw new Error('non-soumise');
       const retour = retourPropre(body, soumission.n);
       if (!retour) throw new Error('decision');
       decision = retour.decision;
@@ -211,12 +156,49 @@ export async function PATCH(request: NextRequest) {
           groupeId: cible.groupeId,
           soumissions: { ...suivi.soumissions, [etapeId]: soumission },
           retours: { ...suivi.retours, [etapeId]: retour },
+          // L'HISTORIQUE (JP, 2026-10-11) : un retour par soumission. Le prof qui
+          // retouche son retour sur la MÊME soumission le remplace (pas de faux
+          // refus en double) ; une nouvelle soumission en ajoute un.
+          historique: {
+            ...suivi.historique,
+            [etapeId]: (() => {
+              const avant = suivi.historique[etapeId] ?? [];
+              const dernier = avant[avant.length - 1];
+              const suite = dernier && dernier.soumissionN === retour.soumissionN ? [...avant.slice(0, -1), retour] : [...avant, retour];
+              return suite.slice(-40);
+            })(),
+          },
           valeurs: valeursSuivantes,
           updatedAt: maintenant,
         },
         { merge: false }
       );
     });
+
+    // PASSERELLE RETOUR (JP, 2026-10-11) : une étape-ACTIVITÉ refusée rouvre la
+    // copie de l'activité, chez chaque membre — sans quoi l'élève retrouvait sa
+    // copie « remise », éditeur fermé, sans pouvoir reprendre. Sa nouvelle
+    // remise soumettra l'étape à nouveau (passerelle aller).
+    if (decision === 'refuse' && etape.nature === 'activite' && etape.devoirId) {
+      try {
+        const copies = await adminDb.getAll(
+          ...cible.uids.map((uid) => adminDb.collection('travaux').doc(generateTravailId(etape.devoirId!, uid)))
+        );
+        const lot = adminDb.batch();
+        let n = 0;
+        copies.forEach((c) => {
+          if (!c.exists || c.data()?.status !== 'submitted') return;
+          lot.update(c.ref, { status: 'draft', submittedAt: null, verrouille: false, updatedAt: new Date().toISOString() });
+          n++;
+        });
+        if (n > 0) await lot.commit();
+        // Copie de groupe : le texte commun redevient modifiable
+        const cle = copies.find((c) => c.exists && typeof c.data()?.groupeEcriture === 'string')?.data()?.groupeEcriture;
+        if (cle) await rouvrirEcriture(cle);
+      } catch (e) {
+        console.error('Réouverture de la copie de l’activité refusée :', e);
+      }
+    }
 
     // Chaque membre du groupe est prévenu (cloche)
     await Promise.all(
@@ -238,6 +220,9 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: await suiviDe(cible.cle) });
   } catch (error) {
+    if (error instanceof Error && error.message === 'non-soumise') {
+      return NextResponse.json({ success: false, message: 'L’élève n’a pas encore soumis cette étape' }, { status: 409 });
+    }
     if (error instanceof Error && error.message === 'decision') {
       return NextResponse.json({ success: false, message: 'Décision manquante (valider ou refuser)' }, { status: 400 });
     }

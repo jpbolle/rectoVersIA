@@ -27,6 +27,8 @@ interface WorkTopBarProps {
   // Où ramène la flèche (défaut : tableau de bord ; liste des activités en
   // prévisualisation). La lecture de cours FLE renvoie vers « Mes lectures ».
   backHref?: string;
+  // Ou la page décide elle-même au clic (activité ouverte depuis un portfolio)
+  onBack?: () => void;
 }
 
 export default function WorkTopBar({
@@ -42,10 +44,15 @@ export default function WorkTopBar({
   hideSubmit = false,
   submitOutsideApp = false,
   backHref,
+  onBack,
 }: WorkTopBarProps) {
   const router = useRouter();
 
   const handleBack = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
     // En mode preview, la fleche retourne a la liste des devoirs (vue eleve)
     // Pour les eleves, retourne au dashboard
     router.push(backHref ?? (isPreviewMode ? '/activites' : '/dashboard'));

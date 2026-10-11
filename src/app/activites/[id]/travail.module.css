@@ -394,3 +394,60 @@
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+
+/* ── Copie de groupe (2026-10-11) : la pastille « X est en train d'écrire… »
+   dans l'en-tête de la colonne de travail, et le bouton PDF à droite ── */
+.editorHeaderLigne {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.editorHeaderDroite {
+  margin-left: auto;
+}
+.pastilleGroupe {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-text);
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+.pastilleGroupeAutre {
+  background: #fdf5e6;
+  color: #8a5a1c;
+  border: 1px solid var(--c-accent);
+}
+.pastilleGroupeBtn {
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-accent);
+  background: none;
+  border: 1px solid var(--c-accent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.messageGroupe {
+  margin: 0;
+  padding: 6px 20px;
+  font-size: 12.5px;
+  color: #8a5a1c;
+  background: #fdf5e6;
+}
+
+/* Lecture sans questionnaire : un message, pas un éditeur */
+.lectureSansQuestionnaire {
+  margin: 24px 20px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  background: #fdf5e6;
+  color: #8a5a1c;
+  font-size: 14px;
+  line-height: 1.5;
+}

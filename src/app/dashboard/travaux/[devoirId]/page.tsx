@@ -421,7 +421,10 @@ export default function TravauxPage() {
   // le retour ramène là d'où le prof est venu
   const handleBack = () =>
     router.push(
-      devoir?.referentiel === 'fle'
+      // Activité d'un portfolio : on revient au portfolio (JP, 2026-10-11)
+      devoir?.portfolioParent
+        ? `/dashboard/travaux/${devoir.portfolioParent.id}`
+        : devoir?.referentiel === 'fle'
         ? '/parcours-fle?section=activites'
         : devoir?.typeTravail === 'sequence'
           ? '/parcours-fle?section=sequences'
@@ -531,6 +534,13 @@ export default function TravauxPage() {
           <button className={styles.backBtn} onClick={handleBack}>←</button>
           <div className={styles.headerContent}>
             <h1 className={styles.title}>{devoir?.intitule || 'Travaux'}</h1>
+            {/* Une activité de portfolio se corrige depuis le portfolio de l'élève */}
+            {devoir?.portfolioParent && (
+              <p className={styles.subtitle}>
+                🗂️ Activité du portfolio{' '}
+                <Link href={`/dashboard/travaux/${devoir.portfolioParent.id}`}>« {devoir.portfolioParent.intitule} »</Link>
+              </p>
+            )}
             <p className={styles.subtitle}>
               {choixNecessaire
                 ? 'Choisissez une classe'

@@ -466,6 +466,26 @@ export default function RessourcesTab({
       titre: it.legende?.trim() || `Contenu interactif ${index + 1}`,
       contenu: (
         <figure className={styles.interactifFigure}>
+          {/* Ouvrir EN GRAND, dans un onglet à part : une infographie se lit
+              mal dans un cadre, et l'élève garde ainsi la page à côté de son
+              travail. En haut à droite, au-dessus du cadre (et non par-dessus :
+              il masquerait le coin de l'animation), même largeur que lui. La
+              page est servie en origine opaque — voir /api/ressources/interactif. */}
+          {it.kind === 'code' && (
+            <div
+              className={styles.interactifHaut}
+              style={it.largeur ? { maxWidth: `${it.largeur}px` } : undefined}
+            >
+              <a
+                className={styles.interactifAgrandir}
+                href={`/api/ressources/interactif/${devoir.id}/${it.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                ↗ Ouvrir en grand
+              </a>
+            </div>
+          )}
           <div className={styles.interactifCadre} style={cadre}>
             {it.kind === 'code' ? (
               <iframe
@@ -497,10 +517,6 @@ export default function RessourcesTab({
             )}
           </div>
           <figcaption className={styles.interactifPied}>
-            {/* Ouvrir EN GRAND, dans un onglet à part : une infographie se lit
-                mal dans un cadre, et l'élève garde ainsi la page à côté de son
-                travail. La page est servie en origine opaque — voir
-                /api/ressources/interactif. */}
             {it.kind === 'code' && (
               <span className={styles.interactifZoom}>
                 <button
@@ -525,16 +541,6 @@ export default function RessourcesTab({
                   +
                 </button>
               </span>
-            )}
-            {it.kind === 'code' && (
-              <a
-                className={styles.interactifAgrandir}
-                href={`/api/ressources/interactif/${devoir.id}/${it.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                ↗ Ouvrir en grand
-              </a>
             )}
           </figcaption>
         </figure>

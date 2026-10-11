@@ -2,6 +2,8 @@
 // dépôts, contenu d'une activité) et lecture d'une matrice Firestore.
 // `undefined` est interdit en base : tout champ absent s'écrit vide ou null.
 
+import { adminDb } from '@/lib/firebase/admin';
+import { activitesDePortfolio } from '@/lib/devoir-utils';
 import { sanitizeRessources } from '@/lib/ressources-server';
 import type { DevoirRessource } from '@/types/devoir';
 import {
@@ -68,6 +70,8 @@ function depotsPourFirestore(input: unknown): PortfolioDepot[] {
       types,
       // Un tableau sans colonne nommée en garde une, pour qu'il s'affiche
       ...(types.includes('tableau') ? { colonnes: colonnes.length > 0 ? colonnes : ['Réponse'] } : {}),
+      // Scène d'une œuvre : l'œuvre fixée par le prof (vide tant qu'il ne l'a pas choisie)
+      ...(types.includes('scene') ? { oeuvreId: texte(item.oeuvreId, 60) } : {}),
     });
   }
   return depots;
@@ -201,4 +205,66 @@ export function docToPortfolioMatrice(doc: Doc): PortfolioMatrice {
     createdAt: iso(data.createdAt),
     updatedAt: iso(data.updatedAt),
   };
+}
+
+/**
+ * Les activités INTÉGRÉES à un portfolio — donné (activité de type portfolio)
+ * ou matrice de Mes Ressources : la même règle que le tableau de bord du prof.
+ * Une telle activité n'a plus de vie autonome (JP, 2026-10-11) : l'accueil du
+ * prof n'en montre ni l'échéance ni les retards, même si elle garde des
+ * classes, une échéance ou des sessions d'avant son intégration — rien n'est
+ * effacé en base.
+ */
+export async function activitesIntegreesAUnPortfolio(): Promise<Set<string>> {
+  const [portfoliosDonnes, matrices] = await Promise.all([
+    adminDb.collection('devoirs').where('typeTravail', '==', 'portfolio').get(),
+    adminDb.collection('portfolios').get(),
+  ]);
+  const etapesDe = (raw: unknown) =>
+    (Array.isArray(raw) ? raw : []) as { nature: string; devoirId?: string }[];
+  return activitesDePortfolio([
+    ...portfoliosDonnes.docs.map((d) => ({
+      typeTravail: 'portfolio',
+      portfolio: { etapes: etapesDe(d.data().portfolio?.etapes) },
+    })),
+    ...matrices.docs.map((d) => ({ typeTravail: 'portfolio', portfolio: { etapes: etapesDe(d.data().etapes) } })),
+  ]);
+}
+
+/**
+ * Le portfolio (donné, non archivé) qui contient cette activité dans une de ses
+ * étapes — côté prof, pour que la copie et la liste des copies d'une activité
+ * de portfolio ramènent au portfolio (JP, 2026-10-11). `null` : activité autonome.
+ */
+export async function portfolioParent(devoirId: string): Promise<{ id: string; intitule: string } | null> {
+  const snap = await adminDb.collection('devoirs').where('typeTravail', '==', 'portfolio').get();
+  for (const d of snap.docs) {
+    const data = d.data();
+    if (data.archive === true) continue;
+    if (lirePortfolioContenu(data.portfolio).etapes.some((e) => e.nature === 'activite' && e.devoirId === devoirId)) {
+      return { id: String(data.id || d.id), intitule: String(data.intitule || 'Portfolio') };
+    }
+  }
+  return null;
+}
+
+/**
+ * Parmi ces activités, celles qui n'ont RIEN à faire : une lecture sans
+ * questionnaire (ni de la bibliothèque, ni sur mesure) et sans œuvre. Leur
+ * étape de portfolio compte comme faite (JP, 2026-10-11 : « je ne veux pas que
+ * l'élève soit bloqué à cause d'un manque de professionnalisme du prof »).
+ */
+export function activiteVide(data: FirebaseFirestore.DocumentData | undefined): boolean {
+  if (!data || data.typeTravail !== 'lire') return false;
+  if (data.oeuvreId) return false;
+  if (typeof data.lectureQuizId === 'string' && data.lectureQuizId) return false;
+  const questions = (data.lectureQuiz as { questions?: unknown[] } | null | undefined)?.questions;
+  return !(Array.isArray(questions) && questions.length > 0);
+}
+
+export async function activitesVides(devoirIds: string[]): Promise<Set<string>> {
+  const ids = [...new Set(devoirIds.filter(Boolean))];
+  if (ids.length === 0) return new Set();
+  const docs = await adminDb.getAll(...ids.map((d) => adminDb.collection('devoirs').doc(d)));
+  return new Set(docs.filter((d) => d.exists && activiteVide(d.data())).map((d) => d.id));
 }

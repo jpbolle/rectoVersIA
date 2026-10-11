@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { accesDevoir, copieVisible } from '@/lib/classe-acces';
 import { decrypt } from '@/lib/crypto';
-import { lirePortfolioContenu } from '@/lib/portfolio-server';
+import { activitesVides, lirePortfolioContenu } from '@/lib/portfolio-server';
 import { groupesDe } from '@/lib/portfolio-groupe-server';
 import { lireSuivi } from '@/lib/portfolio-suivi-server';
 import { enRetard, etatEtape, faite, lireContenuEleve, type EtapePortfolioVue, type EtatEtape } from '@/lib/portfolio-etat';
@@ -104,6 +104,8 @@ export async function GET(request: NextRequest) {
     // L'état des activités renvoyées, pour chaque élève
     const renvois = [...new Set(etapes.filter((e) => e.nature === 'activite' && e.devoirId).map((e) => e.devoirId!))];
     const etatsRenvoi = new Map<string, EtatActiviteParcours>();
+    // Lecture sans questionnaire ni œuvre : l'étape compte comme faite
+    const vides = await activitesVides(renvois);
     const copiesExistantes = new Set<string>();
     const refs = uids.flatMap((u) => renvois.map((d) => adminDb.collection('travaux').doc(`TRV-${d}-${u}`)));
     for (let i = 0; i < refs.length; i += 100) {
@@ -132,7 +134,13 @@ export async function GET(request: NextRequest) {
           copies[e.id] = { devoirId: e.devoirId, travailId: `TRV-${e.devoirId}-${uid}` };
         }
         const vue: EtapePortfolioVue =
-          e.nature === 'activite' && e.devoirId ? { ...e, etatRenvoi: etatsRenvoi.get(`TRV-${e.devoirId}-${uid}`) ?? 'a-faire' } : e;
+          e.nature === 'activite' && e.devoirId
+            ? {
+                ...e,
+                etatRenvoi: etatsRenvoi.get(`TRV-${e.devoirId}-${uid}`) ?? 'a-faire',
+                ...(vides.has(e.devoirId) ? { activiteVide: true } : {}),
+              }
+            : e;
         cases[e.id] = estEtapeSansTrace(e) ? (contenu.cochees.includes(e.id) ? 'cochee' : 'non-cochee') : etatEtape(vue, contenu);
         if (!e.introduction && faite(vue, contenu)) faites += 1;
         if (enRetard(vue, contenu)) retards.push(e.id);

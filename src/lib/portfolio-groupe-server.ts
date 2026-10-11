@@ -149,13 +149,12 @@ export async function camaradesDe(
   identite: IdentiteEleve
 ): Promise<{ camarades: CamaradeVue[]; mesFiches: string[] }> {
   const nomsActivite = Array.isArray(devoir.classes) ? (devoir.classes as string[]) : [];
-  const classeIds: string[] = [];
-  identite.classeIds.forEach((id, i) => {
-    if (nomsActivite.includes(identite.classeNoms[i] ?? '')) classeIds.push(id);
-  });
-  // Les noms sont rangés dans l'ordre de résolution : par prudence, on
-  // relit les classes si l'alignement a échoué
-  const ids = classeIds.length > 0 ? classeIds : identite.classeIds;
+  // Chaque classe appariée à SON nom. Avant le 2026-10-11, ids et noms étaient
+  // appariés par index alors que les noms arrivent dans le désordre — et, faute
+  // de correspondance, on prenait TOUTES ses classes : un élève inscrit dans
+  // plusieurs classes (4C, 4D, FLE, une autre école…) se voyait proposer des
+  // camarades d'une autre classe. Aucune classe de l'activité : personne.
+  const ids = identite.classes.filter((c) => nomsActivite.includes(c.nom)).map((c) => c.id);
   if (ids.length === 0) return { camarades: [], mesFiches: identite.eleveIds };
   const snap = await adminDb.collection('eleves').where('classeId', 'in', ids.slice(0, 10)).get();
   const camarades = snap.docs

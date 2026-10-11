@@ -109,9 +109,18 @@ export async function POST(request: NextRequest) {
 
     // Mon groupe en attente ou refusé : remplacé par la nouvelle déclaration
     const lot = adminDb.batch();
-    existants
-      .filter((g) => g.statut !== 'accepte' && g.membres.some((m) => mesFiches.includes(m.eleveId)))
-      .forEach((g) => lot.delete(adminDb.collection('portfolioGroupes').doc(g.id)));
+    const remplaces = existants.filter(
+      (g) => g.statut !== 'accepte' && g.membres.some((m) => mesFiches.includes(m.eleveId))
+    );
+    remplaces.forEach((g) => lot.delete(adminDb.collection('portfolioGroupes').doc(g.id)));
+    // La déclaration se met à jour à chaque partenaire ajouté ou retiré (plus de
+    // bouton « Déclarer », 2026-10-11) : qui avait déjà confirmé dans MON groupe
+    // précédent n'a pas à reconfirmer
+    const dejaConfirmes = new Set(
+      remplaces
+        .filter((g) => mesFiches.includes(g.createurEleveId))
+        .flatMap((g) => g.membres.filter((m) => m.statut === 'confirme').map((m) => m.eleveId))
+    );
 
     const id = generateGroupeId();
     const now = new Date().toISOString();
@@ -119,7 +128,7 @@ export async function POST(request: NextRequest) {
       id,
       devoirId,
       createurEleveId: moi,
-      membres: [{ eleveId: moi, statut: 'confirme' }, ...partenaires.map((p) => ({ eleveId: p, statut: 'attente' }))],
+      membres: [{ eleveId: moi, statut: 'confirme' }, ...partenaires.map((p) => ({ eleveId: p, statut: dejaConfirmes.has(p) ? 'confirme' : 'attente' }))],
       statut: 'attente',
       motif: '',
       createdAt: now,

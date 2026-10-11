@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { repliquerCorrection, repliquerEtatCopie } from '@/lib/ecriture-groupe-server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { ecrireScoreLecture } from '@/lib/lecture-score-persistance';
@@ -188,6 +189,22 @@ export async function PATCH(
             updatedAt: new Date().toISOString(),
           });
         }
+      }
+    }
+
+    // COPIE DE GROUPE (portfolio, 2026-10-11) : le prof corrige une fois, chaque
+    // membre reçoit la même correction — et, publiée, la même copie rendue
+    if (travailSnap.exists) {
+      try {
+        await repliquerCorrection(travailSnap.id);
+        if (body.visibleParEleve === true) {
+          const apres = (await travailSnap.ref.get()).data();
+          if (apres?.status === 'submitted') {
+            await repliquerEtatCopie(travailSnap.id, { status: 'submitted', submittedAt: apres.submittedAt ?? new Date().toISOString() });
+          }
+        }
+      } catch (e) {
+        console.error('Réplication de la correction :', e);
       }
     }
 

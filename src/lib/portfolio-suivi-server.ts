@@ -54,24 +54,39 @@ export function lireSuivi(data: unknown): SuiviPortfolio {
     const s = objet(v);
     if (typeof s.date === 'string') soumissions[k] = { date: s.date, n: typeof s.n === 'number' ? s.n : 1 };
   }
-  const retours: Record<string, RetourEtape> = {};
-  for (const [k, v] of Object.entries(objet(d.retours))) {
+  const lireRetour = (v: unknown): RetourEtape | null => {
     const r = objet(v);
-    if (r.decision !== 'valide' && r.decision !== 'refuse') continue;
-    retours[k] = {
+    if (r.decision !== 'valide' && r.decision !== 'refuse') return null;
+    return {
       decision: r.decision,
       appreciation: r.appreciation === 'bien' || r.appreciation === 'moyen' || r.appreciation === 'faible' ? r.appreciation : null,
       commentaire: typeof r.commentaire === 'string' ? r.commentaire : '',
       date: typeof r.date === 'string' ? r.date : '',
       soumissionN: typeof r.soumissionN === 'number' ? r.soumissionN : 0,
     };
+  };
+  const retours: Record<string, RetourEtape> = {};
+  for (const [k, v] of Object.entries(objet(d.retours))) {
+    const r = lireRetour(v);
+    if (r) retours[k] = r;
+  }
+  // L'historique ; un suivi d'avant le 2026-10-11 n'en a pas : son dernier
+  // retour en est le premier élément (rien de plus n'a été gardé)
+  const historique: Record<string, RetourEtape[]> = {};
+  for (const [k, v] of Object.entries(objet(d.historique))) {
+    if (!Array.isArray(v)) continue;
+    const liste = v.map(lireRetour).filter((r): r is RetourEtape => r !== null);
+    if (liste.length > 0) historique[k] = liste;
+  }
+  for (const [k, r] of Object.entries(retours)) {
+    if (!historique[k]) historique[k] = [r];
   }
   const valeurs: Record<string, ValeurAttribuee> = {};
   for (const [k, v] of Object.entries(objet(d.valeurs))) {
     const propre = valeurPropre(v);
     if (propre) valeurs[k] = propre;
   }
-  return { soumissions, retours, valeurs };
+  return { soumissions, retours, historique, valeurs };
 }
 
 /**
@@ -102,6 +117,12 @@ export async function fusionnerSuivisDansGroupe(devoirId: string, groupeId: stri
       for (const [etapeId, r] of Object.entries(src.retours)) {
         const deja = fusion.retours[etapeId];
         if (!deja || r.date > deja.date) fusion.retours[etapeId] = r;
+      }
+      // Les historiques s'additionnent (sans doublon), dans l'ordre des dates
+      for (const [etapeId, liste] of Object.entries(src.historique)) {
+        const deja = fusion.historique[etapeId] ?? [];
+        const dates = new Set(deja.map((r) => r.date));
+        fusion.historique[etapeId] = [...deja, ...liste.filter((r) => !dates.has(r.date))].sort((a, b) => a.date.localeCompare(b.date));
       }
       for (const [valeurId, v] of Object.entries(src.valeurs)) {
         if (!fusion.valeurs[valeurId]) fusion.valeurs[valeurId] = v;

@@ -68,7 +68,7 @@ export default function PortfolioSommaire({ eleve, lectureSeule = false }: Props
           {faites} étape{faites > 1 ? 's' : ''} faite{faites > 1 ? 's' : ''} sur {total}
         </span>
         <span className={styles.sommaireBarre} aria-hidden="true">
-          <i style={{ width: total ? `${Math.round((faites / total) * 100)}%` : '0%' }} />
+          <i style={{ transform: `scaleX(${total ? faites / total : 0})` }} />
         </span>
       </div>
       <div className={styles.sommaireLegende}>

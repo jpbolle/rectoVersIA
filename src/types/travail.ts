@@ -86,6 +86,13 @@ export interface Travail {
    * lecture, ou auteur à qui le titulaire de la classe a retiré l'écriture.
    */
   monAcces?: 'auteur' | 'titulaire' | 'edition' | 'lecture';
+  // Copie de GROUPE (étape collective d'un portfolio, 2026-10-11) : la clé du
+  // texte commun, et — pour le prof — les noms des membres
+  groupeEcriture?: string | null;
+  groupeNoms?: string[];
+  // Pour le prof : la copie du PORTFOLIO de cet élève, quand l'activité vit dans
+  // une étape de portfolio — la flèche y ramène
+  portfolioRetour?: string | null;
 }
 
 export type NonRenduStatus = 'justifie' | 'nonJustifie';

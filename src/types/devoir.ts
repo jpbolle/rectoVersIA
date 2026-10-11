@@ -109,6 +109,8 @@ export interface DevoirRessource {
 }
 
 export interface Devoir {
+  // Enrichi à la lecture (prof) : le portfolio qui contient cette activité
+  portfolioParent?: { id: string; intitule: string } | null;
   id: string;
   classes: Classe[];  // Plusieurs classes possibles
   dateRemise: string;

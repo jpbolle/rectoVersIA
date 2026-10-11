@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { lirePortfolioContenu } from '@/lib/portfolio-server';
+import { activiteVide, lirePortfolioContenu } from '@/lib/portfolio-server';
 import { identiteEleve, sequenceOuverteA } from '@/lib/sequence-server';
 import type { EtapePortfolioVue, ParcoursPortfolio } from '@/lib/portfolio-etat';
 import type { EtatActiviteParcours } from '@/types/sequence-fle';
@@ -52,10 +52,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Les activités renvoyées : leur titre à jour, et pour l'élève leur état
     const titres = new Map<string, string>();
     const etats = new Map<string, EtatActiviteParcours>();
+    const vides = new Set<string>();
     if (devoirIds.length > 0) {
       const docs = await adminDb.getAll(...devoirIds.map((d) => adminDb.collection('devoirs').doc(d)));
       docs.forEach((d, i) => {
         if (d.exists && typeof d.data()?.intitule === 'string') titres.set(devoirIds[i], d.data()!.intitule);
+        // Lecture sans questionnaire ni œuvre : l'étape compte comme faite
+        if (d.exists && activiteVide(d.data())) vides.add(devoirIds[i]);
       });
       if (uidEtats) {
         const travaux = await adminDb.getAll(
@@ -72,6 +75,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             // Le titre donné à l'étape l'emporte ; l'intitulé de l'activité à défaut
             titre: e.titre.trim() || titres.get(e.devoirId!) || '',
             etatRenvoi: uidEtats ? etats.get(e.devoirId!) ?? 'a-faire' : undefined,
+            ...(vides.has(e.devoirId!) ? { activiteVide: true } : {}),
           }
         : e
     );

@@ -4,6 +4,7 @@ import { verifyAuth } from '@/lib/api-auth';
 import { decryptFields, SENSITIVE_ELEVE_FIELDS } from '@/lib/crypto';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import { eleveExclu } from '@/lib/sequence-server';
+import { activitesDePortfolio } from '@/lib/devoir-utils';
 import {
   buildCertificationsProfil,
   chargerLabelsUaa,
@@ -74,6 +75,19 @@ export async function GET(request: NextRequest) {
       adminDb.collection('travaux').where('studentId', '==', auth.uid).get(),
     ]);
 
+    // Activités intégrées à un portfolio : l'élève les ouvre depuis l'étape,
+    // sans échéance ni retard propres — même règle que Mes Activités (JP, 2026-10-11)
+    const dansUnPortfolio = activitesDePortfolio(
+      devoirsSnap.docs.map((d) => {
+        const data = d.data();
+        const etapes = data.typeTravail === 'portfolio' ? data.portfolio?.etapes : null;
+        return {
+          typeTravail: data.typeTravail as string | undefined,
+          portfolio: Array.isArray(etapes) ? { etapes } : null,
+        };
+      })
+    );
+
     const devoirs = devoirsSnap.docs
       .map((d) => {
         const data = d.data();
@@ -99,6 +113,7 @@ export async function GET(request: NextRequest) {
           d.disponible &&
           !d.archive &&
           !d.corrige &&
+          !dansUnPortfolio.has(d.id) &&
           d.classes.some((c) => classeNames.includes(c)) &&
           // Réservée à certains élèves de la classe : les autres ne la voient pas
           !eleveExclu(d.eleves, eleveIds)
@@ -166,7 +181,11 @@ export async function GET(request: NextRequest) {
     retards.sort((a, b) => b.joursDeRetard - a.joursDeRetard);
     enCours.sort((a, b) => a.joursDeRetard - b.joursDeRetard);
 
-    const intituleDe = new Map(devoirs.map((d) => [d.id, d.intitule]));
+    // Les intitulés de TOUTES les activités : un résultat d'une activité de
+    // portfolio (filtrée plus haut) garde son nom
+    const intituleDe = new Map(
+      devoirsSnap.docs.map((d) => [d.data().id || d.id, (d.data().intitule as string) || 'Activité'])
+    );
     const resultats: ResultatAccueil[] = corrections
       .filter((c) => typeof c.score === 'number')
       .map((c) => ({

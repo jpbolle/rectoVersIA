@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { portfolioParent } from '@/lib/portfolio-server';
 import { schemaPourFirestore, schemaSansCorrige } from '@/lib/schema-devoir';
 import { adminDb } from '@/lib/firebase/admin';
 import { quizDuDevoir } from '@/lib/questionnaire-lecture-server';
@@ -314,6 +315,11 @@ export async function GET(
           }
         : {}),
     };
+
+    // Une activité posée dans un portfolio : le prof y est ramené
+    if (auth.role === 'prof' && data.typeTravail !== 'portfolio') {
+      (devoir as { portfolioParent?: unknown }).portfolioParent = await portfolioParent(id).catch(() => null);
+    }
 
     return NextResponse.json({ success: true, data: devoir });
   } catch (error) {

@@ -22,6 +22,12 @@
   dispositif propre `portfolio`, matrice dans Mes Ressources › Portfolios, activité = copie ;
   élève **dans** l'espace à 2 colonnes (étape à gauche, « Sommaire du portfolio » cochable à droite) ;
   groupe déclaré par l'élève, accepté par le prof. Rollup : `harnais/memoire/rollup_portfolio.md`.
+  Depuis le 2026-10-11 (testé par JP) : dépôt **« Scène d'une œuvre »** (`/api/portfolio/scene`), extrait posé
+  dans l'éditeur d'une copie d'écriture, **copie de groupe** d'une étape collective (`ecriture-groupe-server.ts`,
+  `/api/travaux/groupe`, « la main tourne »), passerelles remise ⇄ soumission / refus
+  (`portfolio-activite-server.ts`), historique des retours (`SuiviPortfolio.historique`), export PDF
+  d'une copie d'écriture (`ImpressionCopie`, impression navigateur). Plan :
+  `harnais/plans/2026-10-11-ecriture-collective-portfolio.md`.
 - **Deux espaces** (2026-10-08, soir) : **classique / FLE**, double bouton ambre dans l'en-tête à côté de
   la cloche (`src/context/EspaceContext.tsx`, `localStorage` `espace-actif`). Prof : toujours ;
   élève : s'il a une classe FLE. Menus, Mes Classes, Mes Activités et l'accueil suivent l'espace.
@@ -970,6 +976,12 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
 
 > Les gotchas **critiques** (boucles de hooks, redirections, ContentLock, échelle des
 > grilles) sont dans `AGENTS.md`. Ici : les pièges opérationnels.
+
+### Jamais `npm run build` pendant que `npm run dev` tourne
+Le build désynchronise le rechargement à chaud du serveur de dev (Turbopack) : la page mêle anciens et nouveaux
+modules (vécu le 2026-10-11 : nouvelle popup + ancien `types/portfolio.ts` → « Cannot read properties of undefined »
+sur une constante pourtant exportée). Vérifier avec `npx tsc --noEmit` ; si le build est indispensable, faire
+d'abord arrêter le dev par JP — remède : Ctrl + C, `npm run dev`, recharger la page.
 
 ### État d'une copie (écriture, conceptualisation, portfolio) : DEUX données, trois états
 `correction.visibleParEleve` (publiée) × `travail.status` (rendue) : publiée + brouillon = **renvoyée pour

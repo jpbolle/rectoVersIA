@@ -35,6 +35,7 @@ import {
   TYPE_DEPOT_LABELS,
   MAX_COLONNES_TABLEAU,
   TYPES_DEPOT_DISPONIBLES,
+  TYPES_DEPOT_EXCLUSIFS,
   typesDuDepot,
   type PorteeEtape,
   type PortfolioDepot,
@@ -52,6 +53,8 @@ import {
 import base from '@/components/ModuleFleEditor/ModuleFleEditor.module.css';
 import IaPicto from './IaPicto';
 import PortfolioCouverture from './PortfolioCouverture';
+import { chargerBibliotheque } from './PortfolioRetourProf';
+import type { Oeuvre } from '@/types/oeuvre';
 import styles from './Portfolio.module.css';
 
 interface Props {
@@ -79,15 +82,15 @@ interface Props {
 // données) retombe encore sur le réglage de l'activité côté élève.
 const STATUTS: StatutIA[] = ['libre', 'partielle', 'aucune'];
 
-// Cocher / décocher un type sur un dépôt. « Groupe » est exclusif ; il reste
-// toujours au moins un type coché.
+// Cocher / décocher un type sur un dépôt. « Groupe » et « Scène » sont
+// exclusifs ; il reste toujours au moins un type coché.
 function basculerType(types: TypeDepot[], t: TypeDepot): TypeDepot[] {
   if (types.includes(t)) {
     const reste = types.filter((x) => x !== t);
     return reste.length > 0 ? reste : types;
   }
-  if (t === 'groupe') return ['groupe'];
-  return ORDRE_TYPES_DEPOT.filter((x) => x !== 'groupe' && (x === t || types.includes(x)));
+  if (TYPES_DEPOT_EXCLUSIFS.includes(t)) return [t];
+  return ORDRE_TYPES_DEPOT.filter((x) => !TYPES_DEPOT_EXCLUSIFS.includes(x) && (x === t || types.includes(x)));
 }
 
 export default function EtapePortfolioModal({
@@ -218,6 +221,12 @@ export default function EtapePortfolioModal({
 
   const listeSections = 'sections-portfolio';
   const [ressourcesOuvertes, setRessourcesOuvertes] = useState(!!brouillon.ressources);
+  // La bibliothèque d'œuvres : chargée dès qu'un dépôt « Scène d'une œuvre » existe
+  const [oeuvres, setOeuvres] = useState<Oeuvre[] | null>(null);
+  const aDepotScene = (brouillon.depots ?? []).some((d) => typesDuDepot(d).includes('scene'));
+  useEffect(() => {
+    if (aDepotScene && oeuvres === null) void chargerBibliotheque(getAuthHeaders).then(setOeuvres);
+  }, [aDepotScene, oeuvres, getAuthHeaders]);
 
   return (
     <div className={base.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -529,6 +538,8 @@ export default function EtapePortfolioModal({
                               ? 'Bientôt disponible'
                               : t === 'groupe'
                                 ? 'Déclaration des partenaires — ne se combine avec aucun autre type'
+                                : t === 'scene'
+                                  ? 'L’élève choisit une scène dans une œuvre de la bibliothèque — ne se combine avec aucun autre type'
                                 : 'Plusieurs types possibles : une zone par type, dans le même bloc'
                           }
                         >
@@ -578,6 +589,26 @@ export default function EtapePortfolioModal({
                         </button>
                       )}
                       <span className={styles.hint}>L’élève ajoute les lignes lui-même.</span>
+                    </div>
+                  )}
+                  {types.includes('scene') && (
+                    <div className={styles.colonnesEdit}>
+                      <span className={styles.depotTypesLab}>Œuvre :</span>
+                      <select
+                        className={styles.input}
+                        value={d.oeuvreId ?? ''}
+                        onChange={(e) => modifierDepot(d.id, { oeuvreId: e.target.value })}
+                        disabled={disabled}
+                        aria-label="L’œuvre où l’élève choisit sa scène"
+                      >
+                        <option value="">{oeuvres === null ? 'Chargement…' : '— Choisir une œuvre de la bibliothèque —'}</option>
+                        {(oeuvres ?? []).map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.titre}
+                          </option>
+                        ))}
+                      </select>
+                      <span className={styles.hint}>L’élève choisit la pièce, puis la scène ; le texte s’affiche dans ses ressources.</span>
                     </div>
                   )}
                   {types.includes('groupe') ? (
@@ -734,7 +765,13 @@ export default function EtapePortfolioModal({
                           disabled={disabled}
                           aria-label="Où l’afficher"
                         >
-                          <option value="travail">Colonne de travail (gauche)</option>
+                          <option value="travail">
+                            {/* Une activité d'écriture : la scène est posée dans l'éditeur
+                                de la copie encore vide (plan 2026-10-11, phase 1) */}
+                            {renvoi && brouillon.typeTravail === 'ecrire'
+                              ? 'Dans l’éditeur de la copie (texte à retravailler)'
+                              : 'Colonne de travail (gauche)'}
+                          </option>
                           <option value="ressources">Onglet Ressources (droite)</option>
                         </select>
                       )}

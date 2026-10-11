@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { portfolioParent } from '@/lib/portfolio-server';
+import { generateTravailId } from '@/lib/travail-utils';
+import { soumettreEtapesDeLActivite } from '@/lib/portfolio-activite-server';
+import { nomsDuGroupe, repliquerEtatCopie } from '@/lib/ecriture-groupe-server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { decrypt } from '@/lib/crypto';
@@ -76,7 +80,22 @@ export async function GET(
       updatedAt: data.updatedAt,
       submittedAt: data.submittedAt || null,
       ...(accesProf ? { monAcces: accesProf.acces } : {}),
+      groupeEcriture: typeof data.groupeEcriture === 'string' ? data.groupeEcriture : null,
     };
+    // Activité posée dans un portfolio : la flèche du prof ramène à la copie
+    // du PORTFOLIO de cet élève (JP, 2026-10-11)
+    if (auth.role === 'prof' && data.devoirId) {
+      const parent = await portfolioParent(String(data.devoirId)).catch(() => null);
+      if (parent) {
+        const copiePortfolio = generateTravailId(parent.id, String(data.studentId || ''));
+        const existe = (await adminDb.collection('travaux').doc(copiePortfolio).get()).exists;
+        travail.portfolioRetour = existe ? `/dashboard/travaux/${parent.id}/${copiePortfolio}` : `/dashboard/travaux/${parent.id}`;
+      }
+    }
+    // Le prof qui ouvre une copie de groupe voit qui l'a écrite
+    if (auth.role === 'prof' && travail.groupeEcriture) {
+      travail.groupeNoms = await nomsDuGroupe(travail.groupeEcriture).catch(() => []);
+    }
 
     return NextResponse.json({ success: true, data: travail });
   } catch (error) {
@@ -180,6 +199,11 @@ export async function PATCH(
               .map((l) => l.slice(0, MAX_COLONNES_TABLEAU).map((c) => c.slice(0, 2000)));
             const json = JSON.stringify(lignes);
             if (json.length <= 60000) reponses[cle] = json;
+          } else if (cle.endsWith('/scene')) {
+            // Partie « scène » : l'identifiant d'une section d'œuvre, rien d'autre
+            const sectionId = texte.trim();
+            if (!/^[A-Za-z0-9_-]{1,80}$/.test(sectionId)) continue;
+            reponses[cle] = sectionId;
           } else if (cle.endsWith('/image')) {
             // Partie « image » : l'identifiant d'une image de `portfolioImages`
             // déposée par CET élève dans CETTE copie — jamais celle d'un autre.
@@ -267,6 +291,31 @@ export async function PATCH(
         if (type === 'ecrire' || type === 'schematiser' || type === 'portfolio') {
           await corrRef.update({ visibleParEleve: false, updatedAt: new Date().toISOString() });
         }
+      }
+    }
+
+    // COPIE DE GROUPE : ce que le prof fait sur une copie (renvoi pour
+    // réécriture, verrou, non rendu) vaut pour les copies de tout le groupe
+    if (auth.role === 'prof' && typeof data.groupeEcriture === 'string' && data.groupeEcriture) {
+      const champs = Object.fromEntries(
+        Object.entries(updateData).filter(([k]) => ['status', 'submittedAt', 'verrouille', 'nonRendu'].includes(k))
+      );
+      try {
+        await repliquerEtatCopie(id, champs);
+      } catch (e) {
+        console.error('Réplication sur les copies du groupe :', e);
+      }
+    }
+
+    // PASSERELLE PORTFOLIO (JP, 2026-10-11) : une activité posée dans un
+    // portfolio, remise par l'élève, soumet du même geste l'étape qui y renvoie
+    // — plus de second clic « Soumettre au professeur » dans le portfolio.
+    // Jamais bloquant : la remise de la copie est déjà faite.
+    if (auth.role === 'eleve' && body.status === 'submitted' && data.status !== 'submitted') {
+      try {
+        await soumettreEtapesDeLActivite(String(data.devoirId || ''), { uid: auth.uid, email: auth.email });
+      } catch (e) {
+        console.error('Passerelle portfolio (soumission de l’étape) :', e);
       }
     }
 

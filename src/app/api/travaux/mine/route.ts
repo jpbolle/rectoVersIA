@@ -5,6 +5,7 @@ import { generateTravailId } from '@/lib/travail-utils';
 import { classesDeLEleve, etatEffectif, sessionsDeLEleve } from '@/lib/session-server';
 import { eleveExclu, identiteEleve, ouvertParSequence } from '@/lib/sequence-server';
 import { decrypt, encrypt, hashEmail } from '@/lib/crypto';
+import { copieVide, extraitPourEditeur } from '@/lib/portfolio-activite-server';
 import type { Travail } from '@/types/travail';
 
 // GET - Recuperer le travail de l'eleve connecte pour un devoir specifique
@@ -119,9 +120,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Une copie d'ÉCRITURE posée dans un portfolio naît avec l'extrait attribué
+    // au groupe (« Extrait choisi » affiché « dans la colonne de travail ») —
+    // une seule fois, jamais par-dessus ce que l'élève a écrit (plan
+    // 2026-10-11-ecriture-collective-portfolio, phase 1)
+    const estEcriture = devoirData.typeTravail === 'ecrire';
+
     if (!travailSnap.exists) {
       // Pas de travail existant ni pre-cree - creer un nouveau
       const now = new Date().toISOString();
+      const extrait = estEcriture ? await extraitPourEditeur(devoirId, auth.uid, auth.email) : null;
       const newTravail: Travail = {
         id: travailId,
         devoirId: devoirId,
@@ -132,7 +140,7 @@ export async function GET(request: NextRequest) {
         studentId: auth.uid,
         studentEmail: auth.email,
         studentName: auth.email.split('@')[0],
-        content: '',
+        content: extrait ?? '',
         status: 'draft',
         selfEvaluation: null,
         createdAt: now,
@@ -155,6 +163,15 @@ export async function GET(request: NextRequest) {
     }
 
     const data = travailSnap.data()!;
+    // Copie déjà créée mais restée vide (ouverte avant que le prof attribue la
+    // scène, ou pré-créée) : l'extrait y est posé dès qu'il existe
+    if (estEcriture && copieVide(data.content) && data.status !== 'submitted' && data.verrouille !== true) {
+      const extrait = await extraitPourEditeur(devoirId, auth.uid, auth.email);
+      if (extrait) {
+        data.content = extrait;
+        await travailSnap.ref.update({ content: extrait, updatedAt: new Date().toISOString() });
+      }
+    }
     const travail: Travail = {
       id: data.id || travailSnap.id,
       devoirId: data.devoirId,

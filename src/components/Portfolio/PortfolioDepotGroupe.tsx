@@ -7,6 +7,9 @@
 // groupe n'est pas accepté, l'étape n'est pas faite.
 // « Je travaille seul » (2026-10-11) : un groupe d'un seul élève, accepté ou
 // refusé par le prof comme les autres (`groupeSolo`).
+// Plus de bouton « Déclarer mon groupe » (JP, 2026-10-11 : « un surplus
+// admin ») : chaque partenaire ajouté ou retiré met la déclaration à jour sur
+// le champ ; c'est « Soumettre au professeur » qui fait l'acte.
 
 import { useMemo, useState } from 'react';
 import type { PortfolioEleve } from '@/hooks/usePortfolioEleve';
@@ -24,14 +27,30 @@ interface Props {
 
 export default function PortfolioDepotGroupe({ eleve, lectureSeule = false }: Props) {
   const { groupe, camarades, groupeErreur, groupeChargement, declarerGroupe, repondreGroupe } = eleve;
-  const [choisis, setChoisis] = useState<string[]>([]);
   const [recherche, setRecherche] = useState('');
   const [envoi, setEnvoi] = useState(false);
 
+  const moi = groupe?.membres.find((m) => m.moi);
+  const solo = !!groupe && groupeSolo(groupe);
+  // Composable : pas encore de groupe, groupe refusé, ou groupe en attente que
+  // J'AI déclaré (j'y ajoute, j'en retire des partenaires)
+  const editable =
+    !lectureSeule && (!groupe || groupe.statut === 'refuse' || (groupe.statut === 'attente' && !!moi?.createur));
+  // Les partenaires de ma déclaration en cours (ceux qui ont décliné en sortent
+  // au prochain changement)
+  const partenaires = useMemo(
+    () =>
+      groupe && groupe.statut !== 'accepte' && moi?.createur
+        ? groupe.membres.filter((m) => !m.moi && m.statut !== 'decline').map((m) => m.eleveId)
+        : [],
+    [groupe, moi]
+  );
+  const dejaMembres = useMemo(() => new Set(groupe?.membres.map((m) => m.eleveId) ?? []), [groupe]);
+
   const q = plat(recherche.trim());
   const candidats = useMemo(
-    () => camarades.filter((c) => !choisis.includes(c.eleveId) && (!q || plat(c.nom).includes(q))).slice(0, 12),
-    [camarades, choisis, q]
+    () => camarades.filter((c) => !dejaMembres.has(c.eleveId) && (!q || plat(c.nom).includes(q))).slice(0, 12),
+    [camarades, dejaMembres, q]
   );
 
   const envoyer = async (fn: () => Promise<boolean>) => {
@@ -47,9 +66,15 @@ export default function PortfolioDepotGroupe({ eleve, lectureSeule = false }: Pr
     return <p className={styles.depotAide}>Chargement des élèves de ta classe…</p>;
   }
 
-  const moi = groupe?.membres.find((m) => m.moi);
-  const solo = !!groupe && groupeSolo(groupe);
-  const peutRecomposer = !lectureSeule && (!groupe || groupe.statut === 'refuse');
+  // Chaque changement est envoyé tout de suite : la déclaration remplace la précédente
+  const ajouter = (eleveId: string) => {
+    setRecherche('');
+    envoyer(() => declarerGroupe([...partenaires, eleveId]));
+  };
+  const retirer = (eleveId: string) => {
+    const reste = partenaires.filter((id) => id !== eleveId);
+    envoyer(() => (reste.length > 0 || !groupe ? declarerGroupe(reste) : repondreGroupe(groupe.id, 'quitter')));
+  };
 
   return (
     <div className={styles.groupe}>
@@ -77,6 +102,18 @@ export default function PortfolioDepotGroupe({ eleve, lectureSeule = false }: Pr
                 <span className={`${styles.membreSt} ${m.statut === 'confirme' ? styles.membreStOk : m.statut === 'decline' ? styles.membreStNon : ''}`}>
                   {m.statut === 'confirme' ? '✓ a confirmé' : m.statut === 'decline' ? 'a décliné' : 'en attente de sa confirmation'}
                 </span>
+                {editable && moi?.createur && !m.moi && (
+                  <button
+                    type="button"
+                    className={styles.btnGhost}
+                    disabled={envoi}
+                    onClick={() => retirer(m.eleveId)}
+                    aria-label={`Retirer ${m.nom} du groupe`}
+                    title="Retirer du groupe"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -101,74 +138,39 @@ export default function PortfolioDepotGroupe({ eleve, lectureSeule = false }: Pr
               </button>
             </div>
           )}
-          {!lectureSeule && groupe.statut === 'attente' && moi && (moi.createur || moi.statut !== 'attente') && (
+          {!lectureSeule && groupe.statut === 'attente' && moi && (solo || (!moi.createur && moi.statut !== 'attente')) && (
             <div className={styles.groupeActions}>
               <button type="button" className={styles.btnGhost} disabled={envoi} onClick={() => envoyer(() => repondreGroupe(groupe.id, 'quitter'))}>
-                {solo ? 'Changer d’avis' : moi.createur ? 'Dissoudre et recomposer' : 'Quitter ce groupe'}
+                {solo ? 'Changer d’avis' : 'Quitter ce groupe'}
               </button>
             </div>
           )}
         </>
       )}
 
-      {peutRecomposer && (
+      {editable && (
         <div className={styles.groupeForm}>
-          {groupe?.statut === 'refuse' && <p className={styles.depotAide}>Recompose ton groupe puis déclare-le à nouveau.</p>}
-          {choisis.length > 0 && (
-            <div className={styles.chips}>
-              {choisis.map((id) => {
-                const c = camarades.find((x) => x.eleveId === id);
-                return (
-                  <span key={id} className={styles.chip}>
-                    {c?.nom ?? id}
-                    <button type="button" onClick={() => setChoisis((l) => l.filter((x) => x !== id))} aria-label={`Retirer ${c?.nom ?? ''}`}>
-                      ×
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
+          {groupe?.statut === 'refuse' && (
+            <p className={styles.depotAide}>Recompose ton groupe : chaque changement est envoyé à ton professeur.</p>
           )}
           <input
             className={styles.input}
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}
             placeholder={camarades.length ? 'Ajoute un élève de ta classe… (tape les premières lettres)' : 'Aucun camarade trouvé dans tes classes'}
-            disabled={camarades.length === 0}
+            disabled={camarades.length === 0 || envoi}
           />
-          {candidats.length > 0 && (recherche.trim() || choisis.length === 0) && (
+          {candidats.length > 0 && (recherche.trim() || partenaires.length === 0) && (
             <div className={styles.candidats}>
               {candidats.map((c) => (
-                <button
-                  key={c.eleveId}
-                  type="button"
-                  className={styles.candidat}
-                  onClick={() => {
-                    setChoisis((l) => [...l, c.eleveId]);
-                    setRecherche('');
-                  }}
-                >
+                <button key={c.eleveId} type="button" className={styles.candidat} disabled={envoi} onClick={() => ajouter(c.eleveId)}>
                   {c.nom}
                 </button>
               ))}
             </div>
           )}
-          <div className={styles.groupeActions}>
-            <button
-              type="button"
-              className={styles.btn}
-              disabled={envoi || choisis.length === 0}
-              onClick={() =>
-                envoyer(async () => {
-                  const ok = await declarerGroupe(choisis);
-                  if (ok) setChoisis([]);
-                  return ok;
-                })
-              }
-            >
-              Déclarer mon groupe ({choisis.length + 1} élève{choisis.length + 1 > 1 ? 's' : ''})
-            </button>
-            {choisis.length === 0 && (
+          {partenaires.length === 0 && !solo && (
+            <div className={styles.groupeActions}>
               <button
                 type="button"
                 className={styles.btnGhost}
@@ -178,8 +180,8 @@ export default function PortfolioDepotGroupe({ eleve, lectureSeule = false }: Pr
               >
                 🙋 Je travaille seul
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
       {groupeErreur && <p className={styles.groupeErreur}>{groupeErreur}</p>}

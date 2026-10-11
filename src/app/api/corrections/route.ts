@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { repliquerCorrection } from '@/lib/ecriture-groupe-server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { ecrireScoreLecture } from '@/lib/lecture-score-persistance';
@@ -250,6 +251,8 @@ export async function POST(request: NextRequest) {
     };
 
     await adminDb.collection('corrections').doc(correctionId).set(correction);
+    // Copie de groupe (portfolio) : chaque membre reçoit la même correction
+    await repliquerCorrection(travailId).catch((e) => console.error('Réplication de la correction :', e));
 
     // Un questionnaire entièrement auto-corrigé a déjà sa note à la création :
     // rien n'attend le prof. Sans cet appel, sa correction resterait sans

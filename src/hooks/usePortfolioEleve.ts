@@ -79,6 +79,8 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
   const [camarades, setCamarades] = useState<CamaradeVue[]>([]);
   const [groupeErreur, setGroupeErreur] = useState<string | null>(null);
   const [groupeChargement, setGroupeChargement] = useState(false);
+  // Premier chargement du groupe terminé (réussi ou non) — l'étape de départ l'attend
+  const [groupeCharge, setGroupeCharge] = useState(false);
   const aGroupe = !!parcours && aUnDepotGroupe(parcours.etapes);
   const chargerGroupe = useCallback(async () => {
     if (!devoirId) return;
@@ -96,6 +98,7 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
       // Le groupe reste tel qu'il était
     } finally {
       setGroupeChargement(false);
+      setGroupeCharge(true);
     }
   }, [devoirId, getAuthHeaders]);
   useEffect(() => {
@@ -132,6 +135,8 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
 
   // ── Le SUIVI (soumissions, retours du prof, valeurs attribuées au groupe) ──
   const [suivi, setSuivi] = useState<SuiviPortfolio | null>(null);
+  // Premier chargement du suivi terminé (réussi ou non — l'aperçu du prof n'en a pas)
+  const [suiviCharge, setSuiviCharge] = useState(false);
   const [soumission, setSoumission] = useState<{ etapeId: string; erreur: string | null } | null>(null);
   useEffect(() => {
     if (!isAuthenticated || !devoirId) return;
@@ -146,6 +151,8 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
         if (!annule && json.success) setSuivi(json.data.suivi as SuiviPortfolio);
       } catch {
         // Le suivi reste tel qu'il était
+      } finally {
+        if (!annule) setSuiviCharge(true);
       }
     })();
     return () => {
@@ -196,6 +203,11 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
   // L'étape ouverte : là où l'élève en était, tant qu'il n'en choisit pas une autre
   const [choix, setChoix] = useState<string | null>(null);
   const etapes = useMemo(() => parcours?.etapes ?? [], [parcours]);
+  // Le départ ne se calcule qu'une fois le SUIVI et le GROUPE connus : avant,
+  // une étape verrouillante validée par le prof paraît « pas faite », toute la
+  // suite semble fermée, et l'élève retombait sur la première étape (vu le
+  // 2026-10-11 : LF07 renvoyé à « Choix d'un sketch » depuis l'étape 6)
+  const departPret = !!parcours && suiviCharge && (groupeCharge || !aGroupe || lectureSeule);
   const index = useMemo(() => {
     if (etapes.length === 0) return 0;
     if (choix) {
@@ -204,9 +216,9 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
     }
     return indexDepart(etapes, contenu);
     // Le départ ne se recalcule pas à chaque frappe : seulement quand le
-    // parcours ou le choix change
+    // parcours, le choix, ou la fin des chargements change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [etapes, choix]);
+  }, [etapes, choix, departPret]);
 
   // ── Les gestes ──
   const minuteries = useRef(new Map<string, ReturnType<typeof setTimeout>>());
@@ -295,6 +307,8 @@ export function usePortfolioEleve({ devoirId, content, patchPortfolio, lectureSe
     etapes,
     contenu: parcours ? contenu : CONTENU_ELEVE_VIDE,
     index,
+    // L'étape de départ est fiable (suivi et groupe chargés)
+    departPret,
     etape: etapes[index] ?? null,
     allerA,
     deposer,

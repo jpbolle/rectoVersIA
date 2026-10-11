@@ -1,0 +1,71 @@
+/* EXPORT PDF d'une copie d'écriture (2026-10-11, JP : « le doc pour les
+   répétitions ») — par la fenêtre d'impression du navigateur, « Enregistrer au
+   format PDF ». Pendant l'impression, seule la feuille ci-dessous existe. */
+
+.racine {
+  display: none;
+}
+
+@media print {
+  :global(body) > *:not(.racine) {
+    display: none !important;
+  }
+  .racine {
+    display: block;
+    color: #000;
+    background: #fff;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+}
+
+.entete {
+  border-bottom: 1px solid #999;
+  padding-bottom: 8pt;
+  margin-bottom: 14pt;
+}
+
+.titre {
+  font-size: 16pt;
+  font-weight: 700;
+  margin: 0 0 4pt;
+}
+
+.auteurs {
+  font-size: 10pt;
+  color: #444;
+  margin: 0;
+}
+
+.texte p {
+  margin: 0 0 6pt;
+}
+
+.texte h2 {
+  font-size: 14pt;
+  margin: 12pt 0 6pt;
+}
+
+.texte h3 {
+  font-size: 12pt;
+  margin: 10pt 0 4pt;
+}
+
+/* Le bouton, dans l'en-tête de la colonne de travail */
+.bouton {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-accent);
+  background: #fff;
+  border: 1px solid var(--c-accent);
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bouton:hover {
+  background: rgba(212, 148, 76, 0.12);
+}

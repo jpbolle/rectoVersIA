@@ -76,6 +76,9 @@ export interface IdentiteEleve {
   eleveIds: string[]; // ses fiches `eleves` (une par classe)
   classeIds: string[];
   classeNoms: string[];
+  // Chaque classe avec SON nom. `classeNoms` n'est pas aligné sur `classeIds`
+  // (rempli dans l'ordre d'arrivée des lectures) : ne jamais les apparier par index
+  classes: { id: string; nom: string }[];
 }
 
 /** Fiches, classes (ids et noms) de l'utilisateur connecté — par uid, puis par email. */
@@ -91,14 +94,16 @@ export async function identiteEleve(uid: string, email: string): Promise<Identit
     const c = d.data().classeId;
     if (c) classeIds.add(c);
   });
-  const classeNoms: string[] = [];
-  await Promise.all(
-    [...classeIds].map(async (id) => {
-      const c = await adminDb.collection('classes').doc(id).get();
-      if (c.exists && c.data()?.nom) classeNoms.push(c.data()!.nom);
-    })
-  );
-  return { eleveIds: [...eleveIds], classeIds: [...classeIds], classeNoms };
+  const classes = (
+    await Promise.all(
+      [...classeIds].map(async (id) => {
+        const c = await adminDb.collection('classes').doc(id).get();
+        const nom = c.exists ? c.data()?.nom : null;
+        return typeof nom === 'string' && nom ? { id, nom } : null;
+      })
+    )
+  ).filter((c): c is { id: string; nom: string } => c !== null);
+  return { eleveIds: [...eleveIds], classeIds: [...classeIds], classeNoms: classes.map((c) => c.nom), classes };
 }
 
 // ─── Une séquence est-elle ouverte à cet élève ? ───

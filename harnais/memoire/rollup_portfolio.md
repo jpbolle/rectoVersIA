@@ -5,6 +5,136 @@
 > **`2026-10-09-portfolio-etape-1-squelette.md`** (étape 1, v2 validée) et la maquette
 > `maquette-portfolio-eleve.html` (v2, 4 vues).
 
+## 2026-10-11 (session suivante, 6) — copie du portfolio côté prof : étapes repliables, ÉCRIT, non vu
+
+- `PortfolioLecture` : chaque étape repliable sur son en-tête (numéro, titre, pastille d'état, « ● à valider »
+  si soumise) ; à l'ouverture tout est replié SAUF l'étape où en est l'élève (`indexDepart`, « l'élève en est
+  ici »).
+- **Cloche 🔔** dans l'en-tête de chaque étape : message inline → `POST /api/portfolio/message` → cloche de
+  l'élève ou de tout son groupe accepté (`cibleSuivi().uids`), titre de l'étape + lien vers le portfolio.
+- Flèches de retour (JP) : activité ouverte depuis un portfolio (`?portfolio=`) → la flèche de l'élève ramène
+  au portfolio (`WorkTopBar onBack`, adresse lue AU CLIC : `/activites/[id]` n'est pas remontée entre portfolio et activité, un état mémorisé restait vide) ; « Corriger la copie » porte `?retour=` → la flèche du prof ramène à la
+  copie du portfolio de l'élève — et même SANS `?retour=` : `portfolioParent()` (`portfolio-server.ts`) enrichit
+  `GET /api/devoirs/[id]` (prof) et `GET /api/travaux/[id]` (`portfolioRetour`) ; la liste des copies d'une activité
+  de portfolio affiche « 🗂️ Activité du portfolio « … » » et sa flèche ramène au portfolio. Bloc GROUPE de la copie prof déplacé DANS l'étape au dépôt « Groupe » ; copie
+  relue au retour sur l'onglet.
+- **Miniature** (prof) : `PortfolioApercuActivite` sous une étape-activité dépliée — schéma en petit (SVG des
+  boîtes et liens) + « N idées · M liens », ou début du texte + nombre de mots ; date de modification ; cliquable.
+  ⚠ Miniature de schéma : `DiagramWorkspace` readOnly rendu à 900 × 520 puis `scale(1/3)` — le forcer dans un
+  petit cadre (min-height écrasée) donnait un canevas VIDE. Deux colonnes : résumé + bouton à gauche, miniature à
+  droite (JP).
+- **Étape de départ** (élève) : `usePortfolioEleve.departPret` — l'index n'est calculé qu'une fois suivi ET groupe
+  chargés (sinon une étape verrouillante validée paraît non faite → retour à l'étape 1).
+- **Reprise** (élève) : PAS de bascule automatique dans l'activité (écrite puis retirée — JP s'était « mal
+  exprimé ») : le portfolio s'ouvre sur l'ÉTAPE où en est l'élève (grâce à `departPret`) ; le bouton de l'étape
+  devient « Reprendre l'activité » quand elle est commencée.
+- **Trace des retours** (JP : noter progression et autonomie) : `SuiviPortfolio.historique[etapeId]` = TOUS les
+  retours (un par soumission ; retoucher le retour de la même soumission le remplace ; ≤ 40) ; suivi ancien : le
+  dernier retour sert d'historique. Affichage prof : badge « ✗ N refus » dans l'en-tête de l'étape + « Historique
+  des retours » dans la section ; **onglet Évaluation** : `PortfolioBilan` (faites / non faites / renvoyées / refus
+  au total / en retard + liste des étapes renvoyées) via `evaluationPrefixe`.
+- **Encadré de retour** (JP, après 3 essais) : TOUJOURS un encadré VIERGE sous l'historique (comme à la 1re
+  évaluation) dès que l'élève a soumis, OU que le travail est fait sans être soumis (`prete` — l'élève a oublié),
+  OU que l'étape a déjà un retour ; jamais sur une étape où l'élève n'a rien fait. Sans soumission, le retour
+  VAUT soumission (PATCH `nouveau: true` → soumission n+1, ajouté à l'historique). Retour enregistré = trace
+  figée ; seul le DERNIER se corrige par le crayon ✏️ posé à côté de lui dans l'historique (remplace l'entrée).
+- **Lecture sans questionnaire ni œuvre** : côté élève, un message au lieu de l'éditeur d'écriture (où il
+  tombait par défaut) et pas de bouton Remettre ; dans un portfolio, l'étape qui y renvoie compte comme FAITE
+  (`activiteVide` posé par `parcours-portfolio` et `progression`, lu par `faite()`) — JP : l'élève n'est pas bloqué
+  par un oubli du prof. Avertissement côté prof dans la copie. Cas réel : « Compréhension de la scène »
+  (`DEV-20261010-4604`) créée sans questionnaire ; JP choisit un questionnaire commun.
+- **Rail élève** : onglet SOMMAIRE en PREMIÈRE position pour le portfolio ET la lecture d'une œuvre (JP). Le sommaire
+  de l'œuvre quitte « Consignes et navigation » (décision du 2026-08-15 remplacée) pour son onglet « Sommaire de
+  l'œuvre », ouvert d'office à l'ouverture de l'œuvre ; le portfolio garde Consignes ouvert à chaque étape.
+- **Passerelle RETOUR** : refuser une étape-ACTIVITÉ (PATCH suivi, `decision: 'refuse'`) rouvre la copie de
+  l'activité chez chaque membre (`status: draft`, `submittedAt: null`, verrou levé) + `rouvrirEcriture` pour une
+  copie de groupe. Bug vu par JP : schéma refusé, copie restée « remise », éditeur fermé.
+- **Triple bouton MASQUÉ sur la copie d'un portfolio** (JP : activité au long cours, les phases varient —
+  chaque étape a sa validation) : `tripleEtat` = écriture et schéma seulement ; pas non plus de « Remettre la
+  copie à l'élève ». Appréciations : visages DESSINÉS (`SmileyAppreciation`, vert / orange / rouge qui grimace).
+- **Règle changée (JP)** : plus de Valider / Refuser tant que l'élève n'a pas SOUMIS l'étape (« pas cohérent »).
+  Écran : « L'élève n'a pas encore soumis… » ; serveur : PATCH suivi refusé (409) sans soumission. Avant : un retour
+  sans soumission valait soumission.
+- Étape-activité (choix de JP) : bouton « ✏️ Corriger la copie ↗ » (écriture, schéma) / « 👁️ Voir la copie »
+  → page de correction de l'activité dans un NOUVEL ONGLET (`TRV-{activité}-{uid}`), si la copie existe.
+
+## 2026-10-11 (session suivante, 5) — phases 2, 3, 4 ÉCRITES d'un coup (JP : « fais tout, je teste de bout en bout avec LF07 »)
+
+`tsc`, lint, **`npm run build` OK** ; rien vu à l'écran.
+- **Phase 2 — copie de groupe** (`src/lib/ecriture-groupe-server.ts`, route `/api/travaux/groupe`, hook
+  `useEcritureGroupe`) : active si l'activité d'ÉCRITURE est dans une étape **collective** ET l'élève a un groupe
+  **accepté** d'au moins 2 élèves (contexte mis en cache 30 s). Texte commun `ecrituresGroupe/{devoir}__G-{groupe}`
+  (serveur seul, aucune règle) ; il part d'une copie de membre déjà entamée, sinon de l'extrait. **Main** :
+  transaction, 60 s sans frappe, clic dans le texte pour la prendre, « Je rends la main » ; autres : lecture,
+  interrogation 3 s (arrêtée net pour une copie individuelle). **Copies miroirs** : chaque écriture recopie le
+  texte dans les copies des membres (`groupeEcriture` posé). Remise = toutes les copies remises (créées au
+  besoin pour les membres déjà connectés) + passerelle. En-tête « Notre travail » + pastille.
+- **Phase 3** : correction répliquée sur les copies sœurs (`repliquerCorrection`, POST et PATCH corrections) ;
+  publication / renvoi / verrou / non rendu répliqués (`repliquerEtatCopie`) ; renvoi en brouillon rouvre le
+  texte commun ; copie prof : « 👥 Copie du groupe : noms ».
+- **Phase 4 — PDF** (approche choisie par JP : impression navigateur) : `ImpressionCopie` (bouton « 📄 PDF » dans
+  l'en-tête de la colonne de travail) — feuille posée à la racine le temps de l'impression, HTML NETTOYÉ (liste
+  blanche) : une copie de groupe est écrite par plusieurs élèves.
+- ⚠ Limites : deux élèves n'écrivent jamais en même temps (principe A) ; l'aide IA lit la copie individuelle
+  (peut retarder de quelques secondes sur le texte commun).
+
+## 2026-10-11 (session suivante, 4) — phases 0, 1, 1 bis du plan écriture collective : ÉCRITES, non vues
+
+Plan `../plans/2026-10-11-ecriture-collective-portfolio.md` (VALIDÉ). `tsc` + lint OK, rien vu à l'écran.
+- **Phase 0 — dépôt « Scène d'une œuvre »** (`TypeDepot 'scene'`, exclusif comme `groupe` —
+  `TYPES_DEPOT_EXCLUSIFS`) : le prof choisit l'œuvre dans la popup d'étape (`PortfolioDepot.oeuvreId`) ;
+  l'élève choisit pièce (= chapitre) puis scène (= section) (`PortfolioDepotScene`), valeur = id de section
+  (clé `…/scene`, validée par le PATCH). Route `GET /api/portfolio/scene` (table des pièces + blocs d'une scène,
+  œuvre lue dans le DÉPÔT, jamais du client). Texte dans l'onglet Ressources (« Ta scène »,
+  `PortfolioSceneTexte`) + encadré ambre « Vérifie dans l'onglet Ressources… ». Copie prof : « Scène choisie »
+  avec le texte ; à la validation, la valeur « œuvre » encore vide est **pré-remplie** par la scène de l'élève.
+- **Phase 1 — extrait dans l'éditeur** : `GET /api/travaux/mine` pose `extraitPourEditeur()` dans une copie
+  d'ÉCRITURE neuve ou restée vide (`copieVide`) — valeur « œuvre » d'une SCÈNE (jamais l'œuvre entière)
+  affichée `place: 'travail'` (libellé dans la popup : « Dans l'éditeur de la copie »). HTML : `<h2>` titre, une
+  réplique par `<p>` (personnage en gras — vers séparés par `<br>`), blocs texte tels quels, médias ignorés.
+  ⚠ Pour l'étape 8 Molière, JP doit cocher « Extrait choisi » → « Dans l'éditeur de la copie ».
+- **Phase 1 bis — passerelle** : remise d'une activité (PATCH `status: submitted` par l'élève) ⇒
+  `soumettreEtapesDeLActivite()` soumet l'étape-renvoi (notification prof). Logique de soumission sortie de
+  `POST /api/portfolio/suivi` vers `soumettreEtape()` (`src/lib/portfolio-activite-server.ts`).
+  « Ce qui manque » d'une étape-activité = « remettre l'activité ».
+- Suite : phase 2 (copie de groupe) après le test de JP ; phase 4 PDF : approche à trancher.
+
+## 2026-10-11 (session suivante, 3) — groupe sans bouton « Déclarer », ÉCRIT, non vu
+
+- JP : « Déclarer mon groupe » = surplus admin. Désormais chaque partenaire ajouté (clic sur un nom) ou retiré
+  (× sur sa ligne) **met la déclaration à jour aussitôt** (`POST` qui remplace la précédente ; dernier partenaire
+  retiré = groupe dissous). Le créateur compose tant que le groupe est en attente ; « Dissoudre et recomposer »
+  disparu. Un partenaire qui avait confirmé **garde sa confirmation** au re-dépôt (`dejaConfirmes`).
+- Bug camarades d'une autre classe : **confirmé réglé par JP**.
+- Prochain : étape 8 « Adaptation du texte » — extrait attribué collé dans l'éditeur ; écriture COLLECTIVE
+  (options présentées à JP, non tranchées).
+
+## 2026-10-11 (session suivante, suite) — vérifications sur la matrice Molière
+
+- **Bug CORRIGÉ (non revu par JP)** : camarades proposés d'une AUTRE classe. `identiteEleve` remplissait
+  `classeNoms` dans l'ordre d'arrivée des lectures, `camaradesDe` l'appariait par index à `classeIds`, et sans
+  correspondance prenait TOUTES les classes. Le compte de test (élève 07) a 4 fiches : 4D, 4C, une classe de
+  Verviers, FLE 4. Désormais `IdentiteEleve.classes` ({ id, nom } appariés) ; aucune classe de l'activité ⇒
+  personne. Touche tout élève inscrit dans plusieurs classes (français + FLE).
+- **Portée « collective »** : toujours une simple étiquette 👥 — aucun partage de copie (étapes collectives
+  partagées = « à venir », cf. plus bas).
+- **Étape 7 « Compréhension de la scène »** = activité **lecture** (`DEV-20261010-4604`), pas écriture ; la valeur
+  « Extrait choisi » (attribuée à la validation de l'étape 4, scène seule) n'apparaît que dans l'onglet
+  Ressources de l'activité (« De ton portfolio »). **Rien ne colle l'extrait dans l'éditeur** ; l'étape 8
+  « Adaptation du texte » (écriture) n'affiche aucune valeur. Demande de JP (coller l'extrait pour le
+  moderniser) = fonctionnalité NEUVE, à planifier.
+
+## 2026-10-11 (session suivante) — vie autonome d'une activité intégrée : ÉCRIT, rien vu
+
+- Question restée ouverte (« vider les anciennes valeurs ? ») : **vider ne servait à rien** — une classe retirée
+  garde sa session (`syncSessions` ne fait qu'en créer), et l'accueil du prof lit les SESSIONS. L'explication
+  « les vider retirerait les sessions » était fausse.
+- Tranché par JP : l'activité intégrée **perd sa vie autonome**, sans rien effacer en base. Les deux accueils
+  l'ignorent comme Mes Activités : élève (`/api/accueil` : ni échéance ni retard, `activitesDePortfolio` sur les
+  devoirs déjà lus) et prof (`/api/accueil-prof` : ni échéance ni « élèves en retard » — helper
+  `activitesIntegreesAUnPortfolio()` de `portfolio-server.ts`, portfolios donnés + matrices). Les copies remises
+  restent **« À corriger »** chez le prof (choix de l'agent, à confirmer).
+
 ## 2026-10-11 (fin de soirée) — deux bugs vus dans la matrice Molière, CORRIGÉS et TESTÉS par JP (titre de la section 7 retapé)
 
 - **Titre d'une étape « activité »** : l'atelier (`etapesAffichees`) et le parcours élève remplaçaient TOUJOURS le

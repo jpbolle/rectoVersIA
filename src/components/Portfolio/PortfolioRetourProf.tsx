@@ -18,6 +18,7 @@ import {
   type SuiviPortfolio,
   type ValeurAttribuee,
 } from '@/types/portfolio';
+import SmileyAppreciation from './SmileyAppreciation';
 import styles from './Portfolio.module.css';
 
 interface Props {
@@ -29,11 +30,21 @@ interface Props {
   groupe: boolean;
   getAuthHeaders: () => Promise<Record<string, string> | null>;
   onSuivi: (suivi: SuiviPortfolio) => void;
+  // La scène choisie par l'élève (dépôt « Scène d'une œuvre ») : elle pré-remplit
+  // une valeur « œuvre » encore vide — le prof confirme ou corrige
+  sceneProposee?: { oeuvreId: string; sectionId: string } | null;
+  // Un NOUVEAU retour (l'élève a soumis à nouveau) : l'encadré part vierge —
+  // le retour précédent reste figé dans l'historique (JP, 2026-10-11). Sinon :
+  // correction du dernier retour, pré-rempli.
+  nouveau?: boolean;
+  // « + Nouveau retour » sans soumission de l'élève : le retour vaut soumission
+  sansSoumission?: boolean;
 }
 
-// La bibliothèque, chargée une fois par page (toutes les étapes la partagent)
+// La bibliothèque, chargée une fois par page (toutes les étapes la partagent ;
+// la popup d'étape s'en sert aussi pour le dépôt « Scène d'une œuvre »)
 let bibliotheque: Promise<Oeuvre[]> | null = null;
-function chargerBibliotheque(getAuthHeaders: Props['getAuthHeaders']): Promise<Oeuvre[]> {
+export function chargerBibliotheque(getAuthHeaders: Props['getAuthHeaders']): Promise<Oeuvre[]> {
   if (!bibliotheque) {
     bibliotheque = (async () => {
       const headers = await getAuthHeaders();
@@ -51,13 +62,13 @@ function chargerBibliotheque(getAuthHeaders: Props['getAuthHeaders']): Promise<O
   return bibliotheque;
 }
 
-function scenesDe(o: Oeuvre | undefined): { id: string; titre: string }[] {
+export function scenesDe(o: Oeuvre | undefined): { id: string; titre: string }[] {
   if (!o) return [];
   return o.chapitres.flatMap((c) => c.sections.map((s) => ({ id: s.id, titre: [c.titre, s.groupe, s.titre].filter(Boolean).join(' — ') })));
 }
 
-export default function PortfolioRetourProf({ devoirId, eleveUid, etape, etat, suivi, groupe, getAuthHeaders, onSuivi }: Props) {
-  const retour = suivi?.retours[etape.id] ?? null;
+export default function PortfolioRetourProf({ devoirId, eleveUid, etape, etat, suivi, groupe, getAuthHeaders, onSuivi, sceneProposee = null, nouveau = false, sansSoumission = false }: Props) {
+  const retour = nouveau ? null : suivi?.retours[etape.id] ?? null;
   const declarees = etape.validation?.attribue ?? [];
   const [decision, setDecision] = useState<'valide' | 'refuse' | null>(retour?.decision ?? null);
   const [appreciation, setAppreciation] = useState<Appreciation | null>(retour?.appreciation ?? null);
@@ -71,17 +82,37 @@ export default function PortfolioRetourProf({ devoirId, eleveUid, etape, etat, s
 
   // Le suivi rechargé (autre étape enregistrée…) : on resynchronise
   useEffect(() => {
-    const r = suivi?.retours[etape.id];
+    const r = nouveau ? undefined : suivi?.retours[etape.id];
     setDecision(r?.decision ?? null);
     setAppreciation(r?.appreciation ?? null);
     setCommentaire(r?.commentaire ?? '');
     setValeurs(Object.fromEntries((etape.validation?.attribue ?? []).map((v) => [v.id, suivi?.valeurs[v.id] ?? null])));
-  }, [suivi, etape.id, etape.validation]);
+  }, [suivi, etape.id, etape.validation, nouveau]);
 
   const aOeuvre = declarees.some((v) => v.genre === 'oeuvre');
   useEffect(() => {
     if (aOeuvre) void chargerBibliotheque(getAuthHeaders).then(setOeuvres);
   }, [aOeuvre, getAuthHeaders]);
+
+  // Pré-remplissage par la scène de l'élève, une fois la bibliothèque chargée :
+  // seulement les valeurs « œuvre » que le prof n'a pas encore attribuées
+  const proposeeOeuvre = sceneProposee?.oeuvreId;
+  const proposeeSection = sceneProposee?.sectionId;
+  useEffect(() => {
+    if (!oeuvres || !proposeeOeuvre || !proposeeSection) return;
+    const oeuvre = oeuvres.find((o) => o.id === proposeeOeuvre);
+    const scene = scenesDe(oeuvre).find((s) => s.id === proposeeSection);
+    if (!oeuvre || !scene) return;
+    setValeurs((x) => {
+      const suite = { ...x };
+      for (const d of etape.validation?.attribue ?? []) {
+        if (d.genre === 'oeuvre' && !suite[d.id]) {
+          suite[d.id] = { genre: 'oeuvre', oeuvreId: oeuvre.id, sectionId: scene.id, titre: `${oeuvre.titre} — ${scene.titre}` };
+        }
+      }
+      return suite;
+    });
+  }, [oeuvres, proposeeOeuvre, proposeeSection, etape.validation, suivi]);
 
   const enregistrer = async () => {
     if (!decision) {
@@ -96,7 +127,7 @@ export default function PortfolioRetourProf({ devoirId, eleveUid, etape, etat, s
       const res = await fetch('/api/portfolio/suivi', {
         method: 'PATCH',
         headers,
-        body: JSON.stringify({ devoirId, eleve: eleveUid, etapeId: etape.id, decision, appreciation, commentaire, valeurs }),
+        body: JSON.stringify({ devoirId, eleve: eleveUid, etapeId: etape.id, decision, appreciation, commentaire, valeurs, nouveau: sansSoumission }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Enregistrement impossible');
@@ -119,6 +150,7 @@ export default function PortfolioRetourProf({ devoirId, eleveUid, etape, etat, s
           {ETAT_ETAPE_LABELS[etat]}
         </span>
         {groupe && <span className={styles.labNote}>Ce retour vaut pour tout le groupe.</span>}
+        {sansSoumission && <span className={styles.labNote}>L’élève n’a pas soumis : ce retour vaut soumission.</span>}
       </div>
 
       <div className={styles.retourActions}>
@@ -148,7 +180,8 @@ export default function PortfolioRetourProf({ devoirId, eleveUid, etape, etat, s
               title={APPRECIATIONS[a].label}
               aria-pressed={appreciation === a}
             >
-              {APPRECIATIONS[a].emoji}
+              {/* Vert, orange, rouge, dessinés (JP, 2026-10-11) */}
+              <SmileyAppreciation appreciation={a} />
             </button>
           ))}
         </span>

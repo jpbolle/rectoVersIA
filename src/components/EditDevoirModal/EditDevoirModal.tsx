@@ -89,7 +89,9 @@ interface EditDevoirModalProps {
   // Activité INTÉGRÉE à un portfolio (ouverte depuis son atelier, JP 2026-10-11) :
   // ni classes, ni élèves, ni échéance, ni « Disponible » — comme à la création
   // (`CreationForm dansPortfolio`). Les valeurs déjà enregistrées ne sont pas
-  // touchées (les effacer retirerait les sessions d'une activité déjà donnée)
+  // touchées : les vider n'effacerait pas les sessions (une classe retirée garde
+  // la sienne). Ce sont les accueils qui ignorent une activité intégrée à un
+  // portfolio (`activitesIntegreesAUnPortfolio`, JP 2026-10-11)
   dansPortfolio?: boolean;
 }
 

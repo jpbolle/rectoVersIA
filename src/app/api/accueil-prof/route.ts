@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { decrypt } from '@/lib/crypto';
+import { activitesIntegreesAUnPortfolio } from '@/lib/portfolio-server';
 import type { ACorrigerProf, AccueilProf, EcheanceProf, RetardProf } from '@/types/accueil';
 
 // GET ?espace=classique|fle — l'accueil du prof (2026-10-08) : ce qui l'attend
@@ -58,6 +59,9 @@ export async function GET(request: NextRequest) {
 
     // 3. Les activités, lues une fois chacune (supprimées : ignorées)
     const devoirIds = [...new Set(sessions.map((s) => String(s.devoirId)))];
+    // Activités intégrées à un portfolio : plus de vie autonome — ni échéance
+    // ni retard ici (les copies remises restent « à corriger »)
+    const dansUnPortfolio = await activitesIntegreesAUnPortfolio();
     // Une activité CLASSÉE (« travail corrigé ») ou archivée n'est plus en
     // cours : rien à corriger, personne en retard (JP, 2026-10-08)
     // Une activité est FLE si elle porte le référentiel FLE ou si UNE de ses
@@ -109,7 +113,7 @@ export async function GET(request: NextRequest) {
         }
 
         const echeance = toDate(s.dateRemise);
-        if (!echeance) return;
+        if (!echeance || dansUnPortfolio.has(String(s.devoirId))) return;
         const jours = joursEntre(echeance, aujourdhui); // > 0 = passée
 
         // Échéances à venir (session ouverte)

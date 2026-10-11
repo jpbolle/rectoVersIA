@@ -35,6 +35,7 @@ import PortfolioDepotGroupe from './PortfolioDepotGroupe';
 import PortfolioDepotLien from './PortfolioDepotLien';
 import PortfolioDepotImage from './PortfolioDepotImage';
 import PortfolioDepotTableau from './PortfolioDepotTableau';
+import PortfolioDepotScene from './PortfolioDepotScene';
 import type { PortfolioEleve } from '@/hooks/usePortfolioEleve';
 import {
   cequiManque,
@@ -68,6 +69,7 @@ import {
 } from '@/types/portfolio';
 import { iconeAtelier } from '@/types/sequence-fle';
 import IaPicto from './IaPicto';
+import SmileyAppreciation from './SmileyAppreciation';
 import { ressourcesPresentes } from '@/lib/ressources-presentes';
 import styles from './Portfolio.module.css';
 
@@ -290,8 +292,8 @@ export default function PortfolioActivity({
                 {retour.decision === 'valide' ? '✓ Validé par ton professeur' : '✗ À reprendre'}
               </span>
               {retour.appreciation && (
-                <span className={styles.retourAppreciation} title={APPRECIATIONS[retour.appreciation].label}>
-                  {APPRECIATIONS[retour.appreciation].emoji}
+                <span className={styles.retourAppreciation}>
+                  <SmileyAppreciation appreciation={retour.appreciation} taille={24} titre={APPRECIATIONS[retour.appreciation].label} />
                 </span>
               )}
               <span className={styles.retourDate}>{echeanceLisible(retour.date.slice(0, 10), true)}</span>
@@ -366,7 +368,9 @@ export default function PortfolioActivity({
                 <span className={styles[ETAT_RENVOI[etape.etatRenvoi ?? 'a-faire'].classe] ?? ''}>
                   {ETAT_RENVOI[etape.etatRenvoi ?? 'a-faire'].label}
                 </span>
-                {' — '}remets l’activité, puis soumets l’étape à ton professeur.
+                {etape.activiteVide
+                  ? ' — pas encore de questionnaire : cette étape compte comme faite, tu peux continuer.'
+                  : ' — quand tu remets l’activité, l’étape est soumise à ton professeur.'}
               </span>
             </div>
             <Link
@@ -379,7 +383,7 @@ export default function PortfolioActivity({
               }
               className={styles.btn}
             >
-              {etape.etatRenvoi === 'fait' ? 'Revoir l’activité' : 'Ouvrir l’activité'}
+              {etape.etatRenvoi === 'fait' ? 'Revoir l’activité' : etape.etatRenvoi === 'en-cours' ? 'Reprendre l’activité' : 'Ouvrir l’activité'}
             </Link>
           </div>
         )}
@@ -410,7 +414,9 @@ export default function PortfolioActivity({
                         ? contenu.groupeStatut === 'accepte'
                           ? '✓ groupe accepté'
                           : '✓ déclaré — le professeur l’accepte avec l’étape'
-                        : '✓ déposé'
+                        : types.includes('scene')
+                          ? '✓ scène choisie'
+                          : '✓ déposé'
                       : 'à faire'}
                   </span>
                 </div>
@@ -460,6 +466,21 @@ export default function PortfolioActivity({
                             etapeId={etape.id}
                             depotId={d.id}
                             onChange={(id) => deposer(etape.id, d.id, id, 'image')}
+                          />
+                        </div>
+                      );
+                    }
+                    if (t === 'scene') {
+                      return (
+                        <div key={t}>
+                          <PortfolioDepotScene
+                            devoirId={parcours.devoirId}
+                            etapeId={etape.id}
+                            depotId={d.id}
+                            valeur={valeur}
+                            onChange={(v) => deposer(etape.id, d.id, v, 'scene')}
+                            lectureSeule={lectureSeule}
+                            onOuvrirRessources={onOuvrirRessources}
                           />
                         </div>
                       );

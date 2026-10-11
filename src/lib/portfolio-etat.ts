@@ -32,6 +32,10 @@ import type { EtatActiviteParcours } from '@/types/sequence-fle';
 /** Une étape telle que l'élève la reçoit : + l'état de l'activité renvoyée. */
 export interface EtapePortfolioVue extends PortfolioEtape {
   etatRenvoi?: EtatActiviteParcours;
+  // L'activité renvoyée n'a RIEN à faire : une lecture sans questionnaire ni
+  // œuvre. L'étape compte comme FAITE — l'élève n'est pas bloqué par un oubli
+  // du prof (JP, 2026-10-11). Posé par le serveur (`activitesVides`).
+  activiteVide?: boolean;
 }
 
 export interface ParcoursPortfolio {
@@ -180,6 +184,7 @@ export function validationBloquante(etape: PortfolioEtape): boolean {
 }
 
 export function faite(etape: EtapePortfolioVue, contenu: PortfolioContenuEleve): boolean {
+  if (etape.nature === 'activite' && etape.activiteVide) return true;
   if (estEtapeSansTrace(etape)) return contenu.cochees.includes(etape.id);
   const etat = etatEtape(etape, contenu);
   if (validationBloquante(etape)) return etat === 'validee';
@@ -248,10 +253,11 @@ export function cequiManque(etape: EtapePortfolioVue, contenu: PortfolioContenuE
   if (etat === 'a-reprendre') return ['reprendre l’étape selon le retour du professeur, puis la soumettre à nouveau'];
   if (etat === 'soumise' || etat === 'a-revoir') return ['la validation du professeur'];
   if (etat === 'prete') return ['soumettre l’étape au professeur'];
-  if (etape.nature === 'activite') return ['remettre l’activité', 'puis soumettre l’étape'];
+  // La remise de l'activité soumet aussi l'étape (passerelle, 2026-10-11)
+  if (etape.nature === 'activite') return ['remettre l’activité'];
   return (etape.depots ?? [])
     .filter((d) => d.obligatoire !== false && !depotRempli(contenu, etape.id, d))
-    .map((d) => (typesDuDepot(d).includes('groupe') ? 'déclarer ton groupe (ou dire que tu travailles seul)' : d.libelle || 'un dépôt'));
+    .map((d) => (typesDuDepot(d).includes('groupe') ? 'choisir ton groupe (ou dire que tu travailles seul)' : d.libelle || 'un dépôt'));
 }
 
 /** Échéance dépassée et étape non faite ? */

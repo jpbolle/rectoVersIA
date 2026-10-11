@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAffichage } from '@/hooks/useAffichage';
 import { useStudentClasses } from '@/hooks/useStudentClasses';
 import { useTravail } from '@/hooks/useTravail';
+import { useEcritureGroupe } from '@/hooks/useEcritureGroupe';
+import ImpressionCopie from '@/components/ImpressionCopie/ImpressionCopie';
 import { useGrille } from '@/hooks/useGrille';
 import { useAiSuggestions } from '@/hooks/useAiSuggestions';
 import { useAiGridEvaluation } from '@/hooks/useAiGridEvaluation';
@@ -32,6 +34,7 @@ import { ressourcesPresentes } from '@/lib/ressources-presentes';
 import PortfolioConsignesEtape from '@/components/Portfolio/PortfolioConsignesEtape';
 import PortfolioSommaire from '@/components/Portfolio/PortfolioSommaire';
 import PortfolioRessourcesEtape from '@/components/Portfolio/PortfolioRessourcesEtape';
+import { clePartie } from '@/types/portfolio';
 import PortfolioValeursActivite from '@/components/Portfolio/PortfolioValeursActivite';
 import { usePortfolioEleve } from '@/hooks/usePortfolioEleve';
 import SequenceFleActivity from '@/components/SequenceFleActivity/SequenceFleActivity';
@@ -141,6 +144,18 @@ export default function TravailPage() {
   // Les profs peuvent previsualiser la page en mode lecture seule
   const isPreviewMode = role === 'prof';
 
+  // Ouverte DEPUIS UN PORTFOLIO (`?portfolio=…`) : la flèche y ramène, sur
+  // l'étape en cours — pas à l'accueil (JP, 2026-10-11). Lu dans l'adresse AU
+  // CLIC, jamais mémorisé : le portfolio et l'activité sont la même page
+  // (`/activites/[id]`), qui n'est pas forcément remontée entre les deux — une
+  // valeur gardée en état restait celle du portfolio (vide). Pas de
+  // `useSearchParams` : il imposerait une frontière Suspense.
+  const retourPortfolio = (): string | null => {
+    if (typeof window === 'undefined') return null;
+    const p = new URLSearchParams(window.location.search).get('portfolio');
+    return p ? `/activites/${encodeURIComponent(p)}` : null;
+  };
+
   // Hook travail uniquement pour les eleves
   const {
     travail,
@@ -157,7 +172,21 @@ export default function TravailPage() {
     toggleConsigneCochee,
     submit,
     patchPortfolio,
+    refetch: rechargerTravail,
   } = useTravail(isPreviewMode ? null : devoirId);
+  // COPIE DE GROUPE (étape collective d'un portfolio, plan 2026-10-11) : le
+  // texte commun et la main qui tourne. Inerte (`actif: false`) partout ailleurs.
+  const ecritureGroupe = useEcritureGroupe(
+    isPreviewMode ? null : devoirId,
+    !isPreviewMode && devoir?.typeTravail === 'ecrire'
+  );
+  // Un camarade a remis la copie du groupe : la mienne est remise aussi —
+  // on la recharge pour que la page le sache
+  const groupeRemis = ecritureGroupe.etat?.remise === true;
+  const statutCopie = travail?.status;
+  useEffect(() => {
+    if (groupeRemis && statutCopie !== 'submitted') void rechargerTravail();
+  }, [groupeRemis, statutCopie, rechargerTravail]);
   // PORTFOLIO : le parcours, l'étape ouverte et les gestes — partagés par la
   // colonne 1 et le sommaire du rail. Inerte pour tout autre dispositif.
   const portfolioEleve = usePortfolioEleve({
@@ -166,6 +195,7 @@ export default function TravailPage() {
     patchPortfolio: isPreviewMode ? undefined : patchPortfolio,
     lectureSeule: isPreviewMode || travail?.status === 'submitted',
   });
+
 
   const {
     grille,
@@ -194,6 +224,13 @@ export default function TravailPage() {
     setActiveTab('consignes');
     setPanelOpen(true);
   }, [etapePortfolioId]);
+  // Lecture d'une œuvre : la navigation dans le livre vivait sous la consigne,
+  // ouverte d'office ; devenue l'onglet « Sommaire de l'œuvre » (premier
+  // onglet, JP 2026-10-11), c'est lui qui s'ouvre
+  const lectureDOeuvre = devoir?.typeTravail === 'lire' && !!devoir?.oeuvreId;
+  useEffect(() => {
+    if (lectureDOeuvre) setActiveTab('sommaire');
+  }, [lectureDOeuvre]);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   // Conseils IA affichés dans le panneau (ids composites `type:itemId`) —
   // quand l'onglet Aide IA est ouvert, seules leurs bulles restent visibles
@@ -408,7 +445,10 @@ export default function TravailPage() {
     setShowConfirmModal(false);
     setIsSubmitting(true);
     try {
-      const success = await submit();
+      // Copie de groupe : remise pour TOUT le groupe (et l'étape du portfolio)
+      const success = ecritureGroupe.actif
+        ? (await ecritureGroupe.remettre()) && (await rechargerTravail(), true)
+        : await submit();
       // Lecture : le récapitulatif (justes / erreurs / à corriger) est calculé
       // par le serveur À LA REMISE — il n'existe pas dans le devoir déjà
       // chargé. Sans ce rechargement, l'élève ne le verrait qu'au prochain F5.
@@ -458,7 +498,10 @@ export default function TravailPage() {
   }, []);
 
   const handleBack = () => {
-    if (isPreviewMode) {
+    const portfolio = retourPortfolio();
+    if (portfolio) {
+      router.push(portfolio);
+    } else if (isPreviewMode) {
       router.push('/activites');
     } else {
       router.push('/dashboard');
@@ -606,6 +649,10 @@ export default function TravailPage() {
   // Atelier de conceptualisation : la colonne de gauche devient l'éditeur de
   // schéma ; la base documentaire est dans le rail (onglet Ressources).
   const isSchema = devoir?.typeTravail === 'schematiser';
+  // Lecture SANS questionnaire ni œuvre (vu le 2026-10-11 : « Compréhension de
+  // la scène » créée sans questionnaire) : rien à faire pour l'élève — surtout
+  // pas l'éditeur d'écriture, où il tombait jusqu'ici par défaut
+  const isLectureSansQuiz = isLecture && !isLectureQuiz && !isOeuvre && !isSondage && !isSondageLibre && !isAutoEval;
   // Portfolio d'apprentissage : la colonne 1 montre l'étape où l'élève en
   // était, le rail son sommaire cochable (plan du 2026-10-09)
   const isPortfolio = estPortfolio(devoir);
@@ -633,9 +680,12 @@ export default function TravailPage() {
   // l'onglet doit dire qu'on y navigue, sans quoi l'élève ne l'ouvre jamais.
   // Portfolio (JP, 2026-10-11) : « Consignes » = celles de l'ÉTAPE ouverte
   // (objectifs, liste de tâches) ; le sommaire a son propre onglet
-  const labelConsignes = isOeuvre ? 'Consignes et navigation' : 'Consignes';
-  railTabs.push({ id: 'consignes', label: labelConsignes, icon: ICON_CONSIGNES });
+  // Portfolio et lecture d'une œuvre (JP, 2026-10-11) : le SOMMAIRE est le
+  // premier onglet — on s'y repère avant tout. Celui de l'œuvre quitte donc
+  // l'onglet Consignes (« Consignes et navigation », 2026-08-15) pour le sien.
   if (isPortfolio) railTabs.push({ id: 'sommaire', label: 'Sommaire du portfolio', icon: ICON_SOMMAIRE });
+  if (isOeuvre) railTabs.push({ id: 'sommaire', label: 'Sommaire de l’œuvre', icon: ICON_SOMMAIRE });
+  railTabs.push({ id: 'consignes', label: 'Consignes', icon: ICON_CONSIGNES });
   railTabs.push({ id: 'ressources', label: 'Ressources', icon: ICON_RESSOURCES });
   // Portfolio : le statut IA est PAR ÉTAPE, affiché dans la colonne 1 — pas d'onglet
   if (!isRecherche && !isLectureQuiz && !isPortfolio && (accesIA || showAiData)) {
@@ -672,8 +722,8 @@ export default function TravailPage() {
   railTabs.push({ id: 'grille', label: 'Évaluation', icon: ICON_GRILLE });
 
   const PANEL_TITLES: Partial<Record<TabType, string>> = {
-    consignes: labelConsignes,
-    sommaire: 'Sommaire du portfolio',
+    consignes: 'Consignes',
+    sommaire: isOeuvre ? 'Sommaire de l’œuvre' : 'Sommaire du portfolio',
     ressources: 'Ressources',
     grille: 'Évaluation',
     ia: isSchema ? 'Aide IA' : 'Aide IA à la réécriture',
@@ -704,6 +754,7 @@ export default function TravailPage() {
 
       <WorkTopBar
         title={devoir.intitule}
+        onBack={handleBack}
         // Recherche : c'est l'envoi depuis l'extension qui fait foi — le hook travail
         // n'est pas rechargé quand l'élève revient de l'onglet de recherche
         status={
@@ -736,7 +787,7 @@ export default function TravailPage() {
           // Le VOCABULAIRE rejoint la liste : l'élève y coche des mots et fait
           // ses exercices pendant des semaines, il n'y a jamais rien à remettre.
           // Le bouton promettait une fin qui n'existe pas (demande JP, 2026-09-20).
-          isRecherche || isLectureQuiz || isAutoEval || isOeuvre || isSondage || isSondageLibre || isVocabulaire || isPortfolio
+          isRecherche || isLectureQuiz || isLectureSansQuiz || isAutoEval || isOeuvre || isSondage || isSondageLibre || isVocabulaire || isPortfolio
         }
         submitOutsideApp={isRecherche}
       />
@@ -965,19 +1016,70 @@ export default function TravailPage() {
               isSubmitting={isSubmitting}
             />
           </div>
-        ) : (
+        ) : isLectureSansQuiz ? (
           <div className={styles.editorSection}>
             <div className={styles.editorHeader}>
-              <h2>Mon travail</h2>
+              <h2>Questionnaire</h2>
             </div>
-            <div className={styles.editorWrapper}>
+            <p className={styles.lectureSansQuestionnaire}>
+              {isPreviewMode
+                ? 'Aucun questionnaire n’est attaché à cette activité de lecture : choisissez-en un en modifiant l’activité. Sans lui, l’élève n’a rien à faire ici.'
+                : 'Ton professeur n’a pas encore préparé le questionnaire de cette activité. Reviens plus tard !'}
+            </p>
+          </div>
+        ) : (
+          <div className={styles.editorSection}>
+            <div className={`${styles.editorHeader} ${styles.editorHeaderLigne}`}>
+              <h2>{ecritureGroupe.actif ? 'Notre travail' : 'Mon travail'}</h2>
+              {/* La PASTILLE de la copie de groupe (JP) : qui écrit en ce moment */}
+              {ecritureGroupe.actif && ecritureGroupe.etat && (
+                <span
+                  className={`${styles.pastilleGroupe} ${ecritureGroupe.etat.main && !ecritureGroupe.jAiLaMain ? styles.pastilleGroupeAutre : ''}`}
+                  title={`Copie du groupe : ${ecritureGroupe.etat.membres.join(', ')}`}
+                >
+                  {ecritureGroupe.etat.remise || isDisabled ? (
+                    <>👥 Copie du groupe remise</>
+                  ) : ecritureGroupe.jAiLaMain ? (
+                    <>
+                      ✍️ Tu as la main
+                      <button type="button" className={styles.pastilleGroupeBtn} onClick={() => void ecritureGroupe.rendre()}>
+                        Je rends la main
+                      </button>
+                    </>
+                  ) : ecritureGroupe.etat.main ? (
+                    <>✍️ {ecritureGroupe.etat.main.nom} est en train d’écrire…</>
+                  ) : (
+                    <>👥 Personne n’écrit — clique dans le texte pour prendre la main</>
+                  )}
+                </span>
+              )}
+              {!isPreviewMode && (
+                <span className={styles.editorHeaderDroite}>
+                  <ImpressionCopie
+                    titre={devoir.intitule}
+                    auteurs={ecritureGroupe.actif ? ecritureGroupe.etat?.membres.join(', ') : undefined}
+                    html={ecritureGroupe.actif ? ecritureGroupe.contenu : travail?.content || ''}
+                  />
+                </span>
+              )}
+            </div>
+            {ecritureGroupe.message && <p className={styles.messageGroupe}>{ecritureGroupe.message}</p>}
+            <div
+              className={styles.editorWrapper}
+              // Copie de groupe : un clic dans le texte prend la main, si elle est libre
+              onMouseDown={
+                ecritureGroupe.actif && !ecritureGroupe.jAiLaMain && !ecritureGroupe.etat?.main && !isDisabled && !ecritureGroupe.etat?.remise
+                  ? () => void ecritureGroupe.prendre()
+                  : undefined
+              }
+            >
               <FlipEditor
-                content={isPreviewMode ? '' : (travail?.content || '')}
-                onContentChange={handleContentChange}
+                content={isPreviewMode ? '' : ecritureGroupe.actif ? ecritureGroupe.contenu : (travail?.content || '')}
+                onContentChange={ecritureGroupe.actif ? ecritureGroupe.ecrire : handleContentChange}
                 draftContent={isPreviewMode ? null : (travail?.draftContent || null)}
                 onDraftChange={handleDraftChange}
                 grille={grille}
-                disabled={isDisabled}
+                disabled={isDisabled || (ecritureGroupe.actif && (!ecritureGroupe.jAiLaMain || !!ecritureGroupe.etat?.remise))}
                 placeholder={isPreviewMode ? "Zone de rédaction de l'élève…" : "Commencez à rédiger votre travail ici..."}
                 draftAnnotations={correction?.draftAnnotations}
                 accesIA={showAiData}
@@ -1035,7 +1137,19 @@ export default function TravailPage() {
             consignesRemplacement={
               isPortfolio ? <PortfolioConsignesEtape eleve={portfolioEleve} lectureSeule={isDisabled} /> : undefined
             }
-            sommaire={isPortfolio ? <PortfolioSommaire eleve={portfolioEleve} lectureSeule={isDisabled} /> : undefined}
+            sommaire={
+              isPortfolio ? (
+                <PortfolioSommaire eleve={portfolioEleve} lectureSeule={isDisabled} />
+              ) : isOeuvre && oeuvreLecture.oeuvre ? (
+                <OeuvreSommaire
+                  chapitres={oeuvreLecture.oeuvre.chapitres}
+                  sectionCourante={oeuvreLecture.sectionId}
+                  progression={oeuvreLecture.progression}
+                  couverture={oeuvreLecture.oeuvre.couverture}
+                  onAller={oeuvreLecture.allerA}
+                />
+              ) : undefined
+            }
             // Portfolio : d'abord ce qui vaut pour TOUT le portfolio, puis
             // ce qui est lié à l'étape ouverte (JP, 2026-10-11)
             ressourcesPrefixe={
@@ -1051,18 +1165,11 @@ export default function TravailPage() {
             ressourcesRienSiVide={
               isPortfolio &&
               (ressourcesPresentes(portfolioEleve.etapes.find((e) => e.introduction)?.ressources) ||
-                ressourcesPresentes(portfolioEleve.etape?.ressources))
-            }
-            oeuvreNav={
-              isOeuvre && oeuvreLecture.oeuvre ? (
-                <OeuvreSommaire
-                  chapitres={oeuvreLecture.oeuvre.chapitres}
-                  sectionCourante={oeuvreLecture.sectionId}
-                  progression={oeuvreLecture.progression}
-                  couverture={oeuvreLecture.oeuvre.couverture}
-                  onAller={oeuvreLecture.allerA}
-                />
-              ) : undefined
+                ressourcesPresentes(portfolioEleve.etape?.ressources) ||
+                // une scène choisie (dépôt « Scène d'une œuvre ») s'affiche dans l'onglet
+                (portfolioEleve.etape?.depots ?? []).some(
+                  (d) => !!portfolioEleve.contenu.reponses[clePartie(portfolioEleve.etape!.id, d.id, 'scene')]
+                ))
             }
             grille={grille}
             grilleLoading={grilleLoading}
@@ -1126,7 +1233,9 @@ export default function TravailPage() {
             <p className={styles.modalText}>
               {isAutoEval
                 ? 'Une fois envoyées, tes réponses ne pourront plus être modifiées. Rien n’est noté : ton professeur les lira pour savoir où tu en es.'
-                : 'Êtes-vous sûr de vouloir remettre votre travail ? Cette action est définitive et vous ne pourrez plus modifier votre travail après la remise.'}
+                : ecritureGroupe.actif
+                  ? 'Tu remets la copie pour TOUT le groupe : plus personne ne pourra la modifier, et l’étape du portfolio est soumise à ton professeur.'
+                  : 'Êtes-vous sûr de vouloir remettre votre travail ? Cette action est définitive et vous ne pourrez plus modifier votre travail après la remise.'}
             </p>
             <div className={styles.modalActions}>
               <button

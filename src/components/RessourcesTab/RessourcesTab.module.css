@@ -528,6 +528,14 @@
   margin: 0 0 14px;
 }
 
+/* Ligne au-dessus du cadre : le bouton « Ouvrir en grand » calé à droite */
+.interactifHaut {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-bottom: 5px;
+}
+
 /* Largeur EXPLICITE et non `margin: auto` : une marge automatique annule
    l'étirement dans un conteneur flex en colonne, et le cadre tombe à zéro —
    le piège déjà rencontré sur les vidéos de la liseuse d'œuvre. */
