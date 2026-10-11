@@ -37,6 +37,8 @@ import OeuvreSommaire from '@/components/OeuvreReader/OeuvreSommaire';
 import { useOeuvreLecture } from '@/hooks/useOeuvreLecture';
 import AutoEvalActivity from '@/components/AutoEvalActivity/AutoEvalActivity';
 import SchemaActivity from '@/components/SchemaActivity/SchemaActivity';
+import SchemaAideEleve from '@/components/SchemaAideEleve/SchemaAideEleve';
+import SchemaStatsEleve from '@/components/SchemaAideEleve/SchemaStatsEleve';
 import { parseLectureAnswers } from '@/types/lecture';
 import WorkspaceRail, { type RailTab } from '@/components/WorkspaceRail';
 import DictionaryClickLayer from '@/components/DictionaryClickLayer';
@@ -80,12 +82,29 @@ const ICON_REMARQUES = (
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
 );
+const ICON_CORRIGE = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11l3 3L22 4" />
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+  </svg>
+);
 const ICON_RECHERCHE = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="8" />
     <line x1="21" y1="21" x2="16.65" y2="16.65" />
   </svg>
 );
+
+/** Le schéma de la copie a-t-il au moins une boîte ? (l'aide IA n'a rien à comparer sinon) */
+function schemaNonVide(content: string | null | undefined): boolean {
+  if (!content) return false;
+  try {
+    const d = JSON.parse(content);
+    return Array.isArray(d?.nodes) && d.nodes.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 export default function TravailPage() {
   const params = useParams();
@@ -420,7 +439,7 @@ export default function TravailPage() {
 
   // Score du prof (visible par l'élève quand correction rendue)
   const profScore = useMemo(() => {
-    if (!correction?.visibleParEleve || !correction.evaluation || !grille) return null;
+    if (!correction?.visibleParEleve || correction.evaluationVisible === false || !correction.evaluation || !grille) return null;
     let totalPoints = 0;
     let maxPoints = 0;
     const hidden = new Set(devoir?.hiddenCriteria || []);
@@ -527,7 +546,10 @@ export default function TravailPage() {
   }
 
   const isSubmitted = travail?.status === 'submitted';
-  const isDisabled = isPreviewMode || isSubmitted;
+  // Ateliers dont l'état de copie se règle au triple bouton du prof
+  const parCopie = devoir?.typeTravail === 'ecrire' || devoir?.typeTravail === 'schematiser' || devoir?.typeTravail === 'portfolio';
+  // Copie verrouillée par le prof avant remise (2026-10-11) : figée aussi
+  const isDisabled = isPreviewMode || isSubmitted || !!travail?.verrouille;
   const isRecherche = devoir?.typeTravail === 'rechercher';
   // Réponses envoyées depuis l'extension : le voile se lève, le corrigé peut s'afficher
   const hasRechercheReponse = !!nkReponse?.questions?.length;
@@ -588,7 +610,8 @@ export default function TravailPage() {
   if (!isRecherche && !isLectureQuiz && !isPortfolio && (accesIA || showAiData)) {
     railTabs.push({
       id: 'ia',
-      label: 'Aide IA à la réécriture',
+      // Schéma : pas de réécriture — une comparaison au corrigé (étape 5)
+      label: isSchema ? 'Aide IA' : 'Aide IA à la réécriture',
       icon: ICON_IA,
       hasBadge: hasAiSuggestions,
     });
@@ -601,6 +624,18 @@ export default function TravailPage() {
       highlight: hasRemarques,
     });
   }
+  // CORRIGÉ DU PROFESSEUR (écriture, conceptualisation — 2026-10-11) : en
+  // vis-à-vis de la copie. Présent dès que l'activité a un corrigé, cliquable
+  // seulement quand le serveur l'a envoyé — sa copie corrigée et rendue visible.
+  const corrigeRecu = isSchema ? !!devoir?.schema?.corrige : !!devoir?.corrigeReference?.production?.trim();
+  if (!isPreviewMode && devoir?.corrigePrevu) {
+    railTabs.push({
+      id: 'corrige',
+      label: corrigeRecu ? 'Corrigé du professeur' : 'Corrigé du professeur — quand ta copie sera corrigée',
+      icon: ICON_CORRIGE,
+      disabled: !corrigeRecu,
+    });
+  }
   // Pas d'onglet Recherche : scores, habiletés et statistiques sont réunis
   // dans Évaluation (RechercheEvaluation)
   railTabs.push({ id: 'grille', label: 'Évaluation', icon: ICON_GRILLE });
@@ -609,8 +644,9 @@ export default function TravailPage() {
     consignes: labelConsignes,
     ressources: 'Ressources',
     grille: 'Évaluation',
-    ia: 'Aide IA à la réécriture',
+    ia: isSchema ? 'Aide IA' : 'Aide IA à la réécriture',
     remarques: 'Remarques du professeur',
+    corrige: 'Corrigé du professeur',
   };
   const panelTitle = PANEL_TITLES[activeTab] ?? '';
 
@@ -650,10 +686,15 @@ export default function TravailPage() {
         onSubmit={handleSubmitClick}
         isSubmitting={isSubmitting}
         isPreviewMode={isPreviewMode}
+        // Écriture, conceptualisation, portfolio (triple bouton du prof,
+        // 2026-10-11) : une copie RENVOYÉE POUR RÉÉCRITURE a sa correction
+        // visible mais reste à remettre — la remise n'est close que si la
+        // copie est rendue. Les autres ateliers gardent leur règle.
+        closedLabel={travail?.verrouille ? '🔒 Copie verrouillée par ton professeur' : undefined}
         submissionClosed={!isPreviewMode && (
-          devoir.corrigeDisponible ||
-          correction?.visibleParEleve === true ||
-          !!travail?.nonRendu
+          parCopie
+            ? !!travail?.nonRendu || !!travail?.verrouille
+            : devoir.corrigeDisponible || correction?.visibleParEleve === true || !!travail?.nonRendu
         )}
         // Recherche : la remise se fait en envoyant les réponses depuis NavigKid!
         // Questionnaire de lecture et auto-évaluation : au bas du questionnaire.
@@ -846,6 +887,9 @@ export default function TravailPage() {
                 content={isPreviewMode ? null : travail?.content}
                 onChange={isDisabled ? undefined : (json) => updateContent(json)}
                 readOnly={isDisabled}
+                // Les pastilles du prof, dès que sa correction est visible
+                // (renvoi pour réécriture ou corrigé) — l'élève ne les touche pas
+                marques={!isPreviewMode && correction?.visibleParEleve ? correction.schemaMarques : undefined}
               />
             </div>
           </div>
@@ -934,6 +978,22 @@ export default function TravailPage() {
                     (s) => !!s.termineLe
                   ).length
                 : undefined
+            }
+            // Schéma dont la correction est visible (réécriture ou corrigé) :
+            // les statistiques de la correction du prof, en tête de l'onglet Évaluation
+            evaluationPrefixe={
+              isSchema && !isPreviewMode && travail?.id && correction?.visibleParEleve ? (
+                <SchemaStatsEleve travailId={travail.id} cle={`${correction.updatedAt ?? ''}`} />
+              ) : undefined
+            }
+            aideIaEleve={
+              isSchema && !isPreviewMode ? (
+                <SchemaAideEleve
+                  travailId={travail?.id ?? null}
+                  corrigePrevu={!!devoir?.corrigePrevu}
+                  schemaNonVide={schemaNonVide(travail?.content)}
+                />
+              ) : undefined
             }
             consignesRemplacement={
               isPortfolio ? <PortfolioSommaire eleve={portfolioEleve} lectureSeule={isDisabled} /> : undefined

@@ -13,7 +13,7 @@ import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuild
 import AutoEvalBuilder from '@/components/AutoEvalBuilder/AutoEvalBuilder';
 import { getTodayString } from '@/lib/devoir-utils';
 import { createPlanItem, planHasContent } from '@/lib/draft-utils';
-import type { Devoir, Classe, DevoirRessource, EvaluationType, TypeTravail, CorrigeReference } from '@/types/devoir';
+import type { Devoir, Classe, DevoirRessource, EvaluationType, TypeTravail, CorrigeReference, SchemaCorrige } from '@/types/devoir';
 import type { LectureQuiz, LectureQuizMode } from '@/types/lecture';
 import type { AutoEvalQuestionnaire, SondageReglages } from '@/types/autoevaluation';
 import { SONDAGE_REGLAGES_DEFAUT } from '@/types/autoevaluation';
@@ -33,7 +33,9 @@ import { estClasseFle } from '@/types/classe';
 import type { SequenceFleContenu } from '@/types/sequence-fle';
 import type { TypeModal } from '@/types/didactique';
 import { DIAGRAM_TYPES, DIAGRAM_TYPE_LABELS, type DiagramType } from '@/types/diagram';
-import { schemaDuDevoir } from '@/lib/schema-devoir';
+import { nettoyerConcepts, schemaDuDevoir } from '@/lib/schema-devoir';
+import CorrigeSchemaPicker from '@/components/CorrigeSchemaPicker/CorrigeSchemaPicker';
+import SchemaDepartInput, { SCHEMA_DEPART_VIDE, type SchemaDepartValeur } from '@/components/SchemaDepartInput/SchemaDepartInput';
 import styles from './EditDevoirModal.module.css';
 import FlipChoice from '@/components/FlipChoice/FlipChoice';
 
@@ -150,6 +152,8 @@ export default function EditDevoirModal({
   // Atelier de conceptualisation : type de départ + liberté de transformer
   const [schemaType, setSchemaType] = useState<DiagramType>('conceptmap');
   const [schemaTypeLibre, setSchemaTypeLibre] = useState(true);
+  const [schemaDepart, setSchemaDepart] = useState<SchemaDepartValeur>(SCHEMA_DEPART_VIDE);
+  const [schemaCorrige, setSchemaCorrige] = useState<SchemaCorrige | null>(null);
   // Élèves concernés : null = toute la classe (toutes activités)
   const [eleves, setEleves] = useState<string[] | null>(null);
   const [elevesDesClasses, setElevesDesClasses] = useState<EleveAvecClasse[]>([]);
@@ -207,6 +211,12 @@ export default function EditDevoirModal({
       const sc = schemaDuDevoir(devoir);
       setSchemaType(sc.typeDepart);
       setSchemaTypeLibre(sc.typeLibre);
+      setSchemaDepart({
+        conceptCentral: sc.conceptCentral ?? '',
+        concepts: sc.concepts ?? [],
+        melanger: sc.melanger === true,
+      });
+      setSchemaCorrige(sc.corrige ?? null);
       setEleves(devoir.eleves ?? null);
 
       // Corrigé de référence existant (type ecrire)
@@ -262,7 +272,8 @@ export default function EditDevoirModal({
   // Deux groupes : les ressources DONNÉES à l'élève, et le contenu de
   // l'activité elle-même. Les intertitres ne servent qu'à les séparer.
   const aRessources = typeTravail !== 'vocabulaire' && typeTravail !== 'autoevaluation';
-  const aContenus = typeTravail !== 'vocabulaire' && !isOeuvre && typeTravail !== 'schematiser';
+  // Atelier de conceptualisation : le point de départ du schéma (2026-10-11)
+  const aContenus = typeTravail !== 'vocabulaire' && !isOeuvre;
   const isSequence = typeTravail === 'sequence';
   // Une séquence FLE ne se donne qu'à des classes FLE
   const { classes: toutesMesClasses, classesPartagees } = useClasses();
@@ -378,7 +389,14 @@ export default function EditDevoirModal({
 
     // Atelier de conceptualisation : ses réglages
     if (devoir.typeTravail === 'schematiser') {
-      data.schema = { typeDepart: schemaType, typeLibre: schemaTypeLibre };
+      data.schema = {
+        typeDepart: schemaType,
+        typeLibre: schemaTypeLibre,
+        conceptCentral: schemaDepart.conceptCentral.trim(),
+        concepts: nettoyerConcepts(schemaDepart.concepts),
+        melanger: schemaDepart.melanger,
+        corrige: schemaCorrige,
+      };
     }
 
     // Auto-évaluation intégrée (écriture, lecture, recherche)
@@ -411,6 +429,9 @@ export default function EditDevoirModal({
     flipInverted, ressourcesToIA, profTheme, profDraft, planToIA,
     profProduction, productionToIA, lectureQuiz, lectureMode, hiddenQuestions, autoEvalQuiz, sondageReglages, autoEvaluation,
     nkQuestions, nkThemes, eleves, sequenceFle, portfolio,
+    // Atelier de conceptualisation (absents jusqu'au 2026-10-11 : un corrigé
+    // choisi puis la popup fermée par ✕ n'était jamais enregistré)
+    schemaType, schemaTypeLibre, schemaDepart, schemaCorrige?.sourceId ?? null, schemaCorrige?.titre ?? null,
   ]);
 
   // `enregistrer` est recréée à chaque rendu : passée en dépendance, elle
@@ -789,12 +810,38 @@ export default function EditDevoirModal({
                       ? 'Les modules du parcours, dans l’ordre où l’élève les fera. Les élèves qui suivent la séquence se choisissent au recto.'
                     : typeTravail === 'portfolio'
                       ? 'Les étapes du portfolio, dans l’ordre où l’élève les fera. Un clic sur une étape règle son échéance, son statut IA, sa portée et son verrou.'
+                    : typeTravail === 'schematiser'
+                      ? 'Le point de départ du schéma : le concept central apparaît dans le canevas de l’élève, les autres concepts l’attendent dans l’onglet « À placer », sous son schéma.'
                     : 'Le questionnaire est utilisé par l’extension NavigKid — il n’apparaît pas dans les ressources de l’élève.'
               }
             >
               i
             </span>
           </h4>
+        </div>
+      )}
+
+      {/* Atelier de conceptualisation : le point de départ du schéma (2026-10-11) */}
+      {typeTravail === 'schematiser' && (
+        <div className={styles.versoSection}>
+          <div className={styles.versoSectionHeader}>
+            <h3 className={styles.versoSectionTitle}>🧩 Point de départ du schéma</h3>
+          </div>
+          <SchemaDepartInput valeur={schemaDepart} onChange={setSchemaDepart} disabled={isSaving} />
+        </div>
+      )}
+
+      {/* Atelier de conceptualisation : le corrigé du prof (2026-10-11) */}
+      {typeTravail === 'schematiser' && (
+        <div className={styles.versoSection}>
+          <div className={styles.versoSectionHeader}>
+            <h3 className={styles.versoSectionTitle}>✅ Corrigé du professeur</h3>
+          </div>
+          {getAuthHeaders ? (
+            <CorrigeSchemaPicker valeur={schemaCorrige} onChange={setSchemaCorrige} getAuthHeaders={getAuthHeaders} disabled={isSaving} />
+          ) : (
+            <p className={styles.modeNote}>Le corrigé se choisit depuis Mes Ressources › Conceptualisations.</p>
+          )}
         </div>
       )}
 

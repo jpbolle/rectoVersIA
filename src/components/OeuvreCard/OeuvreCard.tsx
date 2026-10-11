@@ -1,16 +1,12 @@
 'use client';
 
-// Carte d'une œuvre — même forme que GrilleCard et VocabCard (page Mes
-// Ressources). Trois familles de cartes voisines qui se ressembleraient « à
-// peu près » donneraient trois pages différentes dans une même page : le
-// gabarit est donc repris tel quel, seul le contenu change.
-//
-// Boutons ICÔNES en bas à droite, avec infobulle au survol — comme ses sœurs.
-// Le texte des boutons faisait porter à la carte une ligne d'actions qu'aucune
-// autre n'a.
+// Carte d'une œuvre — sur le gabarit commun RessourceCard (plan 2026-10-11) :
+// plus de ✏️, la carte s'ouvre au clic (éditeur si je peux l'éditer, sommaire
+// sinon). L'archivage a son icône d'archive : la 🗑️ faisait croire à une
+// suppression.
 
 import type { Oeuvre } from '@/types/oeuvre';
-import styles from './OeuvreCard.module.css';
+import RessourceCard from '@/components/RessourceCard/RessourceCard';
 
 interface OeuvreCardProps {
   oeuvre: Oeuvre;
@@ -25,6 +21,8 @@ interface OeuvreCardProps {
   onPartager?: (o: Oeuvre) => void;
   onDupliquer: (o: Oeuvre) => void;
   onArchiver?: (o: Oeuvre) => void;
+  /** « Utiliser pour une classe » — absent = pas de bouton */
+  onUtiliser?: (o: Oeuvre) => void;
 }
 
 function compterSections(o: Oeuvre): number {
@@ -52,151 +50,75 @@ export default function OeuvreCard({
   onPartager,
   onDupliquer,
   onArchiver,
+  onUtiliser,
 }: OeuvreCardProps) {
   const sections = compterSections(oeuvre);
   const formulaires = compterFormulaires(oeuvre);
+  const nbChapitres = oeuvre.chapitres.length;
   const nbPartages = oeuvre.partages?.length ?? 0;
   const editable = (mienne || coEditable) && !oeuvre.archive;
 
-  return (
-    <article className={`${styles.card} ${oeuvre.archive ? styles.cardArchivee : ''}`}>
-      {/* Pastilles d'état, en haut à droite — comme les tags UAA des grilles */}
-      <div className={styles.tags}>
-        {oeuvre.archive && <span className={`${styles.tag} ${styles.tagArchive}`}>Archivée</span>}
-        {mienne && nbPartages > 0 && (
-          <span className={styles.tag} title={oeuvre.partages!.map((p) => p.nom || p.email).join(', ')}>
+  const etiquettes = [
+    `${nbChapitres} chapitre${nbChapitres > 1 ? 's' : ''}`,
+    `${sections} section${sections > 1 ? 's' : ''}`,
+    // Ce que le livre demande à l'élève : le seul compteur qui dise si l'œuvre
+    // est déjà exploitable en classe ou s'il reste à écrire les vérifications.
+    `${formulaires} vérification${formulaires > 1 ? 's' : ''}`,
+  ];
+  if (oeuvre.archive) etiquettes.push('Archivée');
+  const pastilles = [
+    ...etiquettes,
+    ...(mienne && nbPartages > 0
+      ? [
+          <span key="partages" title={oeuvre.partages!.map((p) => p.nom || p.email).join(', ')}>
             Partagée ×{nbPartages}
-          </span>
-        )}
-        {partageRecu && (
-          <span className={`${styles.tag} ${partageRecu === 'edition' ? styles.tagEdition : ''}`}>
-            {partageRecu === 'edition' ? 'Co-édition' : 'Lecture seule'}
-          </span>
-        )}
-      </div>
+          </span>,
+        ]
+      : []),
+    ...(partageRecu ? [partageRecu === 'edition' ? 'Co-édition' : 'Lecture seule'] : []),
+  ];
 
-      {/* La couverture remplace l'icône générique quand elle existe : douze
-          cartes « 📖 » identiques ne se départagent qu'en lisant les titres,
-          alors qu'une gravure se reconnaît d'un coup d'œil. */}
-      {oeuvre.couverture ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={oeuvre.couverture.url}
-          alt=""
-          className={styles.couverture}
-        />
-      ) : (
-        <div className={styles.cardIcon}>📖</div>
-      )}
-      <h3 className={styles.title}>{oeuvre.titre}</h3>
+  // L'auteur ne se répète pas s'il est déjà dans le titre
+  // (« Molière — Anthologie comique »)
+  const auteur =
+    oeuvre.auteur && !oeuvre.titre.toLowerCase().includes(oeuvre.auteur.toLowerCase()) ? oeuvre.auteur : null;
+  const sousTitre = [auteur, !mienne && oeuvre.profName ? `de ${oeuvre.profName}` : null].filter(Boolean).join(' · ');
 
-      {/* L'auteur ne se répète pas s'il est déjà dans le titre
-          (« Molière — Anthologie comique ») */}
-      {oeuvre.auteur && !oeuvre.titre.toLowerCase().includes(oeuvre.auteur.toLowerCase()) && (
-        <p className={styles.auteur}>{oeuvre.auteur}</p>
-      )}
-
-      {!mienne && oeuvre.profName && <p className={styles.profName}>de {oeuvre.profName}</p>}
-
-      <div className={styles.metaRow}>
-        <span className={styles.metaItem}>
-          <span className={styles.metaIcon}>📚</span>
-          <span>{oeuvre.chapitres.length} chapitre{oeuvre.chapitres.length > 1 ? 's' : ''}</span>
-        </span>
-        <span className={styles.metaItem}>
-          <span className={styles.metaIcon}>📄</span>
-          <span>{sections} section{sections > 1 ? 's' : ''}</span>
-        </span>
-        {/* Ce que le livre demande à l'élève : c'est le seul compteur qui dise
-            si l'œuvre est déjà exploitable en classe ou s'il reste à écrire
-            les vérifications. */}
-        <span className={styles.metaItem}>
-          <span className={styles.metaIcon}>❓</span>
-          <span>{formulaires} vérification{formulaires > 1 ? 's' : ''}</span>
-        </span>
-      </div>
-
-      <div className={styles.actions}>
-        {/* L'œil n'apparaît que sur une œuvre qu'on ne peut PAS éditer : le
-            sommaire est la seule façon d'y jeter un coup d'œil avant de la
-            dupliquer. Sur les siennes, il faisait double emploi avec ✏️, qui
-            ouvre le même sommaire — en modifiable. */}
-        {!editable && (
-          <button
-            type="button"
-            className={styles.actionBtn}
-            onClick={() => onVoir(oeuvre)}
-            title="Voir le sommaire"
-            aria-label="Voir le sommaire"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
-            </svg>
-          </button>
-        )}
-
-        {editable && onEditer && (
-          <button
-            type="button"
-            className={styles.actionBtn}
-            onClick={() => onEditer(oeuvre)}
-            title={coEditable ? 'Éditer (co-édition)' : 'Éditer le contenu'}
-            aria-label="Éditer"
-          >
-            ✏️
-          </button>
-        )}
-
-        {mienne && !oeuvre.archive && onPartager && (
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${nbPartages > 0 ? styles.actionActive : ''}`}
-            onClick={() => onPartager(oeuvre)}
-            title={
-              nbPartages > 0
-                ? `Partagée avec ${nbPartages} collègue${nbPartages > 1 ? 's' : ''} — modifier`
-                : 'Partager avec un collègue'
-            }
-            aria-label="Partager"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        )}
-
-        <button
-          type="button"
-          className={styles.actionBtn}
-          onClick={() => onDupliquer(oeuvre)}
-          title={mienne ? 'Dupliquer l’œuvre' : 'Dupliquer dans mes œuvres'}
-          aria-label="Dupliquer"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <rect x="4" y="1" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
-            <rect x="1" y="4" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="var(--c-bg-card)" />
-          </svg>
-        </button>
-
-        {mienne && !oeuvre.archive && onArchiver && (
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.actionDanger}`}
-            onClick={() => onArchiver(oeuvre)}
-            title="Archiver l’œuvre"
-            aria-label="Archiver"
-          >
-            🗑️
-          </button>
-        )}
-      </div>
-    </article>
+  return (
+    <RessourceCard
+      icone="📖"
+      titre={oeuvre.titre}
+      etiquettes={pastilles}
+      sousTitre={sousTitre || undefined}
+      // La couverture se reconnaît d'un coup d'œil, là où douze « 📖 »
+      // identiques ne se départagent qu'en lisant les titres
+      visuel={
+        oeuvre.couverture ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={oeuvre.couverture.url} alt="" />
+        ) : undefined
+      }
+      archivee={oeuvre.archive}
+      // Clic : ce que faisait ✏️ (œuvre éditable) ou l'œil (sinon)
+      onOuvrir={editable && onEditer ? () => onEditer(oeuvre) : () => onVoir(oeuvre)}
+      titreOuvrir={editable ? (coEditable ? 'Éditer (co-édition)' : 'Éditer le contenu') : 'Voir le sommaire'}
+      // L'œil seulement sur une œuvre qu'on ne peut PAS éditer : sur les
+      // siennes, il ferait double emploi avec l'ouverture en modifiable
+      onVoir={!editable ? () => onVoir(oeuvre) : undefined}
+      onPartager={mienne && !oeuvre.archive && onPartager ? () => onPartager(oeuvre) : undefined}
+      partagee={nbPartages > 0}
+      titrePartager={
+        nbPartages > 0
+          ? `Partagée avec ${nbPartages} collègue${nbPartages > 1 ? 's' : ''} — modifier`
+          : 'Partager avec un collègue'
+      }
+      onDupliquer={() => onDupliquer(oeuvre)}
+      // Archiver seulement (le panneau n'a pas de « restaurer ») : pas de bouton
+      // sur une œuvre déjà archivée
+      onArchiver={mienne && !oeuvre.archive && onArchiver ? () => onArchiver(oeuvre) : undefined}
+      principale={onUtiliser ? { libelle: 'Utiliser pour une classe', onClick: () => onUtiliser(oeuvre) } : undefined}
+      // Œuvre d'un collègue que je ne peux pas éditer : Voir + « Dupliquer »
+      lectureSeule={!mienne && !editable}
+    />
   );
 }

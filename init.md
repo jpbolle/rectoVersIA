@@ -8,6 +8,13 @@
 ## ⚡ TL;DR
 
 - **Nom affiché** : **RectoVerso** depuis le 2026-10-08 (strings d'interface ; l'infra reste `rectoversia`).
+- **Session du 2026-10-11** (v3.1) : atelier de conceptualisation complet — point de départ (concept central +
+  étiquettes « À placer »), **corrigés** (Mes Ressources › Conceptualisations, copiés dans l'activité),
+  **pastilles** de correction sur le schéma, **Aide IA** prof (comparaison au corrigé, pastilles pâles
+  proposées) et élève (une fois, nombres seulement) — rollup `rollup_conceptualisation.md`. **Triple bouton de
+  copie** (écriture, conceptualisation, portfolio) : Renvoyer pour réécriture | En mode correction | Rendre comme
+  corrigé, + « Verrouiller la copie » ; **onglet « Corrigé »** (écriture et schéma). Cards de Mes Ressources
+  unifiées (`RessourceCard`).
 - **Portfolio d'apprentissage** (2026-10-09, étape 1 du chantier écrite ; 1a validée, 1b/1c à voir) :
   dispositif propre `portfolio`, matrice dans Mes Ressources › Portfolios, activité = copie ;
   élève **dans** l'espace à 2 colonnes (étape à gauche, « Sommaire du portfolio » cochable à droite) ;
@@ -20,7 +27,7 @@
   les élèves rédigent, s'autoévaluent, travaillent le vocabulaire, font des recherches
   guidées (extension Chrome NavigKid) et se prononcent sur leur propre travail
   (auto-évaluation à deux regards). Le prof scénarise son année (Design & scénarisation).
-- **Statut** : **v3.0**, en production au Collège Notre-Dame de Dinant (profs + élèves réels).
+- **Statut** : **v3.1** (depuis le 2026-10-11 ; v3.0 le 2026-08-17), en production au Collège Notre-Dame de Dinant (profs + élèves réels).
   ⚠ Le numéro est reparti de 3.8 à **3.0** le 2026-08-17 — décision assumée de
   JP, pour marquer la refonte des deux dernières semaines. Source unique :
   `src/lib/version.ts` (géré à la main, jamais incrémenté automatiquement).
@@ -130,7 +137,7 @@ Paniers servis par les routes (`otherProfs` / `autres` / `autresFle`), jamais fi
 | Page avec `router.replace()` | State `redirecting` : `if (redirecting) return;` avant le replace, `return null;` dans le render | pages protégées existantes |
 | Nouvelle façon d'évaluer une activité | **Grille pour l'écriture, habiletés partout ailleurs** — jamais les deux. La grille n'est exigée que pour `typeTravail === 'ecrire'`, client ET serveur | `usesGrille` dans `CreationForm` / `EditDevoirModal` |
 | Demander une saisie ou une confirmation | **Jamais** `prompt()` / `confirm()` / `alert()` : popup de l'application, centrée, sur fond assombri, en-tête et pied d'actions. Consigne durable (dépôt `harnais`, `0-moi/consignes.md`) | `ScenarisationFormModal`, `CertificationNotesModal` |
-| Nouvelle carte dans **Mes Ressources** | Gabarit de `GrilleCard` : dégradé vert, contenu centré, icône 32 px, titre 17 px vert, boutons d'action 40 × 36 (dupliquer · ✏️ ouvrir · 🗑️ rouge au survol). Tous les onglets forment une famille — un gabarit divergent se voit (harmonisation du 2026-09-19 : questionnaires réalignés, activités et séquences FLE sorties de la carte du tableau de bord). **Nouvelle carte = styles d'`OeuvreCard.module.css`** (rangée d'actions) ; **carte « + » = `CreateOeuvreCard libelle="…"`**, jamais recopiée | `GrilleCard`, `OeuvreCard`, `ScenarisationCard`, `ModuleFleCard`, `ActiviteRessourceCard` |
+| Nouvelle carte dans **Mes Ressources** | **`RessourceCard`** (2026-10-11, gabarit Portfolio sur fond vert « papyrus ») : emoji dans le titre, étiquettes, description ou visuel, pied à filet — icônes lucide dans l'ordre **Voir · Partager · Dupliquer · Archiver (jamais 🗑️) · Supprimer**, puis l'action principale en texte (« Utiliser pour une classe », via `UtiliserRessource` + `CreationForm preselection`) ; **la card s'ouvre au clic** (plus de ✏️) ; collègues = `lectureSeule` (« Dupliquer »). Chaque onglet = **blocs blancs titrés** (`.groupe` d'`OeuvrePanel.module.css`) et **3 cards par ligne** (`repeat(3, minmax(0,1fr))`, 2 puis 1 en étroit). Carte « + » = `CreateOeuvreCard libelle="Créer …"` | `RessourceCard`, `GrilleCard`, `PortfolioPanel` |
 | Nouvel « atelier » (type d'activité) | Liste **fermée** (`ATELIERS`) — 8 ateliers (le 2026-10-09, « Activité d'auto-évaluation » et « Sondage en direct » ont fusionné en **« Sondage »**, deux réglages sur l'activité — `Devoir.sondage`, lu par `reglagesSondage()` ; l'ancien id `autoevaluation` reste en base et **vaut** `sondage` : `atelierCanonique()`), 7 dispositifs (`sequence` depuis le 2026-09-14 : une activité qui en contient d'autres, sans copie ni remise ; `schematiser` depuis le 2026-10-04 : l'élève construit un schéma, JSON `Diagram` dans `travail.content`). Chaque atelier porte une `description` d'une ligne pour la **popup de choix** (`AtelierChoiceModal`) qui précède désormais le formulaire de création : chaque atelier est lié à un **dispositif** que l'app sait afficher (`typeTravail`). Un atelier sans dispositif produirait une activité impossible à ouvrir | `src/types/didactique.ts` |
 | Activité où **rien ne se remet** (recherche, questionnaire de lecture, auto-évaluation, lecture d'une œuvre) | `hideSubmit` sur `WorkTopBar` ; la remise, quand elle existe, vit **au bas de la colonne de gauche**, dans la ligne d'actions | `hideSubmit` dans `/activites/[id]` |
 | Nouvelle façon d'afficher des propositions à l'élève (QCM, matrice, appariement, tri) | **Mélangées par élève**, jamais dans l'ordre du prof — `ordreAffichage(taille, graine, melanger)`, graine = `uid + id de question`. ⚠️ **C'est un ORDRE D'AFFICHAGE** : la réponse reste enregistrée dans l'ordre du PROF, sinon tous les corrigés déjà en base désignent la mauvaise case. Case `pasDeMelange` pour une chronologie ou une gradation | `ordreAffichage` dans `src/types/lecture.ts` ; `LectureQuizActivity`, `OeuvreReader`, `QuestionInteractions/` |
@@ -347,6 +354,11 @@ interface Questionnaire {
 ```
 
 ### Autres collections
+
+- **`aiSchemaComparaisons/AISCHEMA-{travailId}`** (2026-10-11) : comparaison IA d'une copie de schéma avec le
+  corrigé — lignes, décisions ✓/✗ du prof, `demandeParEleve` (l'aide IA de l'élève, une fois). Serveur seulement.
+- **`schemasPersonnels`** : `prof: true` = corrigé de la bibliothèque du prof (Mes Ressources › Conceptualisations),
+  `archive` ; les schémas d'élèves ne sortent jamais de chez leur auteur.
 - `portfolios/{PFO-…}` — **matrices** de portfolio (2026-10-09) : `titre`, `description`, `tacheFinale`,
   `consignes`, `ressources`, `etapes` (`PortfolioEtape[]`), `profId`, `archive`. Serveur seulement
   (`/api/portfolios`).
@@ -948,6 +960,23 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
 
 > Les gotchas **critiques** (boucles de hooks, redirections, ContentLock, échelle des
 > grilles) sont dans `AGENTS.md`. Ici : les pièges opérationnels.
+
+### État d'une copie (écriture, conceptualisation, portfolio) : DEUX données, trois états
+`correction.visibleParEleve` (publiée) × `travail.status` (rendue) : publiée + brouillon = **renvoyée pour
+réécriture** (annotations, pastilles, statistiques visibles ; grille, note, commentaire NON — le serveur pose
+`Correction.evaluationVisible`) ; publiée + rendue = **corrigée** (tout, + onglet « Corrigé ») ; non publiée = **en
+mode correction**. Publier rend la copie (serveur) ; l'élève qui remet une réécriture la dé-publie (serveur).
+`Travail.verrouille` fige une copie non rendue. La bascule « corrigé par classe » ne vaut plus que pour la lecture.
+
+### Popup de modification d'une activité OUVERTE : rien ne s'enregistre tout seul
+L'enregistrement automatique n'agit que sur une activité **non disponible** (une activité ouverte verrait ses
+questions arriver à moitié écrites). Un réglage changé puis la popup fermée par ✕ = perdu. La signature
+d'auto-enregistrement doit lister TOUT état nouveau du formulaire (oubli des réglages du schéma, corrigé le 2026-10-11).
+
+### Pastilles et décisions IA : jamais deux requêtes parallèles pour le même document
+Des clics rapprochés envoyaient des PATCH concurrents, arrivés dans le désordre (écran ≠ base). Pastilles :
+`saveWithDebounce` + calcul sur la référence (`correctionRef`) ; décisions IA : écriture champ par champ
+(`decisions.l3`).
 
 ### Toute création d'un `travail` porte son `sessionId`
 Un travail sans `sessionId` tombe dans « Copies sans classe » chez le prof, même si

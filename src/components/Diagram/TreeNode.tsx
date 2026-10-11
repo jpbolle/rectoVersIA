@@ -13,6 +13,7 @@ import type { Side } from '@/lib/diagram/tree-layout';
 import { hasTagData, readTagData } from '@/lib/diagram/tag-drop';
 import { ColorPicker } from './ColorPicker';
 import styles from './TreeNode.module.css';
+import { Pastille } from './Pastilles';
 
 export type TreeNodeData = {
   label: string;
@@ -131,6 +132,9 @@ export function TreeNode({ id, data, selected }: NodeProps<TreeNodeType>) {
       onDragLeave={() => setDropping(false)}
       onDrop={onDrop}
     >
+      {/* Pastille de correction (RectoVerso) ; celle du rattachement au parent
+          est au milieu de la branche (BrancheEdge) */}
+      <Pastille genre="boites" id={id} />
       {actions && !actions.readOnly && (
         <NodeToolbar isVisible={selected && !editing} position={Position.Top} className={styles.toolbar}>
           <ColorPicker compact palette="fill" value={data.color} label="Fond" onChange={(c) => actions.recolor(id, c)} />

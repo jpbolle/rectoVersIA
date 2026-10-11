@@ -36,13 +36,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-// PUT — { diagram?, thumbnail? } : enregistrement différé depuis l'éditeur
+// PUT — { diagram?, thumbnail?, archive? } : enregistrement différé depuis
+// l'éditeur ; `archive` pour la bibliothèque des corrigés du prof
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await verifyAuth(request);
   if (!auth) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
   const { id } = await params;
 
-  let body: { diagram?: unknown; thumbnail?: unknown };
+  let body: { diagram?: unknown; thumbnail?: unknown; archive?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -64,6 +65,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   if (typeof body.thumbnail === 'string' && body.thumbnail.startsWith('data:image/png') && body.thumbnail.length <= VIGNETTE_MAX) {
     patch.thumbnail = body.thumbnail;
   }
+  if (typeof body.archive === 'boolean') patch.archive = body.archive;
 
   try {
     const doc = await charger(id, auth.uid);

@@ -73,6 +73,10 @@ export interface Travail {
   // 'nonJustifie' = travail non fait sanctionné, cote finale 0 SANS mettre les
   // critères à zéro (les stats de capacités ne sont pas parasitées).
   nonRendu?: NonRenduStatus | null;
+  // Copie VERROUILLÉE par le prof avant qu'elle soit remise (« Verrouiller la
+  // copie », sous le triple bouton — 2026-10-11) : l'élève ne la modifie plus,
+  // sans qu'elle compte pour autant comme rendue
+  verrouille?: boolean;
   createdAt: string;
   updatedAt: string;
   submittedAt: string | null;
@@ -116,4 +120,5 @@ export interface UpdateTravailData {
   selfEvaluation?: Record<string, number> | null;
   status?: TravailStatus;
   nonRendu?: NonRenduStatus | null;  // prof uniquement
+  verrouille?: boolean;  // prof uniquement
 }

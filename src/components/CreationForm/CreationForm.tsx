@@ -1,5 +1,8 @@
 'use client';
 
+import { nettoyerConcepts } from '@/lib/schema-devoir';
+import CorrigeSchemaPicker from '@/components/CorrigeSchemaPicker/CorrigeSchemaPicker';
+import SchemaDepartInput, { SCHEMA_DEPART_VIDE, type SchemaDepartValeur } from '@/components/SchemaDepartInput/SchemaDepartInput';
 import { useState, useCallback, useEffect } from 'react';
 import Toggle from '@/components/Toggle/Toggle';
 import DatePicker from '@/components/DatePicker/DatePicker';
@@ -27,7 +30,7 @@ import MessageBox from '@/components/MessageBox/MessageBox';
 import { getTodayString } from '@/lib/devoir-utils';
 import { createPlanItem, planHasContent } from '@/lib/draft-utils';
 import { useVocabulaireThemes } from '@/hooks/useVocabulaireThemes';
-import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail, EvaluationType, CorrigeReference } from '@/types/devoir';
+import type { CreateDevoirData, Classe, DevoirRessource, TypeTravail, EvaluationType, CorrigeReference, SchemaCorrige } from '@/types/devoir';
 import type { LectureQuiz, LectureQuizMode } from '@/types/lecture';
 import type { AutoEvalQuestionnaire, SondageReglages } from '@/types/autoevaluation';
 import { SONDAGE_REGLAGES_DEFAUT } from '@/types/autoevaluation';
@@ -102,6 +105,22 @@ interface CreationFormProps {
   // PORTFOLIO : « Utiliser pour une classe » depuis Mes Ressources › Portfolios —
   // la matrice dont l'activité part (titre, consignes, ressources, étapes copiées)
   portfolioInitial?: PortfolioMatrice | null;
+  // CONCEPTUALISATION : « Utiliser pour une classe » depuis Mes Ressources ›
+  // Conceptualisations — le corrigé déjà choisi (copié dans l'activité)
+  schemaCorrigeInitial?: SchemaCorrige | null;
+  // « UTILISER POUR UNE CLASSE » depuis une card de Mes Ressources (2026-10-11) :
+  // la ressource déjà choisie dans le formulaire — grille (par son nom), liste
+  // de vocabulaire (id), questionnaire de lecture (id), œuvre (id)
+  preselection?: PreselectionRessource | null;
+}
+
+export interface PreselectionRessource {
+  grille?: string;
+  vocabThemeId?: string;
+  lectureQuizId?: string;
+  oeuvreId?: string;
+  /** Intitulé proposé (le titre de la ressource) */
+  intitule?: string;
 }
 
 export default function CreationForm({
@@ -117,6 +136,8 @@ export default function CreationForm({
   modeFle = false,
   atelierInitial,
   portfolioInitial = null,
+  schemaCorrigeInitial = null,
+  preselection = null,
 }: CreationFormProps) {
   // Face affichée du formulaire (recto : infos de base, verso : ressources)
   const [face, setFace] = useState<FormFace>('recto');
@@ -125,8 +146,11 @@ export default function CreationForm({
   // Champs obligatoires
   const [selectedClasses, setSelectedClasses] = useState<Classe[]>([]);
   const [dateRemise, setDateRemise] = useState('');
-  const [grille, setGrille] = useState('');
-  const [intitule, setIntitule] = useState(portfolioInitial?.titre ?? '');
+  const [grille, setGrille] = useState(preselection?.grille ?? '');
+  // Vocabulaire : l'intitulé EST l'id de la liste choisie (menu « Série lexicale »)
+  const [intitule, setIntitule] = useState(
+    portfolioInitial?.titre ?? schemaCorrigeInitial?.titre ?? preselection?.vocabThemeId ?? preselection?.intitule ?? ''
+  );
   // Critères de la grille masqués pour cette activité (popup au choix de la grille)
   const [hiddenCriteria, setHiddenCriteria] = useState<string[]>([]);
   const [showHideCriteria, setShowHideCriteria] = useState(false);
@@ -258,7 +282,7 @@ export default function CreationForm({
   // ── Lecture d'une œuvre ──
   // L'œuvre n'est pas recopiée dans l'activité : on y renvoie. Le minimum de
   // vérifications, croisé avec la date, donne le rythme attendu.
-  const [oeuvreId, setOeuvreId] = useState<string>('');
+  const [oeuvreId, setOeuvreId] = useState<string>(preselection?.oeuvreId ?? '');
   const [oeuvreChapitres, setOeuvreChapitres] = useState<string[]>([]);
   const [oeuvreMinimum, setOeuvreMinimum] = useState<number>(8);
   const { oeuvres, loading: oeuvresLoading } = useOeuvres(atelier === 'lecture-oeuvre');
@@ -277,8 +301,10 @@ export default function CreationForm({
 
   // Atelier de conceptualisation (type schematiser) : type de schéma de départ,
   // et liberté d'en changer (décision JP 2026-10-04 : libre par défaut)
-  const [schemaType, setSchemaType] = useState<DiagramType>('conceptmap');
+  const [schemaType, setSchemaType] = useState<DiagramType>(schemaCorrigeInitial?.diagram.type ?? 'conceptmap');
   const [schemaTypeLibre, setSchemaTypeLibre] = useState(true);
+  const [schemaDepart, setSchemaDepart] = useState<SchemaDepartValeur>(SCHEMA_DEPART_VIDE);
+  const [schemaCorrige, setSchemaCorrige] = useState<SchemaCorrige | null>(schemaCorrigeInitial);
 
   // Vocabulaire (type vocabulaire) — les callbacks servent à l'outil de listes
   // au verso (même outil que Mes Ressources : les listes créées ici y apparaissent)
@@ -300,7 +326,7 @@ export default function CreationForm({
   // veut voir posé, le prof la retire quand elle n'a pas lieu d'être.
   const [autoEvaluation, setAutoEvaluation] = useState(true);
   // Questionnaire choisi dans la bibliothèque, ou « sur mesure » (écrit ici)
-  const [lectureQuizId, setLectureQuizId] = useState<string>(QUESTIONNAIRE_SUR_MESURE);
+  const [lectureQuizId, setLectureQuizId] = useState<string>(preselection?.lectureQuizId ?? QUESTIONNAIRE_SUR_MESURE);
   // COMMENT le questionnaire se joue. Porté par l'activité et non par le
   // questionnaire : la même ressource sert un diagnostic en worksheet et une
   // révision en compétition (voir `Devoir.lectureMode`).
@@ -334,9 +360,9 @@ export default function CreationForm({
   // un seul groupe s'affiche, ils répètent le titre du verso et n'apportent
   // rien (« Ajouter des contenus » suivi de « Contenus de l'activité »).
   const aRessources = typeTravail !== 'vocabulaire' && typeTravail !== 'autoevaluation';
-  // Pas de constructeur pour l'atelier de conceptualisation : l'élève fait le
-  // schéma, le prof ne donne que la base documentaire (les ressources).
-  const aContenus = atelier !== 'lecture-oeuvre' && typeTravail !== 'schematiser';
+  // Atelier de conceptualisation : le contenu, c'est le point de départ du
+  // schéma (concept central, autres concepts — 2026-10-11).
+  const aContenus = atelier !== 'lecture-oeuvre';
   const aDeuxGroupes = aRessources && aContenus;
 
   const grilleValid = !usesGrille || grille;
@@ -505,7 +531,14 @@ export default function CreationForm({
     }
 
     if (typeTravail === 'schematiser') {
-      data.schema = { typeDepart: schemaType, typeLibre: schemaTypeLibre };
+      data.schema = {
+        typeDepart: schemaType,
+        typeLibre: schemaTypeLibre,
+        conceptCentral: schemaDepart.conceptCentral.trim(),
+        concepts: nettoyerConcepts(schemaDepart.concepts),
+        melanger: schemaDepart.melanger,
+        corrige: schemaCorrige,
+      };
     }
 
     if (atelier === 'lecture-oeuvre' && oeuvreId) {
@@ -1094,8 +1127,8 @@ export default function CreationForm({
                       ? 'Les modules du parcours, dans l’ordre où l’élève les fera. Chaque module apporte sa théorie et ses activités ; les élèves qui suivent la séquence se choisissent au recto.'
                     : typeTravail === 'portfolio'
                       ? 'Les étapes du portfolio, dans l’ordre où l’élève les fera : étapes propres (objectifs, consigne, dépôts) ou renvois vers d’autres activités. Un clic sur une étape règle son échéance, son statut IA, sa portée et son verrou.'
-                    : typeTravail === 'autoevaluation'
-                      ? 'Le questionnaire d’auto-évaluation : l’élève y dit où il en est. Rien n’est noté — les gestes cochés alimentent l’onglet réflexif de son profil.'
+                    : typeTravail === 'schematiser'
+                      ? 'Le point de départ du schéma : le concept central apparaît dans le canevas de l’élève, les autres concepts l’attendent dans l’onglet « À placer », sous son schéma.'
                       : 'La liste sert de support à l’activité (apprentissage et évaluation). Elle est aussi enregistrée dans Mes Ressources.'
             }
           >
@@ -1103,6 +1136,30 @@ export default function CreationForm({
           </span>
         </h4>
       </div>
+      )}
+
+      {/* Atelier de conceptualisation : le point de départ du schéma (2026-10-11) */}
+      {typeTravail === 'schematiser' && (
+        <div className={styles.versoSection}>
+          <div className={styles.versoSectionHeader}>
+            <h3 className={styles.versoSectionTitle}>🧩 Point de départ du schéma</h3>
+          </div>
+          <SchemaDepartInput valeur={schemaDepart} onChange={setSchemaDepart} disabled={isSubmitting} />
+        </div>
+      )}
+
+      {/* Atelier de conceptualisation : le corrigé du prof (2026-10-11) */}
+      {typeTravail === 'schematiser' && (
+        <div className={styles.versoSection}>
+          <div className={styles.versoSectionHeader}>
+            <h3 className={styles.versoSectionTitle}>✅ Corrigé du professeur</h3>
+          </div>
+          {getAuthHeaders ? (
+            <CorrigeSchemaPicker valeur={schemaCorrige} onChange={setSchemaCorrige} getAuthHeaders={getAuthHeaders} disabled={isSubmitting} />
+          ) : (
+            <p className={styles.modeNote}>Le corrigé se choisit depuis Mes Ressources › Conceptualisations.</p>
+          )}
+        </div>
       )}
 
       {/* Séquence FLE : les modules du parcours (les élèves se choisissent au recto) */}

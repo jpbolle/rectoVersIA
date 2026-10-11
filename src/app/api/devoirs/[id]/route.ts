@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { schemaPourFirestore } from '@/lib/schema-devoir';
+import { schemaPourFirestore, schemaSansCorrige } from '@/lib/schema-devoir';
 import { adminDb } from '@/lib/firebase/admin';
 import { quizDuDevoir } from '@/lib/questionnaire-lecture-server';
 import {
@@ -148,6 +148,34 @@ export async function GET(
       }
     }
 
+    // ONGLET « CORRIGÉ » (écriture, conceptualisation — JP, 2026-10-11) : le
+    // corrigé s'ouvre COPIE PAR COPIE, quand le prof a rendu visible la
+    // correction de CETTE copie — ce qui la rend et la verrouille. « Remettre la
+    // copie à l'élève » la rouvre : le corrigé se referme. La bascule par classe
+    // (`corrigeDisponible`) ne compte plus pour ces deux ateliers.
+    const parCopie = data.typeTravail === 'ecrire' || data.typeTravail === 'schematiser';
+    let corrigeDeLaCopie = false;
+    if (auth.role === 'eleve' && parCopie) {
+      const travailId = `TRV-${data.id || docSnap.id}-${auth.uid}`;
+      const [tSnap, cSnap] = await Promise.all([
+        adminDb.collection('travaux').doc(travailId).get(),
+        adminDb.collection('corrections').doc(`CORR-${travailId}`).get(),
+      ]);
+      corrigeDeLaCopie =
+        tSnap.exists &&
+        tSnap.data()!.status === 'submitted' &&
+        !tSnap.data()!.nonRendu &&
+        cSnap.exists &&
+        cSnap.data()!.visibleParEleve === true;
+    }
+    // L'élève sait qu'un corrigé existe (onglet grisé) sans en recevoir le contenu
+    const corrigePrevu =
+      data.typeTravail === 'ecrire'
+        ? !!data.corrigeReference?.production?.trim?.()
+        : data.typeTravail === 'schematiser'
+          ? !!schemaPourFirestore(data.schema).corrige
+          : false;
+
     // Questionnaire de lecture : l'onglet Évaluation calcule le score CÔTÉ
     // CLIENT (lecture-scoring). Sans `correctIndex` ni `fluoAttendu`, les QCM
     // et les soulignages sortent du total et l'élève lit un score amputé sans
@@ -235,10 +263,11 @@ export async function GET(
       // correction est disponible (jamais le plan de référence)
       corrigeReference:
         auth.role === 'eleve'
-          ? (corrigeAccessible && data.corrigeReference?.production
+          ? ((parCopie ? corrigeDeLaCopie : corrigeAccessible) && data.corrigeReference?.production
               ? { production: data.corrigeReference.production }
               : null)
           : data.corrigeReference || null,
+      corrigePrevu: auth.role === 'eleve' ? corrigePrevu : undefined,
       // Questionnaire de lecture : bonnes réponses filtrées côté élève tant
       // que ni le corrigé ni sa correction ne lui sont ouverts (voir
       // `quizComplet` plus haut)
@@ -264,7 +293,14 @@ export async function GET(
       oeuvreChapitres: Array.isArray(data.oeuvreChapitres) ? data.oeuvreChapitres : null,
       oeuvreMinimum: typeof data.oeuvreMinimum === 'number' ? data.oeuvreMinimum : null,
       // Atelier de conceptualisation : ses réglages (absent = défauts)
-      schema: data.typeTravail === 'schematiser' ? schemaPourFirestore(data.schema) : null,
+      // — sans le schéma corrigé du prof côté élève : il le reçoit avec sa copie
+      // corrigée et rendue visible, jamais avec l'activité
+      schema:
+        data.typeTravail !== 'schematiser'
+          ? null
+          : auth.role === 'eleve' && !corrigeDeLaCopie
+            ? schemaSansCorrige(schemaPourFirestore(data.schema))
+            : schemaPourFirestore(data.schema),
       // Enrichi à la lecture, jamais stocké (comme `uaa` et `submittedCount`)
       lectureResume,
       // Activité d'un autre prof (coprofesseur) : ce que JE peux en faire et

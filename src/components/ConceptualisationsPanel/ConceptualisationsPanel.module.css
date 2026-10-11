@@ -1,0 +1,17 @@
+/* La vignette du schéma, en tête de carte (le reste vient de Portfolio.module.css) */
+.vignette {
+  height: 110px;
+  border-radius: var(--c-radius);
+  background: var(--c-bg-element);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 32px;
+}
+
+.vignette img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}

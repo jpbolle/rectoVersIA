@@ -22,6 +22,7 @@ import { dashArray, effectiveLine, resolveStroke, type EdgeArrow, type EdgePath,
 import { ColorPicker } from './ColorPicker';
 import { edgeMarkers, type LabeledEdgeData, type LabeledEdgeType } from '@/lib/diagram/diagram-convert';
 import { ConceptContextValue } from './ConceptNode';
+import { MarquesContext, Pastille } from './Pastilles';
 import styles from './LabeledEdge.module.css';
 
 const PATHS: { id: EdgePath; title: string; glyph: string }[] = [
@@ -111,6 +112,7 @@ export function LabeledEdge({
       }),
     );
 
+  const marquesCtx = useContext(MarquesContext);
   return (
     <>
       {selected && <BaseEdge id={`${id}-halo`} path={path} style={{ stroke: 'var(--c-primary)', strokeWidth: line.width + 6, opacity: 0.25 }} />}
@@ -171,6 +173,22 @@ export function LabeledEdge({
           Outils…
         </button>
       </EdgeToolbar>
+      {/* Pastille de correction (RectoVerso) : pile au milieu du lien. Un lien
+          qui porte un mot de liaison la porte devant ce mot (sinon elle le cacherait). */}
+      {marquesCtx && !(label && !editing) && (
+        <EdgeLabelRenderer>
+          <div
+            className="nodrag nopan"
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              pointerEvents: 'all',
+            }}
+          >
+            <Pastille genre="liens" id={id} place="centre" />
+          </div>
+        </EdgeLabelRenderer>
+      )}
       {/* Schéma libre : pas d'étiquette fantôme sur une flèche sans texte (sauf sélection). */}
       {!(free && !label && !selected && !editing) && (
       <EdgeLabelRenderer>
@@ -193,7 +211,10 @@ export function LabeledEdge({
               onBlur={commit}
             />
           ) : (
-            label || (free ? '' : 'mot de liaison')
+            <>
+              {marquesCtx && label && <Pastille genre="liens" id={id} place="mot" />}
+              {label || (free ? '' : 'mot de liaison')}
+            </>
           )}
         </div>
       </EdgeLabelRenderer>

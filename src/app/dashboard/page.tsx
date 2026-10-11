@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useDevoirs } from '@/hooks/useDevoirs';
-import { parEcheance } from '@/lib/devoir-utils';
+import { activitesDePortfolio, parEcheance } from '@/lib/devoir-utils';
 import { useGrilleTypes } from '@/hooks/useEvaluations';
 import { useClasses } from '@/hooks/useClasses';
 import Header from '@/components/Header/Header';
@@ -76,9 +76,48 @@ export default function DashboardPage() {
     },
     [espace, nomsFle]
   );
+  // Les activités contenues dans un portfolio ne s'affichent pas : seul le
+  // portfolio apparaît (JP, 2026-10-11). Un portfolio, c'est une activité de
+  // type portfolio OU une matrice de Mes Ressources › Portfolios : les
+  // activités créées depuis l'atelier d'une matrice y vivent avant même que la
+  // matrice ait été donnée à une classe.
+  const [etapesDesMatrices, setEtapesDesMatrices] = useState<string[]>([]);
+  useEffect(() => {
+    if (!isAuthenticated || role !== 'prof') return;
+    let annule = false;
+    (async () => {
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers) return;
+        const res = await fetch('/api/portfolios', { headers });
+        const json = await res.json();
+        if (annule || !json.success || !Array.isArray(json.data)) return;
+        const ids = activitesDePortfolio(
+          (json.data as { etapes?: { nature: string; devoirId?: string }[] }[]).map((m) => ({
+            typeTravail: 'portfolio',
+            portfolio: { etapes: Array.isArray(m.etapes) ? m.etapes : [] },
+          }))
+        );
+        setEtapesDesMatrices([...ids]);
+      } catch {
+        // Sans les matrices, on montre simplement tout : rien de bloquant
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [isAuthenticated, role, getAuthHeaders]);
+  const dansUnPortfolio = useMemo(() => {
+    const ids = activitesDePortfolio([...tousLesDevoirs, ...devoirsPartages]);
+    etapesDesMatrices.forEach((id) => ids.add(id));
+    return ids;
+  }, [tousLesDevoirs, devoirsPartages, etapesDesMatrices]);
   const devoirs = useMemo(
-    () => tousLesDevoirs.filter((d) => d.referentiel !== 'fle' && d.typeTravail !== 'sequence' && dansEspace(d)),
-    [tousLesDevoirs, dansEspace]
+    () =>
+      tousLesDevoirs.filter(
+        (d) => d.referentiel !== 'fle' && d.typeTravail !== 'sequence' && !dansUnPortfolio.has(d.id) && dansEspace(d)
+      ),
+    [tousLesDevoirs, dansEspace, dansUnPortfolio]
   );
 
   // Noms des classes actives (non archivees), triees
@@ -177,12 +216,13 @@ export default function DashboardPage() {
           (d) =>
             d.referentiel !== 'fle' &&
             d.typeTravail !== 'sequence' &&
+            !dansUnPortfolio.has(d.id) &&
             dansEspace(d) &&
             (typeFiltre === TOUS || atelierDe(d) === typeFiltre) &&
             (evalFiltre === TOUS || (d.evaluation || SANS_EVAL) === evalFiltre)
         )
         .sort(parEcheance),
-    [devoirsPartages, typeFiltre, evalFiltre, dansEspace]
+    [devoirsPartages, typeFiltre, evalFiltre, dansEspace, dansUnPortfolio]
   );
   const partagesActuels = partagesTries.filter((d) => !d.archive && deLAnnee(d, anneeCourante));
   const partagesArchives = partagesTries.filter((d) => d.archive && deLAnnee(d, anneeFiltre));

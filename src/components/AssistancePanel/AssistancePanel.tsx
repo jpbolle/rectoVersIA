@@ -6,6 +6,7 @@ import ConsignesTab from '@/components/ConsignesTab';
 import RessourcesTab from '@/components/RessourcesTab';
 import type { DrawShape } from '@/types/draw';
 import GrilleTab from '@/components/GrilleTab';
+import CorrigeTab from '@/components/CorrigeTab/CorrigeTab';
 import RemarquesTab from '@/components/RemarquesTab';
 import AiTab, { type AiTabUiState } from '@/components/AiTab/AiTab';
 import RechercheEvaluation from '@/components/RechercheEvaluation/RechercheEvaluation';
@@ -24,7 +25,7 @@ import LectureEvaluation from '@/components/LectureEvaluation/LectureEvaluation'
 import OeuvreEvaluation from '@/components/OeuvreEvaluation/OeuvreEvaluation';
 import styles from './AssistancePanel.module.css';
 
-export type TabType = 'consignes' | 'ressources' | 'grille' | 'remarques' | 'ia';
+export type TabType = 'consignes' | 'ressources' | 'grille' | 'remarques' | 'ia' | 'corrige' | 'iaprof';
 
 interface AssistancePanelProps {
   devoir: Devoir;
@@ -108,6 +109,13 @@ interface AssistancePanelProps {
    * Consignes (JP, 2026-10-09 : la liste de tâches, c'est le sommaire).
    */
   consignesRemplacement?: ReactNode;
+  // Correction d'un schéma : l'onglet « Aide IA » du prof (comparaison au corrigé)
+  aideIaProf?: ReactNode;
+  // Atelier de conceptualisation, côté élève : son aide IA (une comparaison,
+  // une seule fois) remplace l'aide à la réécriture dans l'onglet « ia »
+  aideIaEleve?: ReactNode;
+  // En tête de l'onglet Évaluation (ex. statistiques de la correction d'un schéma)
+  evaluationPrefixe?: ReactNode;
   /** Portfolio : les ressources de l'étape ouverte, en tête de l'onglet Ressources. */
   ressourcesPrefixe?: ReactNode;
   /**
@@ -175,6 +183,9 @@ export default function AssistancePanel({
   hideTabs = false,
   oeuvreNav,
   consignesRemplacement,
+  aideIaProf,
+  aideIaEleve,
+  evaluationPrefixe,
   ressourcesPrefixe,
   oeuvreBilanVersion,
 }: AssistancePanelProps) {
@@ -198,6 +209,8 @@ export default function AssistancePanel({
   const isOeuvre = devoir.typeTravail === 'lire' && !!devoir.oeuvreId;
   // Atelier de conceptualisation : ni grille ni note — un commentaire
   const isSchema = devoir.typeTravail === 'schematiser';
+  // Un corrigé à montrer (onglet « Corrigé » : prof en correction, élève par le rail)
+  const aCorrige = isSchema ? !!devoir.schema?.corrige : devoir.typeTravail === 'ecrire' && !!devoir.corrigeReference?.production?.trim();
   const handleTabChange = (tab: TabType) => {
     if (onTabChange) {
       onTabChange(tab);
@@ -255,6 +268,15 @@ export default function AssistancePanel({
               Remarques du professeur
             </button>
           )}
+          {isProfessorView && aideIaProf && (
+            <button
+              type="button"
+              className={`${styles.tab} ${currentTab === 'iaprof' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('iaprof')}
+            >
+              Aide IA
+            </button>
+          )}
           {/* Recherche : pas d'onglet séparé — scores, habiletés et statistiques
               tiennent tous dans Évaluation (RechercheEvaluation) */}
           <button
@@ -264,6 +286,17 @@ export default function AssistancePanel({
           >
             Évaluation
           </button>
+          {/* Ordre (JP, 2026-10-11) : … Aide IA, Évaluation, puis le corrigé,
+              que le prof garde sous la main en corrigeant */}
+          {isProfessorView && aCorrige && (
+            <button
+              type="button"
+              className={`${styles.tab} ${currentTab === 'corrige' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('corrige')}
+            >
+              Corrigé
+            </button>
+          )}
         </div>
       )}
 
@@ -297,6 +330,7 @@ export default function AssistancePanel({
             onDictionaryEnabledChange={onDictionaryEnabledChange}
           />
         )}
+        {currentTab === 'grille' && evaluationPrefixe}
         {currentTab === 'grille' && devoir.typeTravail === 'vocabulaire' && (
           <VocabulaireStats
             state={vocabState ?? null}
@@ -407,14 +441,15 @@ export default function AssistancePanel({
             studentContent={studentContent}
           />
         )}
+        {/* Le corrigé d'écriture a quitté les Remarques pour son propre onglet
+            « Corrigé du professeur » (2026-10-11) */}
         {showRemarquesTab && currentTab === 'remarques' && (
-          <RemarquesTab
-            correction={correction}
-            studentContent={studentContent}
-            profProduction={devoir.corrigeReference?.production}
-          />
+          <RemarquesTab correction={correction} studentContent={studentContent} />
         )}
-        {!isProfessorView && (accesIA || showAiData) && currentTab === 'ia' && aiSuggestions && (
+        {currentTab === 'corrige' && <CorrigeTab devoir={devoir} />}
+        {currentTab === 'iaprof' && aideIaProf}
+        {!isProfessorView && currentTab === 'ia' && aideIaEleve}
+        {!isProfessorView && !aideIaEleve && (accesIA || showAiData) && currentTab === 'ia' && aiSuggestions && (
           <AiTab
             suggestions={aiSuggestions}
             activeRequest={aiActiveRequest ?? null}

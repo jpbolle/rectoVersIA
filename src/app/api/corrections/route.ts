@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
           questionScores: data.questionScores || {},
           rechercheScores: data.rechercheScores || {},
           autoEvalProf: data.autoEvalProf || {},
+          schemaMarques: data.schemaMarques || undefined,
           score: data.score || 0,
           status: data.status || 'draft',
           visibleParEleve: data.visibleParEleve || false,
@@ -122,9 +123,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const visible = data.visibleParEleve || false;
     // Les annotations du prof (texte souligné) sont toujours visibles pour l'élève.
     // L'évaluation (grille + note) n'est visible que si visibleParEleve = true.
+    //
+    // Écriture, conceptualisation, portfolio (triple bouton, 2026-10-11) : une
+    // copie RENVOYÉE POUR RÉÉCRITURE montre à l'élève les corrections (annotations,
+    // pastilles, statistiques) mais PAS encore la grille, la note ni le
+    // commentaire général — ils n'arrivent qu'avec « Rendre comme corrigé »
+    // (copie rendue). D'où `visible`, l'évaluation, distinct de `visibleParEleve`.
+    let visible = data.visibleParEleve || false;
+    if (auth.role === 'eleve' && visible) {
+      const [travailSnap, devoirSnap] = await Promise.all([
+        adminDb.collection('travaux').doc(String(data.travailId || travailId)).get(),
+        adminDb.collection('devoirs').doc(String(data.devoirId || '')).get(),
+      ]);
+      const type = devoirSnap.data()?.typeTravail;
+      const parCopie = type === 'ecrire' || type === 'schematiser' || type === 'portfolio';
+      if (parCopie && travailSnap.data()?.status !== 'submitted') visible = false;
+    }
     const correction: Correction = {
       id: data.id || docSnap.id,
       travailId: data.travailId,
@@ -144,9 +160,15 @@ export async function GET(request: NextRequest) {
       // Auto-évaluation : le regard du prof ne se découvre à l'élève qu'avec
       // la correction — sinon il lui suffirait de recopier
       autoEvalProf: (auth.role !== 'eleve' || visible) ? (data.autoEvalProf || {}) : {},
+      // Pastilles du schéma : comme les annotations d'une copie écrite, mais
+      // seulement une fois la correction visible (renvoi pour réécriture ou corrigé)
+      schemaMarques: (auth.role !== 'eleve' || data.visibleParEleve) ? (data.schemaMarques || undefined) : undefined,
       score: (auth.role !== 'eleve' || visible) ? (data.score || 0) : 0,
       status: data.status || 'draft',
-      visibleParEleve: visible,
+      // La PUBLICATION (corrections visibles), pas l'évaluation : l'élève en
+      // réécriture doit savoir qu'une correction l'attend
+      visibleParEleve: data.visibleParEleve || false,
+      evaluationVisible: auth.role !== 'eleve' || visible,
       annotatedContent: data.annotatedContent || undefined,
       audioAnnotations: data.audioAnnotations || [],
       draftAnnotations: data.draftAnnotations || undefined,

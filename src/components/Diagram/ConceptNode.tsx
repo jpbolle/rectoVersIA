@@ -16,6 +16,7 @@ import type { ConceptNodeType } from '@/lib/diagram/diagram-convert';
 import { hasTagData, readTagData } from '@/lib/diagram/tag-drop';
 import { ColorPicker } from './ColorPicker';
 import styles from './ConceptNode.module.css';
+import { Pastille } from './Pastilles';
 
 /** Ce que les nœuds reçoivent de l'éditeur sans passer par leurs données. */
 export interface ConceptContext {
@@ -131,6 +132,8 @@ export function ConceptNode({ id, data, selected, width, height }: NodeProps<Con
       onDragLeave={() => setDropping(false)}
       onDrop={onDrop}
     >
+      {/* Pastille de correction (RectoVerso) */}
+      <Pastille genre="boites" id={id} />
       {shape === 'diamond' && (
         <svg className={styles.diamond} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
           <polygon points="50,1 99,50 50,99 1,50" fill={resolveFill(data.color)} stroke={stroke} strokeWidth={borderWidth} vectorEffect="non-scaling-stroke" />

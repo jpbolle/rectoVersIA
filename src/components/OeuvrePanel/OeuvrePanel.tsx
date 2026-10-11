@@ -43,7 +43,8 @@ function compterSections(o: Oeuvre): number {
   return o.chapitres.reduce((n, c) => n + c.sections.length, 0);
 }
 
-export default function OeuvrePanel() {
+// `onUtiliser` : « Utiliser pour une classe » sur une card (Mes Ressources, 2026-10-11)
+export default function OeuvrePanel({ onUtiliser }: { onUtiliser?: (o: Oeuvre) => void } = {}) {
   const { getAuthHeaders, user } = useAuth();
   const headersRef = useRef(getAuthHeaders);
   headersRef.current = getAuthHeaders;
@@ -201,6 +202,7 @@ export default function OeuvrePanel() {
             onPartager={options.mienne ? (x) => setAPartager(x) : undefined}
             onDupliquer={dupliquer}
             onArchiver={options.mienne ? archiver : undefined}
+            onUtiliser={onUtiliser}
           />
         );
       })}

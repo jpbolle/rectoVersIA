@@ -17,11 +17,22 @@ alors que tout fonctionne en local.
 
 1. `npx tsc --noEmit` doit passer (le hook pre-push le bloque sinon), puis
    `npm run build` en local pour vérifier le build complet.
-2. `git status` — montrer les changements, proposer un commit (anglais, conventionnel).
-3. `git fetch` — vérifier que l'autre Mac n'a pas avancé (consigne durable).
-4. `git push origin main` — **jamais sans accord explicite de l'utilisateur.**
+2. **Proposer un changement de version — ou pas** (JP, 2026-10-11). Avant de préparer le
+   déploiement, regarder ce qui part en production et **proposer** à JP, en une ligne,
+   avec la raison :
+   | Ce qui part | Proposition | Exemple |
+   |---|---|---|
+   | **Gros changement** — nouveau module, refonte visible, nouvelle façon de travailler | `3.X` → `3.Y` | `3.1` → `3.2` |
+   | **Changements mineurs** — retouches, corrections, petits ajouts | 3ᵉ chiffre | `3.1.1` → `3.1.2` (et `3.1` → `3.1.1`) |
+   | Rien de visible pour l'utilisateur | ne pas changer | — |
+   **JP tranche** ; l'agent ne modifie `src/lib/version.ts` qu'après son accord, **avant**
+   le build (le numéro doit partir avec ce déploiement). La date « Application mise à
+   jour le … » du pied de page, elle, se met à jour seule (date du build).
+3. `git status` — montrer les changements, proposer un commit (anglais, conventionnel).
+4. `git fetch` — vérifier que l'autre Mac n'a pas avancé (consigne durable).
+5. `git push origin main` — **jamais sans accord explicite de l'utilisateur.**
    La CI revérifie en parallèle sur machine neutre.
-5. Fournir la commande VPS à l'utilisateur — **ne JAMAIS tenter de SSH** ; il l'exécute
+6. Fournir la commande VPS à l'utilisateur — **ne JAMAIS tenter de SSH** ; il l'exécute
    dans le **terminal web Hostinger** (hPanel → VPS → Terminal) :
    ```
    cd /var/www/rectoVersIA && git pull && npm install && NODE_OPTIONS=--max-old-space-size=4096 npm run build && pm2 restart rectoVersia
@@ -30,7 +41,7 @@ alors que tout fonctionne en local.
    la vérification TypeScript de `next build` dépasse les 2 Go que Node s'accorde par
    défaut (« JavaScript heap out of memory », build worker SIGABRT) alors que le VPS a
    8 Go. Un build qui échoue à cette étape laisse le site cassé jusqu'au suivant.
-6. Vérifier ensuite : https://rectoversia.edukids.pedagokit.be — en particulier les pages
+7. Vérifier ensuite : https://rectoversia.edukids.pedagokit.be — en particulier les pages
    touchées. Logs : `pm2 logs rectoVersia --lines 20`.
 
 ## Surface 2 — règles et index Firestore (MANUEL)

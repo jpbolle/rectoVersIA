@@ -170,6 +170,7 @@ export async function GET(request: NextRequest) {
       status: data.status || 'draft',
       selfEvaluation: data.selfEvaluation || null,
       nonRendu: data.nonRendu || null,
+      verrouille: data.verrouille === true,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       submittedAt: data.submittedAt || null,

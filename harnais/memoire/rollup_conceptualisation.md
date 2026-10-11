@@ -3,6 +3,41 @@
 > Rollup du chantier « schématisation » (macro-plan, chantier 2). Plan :
 > `harnais/plans/2026-10-04-atelier-conceptualisation.md`.
 
+## 2026-10-11 — point de départ, corrigés, pastilles, aide IA (plan `2026-10-11-conceptualisation-corrige-ia.md`, 5 étapes)
+
+Écrit dans la journée, **étapes 1 à 4 vues à l'écran par JP** (5 : vue élève non testée, pas de compte élève).
+- **1. Point de départ** : verso « Contenus de l'activité » › `SchemaDepartInput` (concept central | autres
+  concepts en étiquettes, case Mélanger — mélange STABLE `melangerConcepts`). `Devoir.schema.conceptCentral /
+  concepts / melanger`. Élève : `diagramDeDepart` (boîte centrale / racine / titre) + étiquettes « À placer »
+  (`pending`) ; en carte conceptuelle, une étiquette lâchée sur le FOND devient une boîte isolée.
+- **2. Corrigés** : Mes Ressources › **Conceptualisations** (`ConceptualisationsPanel`) = schémas du prof dans
+  `schemasPersonnels` avec `prof: true` (+ `archive`) ; éditeur `/mes-ressources/schemas/nouveau` (créé en base au
+  1er enregistrement). Verso › « Corrigé du professeur » (`CorrigeSchemaPicker`, vignette + loupe `SchemaApercu`) :
+  le schéma est **COPIÉ** dans `Devoir.schema.corrige`. Jamais envoyé à l'élève avec l'activité (`schemaSansCorrige`).
+- **Onglet « Corrigé »** (écriture ET conceptualisation, `CorrigeTab`) : élève = grisé tant que sa copie n'est pas
+  « rendue comme corrigée » ; prof = toujours (page de correction). Remplace le corrigé sous les Remarques.
+- **Triple bouton de la copie** (écriture, conceptualisation, portfolio) : Renvoyer pour réécriture (visible +
+  brouillon) | En mode correction | Rendre comme corrigé (visible + rendu). Lu sur `visibleParEleve` + `status` ;
+  « En mode correction » s'allume si copie rendue, correction commencée ou copie verrouillée. Case
+  **« Verrouiller la copie »** (`Travail.verrouille`) sous le triple bouton. Rendre visible ⇒ copie rendue (serveur,
+  `PATCH /api/corrections/[id]`) ; l'élève qui remet une réécriture ⇒ correction de nouveau masquée. Bascule
+  « Corrigé visible » par classe RETIRÉE pour écriture/conceptualisation (gardée pour la lecture).
+- **Évaluation élève en réécriture** : `Correction.evaluationVisible` (serveur) — annotations/pastilles/stats oui,
+  grille/note/commentaire non avant « Rendre comme corrigé ».
+- **3. Pastilles** (`Diagram/Pastilles.tsx`, contexte `MarquesContext`) : `Correction.schemaMarques {boites, liens}`,
+  clic rien→✓→✗ ; lien = milieu du trait (`BrancheEdge` pour les arbres, `t_{nodeId}`). Sauvegarde DIFFÉRÉE
+  (`saveWithDebounce`) — des PATCH parallèles arrivaient dans le désordre.
+- **4. Aide IA prof** : `/api/ai/schema-comparaison` (helper `claude.ts`, `claude-sonnet-5-5`, corrigé en cache),
+  collection `aiSchemaComparaisons/AISCHEMA-{travailId}`, onglet « Aide IA » (`SchemaAideIA`, état partagé
+  `useSchemaComparaison`) : compteurs en tête (x / total du corrigé, pastille « n ✓ » des confirmations), rangées
+  alignées, 🤖 au survol, ✓ pose la pastille, ✗ retire la ligne ; **pastilles PÂLES** = propositions sur le schéma.
+- **5. Aide IA élève** (`SchemaAideEleve`) : UNE fois, même document (le prof la retrouve sans nouvel appel,
+  `demandeParEleve`) ; vue allégée `vueEleve` construite serveur (trouvés + NOMBRES seulement). Stats de la
+  correction du prof dans l'onglet Évaluation (`?stats=1`, confirmées seulement).
+- ⚠ Gotcha : une activité OUVERTE aux élèves ne s'enregistre pas toute seule dans la popup de modification
+  (il faut « Enregistrer ») ; la signature d'auto-enregistrement ignorait les réglages du schéma (corrigé).
+- Repéré : `GET /api/devoirs` (liste) n'envoyait pas `schema` → la popup réécrivait les défauts (corrigé).
+
 ## 2026-10-04 — les quatre étapes écrites d'un bloc, puis **TESTÉES ET VALIDÉES par JP le soir même, DÉPLOYÉES**
 
 JP est parti faire du vélo après avoir validé le plan (« tu fais toutes les étapes

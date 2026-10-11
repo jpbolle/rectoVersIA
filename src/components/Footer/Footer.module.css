@@ -21,6 +21,22 @@
   font-weight: 500;
   color: var(--c-text-secondary);
   font-size: 14px;
+  text-align: center;
+}
+
+.footerMaj {
+  font-size: 12px;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.footerLogoLien {
+  display: flex;
+  transition: opacity 0.15s;
+}
+
+.footerLogoLien:hover {
+  opacity: 0.8;
 }
 
 .footerRight {

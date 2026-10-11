@@ -1,10 +1,8 @@
 'use client';
 
-// La carte « + » d'ouverture de grille, portée à la bibliothèque d'œuvres :
-// même gabarit que CreateGrilleCard et CreateVocabCard, pour que les
-// onglets de Mes Ressources s'ouvrent du même geste. Depuis le 2026-09-19,
-// c'est LA carte « + » des onglets récents (questionnaires, Modules FLE) :
-// seul le libellé change.
+// LA carte « + » de Mes Ressources (plan 2026-10-11) : un seul gabarit pour
+// tous les onglets, accordé à RessourceCard (même hauteur, même rayon) ; seul
+// le libellé change (« Créer un/une … »).
 
 import styles from './CreateOeuvreCard.module.css';
 
@@ -13,7 +11,7 @@ interface Props {
   libelle?: string;
 }
 
-export default function CreateOeuvreCard({ onClick, libelle = 'Ajouter une œuvre' }: Props) {
+export default function CreateOeuvreCard({ onClick, libelle = 'Créer une œuvre' }: Props) {
   return (
     <article
       className={styles.card}

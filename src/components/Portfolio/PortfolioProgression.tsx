@@ -163,13 +163,21 @@ export default function PortfolioProgression({ devoirId, titreActivite, sessionI
                   {etapes.map((e) => {
                     const c = CASES[l.cases[e.id] ?? 'a-faire'];
                     const retard = l.retards.includes(e.id);
+                    // Étape-activité : la case ouvre la copie de l'activité elle-même
+                    const copie = l.copies?.[e.id];
                     return (
                       <td key={e.id}>
                         <button
                           type="button"
                           className={`${styles.progressionCase} ${styles[c.classe] ?? ''} ${retard ? styles.caseRetard : ''}`}
-                          title={`${e.titre} — ${c.label}${retard ? ' · en retard' : ''}`}
-                          onClick={() => router.push(`/dashboard/travaux/${devoirId}/${l.travailId}`)}
+                          title={`${e.titre} — ${c.label}${retard ? ' · en retard' : ''}${copie ? ' · ouvrir sa copie de l’activité' : ''}`}
+                          onClick={() =>
+                            router.push(
+                              copie
+                                ? `/dashboard/travaux/${copie.devoirId}/${copie.travailId}`
+                                : `/dashboard/travaux/${devoirId}/${l.travailId}`
+                            )
+                          }
                         >
                           {c.icone}
                         </button>

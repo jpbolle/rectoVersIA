@@ -50,3 +50,25 @@ export function parEcheance(
   if (!b.dateRemise) return -1;
   return a.dateRemise.localeCompare(b.dateRemise) || a.intitule.localeCompare(b.intitule);
 }
+
+/**
+ * Les activités posées dans une étape d'un portfolio de la liste (activité de
+ * type portfolio, ou matrice ramenée à cette forme).
+ * Mes Activités (prof et élève) ne montre que le portfolio, pas les activités
+ * qu'il contient — trop de bruit visuel (JP, 2026-10-11). Le prof corrige leurs
+ * copies depuis le tableau d'évolution du portfolio ; l'élève les ouvre depuis
+ * l'étape. Une activité qu'aucun portfolio ne contient reste listée.
+ */
+export function activitesDePortfolio(
+  devoirs: { typeTravail?: string; portfolio?: { etapes: { nature: string; devoirId?: string }[] } | null }[]
+): Set<string> {
+  const ids = new Set<string>();
+  for (const d of devoirs) {
+    if (d.typeTravail !== 'portfolio' || !d.portfolio) continue;
+    for (const e of d.portfolio.etapes) {
+      if (e.nature === 'activite' && e.devoirId) ids.add(e.devoirId);
+    }
+  }
+  return ids;
+}
+

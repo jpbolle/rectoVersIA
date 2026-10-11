@@ -8,22 +8,23 @@ import { useVocabulaireThemes, type VocabulaireThemeSummary } from '@/hooks/useV
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import GrilleCard from '@/components/GrilleCard/GrilleCard';
-import CreateGrilleCard from '@/components/CreateGrilleCard/CreateGrilleCard';
+import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
 import GrilleBuilder from '@/components/GrilleBuilder/GrilleBuilder';
 import ScenarisationPanel from '@/components/ScenarisationPanel/ScenarisationPanel';
 import OeuvrePanel from '@/components/OeuvrePanel/OeuvrePanel';
 import QuestionnaireLecturePanel from '@/components/QuestionnaireLecturePanel/QuestionnaireLecturePanel';
 import PortfolioPanel from '@/components/Portfolio/PortfolioPanel';
+import ConceptualisationsPanel from '@/components/ConceptualisationsPanel/ConceptualisationsPanel';
+import UtiliserRessource, { type DemandeUtilisation } from '@/components/UtiliserRessource/UtiliserRessource';
 import GrilleViewer from '@/components/GrilleViewer/GrilleViewer';
 import VocabCard from '@/components/VocabCard/VocabCard';
-import CreateVocabCard from '@/components/CreateVocabCard/CreateVocabCard';
 import VocabListEditor from '@/components/VocabListEditor/VocabListEditor';
 import MessageBox from '@/components/MessageBox/MessageBox';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import type { Grille, GrilleCriterion } from '@/types/grille';
 import styles from './grilles.module.css';
 
-type Tab = 'grilles' | 'vocabulaire' | 'questionnaires' | 'oeuvres' | 'portfolios' | 'scenarisation';
+type Tab = 'grilles' | 'vocabulaire' | 'questionnaires' | 'oeuvres' | 'portfolios' | 'conceptualisations' | 'scenarisation';
 
 export default function GrillesPage() {
   const { isAuthenticated, isLoading: authLoading, role, isAdmin: userIsAdmin, getAuthHeaders } = useAuth();
@@ -44,6 +45,11 @@ export default function GrillesPage() {
   // les anciens liens `?onglet=fle&section=…` y sont renvoyés.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    // Retour de l'éditeur d'un corrigé (Mes Ressources › Conceptualisations)
+    if (params.get('onglet') === 'conceptualisations') {
+      setActiveTab('conceptualisations');
+      return;
+    }
     if (params.get('onglet') !== 'fle') return;
     const section = params.get('section');
     router.replace(`/parcours-fle${section ? `?section=${section}` : ''}`);
@@ -54,6 +60,7 @@ export default function GrillesPage() {
   // state, l'effet ci-dessous peut repartir et la page clignote.
   const [redirecting, setRedirecting] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [utiliser, setUtiliser] = useState<DemandeUtilisation | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Mode builder grilles : 'create' | Grille (edition) | null (ferme)
@@ -285,6 +292,20 @@ export default function GrillesPage() {
         {/* Titre de la page */}
         <h1 className={styles.pageTitle}>Mes Ressources</h1>
 
+        {/* « Utiliser pour une classe » (cards de Mes Ressources, 2026-10-11) :
+            le formulaire d'activité prend la place des onglets */}
+        {utiliser ? (
+          <UtiliserRessource
+            demande={utiliser}
+            onFermer={() => setUtiliser(null)}
+            onCree={(text) => {
+              setUtiliser(null);
+              setMessage({ text, type: 'success' });
+            }}
+          />
+        ) : (
+        <>
+
         {/* Onglets */}
         <div className={styles.tabBar}>
           <button
@@ -318,6 +339,12 @@ export default function GrillesPage() {
             Portfolios
           </button>
           <button
+            className={`${styles.tabButton} ${activeTab === 'conceptualisations' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('conceptualisations')}
+          >
+            Conceptualisations
+          </button>
+          <button
             className={`${styles.tabButton} ${activeTab === 'scenarisation' ? styles.tabActive : ''}`}
             onClick={() => setActiveTab('scenarisation')}
           >
@@ -326,13 +353,28 @@ export default function GrillesPage() {
         </div>
 
         {/* ===== TAB QUESTIONNAIRES DE LECTURE ===== */}
-        {activeTab === 'questionnaires' && <QuestionnaireLecturePanel />}
+        {activeTab === 'questionnaires' && (
+          <QuestionnaireLecturePanel
+            onUtiliser={(q) =>
+              setUtiliser({ atelier: 'lecture', preselection: { lectureQuizId: q.id, intitule: q.nom } })
+            }
+          />
+        )}
 
         {/* ===== TAB BIBLIOTHÈQUE D'ŒUVRES ===== */}
-        {activeTab === 'oeuvres' && <OeuvrePanel />}
+        {activeTab === 'oeuvres' && (
+          <OeuvrePanel
+            onUtiliser={(o) =>
+              setUtiliser({ atelier: 'lecture-oeuvre', preselection: { oeuvreId: o.id, intitule: o.titre } })
+            }
+          />
+        )}
 
         {/* ===== TAB PORTFOLIOS (matrices) ===== */}
         {activeTab === 'portfolios' && <PortfolioPanel />}
+
+        {/* ===== TAB CONCEPTUALISATIONS (corrigés du prof, 2026-10-11) ===== */}
+        {activeTab === 'conceptualisations' && <ConceptualisationsPanel />}
 
         {/* ===== TAB SCÉNARISATION ===== */}
         {activeTab === 'scenarisation' && <ScenarisationPanel />}
@@ -374,7 +416,7 @@ export default function GrillesPage() {
                   <EmptyState icon="hourglass" message="En cours de chargement" />
                 ) : (
                   <>
-                    <CreateGrilleCard onClick={handleCreateClick} />
+                    <CreateOeuvreCard onClick={handleCreateClick} libelle="Créer une grille" />
                     {grilles.map((grille) => (
                       <GrilleCard
                         key={grille.id}
@@ -384,6 +426,7 @@ export default function GrillesPage() {
                         onDuplicate={handleDuplicateClick}
                         onToggleShared={handleToggleShared}
                         isAdmin={userIsAdmin}
+                        onUtiliser={(g) => setUtiliser({ atelier: 'ecriture', preselection: { grille: g.name } })}
                       />
                     ))}
                   </>
@@ -482,7 +525,7 @@ export default function GrillesPage() {
                   <EmptyState icon="hourglass" message="En cours de chargement" />
                 ) : (
                   <>
-                    <CreateVocabCard onClick={handleVocabCreateClick} />
+                    <CreateOeuvreCard onClick={handleVocabCreateClick} libelle="Créer une liste" />
                     {myThemes.map((theme) => (
                       <VocabCard
                         key={theme.id}
@@ -490,6 +533,7 @@ export default function GrillesPage() {
                         onEdit={handleVocabEditClick}
                         onDelete={handleVocabDeleteClick}
                         onDuplicate={handleVocabDuplicateClick}
+                        onUtiliser={(t) => setUtiliser({ atelier: 'vocabulaire', preselection: { vocabThemeId: t.id } })}
                       />
                     ))}
                   </>
@@ -524,6 +568,8 @@ export default function GrillesPage() {
               </section>
             )}
           </>
+        )}
+        </>
         )}
       </main>
 

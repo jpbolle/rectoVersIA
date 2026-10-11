@@ -228,3 +228,10 @@
     margin: 0 6px;
   }
 }
+
+/* Onglet indisponible pour l'instant (le corrigé avant la correction) :
+   l'infobulle reste lisible au survol */
+.railBtnDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

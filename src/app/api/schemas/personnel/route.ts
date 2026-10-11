@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import type { Diagram, DiagramType } from '@/types/diagram';
-import { SCHEMAS_PERSONNELS as COLLECTION, diagramVide, estTypeSchema as estType, type SchemaPersonnelMeta } from '@/lib/schemas-personnels';
+import {
+  DIAGRAM_JSON_MAX,
+  SCHEMAS_PERSONNELS as COLLECTION,
+  diagramVide,
+  estDiagramPlausible,
+  estTypeSchema as estType,
+  type SchemaPersonnelMeta,
+} from '@/lib/schemas-personnels';
 
 // ── Schémas personnels ──
 // schemasPersonnels/{id} : les cartes qu'un élève (ou un prof) construit pour
@@ -12,7 +19,26 @@ import { SCHEMAS_PERSONNELS as COLLECTION, diagramVide, estTypeSchema as estType
 // Aucune identité en clair : le propriétaire n'est désigné que par son uid
 // Firebase. Accès uniquement par ces routes (jamais Firestore direct côté client).
 
-// GET — la liste des schémas de l'utilisateur connecté (métadonnées + vignette)
+// Les schémas d'un PROF (drapeau `prof: true`, posé à la création) forment sa
+// bibliothèque de corrigés : Mes Ressources › Conceptualisations (2026-10-11).
+// Ses collègues les voient (bloc « des professeurs ») et peuvent les dupliquer ;
+// les schémas d'élèves ne sortent jamais de chez leur auteur.
+
+const versMeta = (d: FirebaseFirestore.QueryDocumentSnapshot): SchemaPersonnelMeta => {
+  const data = d.data();
+  return {
+    id: d.id,
+    titre: typeof data.titre === 'string' ? data.titre : 'Sans titre',
+    type: estType(data.type) ? data.type : 'conceptmap',
+    thumbnail: typeof data.thumbnail === 'string' ? data.thumbnail : null,
+    createdAt: data.createdAt || '',
+    updatedAt: data.updatedAt || '',
+    ...(data.archive === true ? { archive: true } : {}),
+  };
+};
+
+// GET — la liste des schémas de l'utilisateur connecté (métadonnées + vignette) ;
+// pour un prof, `autres` : les schémas non archivés de ses collègues
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
   if (!auth) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
@@ -20,20 +46,16 @@ export async function GET(request: NextRequest) {
   try {
     // Pas de `orderBy` : il exigerait un index composite ; on trie en mémoire.
     const snap = await adminDb.collection(COLLECTION).where('uid', '==', auth.uid).get();
-    const list: SchemaPersonnelMeta[] = snap.docs
-      .map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          titre: typeof data.titre === 'string' ? data.titre : 'Sans titre',
-          type: estType(data.type) ? data.type : 'conceptmap',
-          thumbnail: typeof data.thumbnail === 'string' ? data.thumbnail : null,
-          createdAt: data.createdAt || '',
-          updatedAt: data.updatedAt || '',
-        };
-      })
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    return NextResponse.json({ success: true, data: list });
+    const parDate = (a: SchemaPersonnelMeta, b: SchemaPersonnelMeta) => b.updatedAt.localeCompare(a.updatedAt);
+    const list = snap.docs.map(versMeta).sort(parDate);
+    if (auth.role !== 'prof') return NextResponse.json({ success: true, data: list });
+
+    const profs = await adminDb.collection(COLLECTION).where('prof', '==', true).get();
+    const autres = profs.docs
+      .filter((d) => d.data().uid !== auth.uid && d.data().archive !== true)
+      .map(versMeta)
+      .sort(parDate);
+    return NextResponse.json({ success: true, data: list, autres });
   } catch (error) {
     console.error('Erreur GET /api/schemas/personnel:', error);
     return NextResponse.json({ success: false, message: 'Erreur serveur' }, { status: 500 });
@@ -45,7 +67,7 @@ export async function POST(request: NextRequest) {
   const auth = await verifyAuth(request);
   if (!auth) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
-  let body: { type?: unknown; titre?: unknown; duplicateOf?: unknown };
+  let body: { type?: unknown; titre?: unknown; duplicateOf?: unknown; diagram?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -56,7 +78,9 @@ export async function POST(request: NextRequest) {
   try {
     if (typeof body.duplicateOf === 'string') {
       const src = await adminDb.collection(COLLECTION).doc(body.duplicateOf).get();
-      if (!src.exists || src.data()?.uid !== auth.uid) {
+      // Le sien, ou (prof) celui d'un collègue de la bibliothèque des corrigés
+      const lisible = src.exists && (src.data()?.uid === auth.uid || (auth.role === 'prof' && src.data()?.prof === true));
+      if (!lisible) {
         return NextResponse.json({ error: 'Schéma introuvable' }, { status: 404 });
       }
       const data = src.data()!;
@@ -64,6 +88,7 @@ export async function POST(request: NextRequest) {
       const diagram = { ...(data.diagram as Diagram), title: titre };
       const ref = await adminDb.collection(COLLECTION).add({
         uid: auth.uid,
+        ...(auth.role === 'prof' ? { prof: true } : {}),
         titre,
         type: data.type,
         diagram,
@@ -74,13 +99,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, data: { id: ref.id } });
     }
 
-    const type: DiagramType = estType(body.type) ? body.type : 'conceptmap';
-    const titre = (typeof body.titre === 'string' ? body.titre.trim() : '').slice(0, 120) || 'Sans titre';
+    // Création avec un schéma déjà commencé : l'éditeur d'un NOUVEAU corrigé
+    // n'écrit en base qu'au premier enregistrement (consigne « pas de popup
+    // préalable, rien en base avant le premier enregistrement »)
+    if (body.diagram !== undefined) {
+      if (!estDiagramPlausible(body.diagram)) {
+        return NextResponse.json({ error: 'Schéma illisible' }, { status: 400 });
+      }
+      if (JSON.stringify(body.diagram).length > DIAGRAM_JSON_MAX) {
+        return NextResponse.json({ error: 'Schéma trop volumineux' }, { status: 413 });
+      }
+    }
+    const depart = body.diagram !== undefined ? (body.diagram as Diagram) : null;
+    const type: DiagramType = depart ? depart.type : estType(body.type) ? body.type : 'conceptmap';
+    const titre =
+      ((depart ? depart.title : typeof body.titre === 'string' ? body.titre : '') || '').trim().slice(0, 120) || 'Sans titre';
     const ref = await adminDb.collection(COLLECTION).add({
       uid: auth.uid,
+      ...(auth.role === 'prof' ? { prof: true } : {}),
       titre,
       type,
-      diagram: diagramVide(type, titre),
+      diagram: depart ?? diagramVide(type, titre),
       thumbnail: null,
       createdAt: now,
       updatedAt: now,

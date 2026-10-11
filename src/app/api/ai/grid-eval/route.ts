@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { accesTravail } from '@/lib/classe-acces';
+import { accesTravail, peutAgir } from '@/lib/classe-acces';
 import Anthropic from '@anthropic-ai/sdk';
 import { LEVEL_LABELS, LEVEL_PERCENTAGES } from '@/types/grille';
 import { planHasContent, planToMarkdown } from '@/lib/draft-utils';
@@ -185,10 +185,6 @@ export async function POST(request: NextRequest) {
   if (!auth) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
   }
-  if (auth.role !== 'eleve') {
-    return NextResponse.json({ error: 'Réservé aux élèves' }, { status: 403 });
-  }
-
   let body: { travailId: string; devoirId: string; grilleId: string; content: string };
   try {
     body = await request.json();
@@ -196,10 +192,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Corps de requête invalide' }, { status: 400 });
   }
 
-  const { travailId, devoirId, grilleId, content } = body;
+  const { travailId, devoirId, grilleId } = body;
+  let content = body.content;
 
-  if (!travailId || !devoirId || !grilleId || !content) {
+  if (!travailId || !devoirId || !grilleId) {
     return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
+  }
+
+  // Qui demande ? L'élève pour SA copie, ou un prof qui peut agir sur cette
+  // copie (titulaire, coprofesseur en écriture) quand l'élève ne l'a pas fait
+  // (JP, 2026-10-11 — la route refusait tout prof : le bouton côté prof
+  // tombait sur un 403).
+  let studentId: string;
+  try {
+    const travailSnap = await adminDb.collection('travaux').doc(travailId).get();
+    if (!travailSnap.exists || travailSnap.data()!.devoirId !== devoirId) {
+      return NextResponse.json({ error: 'Copie introuvable' }, { status: 404 });
+    }
+    const travail = travailSnap.data()!;
+    if (auth.role === 'prof') {
+      const acces = await accesTravail(travail, auth);
+      if (!acces || !peutAgir(acces.acces)) {
+        return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+      }
+      // Le prof évalue la copie telle qu'elle est enregistrée, pas ce que le
+      // navigateur envoie
+      content = String(travail.content || '');
+    } else if (travail.studentId !== auth.uid) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+    }
+    studentId = String(travail.studentId || '');
+  } catch (err) {
+    console.error('Erreur vérification copie:', err);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+  }
+
+  if (!content) {
+    return NextResponse.json({ error: 'Le texte est vide' }, { status: 400 });
   }
 
   // Vérifier que le contenu n'est pas vide
@@ -447,7 +476,7 @@ RAPPEL FORMAT : JSON brut uniquement. Commence par { et termine par }.`;
       id: docId,
       travailId,
       devoirId,
-      studentId: auth.uid,
+      studentId,
       grilleId: grille.id,
       criteria: criteriaResults,
       commentaireFinal: parsed.commentaire_final || '',

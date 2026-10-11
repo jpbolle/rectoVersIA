@@ -1,0 +1,80 @@
+/* Petite, discrète : elle ne doit pas masquer le texte de la boîte */
+.pastille {
+  position: absolute;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  /* Un nœud en lecture seule ne reçoit pas les clics (React Flow) : la
+     pastille, elle, oui */
+  pointer-events: all;
+  font-family: inherit;
+}
+
+.coin {
+  top: -9px;
+  right: -9px;
+}
+
+.centre {
+  position: relative;
+}
+
+/* Devant le mot de liaison d'un lien de carte conceptuelle */
+.mot {
+  position: relative;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.ok {
+  background: #2e8b57;
+}
+
+.faux {
+  background: #c0392b;
+}
+
+/* Pas encore d'avis : un anneau à peine visible, qui s'affirme au survol */
+.vide {
+  background: var(--c-bg-card, #fff);
+  border-color: var(--c-border, #ccc);
+  opacity: 0.55;
+}
+
+.cliquable {
+  cursor: pointer;
+}
+
+.cliquable:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* Proposition de l'IA, pas encore validée : anneau coloré, centre pâle */
+.proposee {
+  opacity: 0.85;
+  border-width: 2px;
+  background: var(--c-bg-card, #fff);
+  box-shadow: none;
+}
+
+.propose_ok {
+  border-color: #2e8b57;
+  color: #2e8b57;
+}
+
+.propose_faux {
+  border-color: #c0392b;
+  color: #c0392b;
+}

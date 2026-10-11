@@ -382,105 +382,51 @@
   gap: 22px;
 }
 
-.groupeEntete {
-  margin-bottom: 12px;
-}
-
-.groupeTitre {
-  margin: 0;
-  font-family: var(--c-font-title);
-  font-size: 20px;
-  color: var(--c-primary);
-}
-
-.groupeAide {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--c-text-muted);
-}
-
-.grille {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-@media (max-width: 1080px) {
-  .grille {
-    grid-template-columns: repeat(2, 1fr);
-  }
+/* Le bloc blanc titré, identique aux onglets Grilles, Œuvres, Questionnaires
+   (OeuvrePanel.module.css) — il manquait ici (JP, 2026-10-11) */
+.groupe {
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius-lg);
+  padding: 40px;
+  box-shadow: var(--c-shadow-card);
 }
 
 @media (max-width: 768px) {
-  .grille {
-    grid-template-columns: 1fr;
+  .groupe {
+    padding: 24px 18px;
   }
+}
+
+.groupeEntete {
+  margin-bottom: 24px;
+}
+
+.groupeTitre {
+  color: var(--c-primary);
+  font-family: var(--c-font-title);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.groupeAide {
+  color: var(--c-text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Même grille que tous les onglets de Mes Ressources (2026-10-11) */
+.grille {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
   .natures,
   .deuxColonnes {
     grid-template-columns: 1fr;
   }
-}
-
-.carte {
-  background: var(--c-bg-card);
-  border-radius: var(--c-radius-lg);
-  box-shadow: var(--c-shadow-card);
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 160px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: border-color 0.15s;
-}
-
-.carte:hover {
-  border-color: var(--c-primary);
-}
-
-.carteArchivee {
-  opacity: 0.6;
-}
-
-.carteTitre {
-  margin: 0;
-  font-family: var(--c-font-title);
-  font-size: 16px;
-  color: var(--c-primary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.etiquettes {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.etiquettes span {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 20px;
-  background: var(--c-bg-element);
-  color: var(--c-text-secondary);
-}
-
-.carteDesc {
-  font-size: 12.5px;
-  color: var(--c-text-muted);
-  flex: 1;
-  margin: 0;
-}
-
-.carteActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  border-top: 1px solid var(--c-border);
-  padding-top: 10px;
-  flex-wrap: wrap;
 }
 
 .btn {
@@ -2418,4 +2364,18 @@
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Trois cards par ligne, de même largeur, dans TOUS les onglets de Mes
+   Ressources (JP, 2026-10-11) ; deux puis une sur écran étroit */
+@media (max-width: 1000px) {
+  .grille {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .grille {
+    grid-template-columns: 1fr;
+  }
 }

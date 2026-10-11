@@ -220,7 +220,7 @@ export default function GrilleTab({
 
   const profEvaluation = isProfessorView
     ? (correction?.evaluation || null)
-    : (correction?.visibleParEleve ? correction.evaluation : null);
+    : (correction?.visibleParEleve && correction.evaluationVisible !== false ? correction.evaluation : null);
 
   // Lucidité : l'élève et le prof se sont prononcés sur les MÊMES critères et
   // la MÊME échelle — l'écart se lit directement en crans. Le bloc n'apparaît
@@ -528,7 +528,7 @@ export default function GrilleTab({
       )}
 
       {/* Commentaires IA + prof — en colonnes si les deux sont présents */}
-      {(aiGridResult?.commentaireFinal || (!isProfessorView && correction?.visibleParEleve && (correction?.commentaireGeneral || correction?.commentaireGeneralAudio))) && (
+      {(aiGridResult?.commentaireFinal || (!isProfessorView && correction?.visibleParEleve && correction.evaluationVisible !== false && (correction?.commentaireGeneral || correction?.commentaireGeneralAudio))) && (
         <div className={styles.commentairesRow}>
           {aiGridResult && aiGridResult.commentaireFinal && (
             <div className={styles.aiCommentaire}>
@@ -540,7 +540,7 @@ export default function GrilleTab({
             </div>
           )}
 
-          {!isProfessorView && correction?.visibleParEleve && (correction?.commentaireGeneral || correction?.commentaireGeneralAudio) && (
+          {!isProfessorView && correction?.visibleParEleve && correction.evaluationVisible !== false && (correction?.commentaireGeneral || correction?.commentaireGeneralAudio) && (
             <div className={styles.profCommentaire}>
               <div className={styles.profCommentaireHeader}>
                 <Image src="/jpavatar.png" alt="Prof" width={20} height={20} className={styles.profAvatarSmall} />

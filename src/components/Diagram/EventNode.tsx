@@ -11,6 +11,7 @@ import { effectiveBox, resolveFill, resolveStroke, type BoxStyle, type ColorRef,
 import { hasTagData, readTagData } from '@/lib/diagram/tag-drop';
 import { ColorPicker } from './ColorPicker';
 import styles from './EventNode.module.css';
+import { Pastille } from './Pastilles';
 
 export type EventNodeData = {
   label: string;
@@ -72,6 +73,8 @@ export function EventNode({ id, data, selected }: NodeProps<EventNodeType>) {
       onDragLeave={() => setDropping(false)}
       onDrop={onDrop}
     >
+      {/* Pastille de correction (RectoVerso) */}
+      <Pastille genre="boites" id={id} />
       {actions && !actions.readOnly && (
         <NodeToolbar isVisible={selected} position={Position.Top} className={styles.toolbar}>
           <ColorPicker compact palette="fill" value={data.color} label="Fond" onChange={(c) => actions.recolor(id, c)} />

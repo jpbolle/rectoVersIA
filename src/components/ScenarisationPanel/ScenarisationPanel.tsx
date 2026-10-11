@@ -77,11 +77,12 @@ import ModuleActivitesModal from './ModuleActivitesModal';
 import ModuleFicheModal from './ModuleFicheModal';
 import ClassesDropdown from '@/components/ClassesDropdown/ClassesDropdown';
 import ScenarisationCard from '@/components/ScenarisationCard/ScenarisationCard';
-import CreateScenarisationCard from '@/components/ScenarisationCard/CreateScenarisationCard';
+import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
 import ScenarisationFormModal from '@/components/ScenarisationCard/ScenarisationFormModal';
 import CertificationNotesModal, {
   CeinturePicker,
 } from '@/components/CertificationNotesModal/CertificationNotesModal';
+import blocs from '@/components/OeuvrePanel/OeuvrePanel.module.css';
 import styles from './ScenarisationPanel.module.css';
 
 
@@ -352,14 +353,17 @@ export default function ScenarisationPanel() {
   if (!scen) {
     return (
       <div className={styles.panel}>
-        {scenarisations.length === 0 && (
-          <p className={styles.libIntro}>
+        {/* Même bloc blanc titré que les autres onglets de Mes Ressources (2026-10-11) */}
+        <section className={blocs.groupe}>
+        <div className={blocs.groupeEntete}>
+          <h2 className={blocs.groupeTitre}>Mes parcours</h2>
+          <p className={blocs.groupeAide}>
             Un parcours décrit un cours : ses chapitres, ses modules, leurs objectifs et le
             temps qu’ils prennent. Les activités RectoVerso viennent s’y accrocher.
           </p>
-        )}
+        </div>
         <div className={styles.libGrid}>
-          <CreateScenarisationCard onClick={() => ouvrirFormulaire(null)} />
+          <CreateOeuvreCard onClick={() => ouvrirFormulaire(null)} libelle="Créer un parcours" />
           {scenarisations.map((s) => (
             <ScenarisationCard
               key={s.id}
@@ -370,6 +374,7 @@ export default function ScenarisationPanel() {
             />
           ))}
         </div>
+        </section>
 
         {formulaire && (
           <ScenarisationFormModal

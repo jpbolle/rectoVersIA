@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { schemaPourFirestore } from '@/lib/schema-devoir';
+import { schemaPourFirestore, schemaSansCorrige } from '@/lib/schema-devoir';
 import { adminDb } from '@/lib/firebase/admin';
 import { lireQuestionnaire } from '@/lib/questionnaire-lecture-server';
 import { generateQuestionnaireLectureId } from '@/types/questionnaire-lecture';
@@ -121,6 +121,10 @@ export async function GET(request: NextRequest) {
         sequenceFle: data.typeTravail === 'sequence' ? lireSequenceFle(data.sequenceFle) : null,
         // Portfolio d'apprentissage : ses étapes
         portfolio: data.typeTravail === 'portfolio' ? lirePortfolioContenu(data.portfolio) : null,
+        // Atelier de conceptualisation : ses réglages (absent de la liste avant le
+        // 2026-10-11 — la popup de modification repartait des défauts et les
+        // réécrivait à l'enregistrement)
+        schema: data.typeTravail === 'schematiser' ? schemaPourFirestore(data.schema) : null,
         // Activité FLE : rangée dans Mes Ressources › Modules FLE, pas au tableau de bord
         referentiel: data.referentiel === 'fle' ? ('fle' as const) : null,
         submittedCount: undefined as number | undefined,
@@ -312,8 +316,13 @@ export async function GET(request: NextRequest) {
 
       devoirs = devoirs.map((d) => ({
         ...d,
+        // Le schéma corrigé du prof ne voyage jamais dans la liste : l'élève le
+        // reçoit copie par copie, une fois corrigée et rendue visible
+        schema: schemaSansCorrige(d.schema),
+        // Écriture : le corrigé s'ouvre copie par copie, dans la page de
+        // l'activité (onglet « Corrigé », 2026-10-11) — jamais par la liste
         corrigeReference:
-          d.corrigeDisponible && d.corrigeReference?.production
+          d.typeTravail !== 'ecrire' && d.corrigeDisponible && d.corrigeReference?.production
             ? { production: d.corrigeReference.production }
             : null,
         // Quiz complet (bonnes réponses, réponses idéales, soulignage attendu)

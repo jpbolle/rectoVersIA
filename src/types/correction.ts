@@ -41,6 +41,13 @@ export interface Correction {
   // Clé = AutoEvalQuestion.id. Le prof ne se prononce que sur les questions
   // ordonnées (sentiment de compétence, échelle 1-5) : une émotion ne s'évalue pas.
   autoEvalProf?: Record<string, AutoEvalAnswer>;
+  // Atelier de conceptualisation : les PASTILLES du prof sur le schéma de
+  // l'élève (vert = juste, rouge = faux), par boîte et par lien (2026-10-11)
+  schemaMarques?: SchemaMarques;
+  // ÉLÈVE : l'évaluation (grille, note, commentaire général) lui est-elle
+  // ouverte ? Faux pour une copie renvoyée pour réécriture, même publiée
+  // (`visibleParEleve`) — elle n'arrive qu'avec « Rendre comme corrigé ».
+  evaluationVisible?: boolean;
   score: number;                                 // Score total calcule (GRILLE seulement)
   // Questionnaire de lecture : le total, ÉCRIT au moment de la correction.
   // `score` ci-dessus reste à 0 pour ces activités — il appartient aux grilles.
@@ -82,10 +89,25 @@ export interface UpdateCorrectionData {
   questionScores?: Record<string, number>;
   rechercheScores?: Record<string, RechercheQuestionScore>;
   autoEvalProf?: Record<string, AutoEvalAnswer>;
+  schemaMarques?: SchemaMarques;
   score?: number;
   status?: CorrectionStatus;
   visibleParEleve?: boolean;
   annotatedContent?: string;
   audioAnnotations?: AudioAnnotation[];
   draftAnnotations?: Record<string, DraftItemAnnotation>;
+}
+
+/** Une pastille : juste ou faux. Absente = pas d'avis. */
+export type MarqueSchema = 'ok' | 'faux';
+
+/**
+ * Les pastilles d'une copie de schéma. Clés = identifiants du schéma de
+ * l'élève : `boites` → id d'une boîte ; `liens` → id d'un lien de carte
+ * conceptuelle / schéma libre, ou `t_{idDeLaBoite}` pour le rattachement
+ * d'une idée à son parent (carte mentale, hiérarchie).
+ */
+export interface SchemaMarques {
+  boites?: Record<string, MarqueSchema>;
+  liens?: Record<string, MarqueSchema>;
 }

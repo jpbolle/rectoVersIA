@@ -27,6 +27,10 @@ export interface LigneProgression {
   studentName: string;
   groupe: string | null; // id du groupe accepté
   cases: Record<string, CaseProgression>;
+  // Étape-activité → la copie de l'élève POUR CETTE ACTIVITÉ, quand elle existe :
+  // la case y mène directement, prête à corriger (JP, 2026-10-11 — ces activités
+  // ne sont plus listées dans Mes Activités)
+  copies: Record<string, { devoirId: string; travailId: string }>;
   retards: string[]; // étapes en retard
   faites: number;
 }
@@ -100,10 +104,14 @@ export async function GET(request: NextRequest) {
     // L'état des activités renvoyées, pour chaque élève
     const renvois = [...new Set(etapes.filter((e) => e.nature === 'activite' && e.devoirId).map((e) => e.devoirId!))];
     const etatsRenvoi = new Map<string, EtatActiviteParcours>();
+    const copiesExistantes = new Set<string>();
     const refs = uids.flatMap((u) => renvois.map((d) => adminDb.collection('travaux').doc(`TRV-${d}-${u}`)));
     for (let i = 0; i < refs.length; i += 100) {
       const docs = await adminDb.getAll(...refs.slice(i, i + 100));
-      docs.forEach((d) => etatsRenvoi.set(d.id, d.exists ? etatDe(d.data()?.status) : 'a-faire'));
+      docs.forEach((d) => {
+        etatsRenvoi.set(d.id, d.exists ? etatDe(d.data()?.status) : 'a-faire');
+        if (d.exists) copiesExistantes.add(d.id);
+      });
     }
 
     const lignes: LigneProgression[] = travaux.map((doc) => {
@@ -117,8 +125,12 @@ export async function GET(request: NextRequest) {
       };
       const cases: Record<string, CaseProgression> = {};
       const retards: string[] = [];
+      const copies: LigneProgression['copies'] = {};
       let faites = 0;
       for (const e of etapes) {
+        if (e.nature === 'activite' && e.devoirId && copiesExistantes.has(`TRV-${e.devoirId}-${uid}`)) {
+          copies[e.id] = { devoirId: e.devoirId, travailId: `TRV-${e.devoirId}-${uid}` };
+        }
         const vue: EtapePortfolioVue =
           e.nature === 'activite' && e.devoirId ? { ...e, etatRenvoi: etatsRenvoi.get(`TRV-${e.devoirId}-${uid}`) ?? 'a-faire' } : e;
         cases[e.id] = estEtapeSansTrace(e) ? (contenu.cochees.includes(e.id) ? 'cochee' : 'non-cochee') : etatEtape(vue, contenu);
@@ -132,6 +144,7 @@ export async function GET(request: NextRequest) {
         studentName: decrypt(t.studentName) || 'Élève',
         groupe: groupe?.id ?? null,
         cases,
+        copies,
         retards,
         faites,
       };

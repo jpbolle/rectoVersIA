@@ -32,6 +32,8 @@ import { BottomPanel, type BottomTab } from './BottomPanel';
 import { StylePanel, type StyleTarget } from './StylePanel';
 import { MarkdownPanel } from './MarkdownPanel';
 import { PendingPanel } from './PendingPanel';
+import { MarquesContext, type GenreMarque, type SuggestionsMarques } from './Pastilles';
+import type { SchemaMarques } from '@/types/correction';
 import { EMPTY_SELECTION, type EditorSelection } from './editor-types';
 import styles from './DiagramWorkspace.module.css';
 
@@ -76,14 +78,28 @@ interface Props {
   embedded?: boolean;
   /** Le prof impose le type : pas de barre de transformation (réglage `typeLibre` de l'activité). */
   lockType?: boolean;
+  /** RectoVerso : les pastilles de correction (vert/rouge) posées sur le schéma */
+  marques?: SchemaMarques;
+  /** Présent = le prof corrige : un clic sur une boîte ou un lien pose sa pastille */
+  onMarque?: (genre: GenreMarque, id: string) => void;
+  /** Les propositions de l'aide IA (pastilles pâles) et leur validation */
+  suggestions?: SuggestionsMarques;
+  onSuggestion?: (ligneId: string) => void;
 }
 
-export function DiagramWorkspace({ diagram, onChange, instructions, status, backHref, readOnly = false, exportRef: externalRef, embedded = false, lockType = false }: Props) {
+export function DiagramWorkspace({ diagram, onChange, instructions, status, backHref, readOnly = false, exportRef: externalRef, embedded = false, lockType = false, marques, onMarque, suggestions, onSuggestion }: Props) {
+  // Pastilles : un contexte seulement s'il y a quelque chose à montrer ou à poser
+  const marquesValue = useMemo(
+    () => (marques || onMarque ? { marques: marques ?? {}, onMarque, suggestions, onSuggestion } : null),
+    [marques, onMarque, suggestions, onSuggestion],
+  );
   // `revision` force l'éditeur de carte conceptuelle à relire `diagram` (import, transformation, style).
   const [revision, setRevision] = useState(0);
   const [selection, setSelection] = useState<EditorSelection>(EMPTY_SELECTION);
   const [panelOpen, setPanelOpen] = useState(true);
-  const [tab, setTab] = useState<BottomTab>('style');
+  // Un schéma qui arrive avec des éléments à placer (concepts donnés par le
+  // prof, 2026-10-11) s'ouvre sur eux
+  const [tab, setTab] = useState<BottomTab>(() => (diagram.pending?.length ? 'pending' : 'style'));
   const [message, setMessage] = useState('');
   // Préférence d'affichage lue dans le navigateur (quadrillé par défaut).
   const grid = useSyncExternalStore(subscribePreferences, () => readPreference('grid', true), () => true);
@@ -271,6 +287,7 @@ export function DiagramWorkspace({ diagram, onChange, instructions, status, back
   );
 
   return (
+    <MarquesContext.Provider value={marquesValue}>
     <div className={styles.page} data-embedded={embedded || undefined}>
       {!embedded && (
       <aside className={styles.side}>
@@ -398,5 +415,6 @@ export function DiagramWorkspace({ diagram, onChange, instructions, status, back
         )}
       </section>
     </div>
+    </MarquesContext.Provider>
   );
 }

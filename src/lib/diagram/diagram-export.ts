@@ -10,7 +10,7 @@ import { getNodesBounds, getViewportForBounds, type Node } from '@xyflow/react';
 
 export interface DiagramExportHandle {
   /** Image PNG (data URL) du schéma entier, indépendante du zoom à l'écran. */
-  toPng: (options?: { maxWidth?: number; pixelRatio?: number }) => Promise<string>;
+  toPng: (options?: PngOptions) => Promise<string>;
 }
 
 export interface Rect {
@@ -20,10 +20,18 @@ export interface Rect {
   height: number;
 }
 
+export interface PngOptions {
+  maxWidth?: number;
+  pixelRatio?: number;
+  /** Vignette : sans les polices embarquées (plus léger, et la police exacte
+   *  ne se voit pas à cette taille) */
+  vignette?: boolean;
+}
+
 export async function renderDiagramPng(
   container: HTMLElement,
   nodes: Node[],
-  options: { maxWidth?: number; pixelRatio?: number } = {},
+  options: PngOptions = {},
   /** Zone à inclure en plus des boîtes (axe et étages d'une ligne du temps). */
   extra?: Rect,
 ): Promise<string> {
@@ -43,13 +51,16 @@ export async function renderDiagramPng(
     width,
     height,
     pixelRatio: options.pixelRatio ?? 2,
+    skipFonts: options.vignette === true,
     style: {
       width: `${width}px`,
       height: `${height}px`,
       transform: `translate(${viewport.x + padding * scale}px, ${viewport.y + padding * scale}px) scale(${viewport.zoom})`,
     },
     // Les barres d'outils flottantes ne font pas partie du schéma.
-    filter: (el) => !(el instanceof HTMLElement && el.classList.contains('react-flow__node-toolbar')),
+    // Ni les pastilles de correction (RectoVerso) : elles n'appartiennent pas au schéma.
+    filter: (el) =>
+      !(el instanceof HTMLElement && (el.classList.contains('react-flow__node-toolbar') || el.hasAttribute('data-pastille'))),
   });
 }
 

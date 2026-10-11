@@ -1,0 +1,85 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+  /* Comme les autres onglets du rail : le texte ne colle pas au bord */
+  padding: 16px 18px;
+  box-sizing: border-box;
+}
+
+.entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.titre {
+  margin: 0;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.loupe {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  color: var(--c-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.loupe:hover {
+  color: var(--c-primary);
+  border-color: var(--c-primary);
+}
+
+/* Le schéma du prof, en lecture seule, dans la hauteur du panneau */
+.cadre {
+  flex: 1;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  overflow: hidden;
+}
+
+.cadre > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.production {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  font-size: 15px;
+  color: var(--c-text);
+  padding: 14px 16px;
+  background: var(--c-bg-element);
+  border-left: 3px solid var(--c-primary);
+  border-radius: 0 var(--c-radius) var(--c-radius) 0;
+}
+
+.vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--c-text-secondary);
+  font-size: 32px;
+}
+
+.vide p {
+  font-size: 14px;
+  margin: 0;
+}

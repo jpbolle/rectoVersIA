@@ -4,12 +4,18 @@
 // (colonne titre/consignes à gauche, éditeur, volet du bas). Enregistrement
 // automatique différé (0,8 s) sur /api/schemas/personnel/[id], vignette PNG
 // rafraîchie un peu plus tard (4 s). Retour : Mes ressources › Mes schémas.
+//
+// Sert aussi au PROF pour sa bibliothèque de corrigés (Mes Ressources ›
+// Conceptualisations, 2026-10-11) : retour vers cet onglet. L'adresse
+// `/mes-ressources/schemas/nouveau` ouvre un schéma neuf, créé en base au
+// premier enregistrement seulement (pas de popup préalable).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { DiagramWorkspace } from '@/components/Diagram/DiagramWorkspace';
+import { diagramVide } from '@/lib/schemas-personnels';
 import type { DiagramExportHandle } from '@/lib/diagram/diagram-export';
 import type { Diagram } from '@/types/diagram';
 import styles from './page.module.css';
@@ -21,7 +27,12 @@ const THUMB_DELAY = 4000;
 export default function SchemaPersonnelPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading, getAuthHeaders } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, role, getAuthHeaders } = useAuth();
+  const retour = role === 'prof' ? '/grilles?onglet=conceptualisations' : '/mes-ressources';
+  const libelleRetour = role === 'prof' ? '← Mes Ressources' : '← Mes ressources';
+  // L'identifiant en base : absent tant qu'un schéma neuf n'a pas été enregistré
+  const idRef = useRef<string | null>(params.id === 'nouveau' ? null : params.id);
+  const creation = useRef(false);
   const [redirecting, setRedirecting] = useState(false);
   const [diagram, setDiagram] = useState<Diagram | null | undefined>(undefined); // undefined = chargement
   const [saveState, setSaveState] = useState<SaveState>('saved');
@@ -43,6 +54,12 @@ export default function SchemaPersonnelPage() {
   // Chargement
   useEffect(() => {
     if (!isAuthenticated || !params.id) return;
+    if (params.id === 'nouveau') {
+      const neuf = diagramVide('conceptmap', 'Nouveau corrigé');
+      latest.current = neuf;
+      setDiagram(neuf);
+      return;
+    }
     (async () => {
       try {
         const headers = await getAuthHeaders();
@@ -60,31 +77,49 @@ export default function SchemaPersonnelPage() {
 
   const flush = useCallback(async () => {
     if (!latest.current || !dirty.current) return;
+    // Un schéma neuf en cours de création : on attend son identifiant (sinon
+    // deux enregistrements rapprochés créeraient deux schémas)
+    if (creation.current) return;
     dirty.current = false;
     try {
       const headers = await getAuthHeaders();
       if (!headers) throw new Error();
-      const res = await fetch(`/api/schemas/personnel/${params.id}`, {
-        method: 'PUT',
+      // Schéma neuf : le premier enregistrement le crée, puis l'adresse prend
+      // son identifiant (sans recharger la page)
+      const neuf = !idRef.current;
+      if (neuf) creation.current = true;
+      const res = await fetch(neuf ? '/api/schemas/personnel' : `/api/schemas/personnel/${idRef.current}`, {
+        method: neuf ? 'POST' : 'PUT',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ diagram: latest.current }),
       });
       const json = await res.json();
       if (!json.success) throw new Error();
+      if (neuf) {
+        idRef.current = String(json.data.id);
+        window.history.replaceState(null, '', `/mes-ressources/schemas/${idRef.current}`);
+        creation.current = false;
+        // Ce qui a été modifié pendant la création part maintenant
+        if (dirty.current) {
+          void flush();
+          return;
+        }
+      }
       setSaveState('saved');
     } catch {
+      creation.current = false;
       dirty.current = true;
       setSaveState('error');
     }
-  }, [getAuthHeaders, params.id]);
+  }, [getAuthHeaders]);
 
   const refreshThumbnail = useCallback(async () => {
     try {
-      const url = await exportRef.current?.toPng({ maxWidth: 480, pixelRatio: 1 });
-      if (!url) return;
+      const url = await exportRef.current?.toPng({ maxWidth: 480, pixelRatio: 1, vignette: true });
+      if (!url || !idRef.current) return;
       const headers = await getAuthHeaders();
       if (!headers) return;
-      await fetch(`/api/schemas/personnel/${params.id}`, {
+      await fetch(`/api/schemas/personnel/${idRef.current}`, {
         method: 'PUT',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ thumbnail: url }),
@@ -92,7 +127,7 @@ export default function SchemaPersonnelPage() {
     } catch {
       /* pas de vignette : pas grave */
     }
-  }, [getAuthHeaders, params.id]);
+  }, [getAuthHeaders]);
 
   const onChange = useCallback(
     (next: Diagram) => {
@@ -130,7 +165,7 @@ export default function SchemaPersonnelPage() {
       <main className={styles.missing}>
         <h1>Schéma introuvable</h1>
         <p>Il a peut-être été supprimé.</p>
-        <Link href="/mes-ressources">← Mes ressources</Link>
+        <Link href={retour}>{libelleRetour}</Link>
       </main>
     );
   }
@@ -138,7 +173,7 @@ export default function SchemaPersonnelPage() {
   const status = saveState === 'saved' ? 'Enregistré' : saveState === 'pending' ? 'Enregistrement…' : 'Enregistrement impossible — vérifie ta connexion';
   return (
     <div className={styles.page}>
-      <DiagramWorkspace diagram={diagram} onChange={onChange} backHref="/mes-ressources" status={status} exportRef={exportRef} />
+      <DiagramWorkspace diagram={diagram} onChange={onChange} backHref={retour} status={status} exportRef={exportRef} />
     </div>
   );
 }

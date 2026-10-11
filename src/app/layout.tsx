@@ -31,13 +31,19 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
+        {/* crossOrigin : sans lui, le navigateur interdit de LIRE ces feuilles
+            (cssRules) — l'export PNG des schémas (html-to-image) échouait à y
+            chercher les polices (SecurityError, 2026-10-11). Les deux serveurs
+            répondent `Access-Control-Allow-Origin: *` (vérifié). */}
         <link
           href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;600;700&display=swap"
           rel="stylesheet"
+          crossOrigin="anonymous"
         />
         <link
           href="https://fonts.cdnfonts.com/css/opendyslexic"
           rel="stylesheet"
+          crossOrigin="anonymous"
         />
       </head>
       <body suppressHydrationWarning>

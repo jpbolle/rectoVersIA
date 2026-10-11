@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth';
-import type { Correction, UpdateCorrectionData, AudioAnnotation, DraftItemAnnotation } from '@/types/correction';
+import type { Correction, UpdateCorrectionData, AudioAnnotation, DraftItemAnnotation, SchemaMarques } from '@/types/correction';
 import type { AutoEvalAnswer } from '@/types/autoevaluation';
 import type { Grille } from '@/types/grille';
 import type { RechercheQuestionScore } from '@/types/navigkid';
@@ -279,6 +279,26 @@ export function useCorrection(
   // c'est sa propre réponse à la question posée à l'élève, dont l'écart dira
   // la lucidité de celui-ci. Enregistrée aussitôt — c'est un clic, pas de la
   // frappe, et c'est elle qui déverrouille la réponse de l'élève à l'écran.
+  // Pastilles du schéma (atelier de conceptualisation)
+  // `transformer` reçoit les pastilles LES PLUS RÉCENTES (la référence, pas
+  // l'état React) : deux clics rapprochés partiraient sinon du même état.
+  const updateSchemaMarques = useCallback(
+    (transformer: (actuelles: SchemaMarques) => SchemaMarques) => {
+      const marques = transformer(correctionRef.current?.schemaMarques ?? {});
+      if (correctionRef.current) {
+        correctionRef.current = { ...correctionRef.current, schemaMarques: marques };
+        // Différé : des clics rapprochés partiraient sinon en requêtes
+        // parallèles, arrivées dans le désordre (la dernière écrite n'était
+        // pas la dernière cliquée). `saveWithDebounce` pose la mise à jour locale.
+        saveWithDebounce({ schemaMarques: marques });
+        return;
+      }
+      // Première pastille sur cette copie : la correction se crée
+      void saveNow({ schemaMarques: marques });
+    },
+    [saveNow, saveWithDebounce]
+  );
+
   const updateAutoEvalProf = useCallback(
     (questionId: string, answer: AutoEvalAnswer) => {
       const next = { ...(correctionRef.current?.autoEvalProf ?? {}) };
@@ -349,6 +369,7 @@ export function useCorrection(
     updateQuestionScore: garde(updateQuestionScore),
     updateRechercheScore: garde(updateRechercheScore),
     updateAutoEvalProf: garde(updateAutoEvalProf),
+    updateSchemaMarques: garde(updateSchemaMarques),
     toggleVisibility: garde(toggleVisibility),
     refetch: fetchCorrection,
   };

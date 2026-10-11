@@ -10,10 +10,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DiagramWorkspace } from '@/components/Diagram/DiagramWorkspace';
 import type { DiagramExportHandle } from '@/lib/diagram/diagram-export';
-import { diagramVide, estDiagramPlausible } from '@/lib/schemas-personnels';
-import { schemaDuDevoir } from '@/lib/schema-devoir';
+import { diagramDeDepart, estDiagramPlausible } from '@/lib/schemas-personnels';
+import { melangerConcepts, schemaDuDevoir } from '@/lib/schema-devoir';
 import type { Devoir } from '@/types/devoir';
 import type { Diagram } from '@/types/diagram';
+import type { SchemaMarques } from '@/types/correction';
+import type { GenreMarque, SuggestionsMarques } from '@/components/Diagram/Pastilles';
 import styles from './SchemaActivity.module.css';
 
 interface Props {
@@ -24,6 +26,13 @@ interface Props {
   readOnly?: boolean;
   /** Vue prof (correction) : plein cadre, pas de volet du bas. */
   exportRef?: React.RefObject<DiagramExportHandle | null>;
+  /** Pastilles de correction du prof (vert/rouge) sur ce schéma */
+  marques?: SchemaMarques;
+  /** Présent = le prof corrige : il pose les pastilles d'un clic */
+  onMarque?: (genre: GenreMarque, id: string) => void;
+  /** Propositions de l'aide IA (prof) */
+  suggestions?: SuggestionsMarques;
+  onSuggestion?: (ligneId: string) => void;
 }
 
 /** Le schéma lu dans la copie, ou le schéma de départ voulu par le prof. */
@@ -37,10 +46,14 @@ export function diagramDuTravail(content: string | null | undefined, devoir: Pic
     }
   }
   const config = schemaDuDevoir(devoir);
-  return diagramVide(config.typeDepart, devoir.intitule || 'Mon schéma');
+  const concepts = config.concepts ?? [];
+  return diagramDeDepart(config.typeDepart, devoir.intitule || 'Mon schéma', {
+    conceptCentral: config.conceptCentral,
+    concepts: config.melanger ? melangerConcepts(concepts) : concepts,
+  });
 }
 
-export default function SchemaActivity({ devoir, content, onChange, readOnly = false, exportRef }: Props) {
+export default function SchemaActivity({ devoir, content, onChange, readOnly = false, exportRef, marques, onMarque, suggestions, onSuggestion }: Props) {
   const [diagram, setDiagram] = useState<Diagram>(() => diagramDuTravail(content, devoir));
   // Ce qu'on a envoyé en dernier : si `content` revient identique, rien à relire.
   const lastEmitted = useRef<string | null>(null);
@@ -74,6 +87,10 @@ export default function SchemaActivity({ devoir, content, onChange, readOnly = f
         embedded
         lockType={!config.typeLibre}
         exportRef={exportRef}
+        marques={marques}
+        onMarque={onMarque}
+        suggestions={suggestions}
+        onSuggestion={onSuggestion}
       />
     </div>
   );

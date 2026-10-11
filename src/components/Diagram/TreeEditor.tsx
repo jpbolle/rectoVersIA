@@ -36,6 +36,7 @@ import { TreeActionsContext, TreeNode, type TreeActions, type TreeNodeType } fro
 import { DiagramToolbar } from './DiagramToolbar';
 import type { EditorCommonProps } from './editor-types';
 import styles from './ConceptMapEditor.module.css';
+import { BrancheEdge } from './BrancheEdge';
 
 interface Props extends EditorCommonProps {
   diagram: Diagram;
@@ -43,6 +44,7 @@ interface Props extends EditorCommonProps {
 }
 
 const nodeTypes = { idea: TreeNode };
+const edgeTypes = { branche: BrancheEdge };
 const FIT_OPTIONS = { padding: 0.25, maxZoom: 1 };
 
 function Editor({ diagram, onChange, grid, readOnly = false, onSelectionChange, exportRef, onOpenTools }: Props) {
@@ -98,7 +100,9 @@ function Editor({ diagram, onChange, grid, readOnly = false, onSelectionChange, 
             target: n.id,
             sourceHandle: parentIsRoot ? side : 'out',
             targetHandle: 'in',
-            type: isHierarchy ? 'smoothstep' : 'default',
+            // Branche maison : le tracé par défaut (courbe / coudé) + la pastille de correction
+            type: 'branche',
+            data: { coude: isHierarchy },
             style: { stroke: resolveStroke(line.color), strokeWidth: line.width, strokeDasharray: dashArray(line.dash, line.width) },
             selectable: false,
             focusable: false,
@@ -253,6 +257,7 @@ function Editor({ diagram, onChange, grid, readOnly = false, onSelectionChange, 
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           nodesDraggable={false}
           nodesConnectable={false}

@@ -12,6 +12,7 @@ import { useDevoirs } from '@/hooks/useDevoirs';
 import { useGrilleTypes } from '@/hooks/useEvaluations';
 import CreationForm from '@/components/CreationForm/CreationForm';
 import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
+import RessourceCard from '@/components/RessourceCard/RessourceCard';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import PortfolioAtelier from './PortfolioAtelier';
 import { ATELIER_PORTFOLIO } from '@/types/didactique';
@@ -204,55 +205,33 @@ export default function PortfolioPanel() {
   const actives = (matrices ?? []).filter((m) => !m.archive);
   const archivees = (matrices ?? []).filter((m) => m.archive);
 
+  // La carte commune de Mes Ressources (RessourceCard, 2026-10-11)
   const carte = (m: PortfolioMatrice, lectureSeule = false) => {
     const nbRenvois = m.etapes.filter((e) => e.nature === 'activite').length;
     const nbCollectives = m.etapes.filter((e) => e.portee === 'collective').length;
     const sections = new Set(m.etapes.map((e) => (e.section ?? '').trim()).filter(Boolean)).size;
-    const arreter = (fn: () => void) => (e: React.MouseEvent) => {
-      e.stopPropagation();
-      fn();
-    };
+    const etiquettes = [
+      `${m.etapes.length} étape${m.etapes.length > 1 ? 's' : ''}`,
+      ...(sections > 0 ? [`${sections} section${sections > 1 ? 's' : ''}`] : []),
+      ...(nbRenvois > 0 ? [`${nbRenvois} activité${nbRenvois > 1 ? 's' : ''}`] : []),
+      ...(nbCollectives > 0 ? [`${nbCollectives} collective${nbCollectives > 1 ? 's' : ''}`] : []),
+      ...(m.archive ? ['Archivé'] : []),
+    ];
     return (
-      <article
+      <RessourceCard
         key={m.id}
-        className={`${styles.carte} ${m.archive ? styles.carteArchivee : ''}`}
-        onClick={() => !lectureSeule && setOuverte(m.id)}
-        role={lectureSeule ? undefined : 'button'}
-        tabIndex={lectureSeule ? undefined : 0}
-        onKeyDown={(e) => !lectureSeule && e.key === 'Enter' && e.target === e.currentTarget && setOuverte(m.id)}
-      >
-        <h3 className={styles.carteTitre}>
-          <span aria-hidden="true">🗂️</span>
-          {m.titre}
-        </h3>
-        <div className={styles.etiquettes}>
-          <span>{m.etapes.length} étape{m.etapes.length > 1 ? 's' : ''}</span>
-          {sections > 0 && <span>{sections} section{sections > 1 ? 's' : ''}</span>}
-          {nbRenvois > 0 && <span>{nbRenvois} activité{nbRenvois > 1 ? 's' : ''}</span>}
-          {nbCollectives > 0 && <span>{nbCollectives} collective{nbCollectives > 1 ? 's' : ''}</span>}
-          {m.archive && <span>Archivé</span>}
-        </div>
-        <p className={styles.carteDesc}>{m.description || m.tacheFinale || 'Aucune description.'}</p>
-        <div className={styles.carteActions}>
-          <button type="button" className={lectureSeule ? styles.btn : styles.btnGhost} onClick={arreter(() => dupliquer(m))}>
-            Dupliquer
-          </button>
-          {!lectureSeule && (
-            <button
-              type="button"
-              className={styles.btnGhost}
-              onClick={arreter(() => patcher(m.id, { archive: !m.archive }))}
-            >
-              {m.archive ? 'Restaurer' : 'Archiver'}
-            </button>
-          )}
-          {!lectureSeule && !m.archive && (
-            <button type="button" className={styles.btn} onClick={arreter(() => setUtiliser(m))}>
-              Utiliser pour une classe
-            </button>
-          )}
-        </div>
-      </article>
+        icone="🗂️"
+        titre={m.titre}
+        etiquettes={etiquettes}
+        description={m.description || m.tacheFinale || 'Aucune description.'}
+        archivee={m.archive}
+        onOuvrir={lectureSeule ? undefined : () => setOuverte(m.id)}
+        onDupliquer={() => dupliquer(m)}
+        onArchiver={lectureSeule ? undefined : () => patcher(m.id, { archive: !m.archive })}
+        principale={lectureSeule ? undefined : { libelle: 'Utiliser pour une classe', onClick: () => setUtiliser(m) }}
+        // Carte d'un collègue : dupliquer est la seule action, il garde son libellé
+        lectureSeule={lectureSeule}
+      />
     );
   };
 
@@ -268,7 +247,7 @@ export default function PortfolioPanel() {
         <EmptyState icon="hourglass" message="En cours de chargement" />
       ) : (
         <>
-          <section>
+          <section className={styles.groupe}>
             <div className={styles.groupeEntete}>
               <h2 className={styles.groupeTitre}>Mes portfolios</h2>
               <p className={styles.groupeAide}>
@@ -284,7 +263,7 @@ export default function PortfolioPanel() {
           </section>
 
           {/* Le second bloc, TOUJOURS présent — même vide (JP, 2026-10-09) */}
-          <section>
+          <section className={styles.groupe}>
             <div className={styles.groupeEntete}>
               <h2 className={styles.groupeTitre}>Portfolios des professeurs</h2>
               <p className={styles.groupeAide}>À dupliquer pour les modifier — la copie devient la vôtre.</p>
@@ -297,7 +276,7 @@ export default function PortfolioPanel() {
           </section>
 
           {archivees.length > 0 && (
-            <section>
+            <section className={styles.groupe}>
               <div className={styles.groupeEntete}>
                 <h2 className={styles.groupeTitre}>Archivés</h2>
               </div>

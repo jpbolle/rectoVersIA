@@ -1,0 +1,312 @@
+.panneau {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+  /* Comme les autres onglets du rail : le texte ne colle pas au bord */
+  padding: 16px 18px;
+}
+
+.vide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  color: var(--c-text);
+}
+
+.vide p {
+  margin: 0;
+}
+
+.btn {
+  background: var(--c-gradient-btn);
+  color: #fff;
+  border: none;
+  border-radius: var(--c-radius);
+  padding: 9px 16px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+
+/* Deux colonnes : présent | absent, en trop, erroné */
+
+
+
+
+.titreBon {
+  color: #2e7d4f;
+}
+
+.titreMauvais {
+  color: #b23a2e;
+}
+
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+
+.acceptee {
+  border-color: #2e8b57;
+  background: rgba(46, 139, 87, 0.07);
+}
+
+.refusee {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+
+.statut {
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.statutBon {
+  background: rgba(46, 139, 87, 0.15);
+  color: #2e7d4f;
+}
+
+.statutMauvais {
+  background: rgba(192, 57, 43, 0.12);
+  color: #b23a2e;
+}
+
+
+
+
+.gestes {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.geste {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--c-border);
+  border-radius: 50%;
+  background: var(--c-bg-card);
+  color: var(--c-text-secondary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.geste:hover {
+  border-color: var(--c-primary);
+}
+
+.gesteOui {
+  background: #2e8b57;
+  border-color: #2e8b57;
+  color: #fff;
+}
+
+.gesteNon {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+}
+
+
+
+.compteurBon .compteurValeur {
+  color: #2e7d4f;
+}
+
+.compteurMauvais .compteurValeur {
+  color: #b23a2e;
+}
+
+.compteurValeur {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.compteurLibelle {
+  font-size: 11px;
+  color: var(--c-text-secondary);
+}
+
+.pied {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.lien {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--c-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-text-secondary);
+}
+
+.erreur {
+  margin: 0;
+  font-size: 12px;
+  color: #b23a2e;
+}
+
+/* Compteurs en tête : ils bougent avec chaque ✓ / ✗ */
+.compteurs {
+  display: grid;
+  /* auto-fit : les compteurs s'étirent sur toute la largeur, quel que soit
+     leur nombre (5 ou 6 selon le type) ; ils passent à la ligne si c'est étroit */
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.compteur {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 7px 6px 5px;
+  border-radius: var(--c-radius);
+  background: var(--c-bg-element);
+  text-align: center;
+}
+
+/* 3ᵉ ligne du compteur : la pastille des confirmations, rangée à droite */
+.compteurPied {
+  align-self: stretch;
+  display: flex;
+  justify-content: flex-end;
+  min-height: 15px;
+  margin-top: 2px;
+}
+
+.compteurConfirmes {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 5px;
+  height: 15px;
+  border-radius: 999px;
+  background: rgba(46, 139, 87, 0.14);
+  color: #2e7d4f;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Les deux colonnes : en-têtes une fois, puis une rangée par famille */
+.entetes,
+.rangee {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.entetes h4 {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.sousTitre {
+  margin: 4px 0 -2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--c-text-secondary);
+}
+
+.colBon,
+.colMauvais {
+  padding: 6px;
+  border-radius: var(--c-radius);
+  min-height: 34px;
+}
+
+.colBon {
+  background: rgba(46, 139, 87, 0.05);
+  border: 1px solid rgba(46, 139, 87, 0.25);
+}
+
+.colMauvais {
+  background: rgba(192, 57, 43, 0.04);
+  border: 1px solid rgba(192, 57, 43, 0.22);
+}
+
+/* Une ligne compacte : statut, élément, puis ⓘ ✓ ✗ */
+.ligne {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+}
+
+.principal {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--c-text);
+  overflow-wrap: anywhere;
+}
+
+.rien {
+  color: var(--c-text-secondary);
+  padding: 2px 4px;
+}
+
+.info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-size: 14px;
+  color: var(--c-text-secondary);
+  cursor: help;
+}
+
+.info:hover,
+.info:focus {
+  color: var(--c-primary);
+}
+
+@media (max-width: 900px) {
+  .entetes,
+  .rangee {
+    grid-template-columns: 1fr;
+  }
+}

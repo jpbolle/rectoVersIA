@@ -33,7 +33,7 @@ import {
   type LabeledEdgeType,
 } from '@/lib/diagram/diagram-convert';
 import { renderDiagramPng } from '@/lib/diagram/diagram-export';
-import { labelForDroppedTag } from '@/lib/diagram/tag-drop';
+import { hasTagData, labelForDroppedTag, readTagData } from '@/lib/diagram/tag-drop';
 import { ConceptContextValue, ConceptNode, type ConceptContext } from './ConceptNode';
 import { LabeledEdge } from './LabeledEdge';
 import { DiagramToolbar } from './DiagramToolbar';
@@ -182,6 +182,35 @@ function Editor({ diagram, revision, onChange, grid, readOnly = false, onSelecti
     [nodes, setNodes, setEdges, onConsumeTag],
   );
 
+  /** Un tag déposé sur le fond du canevas devient une boîte libre, à l'endroit
+   *  du dépôt (2026-10-11 : les concepts donnés par le prof doivent pouvoir se
+   *  poser même sans boîte de départ, et l'élève les relie lui-même). */
+  const onPaneDragOver = useCallback((e: React.DragEvent) => {
+    if (readOnly || !hasTagData(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, [readOnly]);
+  const onPaneDrop = useCallback(
+    (e: React.DragEvent) => {
+      // Déjà pris par une boîte (ConceptNode appelle preventDefault)
+      if (readOnly || e.defaultPrevented) return;
+      const tag = readTagData(e);
+      if (!tag) return;
+      e.preventDefault();
+      const p = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      const node: ConceptNodeType = {
+        id: newId('n'),
+        type: 'concept',
+        position: { x: p.x - 60, y: p.y - 20 },
+        data: { label: tag, color: DEFAULT_NODE_COLOR },
+        selected: true,
+      };
+      setNodes((current) => [...current.map((n) => ({ ...n, selected: false })), node]);
+      onConsumeTag?.(tag);
+    },
+    [readOnly, screenToFlowPosition, setNodes, onConsumeTag],
+  );
+
   const context = useMemo<ConceptContext>(
     () => ({ defaults: diagram.defaults, dropTag, openTools: onOpenTools ?? (() => {}), free }),
     [diagram.defaults, dropTag, onOpenTools, free],
@@ -208,6 +237,8 @@ function Editor({ diagram, revision, onChange, grid, readOnly = false, onSelecti
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onReconnect={readOnly ? undefined : onReconnect}
+          onDragOver={onPaneDragOver}
+          onDrop={onPaneDrop}
           connectionMode={ConnectionMode.Loose}
           fitView
           fitViewOptions={FIT_OPTIONS}

@@ -1,6 +1,6 @@
 import type { PlanItem } from './travail';
 import type { SondageReglages } from './autoevaluation';
-import type { DiagramType } from './diagram';
+import type { Diagram, DiagramType } from './diagram';
 import type { LectureQuizMode, LectureQuiz, LectureResume } from './lecture';
 import type { AutoEvalQuestionnaire } from './autoevaluation';
 import type { TypeModal } from './didactique';
@@ -156,6 +156,9 @@ export interface Devoir {
   // Corrigé de référence du prof (type ecrire) — côté élève, seul `production`
   // est exposé, et uniquement quand corrigeDisponible est vrai
   corrigeReference?: CorrigeReference | null;
+  // ÉLÈVE seulement (GET /api/devoirs/[id]) : l'activité a un corrigé, qu'il
+  // recevra quand sa copie sera corrigée et rendue visible (onglet grisé d'ici là)
+  corrigePrevu?: boolean;
   // Envoyer les ressources à l'IA pour le corrigé (défaut true) — seuls le
   // texte (onglet Texte) et les images sont transmis, jamais les PDF ni les liens
   ressourcesToIA?: boolean;
@@ -271,6 +274,23 @@ export interface SchemaConfig {
   typeDepart: DiagramType;
   // true (défaut) : l'élève peut transformer son schéma en un autre type
   typeLibre: boolean;
+  // POINT DE DÉPART (2026-10-11, verso « Contenus de l'activité ») : le concept
+  // central posé dans le canevas de l'élève, et d'autres concepts donnés en
+  // étiquettes « À placer » — mélangés si `melanger`.
+  conceptCentral?: string;
+  concepts?: string[];
+  melanger?: boolean;
+  // CORRIGÉ DU PROFESSEUR (2026-10-11) : un schéma de Mes Ressources ›
+  // Conceptualisations, COPIÉ dans l'activité au moment du choix (retoucher la
+  // bibliothèque ne change pas les activités déjà données). Jamais envoyé à
+  // l'élève tant que sa copie n'est pas corrigée et rendue visible.
+  corrige?: SchemaCorrige | null;
+}
+
+export interface SchemaCorrige {
+  sourceId: string;
+  titre: string;
+  diagram: Diagram;
 }
 
 export interface CreateDevoirData {

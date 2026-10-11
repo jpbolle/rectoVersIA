@@ -113,7 +113,7 @@ export default function Header({
       : estProf
         ? espace === 'fle'
           ? 'Espace FLE'
-          : 'Soutien à l’apprentissage du français'
+          : 'Soutien à l’apprentissage de la littératie'
         : variant === 'fle'
           ? 'Mon cours de français'
           : 'Aide à l’écrilecture';

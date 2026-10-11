@@ -1,0 +1,141 @@
+.depart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Une ligne, deux colonnes : le concept central, puis les étiquettes */
+.colonnes {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 2fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 700px) {
+  .colonnes {
+    grid-template-columns: 1fr;
+  }
+}
+
+.colonne {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.lab {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.note {
+  font-weight: 400;
+  color: var(--c-text-secondary);
+  font-size: 13px;
+}
+
+.input {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  font: inherit;
+  font-size: 14px;
+  color: var(--c-text);
+  background: var(--c-bg-card);
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+/* Le champ d'étiquettes : les concepts posés, puis la saisie au bout */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 46px;
+  padding: 6px 8px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--c-radius);
+  background: var(--c-bg-card);
+  box-sizing: border-box;
+}
+
+.tags:focus-within {
+  border-color: var(--c-primary);
+}
+
+.tagsInactif {
+  opacity: 0.6;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 10px;
+  border-radius: 999px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  font-size: 13px;
+  color: var(--c-text);
+  max-width: 100%;
+}
+
+.tagRetirer {
+  border: none;
+  background: transparent;
+  color: var(--c-text-secondary);
+  font-size: 15px;
+  line-height: 1;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.tagRetirer:hover {
+  background: var(--c-border);
+  color: var(--c-text);
+}
+
+.tagSaisie {
+  flex: 1;
+  min-width: 140px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  color: var(--c-text);
+  padding: 4px;
+}
+
+.case {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+.caseInactive {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.aide {
+  margin: 0;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}

@@ -14,7 +14,8 @@ interface Props {
 }
 
 export default function SchemaEvaluation({ correction, isProfessorView = false }: Props) {
-  const visible = isProfessorView || correction?.visibleParEleve === true;
+  // Le commentaire n'arrive qu'avec « Rendre comme corrigé » (pas en réécriture)
+  const visible = isProfessorView || (correction?.visibleParEleve === true && correction.evaluationVisible !== false);
   const aCommentaire = !!(correction?.commentaireGeneral || correction?.commentaireGeneralAudio);
 
   return (

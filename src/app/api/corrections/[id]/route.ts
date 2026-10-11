@@ -146,6 +146,20 @@ export async function PATCH(
       }
       updateData.autoEvalProf = clean;
     }
+    if (body.schemaMarques !== undefined) {
+      // Pastilles du schéma : deux dictionnaires id → 'ok' | 'faux', bornés
+      const nettoyer = (raw: unknown) => {
+        const out: Record<string, 'ok' | 'faux'> = {};
+        if (raw && typeof raw === 'object') {
+          for (const [k, v] of Object.entries(raw as Record<string, unknown>).slice(0, 500)) {
+            if ((v === 'ok' || v === 'faux') && k.length <= 80) out[k] = v;
+          }
+        }
+        return out;
+      };
+      const raw = (body.schemaMarques ?? {}) as { boites?: unknown; liens?: unknown };
+      updateData.schemaMarques = { boites: nettoyer(raw.boites), liens: nettoyer(raw.liens) };
+    }
     if (body.draftAnnotations !== undefined) {
       updateData.draftAnnotations = body.draftAnnotations;
     }
@@ -155,6 +169,27 @@ export async function PATCH(
     }
 
     await docRef.update(updateData);
+
+    // RENDRE VISIBLE = la copie est RENDUE (JP, 2026-10-11) : qu'il l'ait remise
+    // lui-même ou non — la remise n'est qu'une indication pour le prof —, la
+    // copie corrigée et publiée se verrouille chez l'élève, et l'onglet
+    // « Corrigé » s'ouvre. « Remettre la copie à l'élève » la rouvre.
+    // Pas pour une séquence FLE (sa copie vit d'étape en étape) ni pour une
+    // copie constatée « non rendu ». Le portfolio, oui (triple bouton de JP).
+    if (body.visibleParEleve === true && travailSnap.exists) {
+      const travail = travailSnap.data()!;
+      if (travail.status !== 'submitted' && !travail.nonRendu) {
+        const devoirSnap = await adminDb.collection('devoirs').doc(String(travail.devoirId || '')).get();
+        const type = devoirSnap.data()?.typeTravail;
+        if (type !== 'sequence') {
+          await travailSnap.ref.update({
+            status: 'submitted',
+            submittedAt: travail.submittedAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+    }
 
     // Le total d'un questionnaire de lecture n'existe nulle part ailleurs :
     // `score` ne vaut que pour les grilles. On l'écrit ici, à chaque

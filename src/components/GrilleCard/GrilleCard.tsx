@@ -1,7 +1,11 @@
 'use client';
 
+// Carte d'une grille d'évaluation — sur le gabarit commun RessourceCard
+// (plan 2026-10-11) : plus de ✏️, la carte s'ouvre au clic (constructeur pour
+// les miennes, lecture pour celles des collègues).
+
 import type { Grille } from '@/types/grille';
-import styles from './GrilleCard.module.css';
+import RessourceCard from '@/components/RessourceCard/RessourceCard';
 
 interface GrilleCardProps {
   grille: Grille;
@@ -10,114 +14,52 @@ interface GrilleCardProps {
   onDuplicate: (grille: Grille) => void;
   onToggleShared?: (grille: Grille) => void;
   onView?: (grille: Grille) => void;
+  /** « Utiliser pour une classe » — absent = pas de bouton */
+  onUtiliser?: (grille: Grille) => void;
   readOnly?: boolean;
   isAdmin?: boolean;
 }
 
-export default function GrilleCard({ grille, onEdit, onDelete, onDuplicate, onToggleShared, onView, readOnly, isAdmin }: GrilleCardProps) {
+export default function GrilleCard({
+  grille,
+  onEdit,
+  onDelete,
+  onDuplicate,
+  onToggleShared,
+  onView,
+  onUtiliser,
+  readOnly,
+  isAdmin,
+}: GrilleCardProps) {
   const totalWeight = grille.criteria.reduce((sum, c) => sum + c.weight, 0);
+  const nbCriteres = grille.criteria.length;
 
-  const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onEdit?.(grille);
-  };
+  // Clic sur la carte : ce que faisait ✏️ (miennes) ou l'œil (collègues)
+  const ouvrir = !readOnly ? onEdit : onView;
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete?.(grille);
-  };
-
-  const handleDuplicate = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDuplicate(grille);
-  };
+  const etiquettes = [
+    ...(grille.uaa ?? []).map((id) => `UAA ${id}`),
+    `${nbCriteres} critère${nbCriteres > 1 ? 's' : ''}`,
+    `${totalWeight} pts`,
+  ];
 
   return (
-    <article className={styles.card}>
-      {grille.uaa && grille.uaa.length > 0 && (
-        <div className={styles.uaaTags}>
-          {grille.uaa.map((id) => (
-            <span key={id} className={styles.uaaTag}>UAA {id}</span>
-          ))}
-        </div>
-      )}
-      <div className={styles.cardIcon}>📋</div>
-      <h3 className={styles.title}>{grille.name}</h3>
-
-      {grille.description && (
-        <p className={styles.description}>{grille.description}</p>
-      )}
-
-      {grille.profName && readOnly && (
-        <p className={styles.profName}>{grille.profName}</p>
-      )}
-
-      <div className={styles.metaRow}>
-        <span className={styles.metaItem}>
-          <span className={styles.metaIcon}>📊</span>
-          <span>{grille.criteria.length} critère{grille.criteria.length > 1 ? 's' : ''}</span>
-        </span>
-        <span className={styles.metaItem}>
-          <span className={styles.metaIcon}>⚖️</span>
-          <span>{totalWeight} pts</span>
-        </span>
-      </div>
-
-      {!readOnly && isAdmin && onToggleShared && (
-        <button
-          className={`${styles.shareButton} ${grille.shared ? styles.shareActive : ''}`}
-          onClick={(e) => { e.stopPropagation(); onToggleShared(grille); }}
-          title={grille.shared ? 'Retirer des exemples' : 'Partager comme exemple'}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-      )}
-
-      {!readOnly && onEdit && (
-        <button
-          className={styles.editButton}
-          onClick={handleEdit}
-          title="Modifier la grille"
-        >
-          ✏️
-        </button>
-      )}
-
-      {readOnly && onView && (
-        <button
-          className={styles.viewButton}
-          onClick={(e) => { e.stopPropagation(); onView(grille); }}
-          title="Voir la grille"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
-          </svg>
-        </button>
-      )}
-
-      <button
-        className={styles.duplicateButton}
-        onClick={handleDuplicate}
-        title={readOnly ? 'Dupliquer dans mes grilles' : 'Dupliquer la grille'}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="4" y="1" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-          <rect x="1" y="4" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="white"/>
-        </svg>
-      </button>
-
-      {!readOnly && onDelete && (
-        <button
-          className={styles.deleteButton}
-          onClick={handleDelete}
-          title="Supprimer la grille"
-        >
-          🗑️
-        </button>
-      )}
-    </article>
+    <RessourceCard
+      icone="📋"
+      titre={grille.name}
+      etiquettes={etiquettes}
+      sousTitre={readOnly && grille.profName ? grille.profName : undefined}
+      description={grille.description}
+      onOuvrir={ouvrir ? () => ouvrir(grille) : undefined}
+      titreOuvrir={readOnly ? 'Voir la grille' : 'Modifier la grille'}
+      onVoir={readOnly && onView ? () => onView(grille) : undefined}
+      onPartager={!readOnly && isAdmin && onToggleShared ? () => onToggleShared(grille) : undefined}
+      partagee={grille.shared}
+      titrePartager={grille.shared ? 'Retirer des exemples' : 'Partager comme exemple'}
+      onDupliquer={() => onDuplicate(grille)}
+      onSupprimer={!readOnly && onDelete ? () => onDelete(grille) : undefined}
+      principale={!readOnly && onUtiliser ? { libelle: 'Utiliser pour une classe', onClick: () => onUtiliser(grille) } : undefined}
+      lectureSeule={readOnly}
+    />
   );
 }

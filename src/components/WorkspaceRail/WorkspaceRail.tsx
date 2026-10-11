@@ -9,6 +9,9 @@ export interface RailTab {
   icon: ReactNode;
   hasBadge?: boolean;
   highlight?: boolean;
+  // Grisé, pas cliquable (ex. « Corrigé » tant que la copie n'est pas corrigée) ;
+  // le libellé de l'infobulle dit pourquoi
+  disabled?: boolean;
 }
 
 interface WorkspaceRailProps {
@@ -159,8 +162,9 @@ export default function WorkspaceRail({
             <button
               key={tab.id}
               type="button"
-              className={`${styles.railBtn} ${isActive ? styles.railBtnActive : ''} ${tab.highlight ? styles.railBtnHighlight : ''}`}
-              onClick={() => handleIconClick(tab.id)}
+              className={`${styles.railBtn} ${isActive ? styles.railBtnActive : ''} ${tab.highlight ? styles.railBtnHighlight : ''} ${tab.disabled ? styles.railBtnDisabled : ''}`}
+              onClick={() => !tab.disabled && handleIconClick(tab.id)}
+              aria-disabled={tab.disabled || undefined}
               aria-label={tab.label}
               aria-pressed={isActive}
             >

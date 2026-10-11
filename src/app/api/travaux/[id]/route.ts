@@ -71,6 +71,7 @@ export async function GET(
       status: data.status || 'draft',
       selfEvaluation: data.selfEvaluation || null,
       nonRendu: data.nonRendu || null,
+      verrouille: data.verrouille === true,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       submittedAt: data.submittedAt || null,
@@ -134,7 +135,12 @@ export async function PATCH(
     }
 
     // Un travail soumis ne peut plus etre modifie par l'eleve
-    if (auth.role === 'eleve' && data.status === 'submitted' && (body.content !== undefined || body.portfolio !== undefined)) {
+    // … ni une copie verrouillée par le prof (2026-10-11)
+    if (
+      auth.role === 'eleve' &&
+      (data.status === 'submitted' || data.verrouille === true) &&
+      (body.content !== undefined || body.portfolio !== undefined)
+    ) {
       return NextResponse.json(
         { success: false, message: 'Le travail a deja ete soumis et ne peut plus etre modifie' },
         { status: 403 }
@@ -225,6 +231,11 @@ export async function PATCH(
       updateData.draftContent = body.draftContent;
     }
 
+    // Verrouillage de la copie par le prof (avant remise)
+    if (body.verrouille !== undefined && auth.role === 'prof') {
+      updateData.verrouille = body.verrouille === true;
+    }
+
     // Travail non rendu (justifié / non justifié) — décision du prof
     if (body.nonRendu !== undefined && auth.role === 'prof') {
       updateData.nonRendu =
@@ -242,6 +253,22 @@ export async function PATCH(
     }
 
     await docRef.update(updateData);
+
+    // RÉÉCRITURE REMISE (2026-10-11) : l'élève qui remet une copie renvoyée
+    // pour réécriture la rend au prof « en mode correction » — sa correction
+    // précédente redevient invisible le temps d'être revue. Sans quoi la remise
+    // seule ouvrirait l'onglet « Corrigé » (correction visible + copie rendue).
+    if (auth.role === 'eleve' && body.status === 'submitted') {
+      const corrRef = adminDb.collection('corrections').doc(`CORR-${id}`);
+      const corr = await corrRef.get();
+      if (corr.exists && corr.data()?.visibleParEleve === true) {
+        const devoirSnap = await adminDb.collection('devoirs').doc(String(data.devoirId || '')).get();
+        const type = devoirSnap.data()?.typeTravail;
+        if (type === 'ecrire' || type === 'schematiser' || type === 'portfolio') {
+          await corrRef.update({ visibleParEleve: false, updatedAt: new Date().toISOString() });
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,

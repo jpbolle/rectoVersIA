@@ -3,6 +3,9 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import SchemaActivity from '@/components/SchemaActivity/SchemaActivity';
+import { basculerMarque, type GenreMarque } from '@/components/Diagram/Pastilles';
+import SchemaAideIA from '@/components/SchemaAideIA/SchemaAideIA';
+import { useSchemaComparaison } from '@/hooks/useSchemaComparaison';
 import PortfolioLecture from '@/components/Portfolio/PortfolioLecture';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
@@ -106,6 +109,7 @@ export default function TravailDetailPage() {
     updateQuestionScore,
     updateRechercheScore,
     updateAutoEvalProf,
+    updateSchemaMarques,
     toggleVisibility,
   } = useCorrection(
     travailId || null,
@@ -426,11 +430,143 @@ export default function TravailDetailPage() {
     }
   }, [travail, getAuthHeaders]);
 
+  // RENDRE VISIBLE = copie RENDUE (2026-10-11) : le serveur la passe en
+  // « remis » (cf. PATCH /api/corrections/[id]) ; on suit ici, pour que
+  // « Remettre la copie à l'élève » apparaisse sans recharger
+  const rendreVisible = async () => {
+    const devientVisible = !correction?.visibleParEleve;
+    await toggleVisibility();
+    const conteneur = devoir?.typeTravail === 'sequence';
+    if (devientVisible && !conteneur && travail && travail.status !== 'submitted' && !travail.nonRendu) {
+      setTravail((prev) =>
+        prev ? { ...prev, status: 'submitted', submittedAt: prev.submittedAt || new Date().toISOString() } : null
+      );
+    }
+  };
+
+  // Pastille du schéma : le clic fait tourner rien → juste → faux → rien
+  const poserMarque = useCallback(
+    (genre: GenreMarque, id: string) => {
+      updateSchemaMarques((actuelles) => basculerMarque(actuelles, genre, id));
+    },
+    [updateSchemaMarques]
+  );
+
+  // Aide IA du prof (atelier de conceptualisation) : un seul état pour le
+  // tableau de l'onglet et les pastilles pâles du schéma
+  const aideIa = useSchemaComparaison(
+    travailId || null,
+    devoir?.typeTravail === 'schematiser',
+    updateSchemaMarques
+  );
+  const deciderIa = aideIa.decider;
+  const validerSuggestion = useCallback((ligneId: string) => void deciderIa(ligneId, 'accepte'), [deciderIa]);
+
+  // ═══ ÉTAT DE LA COPIE — triple bouton (écriture, conceptualisation,
+  // portfolio — JP, 2026-10-11) ═══
+  //   Renvoyer pour réécriture : copie MODIFIABLE, corrections visibles,
+  //                              onglet « Corrigé » fermé ;
+  //   En mode correction       : rien de visible chez l'élève — le prof y
+  //                              travaille. Allumé quand la copie est rendue,
+  //                              ou, copie pas encore rendue, dès que le prof
+  //                              a commencé à corriger ou à évaluer, ou qu'il
+  //                              l'a verrouillée (JP) ;
+  //   Rendre comme corrigé     : copie rendue, corrections visibles, onglet
+  //                              « Corrigé » ouvert.
+  // Lu sur deux données existantes : `correction.visibleParEleve` et
+  // `travail.status` — aucune donnée neuve.
+  // Copie pas encore rendue : « Verrouiller la copie », sous le triple bouton,
+  // empêche l'élève de la modifier sans la compter comme rendue.
+  type EtatCopie = 'reecriture' | 'correction' | 'corrige';
+  const tripleEtat =
+    devoir?.typeTravail === 'ecrire' || devoir?.typeTravail === 'schematiser' || devoir?.typeTravail === 'portfolio';
+  const profACorrige =
+    !!correction &&
+    (!!correction.annotatedContent?.replace(/<[^>]*>/g, '').trim() ||
+      Object.keys(correction.evaluation ?? {}).length > 0 ||
+      !!correction.commentaireGeneral?.trim() ||
+      !!correction.commentaireGeneralAudio ||
+      Object.keys(correction.schemaMarques?.boites ?? {}).length > 0 ||
+      Object.keys(correction.schemaMarques?.liens ?? {}).length > 0);
+  const etatCopie: EtatCopie | null =
+    correction?.visibleParEleve && travail?.status === 'submitted'
+      ? 'corrige'
+      : correction?.visibleParEleve && !travail?.verrouille
+        ? 'reecriture'
+        : travail?.status === 'submitted' || profACorrige || travail?.verrouille
+          ? 'correction'
+          : null;
+  const [changementEtat, setChangementEtat] = useState(false);
+
+  const patchStatut = async (status: 'draft' | 'submitted') => {
+    const headers = await getAuthHeaders();
+    if (!headers || !travail) throw new Error('Session expirée');
+    const res = await fetch(`/api/travaux/${travail.id}`, { method: 'PATCH', headers, body: JSON.stringify({ status }) });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Changement impossible');
+    setTravail((prev) =>
+      prev
+        ? { ...prev, status, submittedAt: status === 'draft' ? null : prev.submittedAt || new Date().toISOString() }
+        : null
+    );
+  };
+
+  const patchVerrou = async (verrouille: boolean) => {
+    const headers = await getAuthHeaders();
+    if (!headers || !travail) throw new Error('Session expirée');
+    const res = await fetch(`/api/travaux/${travail.id}`, { method: 'PATCH', headers, body: JSON.stringify({ verrouille }) });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Changement impossible');
+    setTravail((prev) => (prev ? { ...prev, verrouille } : null));
+  };
+
+  // Verrouiller = reprendre la copie EN MODE CORRECTION : une copie renvoyée
+  // pour réécriture perd aussi la vue sur la correction (JP, 2026-10-11)
+  const basculerVerrou = async () => {
+    if (!travail || changementEtat) return;
+    setChangementEtat(true);
+    try {
+      const verrouiller = !travail.verrouille;
+      await patchVerrou(verrouiller);
+      if (verrouiller && correction?.visibleParEleve) await toggleVisibility();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Changement impossible');
+    } finally {
+      setChangementEtat(false);
+    }
+  };
+
+  const changerEtatCopie = async (cible: EtatCopie) => {
+    if (!travail || cible === etatCopie || changementEtat) return;
+    setChangementEtat(true);
+    try {
+      const visible = !!correction?.visibleParEleve;
+      if (cible === 'correction') {
+        // Ne rend pas la copie : pour l'empêcher d'y toucher, « Verrouiller la copie »
+        if (visible) await toggleVisibility();
+      } else if (cible === 'corrige') {
+        // Publier rend la copie, côté serveur (PATCH /api/corrections/[id]) ;
+        // déjà publiée (réécriture), on la rend nous-mêmes
+        if (!visible) await rendreVisible();
+        else if (travail.status !== 'submitted') await patchStatut('submitted');
+      } else {
+        // Publier D'ABORD (le serveur rendrait la copie), rouvrir ENSUITE
+        if (!visible) await toggleVisibility();
+        await patchStatut('draft');
+        if (travail.verrouille) await patchVerrou(false);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Changement impossible');
+    } finally {
+      setChangementEtat(false);
+    }
+  };
+
   const handleReturnForCorrection = async () => {
     if (!travail) return;
 
     const confirmed = window.confirm(
-      `Êtes-vous sûr de vouloir renvoyer le travail de ${travail.studentName} en correction ? L'élève pourra à nouveau modifier son travail.`
+      `Remettre la copie à ${travail.studentName} ? Il pourra de nouveau la modifier, en voyant vos corrections ; le corrigé lui sera refermé jusqu'à la prochaine publication.`
     );
 
     if (!confirmed) return;
@@ -450,7 +586,7 @@ export default function TravailDetailPage() {
 
       if (json.success) {
         setTravail(prev => prev ? { ...prev, status: 'draft', submittedAt: null } : null);
-        alert('Le travail a été renvoyé en correction. L\'élève peut maintenant le modifier.');
+        alert('La copie est remise à l\'élève : il peut de nouveau la modifier.');
       } else {
         alert('Erreur : ' + (json.message || 'Impossible de renvoyer le travail'));
       }
@@ -590,7 +726,45 @@ export default function TravailDetailPage() {
                 Lecture seule{devoir?.auteurNom ? ` — activité de ${devoir.auteurNom}` : ''}
               </span>
             )}
+            {!lectureSeule && tripleEtat && (
+              <div className={styles.etatBloc}>
+              <div className={styles.etatCopie} role="group" aria-label="État de la copie">
+                {(
+                  [
+                    ['reecriture', '↩ Renvoyer pour réécriture', 'La copie redevient modifiable ; l’élève voit vos corrections, pas le corrigé'],
+                    ['correction', '✎ En mode correction', 'La copie est rendue ; l’élève ne voit encore rien de votre correction'],
+                    ['corrige', '✓ Rendre comme corrigé', 'La copie est rendue ; l’élève voit vos corrections et le corrigé'],
+                  ] as [EtatCopie, string, string][]
+                ).map(([id, libelle, aide]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`${styles.etatCopieBtn} ${etatCopie === id ? styles.etatCopieActif : ''}`}
+                    aria-pressed={etatCopie === id}
+                    onClick={() => void changerEtatCopie(id)}
+                    disabled={changementEtat}
+                    title={aide}
+                  >
+                    {libelle}
+                  </button>
+                ))}
+              </div>
+            {/* Copie pas encore rendue : le prof peut la figer sans la rendre */}
+            {travail.status !== 'submitted' && (
+              <label className={styles.verrouCopie} title="L’élève ne peut plus modifier sa copie ; elle ne compte pas comme rendue">
+                <input
+                  type="checkbox"
+                  checked={!!travail.verrouille}
+                  onChange={() => void basculerVerrou()}
+                  disabled={changementEtat}
+                />
+                🔒 Verrouiller la copie
+              </label>
+            )}
+              </div>
+            )}
             {!lectureSeule &&
+              !tripleEtat &&
               travail.status === 'submitted' &&
               devoir?.typeTravail !== 'lire' &&
               devoir?.typeTravail !== 'rechercher' && (
@@ -598,19 +772,19 @@ export default function TravailDetailPage() {
                 className={styles.returnBtn}
                 onClick={handleReturnForCorrection}
                 disabled={isReturning}
-                title="Renvoyer le travail à l'élève pour correction"
+                title="La copie redevient modifiable ; l'élève garde vos corrections sous les yeux, le corrigé se referme"
               >
-                {isReturning ? '...' : '↩ Renvoyer pour correction'}
+                {isReturning ? '...' : '↩ Remettre la copie à l’élève'}
               </button>
             )}
 
-            {!lectureSeule && (
+            {!lectureSeule && !tripleEtat && (
             <label className={styles.visibilityToggleBox}>
               <span className={styles.visibilityLabel}>Rendre visible pour cet élève</span>
               <input
                 type="checkbox"
                 checked={correction?.visibleParEleve || false}
-                onChange={toggleVisibility}
+                onChange={rendreVisible}
                 className={styles.toggleInput}
               />
               <span className={styles.toggleSwitch} />
@@ -690,9 +864,20 @@ export default function TravailDetailPage() {
                   </div>
                 </div>
                 {/* Lecture seule : le prof zoome, déplace la vue, exporte ;
-                    il commente dans le commentaire général (O5-A du plan). */}
+                    il commente dans le commentaire général (O5-A du plan) et
+                    POSE SES PASTILLES d'un clic sur une boîte ou un lien :
+                    rien → ✓ juste → ✗ faux → rien (étape 3, 2026-10-11). */}
                 <div style={{ flex: 1, minHeight: 520, display: 'flex', flexDirection: 'column' }}>
-                  <SchemaActivity devoir={devoir} content={travail.content} readOnly />
+                  <SchemaActivity
+                    devoir={devoir}
+                    content={travail.content}
+                    readOnly
+                    marques={correction?.schemaMarques ?? {}}
+                    onMarque={lectureSeule ? undefined : poserMarque}
+                    // Propositions de l'aide IA : pastilles pâles, justification au survol
+                    suggestions={aideIa.suggestions}
+                    onSuggestion={lectureSeule ? undefined : validerSuggestion}
+                  />
                 </div>
               </div>
             ) : devoir.typeTravail === 'lire' && devoir.lectureQuiz ? (
@@ -847,6 +1032,20 @@ export default function TravailDetailPage() {
               <div className={styles.assistanceWrapper}>
                 <AssistancePanel
                   devoir={devoir}
+                  aideIaProf={
+                    devoir.typeTravail === 'schematiser' ? (
+                      <SchemaAideIA
+                        comparaison={aideIa.comparaison}
+                        enCours={aideIa.enCours}
+                        erreur={aideIa.erreur}
+                        comparer={() => void aideIa.comparer()}
+                        decider={(ligneId, decision) => void aideIa.decider(ligneId, decision)}
+                        aCorrige={!!devoir.schema?.corrige}
+                        marques={correction?.schemaMarques}
+                        lectureSeule={lectureSeule}
+                      />
+                    ) : undefined
+                  }
                   grille={grille}
                   grilleLoading={grilleLoading}
                   grilleError={grilleError}

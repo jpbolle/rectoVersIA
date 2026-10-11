@@ -7,23 +7,29 @@
 // année après année. Jusqu'ici il vivait dans l'activité, et le rejouer
 // obligeait à dupliquer celle-ci en entier.
 //
-// Les cartes reprennent le gabarit de `GrilleCard` / `OeuvreCard` : des
-// familles voisines dans une même page ne peuvent pas se ressembler « à peu
-// près ».
+// Les cartes sont celles de toute la page (RessourceCard, plan 2026-10-11).
+// Icône ❓ et non 📋 : le 📋 est celui des grilles d'évaluation.
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
+import RessourceCard from '@/components/RessourceCard/RessourceCard';
 import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
 import type { LectureQuiz } from '@/types/lecture';
 import type {
   QuestionnaireLecture,
   QuestionnaireLectureResume,
 } from '@/types/questionnaire-lecture';
+import blocs from '@/components/OeuvrePanel/OeuvrePanel.module.css';
 import styles from './QuestionnaireLecturePanel.module.css';
 
-export default function QuestionnaireLecturePanel() {
+interface Props {
+  /** « Utiliser pour une classe » sur mes questionnaires — absent = pas de bouton */
+  onUtiliser?: (q: QuestionnaireLectureResume) => void;
+}
+
+export default function QuestionnaireLecturePanel({ onUtiliser }: Props = {}) {
   const { isAuthenticated, getAuthHeaders } = useAuth();
   const [miens, setMiens] = useState<QuestionnaireLectureResume[]>([]);
   const [exemples, setExemples] = useState<QuestionnaireLectureResume[]>([]);
@@ -232,111 +238,75 @@ export default function QuestionnaireLecturePanel() {
   }
 
   // ── La bibliothèque ──
+  const etiquettesDe = (q: QuestionnaireLectureResume) => [
+    ...(q.archive ? ['Archivé'] : []),
+    q.mode === 'quiz' ? 'Quiz' : 'Questionnaire',
+    `${q.nbQuestions} question${q.nbQuestions > 1 ? 's' : ''}`,
+    `${q.points} pt${q.points > 1 ? 's' : ''}`,
+  ];
+
+  // Mêmes blocs blancs titrés que les autres onglets (Œuvres, Portfolios…) —
+  // il n'avait ni cadre ni titre « Mes questionnaires » (2026-10-11)
   return (
-    <section>
+    <div className={blocs.panneau}>
       {message && <p className={classeMessage}>{message}</p>}
 
+      <section className={blocs.groupe}>
+      <div className={blocs.groupeEntete}>
+        <h2 className={blocs.groupeTitre}>Mes questionnaires</h2>
+        <p className={blocs.groupeAide}>Vos questionnaires de lecture, à réutiliser d’une activité à l’autre.</p>
+      </div>
       <div className={styles.grid}>
-        <CreateOeuvreCard onClick={creer} libelle="Nouveau questionnaire" />
+        <CreateOeuvreCard onClick={creer} libelle="Créer un questionnaire" />
 
         {chargement ? (
           <EmptyState icon="hourglass" message="En cours de chargement" />
         ) : (
           miens.map((q) => (
-            <article
+            <RessourceCard
               key={q.id}
-              className={`${styles.card} ${q.archive ? styles.cardArchivee : ''}`}
-            >
-              <div className={styles.tags}>
-                {q.archive && <span className={styles.tag}>Archivé</span>}
-                <span className={styles.tag}>{q.mode === 'quiz' ? 'Quiz' : 'Questionnaire'}</span>
-              </div>
-
-              <div className={styles.cardIcon}>📋</div>
-              <h3 className={styles.title}>{q.nom}</h3>
-              {q.description && <p className={styles.description}>{q.description}</p>}
-
-              <div className={styles.metaRow}>
-                <span className={styles.metaItem}>
-                  ❓ {q.nbQuestions} question{q.nbQuestions > 1 ? 's' : ''}
-                </span>
-                <span className={styles.metaItem}>
-                  🎯 {q.points} pt{q.points > 1 ? 's' : ''}
-                </span>
-              </div>
-
-              <div className={styles.actions}>
-                <button
-                  type="button"
-                  className={styles.actionBtn}
-                  onClick={() => ouvrir(q.id)}
-                  title="Ouvrir le questionnaire"
-                  aria-label="Ouvrir le questionnaire"
-                >
-                  ✏️
-                </button>
-                <button
-                  type="button"
-                  className={styles.actionBtn}
-                  onClick={() => archiver(q)}
-                  title={q.archive ? 'Désarchiver' : 'Archiver'}
-                  aria-label={q.archive ? 'Désarchiver' : 'Archiver'}
-                >
-                  {q.archive ? '📤' : '📥'}
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.actionBtn} ${styles.actionDanger}`}
-                  onClick={() => supprimer(q)}
-                  title="Supprimer"
-                  aria-label="Supprimer"
-                >
-                  🗑️
-                </button>
-              </div>
-            </article>
+              icone="❓"
+              titre={q.nom}
+              etiquettes={etiquettesDe(q)}
+              description={q.description}
+              archivee={q.archive}
+              // Clic : ce que faisait ✏️ (ouvrir dans le constructeur)
+              onOuvrir={() => ouvrir(q.id)}
+              titreOuvrir="Ouvrir le questionnaire"
+              onArchiver={() => archiver(q)}
+              onSupprimer={() => supprimer(q)}
+              principale={onUtiliser ? { libelle: 'Utiliser pour une classe', onClick: () => onUtiliser(q) } : undefined}
+            />
           ))
         )}
       </div>
 
+      </section>
+
       {/* Le second bloc, TOUJOURS présent — même vide : exemples partagés et
           questionnaires des collègues, à dupliquer pour se les approprier */}
-      <h2 className={styles.sectionTitle}>Questionnaires des professeurs</h2>
+      <section className={blocs.groupe}>
+      <div className={blocs.groupeEntete}>
+        <h2 className={blocs.groupeTitre}>Questionnaires des professeurs</h2>
+        <p className={blocs.groupeAide}>À dupliquer pour les modifier — la copie devient la vôtre.</p>
+      </div>
       {!chargement && exemples.length === 0 && autres.length === 0 && (
-        <p className={styles.description}>Aucun questionnaire de collègue pour l’instant.</p>
+        <p className={blocs.groupeAide}>Aucun questionnaire de collègue pour l’instant.</p>
       )}
       <div className={styles.grid}>
         {[...exemples, ...autres].map((q) => (
-          <article key={q.id} className={styles.card}>
-            <div className={styles.tags}>
-              {q.shared && <span className={styles.tag}>Exemple partagé</span>}
-              <span className={styles.tag}>{q.mode === 'quiz' ? 'Quiz' : 'Questionnaire'}</span>
-            </div>
-            <div className={styles.cardIcon}>📋</div>
-            <h3 className={styles.title}>{q.nom}</h3>
-            {q.description && <p className={styles.description}>{q.description}</p>}
-            <div className={styles.metaRow}>
-              <span className={styles.metaItem}>
-                ❓ {q.nbQuestions} question{q.nbQuestions > 1 ? 's' : ''}
-              </span>
-              <span className={styles.metaItem}>
-                🎯 {q.points} pt{q.points > 1 ? 's' : ''}
-              </span>
-            </div>
-            <div className={styles.actions}>
-              <button
-                type="button"
-                className={styles.actionBtn}
-                onClick={() => dupliquer(q)}
-                title="Dupliquer dans mes questionnaires"
-                aria-label="Dupliquer dans mes questionnaires"
-              >
-                ⧉
-              </button>
-            </div>
-          </article>
+          <RessourceCard
+            key={q.id}
+            icone="❓"
+            titre={q.nom}
+            etiquettes={[...(q.shared ? ['Exemple partagé'] : []), ...etiquettesDe(q)]}
+            description={q.description}
+            onDupliquer={() => dupliquer(q)}
+            lectureSeule
+          />
         ))}
       </div>
-    </section>
+      </section>
+    </div>
   );
 }

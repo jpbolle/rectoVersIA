@@ -609,7 +609,11 @@ export default function TravauxPage() {
             </p>
           )}
 
-          {sessionOuverte && (
+          {/* Écriture et conceptualisation : plus de bascule par classe — le
+              corrigé s'ouvre copie par copie, avec « Rendre visible pour cet
+              élève » (JP, 2026-10-11). Elle reste pour la lecture, où elle
+              ouvre le questionnaire corrigé à toute la classe. */}
+          {sessionOuverte && devoir?.typeTravail !== 'ecrire' && devoir?.typeTravail !== 'schematiser' && (
             <div className={styles.corrigeToggle}>
               <Toggle
                 checked={sessionOuverte.corrigeDisponible}

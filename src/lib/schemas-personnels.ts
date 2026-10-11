@@ -20,6 +20,8 @@ export interface SchemaPersonnelMeta {
   thumbnail: string | null;
   createdAt: string;
   updatedAt: string;
+  // Bibliothèque du prof (Mes Ressources › Conceptualisations, 2026-10-11)
+  archive?: boolean;
 }
 
 export function estTypeSchema(t: unknown): t is DiagramType {
@@ -42,5 +44,28 @@ export function diagramVide(type: DiagramType, titre: string): Diagram {
   if (type === 'timeline') {
     base.lanes = [];
   }
+  return base;
+}
+
+/**
+ * Le schéma de départ d'une activité (2026-10-11) : le CONCEPT CENTRAL posé
+ * dans le canevas — boîte au centre (carte conceptuelle, schéma libre),
+ * racine (carte mentale, hiérarchie), titre (ligne du temps) — et les autres
+ * concepts en étiquettes « À placer ».
+ */
+export function diagramDeDepart(
+  type: DiagramType,
+  titre: string,
+  depart: { conceptCentral?: string; concepts?: string[] }
+): Diagram {
+  const central = depart.conceptCentral?.trim() || '';
+  const base = diagramVide(type, type === 'timeline' && central ? central : titre);
+  if (central && (type === 'mindmap' || type === 'hierarchy')) {
+    base.nodes = [{ id: 'n1', label: central, x: 0, y: 0 }];
+  }
+  if (central && (type === 'conceptmap' || type === 'libre')) {
+    base.nodes = [{ id: 'n1', label: central, x: 0, y: 0 }];
+  }
+  if (depart.concepts?.length) base.pending = [...depart.concepts];
   return base;
 }
