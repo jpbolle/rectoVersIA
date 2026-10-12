@@ -11,7 +11,7 @@
 // le 2026-10-12) — il fait foi ; celui de Claude ne sert que s'il a échoué.
 
 import { inflateSync } from 'zlib';
-import { appelerClaude } from '@/lib/claude';
+import { MODELE_RAPIDE, appelerClaude } from '@/lib/claude';
 import { PDF_OCTETS_MAX, PDF_PAGES_MAX } from '@/types/lecture-cours';
 import type { UsageClaude } from '@/types/lecture-cours';
 
@@ -98,6 +98,8 @@ Première ligne de ta réponse : PAGES: <nombre de pages du document>. À partir
       },
     ],
     maxTokens: 16000,
+    // Recopie fidèle = de l'extraction : Haiku suffit (décision JP, 2026-10-12)
+    modele: MODELE_RAPIDE,
   });
 
   const { pages: pagesLues, texte } = lireTranscription(brut);

@@ -7,12 +7,16 @@
 // neuf passe par ici.
 //
 // Modèle : `claude-sonnet-5-5` pour le neuf (décision JP du 2026-10-08) — les
-// routes antérieures restent sur `claude-sonnet-4-5-20250929`.
+// routes antérieures restent sur `claude-sonnet-4-5-20250929`. Depuis le
+// 2026-10-12 (décision JP), un appel peut demander `MODELE_RAPIDE` (Haiku 5.5,
+// 20× moins cher) pour les tâches simples : transcription, résumé, repérage.
+// La répartition de la lecture de cours vit dans sa route des sections.
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { UsageClaude } from '@/types/lecture-cours';
 
 export const MODELE_CLAUDE = 'claude-sonnet-5-5';
+export const MODELE_RAPIDE = 'claude-haiku-5-5';
 
 let client: Anthropic | null = null;
 
@@ -49,6 +53,8 @@ export interface AppelClaude {
   /** La consigne de l'appel, ou un contenu riche (PDF + consigne) */
   user: string | Anthropic.ContentBlockParam[];
   maxTokens?: number;
+  /** Par défaut `MODELE_CLAUDE` ; `MODELE_RAPIDE` pour une tâche simple */
+  modele?: string;
 }
 
 export interface ReponseClaude {
@@ -77,7 +83,7 @@ export async function appelerClaude(appel: AppelClaude): Promise<ReponseClaude> 
     system.push({ type: 'text', text: appel.contexteCache, cache_control: { type: 'ephemeral' } });
   }
   const message = await clientClaude().messages.create({
-    model: MODELE_CLAUDE,
+    model: appel.modele ?? MODELE_CLAUDE,
     max_tokens: appel.maxTokens ?? 8000,
     system,
     messages: [{ role: 'user', content: appel.user }],

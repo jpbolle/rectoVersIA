@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { appelerClaudeJson } from '@/lib/claude';
+import { MODELE_CLAUDE, MODELE_RAPIDE, appelerClaudeJson } from '@/lib/claude';
 import { COLL_LECTURES, chargerLecture, estSectionCle } from '@/lib/lecture-cours-server';
 import { consigneSection, contenuValide, contexteCours, preambule } from '@/lib/prompts-lecture-cours';
 import { arbreVersDiagram } from '@/lib/lecture-cours-arbre';
+import type { SectionCle } from '@/types/lecture-cours';
 
 // POST — génère UNE section d'une lecture de cours et l'enregistre.
 //
@@ -16,6 +17,20 @@ import { arbreVersDiagram } from '@/lib/lecture-cours-arbre';
 // Une section « en cours » depuis plus longtemps que ça est considérée
 // abandonnée (onglet fermé pendant l'appel) et se relance
 const EN_COURS_PERIME_MS = 3 * 60 * 1000;
+
+// Le modèle de chaque section (décision JP du 2026-10-12, « selon les besoins
+// des exercices ») : Haiku 5.5 — 20× moins cher — pour reformuler et repérer ;
+// Sonnet 5.5 là où une erreur passerait inaperçue (traductions dans la langue
+// de l'élève, analyse grammaticale, faits sur son pays). Une section décevante
+// sur Haiku repasse sur Sonnet en changeant sa ligne ici.
+const MODELE_SECTION: Record<Exclude<SectionCle, 'resumeEleve'>, string> = {
+  resume: MODELE_RAPIDE,
+  saillants: MODELE_RAPIDE,
+  reformulation: MODELE_RAPIDE,
+  vocabulaire: MODELE_CLAUDE,
+  grammaire: MODELE_CLAUDE,
+  passerelle: MODELE_CLAUDE,
+};
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string; cle: string }> }) {
   const auth = await verifyAuth(request);
@@ -58,6 +73,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         // Phrases à la loupe : 7 400 à 7 750 jetons mesurés (5 phrases + arbres),
         // trop près de 8 000 — dépassé le 2026-10-11 (« Réponse trop longue »)
         maxTokens: cle === 'grammaire' ? 16000 : cle === 'reformulation' || cle === 'vocabulaire' ? 12000 : 8000,
+        modele: MODELE_SECTION[cle],
       });
       if (!contenuValide(cle, data)) throw new Error('Réponse incomplète du modèle.');
       // Phrases à la loupe : l'arbre emboîté devient un schéma du moteur

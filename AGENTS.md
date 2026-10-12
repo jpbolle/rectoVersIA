@@ -118,7 +118,9 @@ l'échelle** — toutes les corrections existantes en dépendent.
 Claude API et Whisper API : **jamais côté client** (clés exposées). Toujours via les API
 Routes. Modèle : `claude-sonnet-4-5-20250929` sur les routes existantes ; **tout nouvel
 appel passe par le helper `src/lib/claude.ts`** (client unique, cache de prompt, usage) sur
-`claude-sonnet-5-5` (décision JP, 2026-10-08).
+`claude-sonnet-5-5` (décision JP, 2026-10-08) ; **`MODELE_RAPIDE` = `claude-haiku-5-5`** (20× moins cher)
+pour les tâches simples — transcription, résumé, repérage — selon les besoins de chaque exercice
+(décision JP, 2026-10-12 ; répartition de la lecture de cours : `MODELE_SECTION`).
 
 ### VPS — jamais de SSH direct
 Ne **jamais** tenter de SSH sur le VPS Hostinger : fournir les commandes à l'utilisateur,
