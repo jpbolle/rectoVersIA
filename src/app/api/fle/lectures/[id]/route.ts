@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { COLL_LECTURES, chargerLecture, profPeutLire } from '@/lib/lecture-cours-server';
+import { COLL_LECTURES, accesLecture } from '@/lib/lecture-cours-server';
 import { profilLinguistique } from '@/lib/niveaux-fle-server';
 
 // Une lecture de cours.
@@ -9,28 +9,12 @@ import { profilLinguistique } from '@/lib/niveaux-fle-server';
 //  PATCH  — l'élève enregistre ses réponses (`reponses`, fusionnées par clé)
 //  DELETE — l'élève supprime sa lecture
 
-async function acces(
-  auth: { uid: string; email: string; role: 'prof' | 'eleve' },
-  id: string
-): Promise<{ lecture: Awaited<ReturnType<typeof chargerLecture>>; statut: number; message?: string }> {
-  const lecture = await chargerLecture(id);
-  if (!lecture) return { lecture: null, statut: 404, message: 'Lecture introuvable' };
-  if (auth.role === 'eleve') {
-    if (lecture.eleveUid !== auth.uid) return { lecture: null, statut: 403, message: 'Cette lecture n’est pas la tienne' };
-    return { lecture, statut: 200 };
-  }
-  if (!(await profPeutLire(auth, lecture.eleveId))) {
-    return { lecture: null, statut: 403, message: 'Cet élève n’est pas dans vos classes' };
-  }
-  return { lecture, statut: 200 };
-}
-
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await verifyAuth(request);
   if (!auth) return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 });
   const { id } = await params;
   try {
-    const r = await acces(auth, id);
+    const r = await accesLecture(auth, id);
     if (!r.lecture) return NextResponse.json({ success: false, message: r.message }, { status: r.statut });
     // Langue posée dans la fiche APRÈS l'import : la traduction au clic l'utilise
     // quand même (les sections, elles, restent telles qu'elles ont été générées)
@@ -54,7 +38,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   const { id } = await params;
   try {
-    const r = await acces(auth, id);
+    const r = await accesLecture(auth, id);
     if (!r.lecture) return NextResponse.json({ success: false, message: r.message }, { status: r.statut });
     const body = await request.json();
     const reponses = body?.reponses;
@@ -82,7 +66,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   }
   const { id } = await params;
   try {
-    const r = await acces(auth, id);
+    const r = await accesLecture(auth, id);
     if (!r.lecture) return NextResponse.json({ success: false, message: r.message }, { status: r.statut });
     await adminDb.collection(COLL_LECTURES).doc(id).delete();
     return NextResponse.json({ success: true });

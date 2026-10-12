@@ -55,7 +55,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         system: preambule(lecture.langue, lecture.niveau),
         contexteCache: contexteCours(lecture.titre, lecture.texte),
         user: consigneSection(cle, { langue: lecture.langue, niveau: lecture.niveau }),
-        maxTokens: cle === 'reformulation' || cle === 'vocabulaire' ? 12000 : 8000,
+        // Phrases à la loupe : 7 400 à 7 750 jetons mesurés (5 phrases + arbres),
+        // trop près de 8 000 — dépassé le 2026-10-11 (« Réponse trop longue »)
+        maxTokens: cle === 'grammaire' ? 16000 : cle === 'reformulation' || cle === 'vocabulaire' ? 12000 : 8000,
       });
       if (!contenuValide(cle, data)) throw new Error('Réponse incomplète du modèle.');
       // Phrases à la loupe : l'arbre emboîté devient un schéma du moteur

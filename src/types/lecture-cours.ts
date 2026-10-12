@@ -19,6 +19,9 @@ export interface SourceLecture {
   nomFichier?: string;
   // PDF : nombre de pages compté à l'import
   pages?: number;
+  // PDF conservé (depuis le 2026-10-12) : la fiche `documentsCours` — absente
+  // sur les lectures plus anciennes, dont le PDF n'a pas été gardé
+  documentId?: string;
 }
 
 // Les six sections, dans l'ordre d'apparition (et de génération)
@@ -230,6 +233,28 @@ export interface LectureCoursResume {
   sectionsPretes: number;
   createdAt: string;
 }
+
+// ── « Mes documents » : les PDF importés par l'élève (documentsCours/{id}) ──
+// Le fichier vit dans Google Drive (`driveFileId`, null si le dépôt a échoué) ;
+// la transcription est gardée pour relancer une lecture sans la repayer.
+
+export interface DocumentCours {
+  id: string;
+  eleveUid: string;
+  eleveId: string;
+  titre: string;
+  nomFichier: string;
+  pages: number;
+  octets: number;
+  driveFileId: string | null;
+  texte: string;
+  createdAt: string;
+}
+
+// La liste de « Mes documents » ne transporte pas la transcription
+export type DocumentCoursResume = Pick<DocumentCours, 'id' | 'titre' | 'nomFichier' | 'pages' | 'createdAt'> & {
+  conserve: boolean;
+};
 
 // ≈ 5 pages de texte. Au-delà, l'élève doit choisir une partie du cours :
 // c'est le sens même de la limite des 5 pages (demande JP).

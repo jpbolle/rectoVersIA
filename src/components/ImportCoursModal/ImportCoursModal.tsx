@@ -2,7 +2,8 @@
 
 // « Importer un cours » — la popup de l'élève FLE (2026-10-08).
 // Trois façons : un lien (Google Docs / Slides / Sheets partagé par lien, ou
-// une page web), un PDF de 5 pages au plus, ou du texte collé. L'extraction
+// une page web), un PDF de 5 pages au plus, ou du texte collé — plus « Mes
+// documents » (2026-10-12) : reprendre un PDF déjà importé, sans le relire. L'extraction
 // se fait côté serveur ; la popup ne fait que porter la demande et dire
 // clairement pourquoi un import est refusé (partage, pages, longueur).
 
@@ -10,9 +11,10 @@ import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { PDF_PAGES_MAX } from '@/types/lecture-cours';
+import type { DocumentCoursResume } from '@/types/lecture-cours';
 import styles from './ImportCoursModal.module.css';
 
-type Mode = 'lien' | 'pdf' | 'texte';
+type Mode = 'lien' | 'pdf' | 'texte' | 'documents';
 
 interface Props {
   isOpen: boolean;
@@ -30,11 +32,17 @@ export default function ImportCoursModal({ isOpen, onClose, onImported }: Props)
   const [fichier, setFichier] = useState<File | null>(null);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  // Mes documents : chargés à la première ouverture de l'onglet
+  const [documents, setDocuments] = useState<DocumentCoursResume[] | null>(null);
+  const [documentId, setDocumentId] = useState<string | null>(null);
 
   // Fermer remet la popup à zéro pour la prochaine ouverture
   const fermer = useCallback(() => {
     setErreur(null);
     setEnCours(false);
+    // La liste se recharge à la prochaine ouverture (un PDF a pu s'y ajouter)
+    setDocuments(null);
+    setDocumentId(null);
     onClose();
   }, [onClose]);
 
@@ -47,12 +55,32 @@ export default function ImportCoursModal({ isOpen, onClose, onImported }: Props)
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, enCours, fermer]);
 
+  useEffect(() => {
+    if (!isOpen || mode !== 'documents' || documents) return;
+    let annule = false;
+    (async () => {
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers) return;
+        const res = await fetch('/api/fle/documents', { headers });
+        const json = await res.json();
+        if (!annule) setDocuments(json.success ? (json.data as DocumentCoursResume[]) : []);
+      } catch {
+        if (!annule) setDocuments([]);
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [isOpen, mode, documents, getAuthHeaders]);
+
   if (!isOpen) return null;
 
   const pret =
     (mode === 'lien' && url.trim().length > 0) ||
     (mode === 'texte' && texte.trim().length >= 200) ||
-    (mode === 'pdf' && !!fichier);
+    (mode === 'pdf' && !!fichier) ||
+    (mode === 'documents' && !!documentId);
 
   const envoyer = async (e: FormEvent) => {
     e.preventDefault();
@@ -68,6 +96,10 @@ export default function ImportCoursModal({ isOpen, onClose, onImported }: Props)
       if (mode === 'lien') form.set('url', url.trim());
       if (mode === 'texte') form.set('texte', texte);
       if (mode === 'pdf' && fichier) form.set('fichier', fichier, fichier.name);
+      if (mode === 'documents' && documentId) {
+        form.set('mode', 'document');
+        form.set('documentId', documentId);
+      }
       // Pas de Content-Type : le navigateur pose lui-même la frontière du multipart.
       // `getAuthHeaders` impose « application/json » — on l'enlève, sinon le
       // serveur refuse le formulaire (« Content-Type was not one of multipart… »).
@@ -78,6 +110,8 @@ export default function ImportCoursModal({ isOpen, onClose, onImported }: Props)
       const res = await fetch('/api/fle/lectures', { method: 'POST', headers: entetes, body: form });
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Import impossible.');
+      setDocuments(null);
+      setDocumentId(null);
       onImported(json.data.id as string);
     } catch (err) {
       setErreur(err instanceof Error ? err.message : 'Import impossible.');
@@ -103,6 +137,7 @@ export default function ImportCoursModal({ isOpen, onClose, onImported }: Props)
                 ['lien', '🔗', 'Un lien'],
                 ['pdf', '📄', 'Un PDF'],
                 ['texte', '✂️', 'Du texte'],
+                ['documents', '📚', 'Mes documents'],
               ] as [Mode, string, string][]
             ).map(([m, picto, label]) => (
               <button
@@ -177,6 +212,40 @@ export default function ImportCoursModal({ isOpen, onClose, onImported }: Props)
                 autoFocus
               />
               <p className={styles.aide}>{texte.trim().length < 200 ? 'Au moins 200 caractères.' : `${texte.trim().length} caractères.`}</p>
+            </div>
+          )}
+
+          {mode === 'documents' && (
+            <div className={styles.field}>
+              <p className={styles.label}>Choisis un PDF que tu as déjà importé</p>
+              {documents === null ? (
+                <p className={styles.aide}>Chargement…</p>
+              ) : documents.length === 0 ? (
+                <p className={styles.aide}>Tu n’as encore importé aucun PDF. Utilise « Un PDF ».</p>
+              ) : (
+                <ul className={styles.documents} role="listbox" aria-label="Mes documents">
+                  {documents.map((d) => (
+                    <li key={d.id}>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={documentId === d.id}
+                        className={`${styles.document} ${documentId === d.id ? styles.documentActif : ''}`}
+                        onClick={() => setDocumentId(d.id)}
+                        disabled={enCours}
+                      >
+                        <span className={styles.documentTitre}>📄 {d.titre}</span>
+                        <span className={styles.documentMeta}>
+                          {d.pages} page{d.pages > 1 ? 's' : ''} ·{' '}
+                          {new Date(d.createdAt).toLocaleDateString('fr-BE', { day: 'numeric', month: 'long' })}
+                          {!d.conserve && ' · sans le PDF'}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className={styles.aide}>Une nouvelle lecture commence, prête tout de suite.</p>
             </div>
           )}
 

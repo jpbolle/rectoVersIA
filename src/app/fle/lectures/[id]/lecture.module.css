@@ -100,6 +100,14 @@
   color: var(--c-text-secondary);
 }
 
+.transcription > summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #345d85;
+  margin-bottom: 10px;
+}
+
 .panneauLien {
   margin-left: auto;
   font-size: 13px;

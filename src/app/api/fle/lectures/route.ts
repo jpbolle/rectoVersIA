@@ -3,9 +3,13 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { importerCours } from '@/lib/import-cours';
 import type { DemandeImport } from '@/lib/import-cours';
+import { deposerPdf, driveConfigure } from '@/lib/import-cours/drive';
 import {
+  COLL_DOCUMENTS,
   COLL_LECTURES,
+  chargerDocument,
   ficheFleDeLEleve,
+  genererIdDocument,
   genererIdLecture,
   lecturesDe,
   profPeutLire,
@@ -17,7 +21,8 @@ import { sectionsVides } from '@/types/lecture-cours';
 //
 //  GET            — l'élève connecté liste SES lectures (résumés)
 //  GET ?eleveId=  — un prof liste celles d'un élève de sa classe FLE
-//  POST           — l'élève importe un cours (multipart : lien, PDF ou texte)
+//  POST           — l'élève importe un cours (multipart : lien, PDF ou texte),
+//                   ou reprend un PDF de « Mes documents » (mode `document`)
 
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -64,38 +69,84 @@ export async function POST(request: NextRequest) {
     const form = await request.formData();
     const mode = String(form.get('mode') || '');
     const titre = String(form.get('titre') || '');
-    let demande: DemandeImport;
-    if (mode === 'lien') {
-      const url = String(form.get('url') || '').trim();
-      if (!url) return NextResponse.json({ success: false, message: 'Colle un lien.' }, { status: 400 });
-      demande = { mode: 'lien', url, titre };
-    } else if (mode === 'texte') {
-      const texte = String(form.get('texte') || '');
-      demande = { mode: 'texte', texte, titre };
-    } else if (mode === 'pdf') {
-      const fichier = form.get('fichier');
-      if (!(fichier instanceof File)) {
-        return NextResponse.json({ success: false, message: 'Dépose un fichier PDF.' }, { status: 400 });
+
+    // Reprise d'un PDF déjà importé : sa transcription est réutilisée, sans appel IA
+    let resultat: Awaited<ReturnType<typeof importerCours>>;
+    if (mode === 'document') {
+      const documentCours = await chargerDocument(String(form.get('documentId') || ''));
+      if (!documentCours || documentCours.eleveUid !== auth.uid) {
+        return NextResponse.json({ success: false, message: 'Document introuvable.' }, { status: 404 });
       }
-      demande = {
-        mode: 'pdf',
-        buffer: Buffer.from(await fichier.arrayBuffer()),
-        nomFichier: fichier.name || 'cours.pdf',
-        titre,
+      resultat = {
+        titre: titre.trim().slice(0, 120) || documentCours.titre,
+        texte: documentCours.texte,
+        source: {
+          type: 'pdf',
+          nomFichier: documentCours.nomFichier,
+          pages: documentCours.pages,
+          documentId: documentCours.id,
+        },
       };
     } else {
-      return NextResponse.json({ success: false, message: 'Mode d’import inconnu.' }, { status: 400 });
-    }
+      let demande: DemandeImport;
+      if (mode === 'lien') {
+        const url = String(form.get('url') || '').trim();
+        if (!url) return NextResponse.json({ success: false, message: 'Colle un lien.' }, { status: 400 });
+        demande = { mode: 'lien', url, titre };
+      } else if (mode === 'texte') {
+        const texte = String(form.get('texte') || '');
+        demande = { mode: 'texte', texte, titre };
+      } else if (mode === 'pdf') {
+        const fichier = form.get('fichier');
+        if (!(fichier instanceof File)) {
+          return NextResponse.json({ success: false, message: 'Dépose un fichier PDF.' }, { status: 400 });
+        }
+        demande = {
+          mode: 'pdf',
+          buffer: Buffer.from(await fichier.arrayBuffer()),
+          nomFichier: fichier.name || 'cours.pdf',
+          titre,
+        };
+      } else {
+        return NextResponse.json({ success: false, message: 'Mode d’import inconnu.' }, { status: 400 });
+      }
 
-    // L'extraction dit elle-même pourquoi elle refuse (pages, partage, longueur)
-    let resultat;
-    try {
-      resultat = await importerCours(demande);
-    } catch (err) {
-      return NextResponse.json(
-        { success: false, message: err instanceof Error ? err.message : 'Import impossible.' },
-        { status: 422 }
-      );
+      // L'extraction dit elle-même pourquoi elle refuse (pages, partage, longueur)
+      try {
+        resultat = await importerCours(demande);
+      } catch (err) {
+        return NextResponse.json(
+          { success: false, message: err instanceof Error ? err.message : 'Import impossible.' },
+          { status: 422 }
+        );
+      }
+
+      // PDF accepté (pages et texte vérifiés) : on le conserve dans « Mes documents ».
+      // Un échec de Drive n'empêche pas la lecture : elle s'affiche alors en transcription seule.
+      if (demande.mode === 'pdf') {
+        const documentId = genererIdDocument();
+        let driveFileId: string | null = null;
+        if (driveConfigure()) {
+          try {
+            driveFileId = await deposerPdf(demande.buffer, `${documentId} — ${resultat.titre}.pdf`);
+          } catch (err) {
+            console.error('Dépôt Drive du PDF impossible:', err);
+          }
+        }
+        await adminDb.collection(COLL_DOCUMENTS).doc(documentId).set({
+          id: documentId,
+          eleveUid: auth.uid,
+          eleveId: fiche.eleveId,
+          titre: resultat.titre,
+          nomFichier: demande.nomFichier,
+          pages: resultat.source.pages ?? 0,
+          octets: demande.buffer.length,
+          driveFileId,
+          texte: resultat.texte,
+          createdAt: new Date(),
+        });
+        resultat.source = { ...resultat.source, documentId };
+      }
     }
 
     // Langue et niveau copiés au moment de l'import : la lecture reste

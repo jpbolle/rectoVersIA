@@ -4,9 +4,17 @@ import { adminDb } from '@/lib/firebase/admin';
 import { accesClasseDepuisDoc } from '@/lib/classe-acces';
 import { queryElevesByEmail } from '@/lib/eleve-lookup';
 import { SECTIONS_ORDRE, sectionsVides } from '@/types/lecture-cours';
-import type { LectureCours, LectureCoursResume, SectionCle, SectionLecture } from '@/types/lecture-cours';
+import type {
+  DocumentCours,
+  DocumentCoursResume,
+  LectureCours,
+  LectureCoursResume,
+  SectionCle,
+  SectionLecture,
+} from '@/types/lecture-cours';
 
 export const COLL_LECTURES = 'lecturesCours';
+export const COLL_DOCUMENTS = 'documentsCours';
 
 function toISO(v: unknown): string {
   if (!v) return '';
@@ -19,6 +27,10 @@ export function genererIdLecture(): string {
   const d = new Date();
   const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
   return `LEC-${ymd}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+}
+
+export function genererIdDocument(): string {
+  return genererIdLecture().replace(/^LEC-/, 'DOC-');
 }
 
 function lireSection(raw: unknown): SectionLecture {
@@ -126,4 +138,64 @@ export async function lecturesDe(champ: 'eleveUid' | 'eleveId', valeur: string):
 
 export function estSectionCle(v: string): v is SectionCle {
   return (SECTIONS_ORDRE as string[]).includes(v);
+}
+
+/**
+ * Accès à une lecture : son auteur (élève) ou un prof de sa classe FLE.
+ * Partagé par les routes de `/api/fle/lectures/[id]`.
+ */
+export async function accesLecture(
+  auth: { uid: string; email: string; role: 'prof' | 'eleve' },
+  id: string
+): Promise<{ lecture: LectureCours | null; statut: number; message?: string }> {
+  const lecture = await chargerLecture(id);
+  if (!lecture) return { lecture: null, statut: 404, message: 'Lecture introuvable' };
+  if (auth.role === 'eleve') {
+    if (lecture.eleveUid !== auth.uid) return { lecture: null, statut: 403, message: 'Cette lecture n’est pas la tienne' };
+    return { lecture, statut: 200 };
+  }
+  if (!(await profPeutLire(auth, lecture.eleveId))) {
+    return { lecture: null, statut: 403, message: 'Cet élève n’est pas dans vos classes' };
+  }
+  return { lecture, statut: 200 };
+}
+
+// ── Mes documents ──
+
+export function lireDocument(id: string, data: FirebaseFirestore.DocumentData): DocumentCours {
+  return {
+    id,
+    eleveUid: String(data.eleveUid ?? ''),
+    eleveId: String(data.eleveId ?? ''),
+    titre: String(data.titre ?? ''),
+    nomFichier: String(data.nomFichier ?? ''),
+    pages: Number(data.pages ?? 0),
+    octets: Number(data.octets ?? 0),
+    driveFileId: typeof data.driveFileId === 'string' ? data.driveFileId : null,
+    texte: String(data.texte ?? ''),
+    createdAt: toISO(data.createdAt),
+  };
+}
+
+export async function chargerDocument(id: string): Promise<DocumentCours | null> {
+  const doc = await adminDb.collection(COLL_DOCUMENTS).doc(id).get();
+  return doc.exists ? lireDocument(doc.id, doc.data()!) : null;
+}
+
+export async function documentsDe(eleveUid: string): Promise<DocumentCoursResume[]> {
+  // Pas d'orderBy : il imposerait un index composite ; la liste est courte
+  const snap = await adminDb.collection(COLL_DOCUMENTS).where('eleveUid', '==', eleveUid).get();
+  return snap.docs
+    .map((d) => {
+      const x = lireDocument(d.id, d.data());
+      return {
+        id: x.id,
+        titre: x.titre,
+        nomFichier: x.nomFichier,
+        pages: x.pages,
+        createdAt: x.createdAt,
+        conserve: !!x.driveFileId,
+      };
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

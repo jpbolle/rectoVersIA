@@ -21,6 +21,7 @@ import WorkspaceRail from '@/components/WorkspaceRail';
 import type { RailTab } from '@/components/WorkspaceRail';
 import DictionaryClickLayer from '@/components/DictionaryClickLayer/DictionaryClickLayer';
 import EmptyState from '@/components/EmptyState/EmptyState';
+import PdfOriginal from '@/components/PdfOriginal/PdfOriginal';
 import Accordeon from '@/components/Accordeon/Accordeon';
 import type { Volet } from '@/components/Accordeon/Accordeon';
 import {
@@ -432,7 +433,18 @@ export default function LectureCoursPage() {
                         </label>
                       )}
                     </div>
-                    <Paragraphes texte={lecture.texte} />
+                    {lecture.source.documentId ? (
+                      // PDF conservé : le document tel quel, la transcription en dessous
+                      <>
+                        <PdfOriginal lectureId={lecture.id} titre={lecture.titre} />
+                        <details className={styles.transcription}>
+                          <summary>Le texte du cours (mots cliquables)</summary>
+                          <Paragraphes texte={lecture.texte} />
+                        </details>
+                      </>
+                    ) : (
+                      <Paragraphes texte={lecture.texte} />
+                    )}
                   </>
                 ) : (
                   <p className={styles.vide}>Chargement…</p>
