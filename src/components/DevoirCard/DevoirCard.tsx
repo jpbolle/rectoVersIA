@@ -20,6 +20,8 @@ interface DevoirCardProps {
   onToggleArchive?: (id: string, archive: boolean) => void;
   onToggleCorrige?: (id: string, corrige: boolean) => void;
   onToggleCorrigeDisponible?: (id: string, corrigeDisponible: boolean) => void;
+  /** Clic sur la carte : à la place des copies (séquence FLE → sa ligne du temps) */
+  onOuvrir?: (devoir: Devoir) => void;
 }
 
 export default function DevoirCard({
@@ -32,6 +34,7 @@ export default function DevoirCard({
   onToggleArchive,
   onToggleCorrige,
   onToggleCorrigeDisponible,
+  onOuvrir,
 }: DevoirCardProps) {
   const router = useRouter();
   const [sessionsOuvertes, setSessionsOuvertes] = useState(false);
@@ -48,7 +51,8 @@ export default function DevoirCard({
   const enDirect = estCompetition || sondageEnDirect;
   // Activité FLE : sans classe et toujours fermée — seule une séquence FLE
   // l'ouvre. « Disponible » n'a donc pas de sens sur sa carte.
-  const fle = devoir.referentiel === 'fle';
+  // Une SÉQUENCE FLE, elle, s'ouvre bien aux élèves : elle garde la bascule.
+  const fle = devoir.referentiel === 'fle' && devoir.typeTravail !== 'sequence';
   // Activité d'un AUTRE prof, sur une classe dont je suis titulaire ou
   // coprofesseur (2026-10-04) : je ne la modifie pas, je n'actionne pas ses
   // bascules globales (elles toucheraient ses autres classes). Tout passe
@@ -105,7 +109,9 @@ export default function DevoirCard({
   };
 
   const handleCardClick = () => {
-    if (variant === 'student') {
+    if (onOuvrir) {
+      onOuvrir(devoir);
+    } else if (variant === 'student') {
       router.push(`/activites/${devoir.id}`);
     } else if (variant === 'prof') {
       router.push(`/dashboard/travaux/${devoir.id}`);
@@ -341,7 +347,7 @@ export default function DevoirCard({
         />
       )}
 
-      {variant === 'prof' && !partagee && (
+      {variant === 'prof' && !partagee && onEdit && (
         <button
           className={styles.editButton}
           onClick={handleEdit}
@@ -351,7 +357,7 @@ export default function DevoirCard({
         </button>
       )}
 
-      {variant === 'prof' && (
+      {variant === 'prof' && onDuplicate && (
         <button
           className={styles.duplicateButton}
           onClick={handleDuplicate}
@@ -364,7 +370,7 @@ export default function DevoirCard({
         </button>
       )}
 
-      {variant === 'prof' && !partagee && (
+      {variant === 'prof' && !partagee && onDelete && (
         <button
           className={styles.deleteButton}
           onClick={handleDelete}

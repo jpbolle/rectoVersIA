@@ -41,6 +41,9 @@ export default function ModuleFlePanel() {
   const [enEdition, setEnEdition] = useState<ModuleFle | null>(null);
   const [lectureSeule, setLectureSeule] = useState(false);
   const [aArchiver, setAArchiver] = useState<ModuleFle | null>(null);
+  // Mes points de théorie : les actifs OU les archivés, jamais mélangés
+  // (JP, 2026-10-13)
+  const [vueArchives, setVueArchives] = useState(false);
 
   const charger = useCallback(async () => {
     setChargement(true);
@@ -125,6 +128,27 @@ export default function ModuleFlePanel() {
     }
   }, [aArchiver, charger]);
 
+  // Restaurer un point archivé : réversible, donc sans popup
+  const restaurer = useCallback(
+    async (m: ModuleFle) => {
+      try {
+        const headers = await headersRef.current();
+        const res = await fetch(`/api/modules-fle/${m.id}`, {
+          method: 'PATCH',
+          headers: { ...(headers || {}), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ archive: false }),
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        setMessage(`« ${m.titre} » restauré`);
+        charger();
+      } catch (e) {
+        setMessage(e instanceof Error ? e.message : 'Erreur');
+      }
+    },
+    [charger]
+  );
+
   const togglePartage = useCallback(
     async (m: ModuleFle) => {
       try {
@@ -156,6 +180,9 @@ export default function ModuleFlePanel() {
     );
   }
 
+  const actifs = paniers.miens.filter((m) => !m.archive);
+  const archives = paniers.miens.filter((m) => m.archive);
+
   const grille = (liste: ModuleFle[], mienne: boolean, avecCarteAjout = false) => (
     <div className={styles.grille}>
       {avecCarteAjout && (
@@ -177,6 +204,7 @@ export default function ModuleFlePanel() {
           }}
           onDupliquer={dupliquer}
           onArchiver={mienne ? (x) => setAArchiver(x) : undefined}
+          onRestaurer={mienne ? restaurer : undefined}
           onTogglePartage={mienne ? togglePartage : undefined}
         />
       ))}
@@ -221,7 +249,33 @@ export default function ModuleFlePanel() {
                 de théorie alterne avec des activités ; il sert à autant de séquences qu’on veut.
               </p>
             </div>
-            {grille(paniers.miens, true, true)}
+            <div className={styles.bascule} role="tablist" aria-label="Mes points de théorie">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!vueArchives}
+                className={`${styles.basculeBtn} ${!vueArchives ? styles.basculeActive : ''}`}
+                onClick={() => setVueArchives(false)}
+              >
+                Actifs ({actifs.length})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={vueArchives}
+                className={`${styles.basculeBtn} ${vueArchives ? styles.basculeActive : ''}`}
+                onClick={() => setVueArchives(true)}
+              >
+                Archivés ({archives.length})
+              </button>
+            </div>
+            {!vueArchives ? (
+              grille(actifs, true, true)
+            ) : archives.length === 0 ? (
+              <p className={styles.groupeAide}>Aucun point de théorie archivé.</p>
+            ) : (
+              grille(archives, true)
+            )}
           </section>
 
           {section('Points de théorie partagés', 'exemples proposés à tous', paniers.exemples)}

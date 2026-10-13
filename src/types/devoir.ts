@@ -6,6 +6,7 @@ import type { AutoEvalQuestionnaire } from './autoevaluation';
 import type { TypeModal } from './didactique';
 import type { SequenceFleContenu } from './sequence-fle';
 import type { PortfolioContenu } from './portfolio';
+import type { RessourceDiaporama } from './diaporama';
 
 export type Classe = string;
 // Le DISPOSITIF d'une activité : la machinerie que l'app sait afficher.
@@ -103,6 +104,8 @@ export interface DevoirRessource {
   /** URLs YouTube ou Google Drive — lues via `normaliserVideos` (deux formes en base) */
   videos?: RessourceVideoStockee[];
   interactifs?: RessourceInteractif[]; // Contenus embarqués (onglet Interactif)
+  /** Diaporama (onglet Diaporama — points de théorie FLE seulement, plan 2026-10-13) */
+  diaporama?: RessourceDiaporama;
   /** Titres des deux blocs uniques ; à défaut « Outils » et « Document » */
   outilsTitre?: string;
   documentTitre?: string;

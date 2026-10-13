@@ -1,316 +1,107 @@
-/* Parcours d'une séquence FLE, côté élève — grand, aéré, peu de texte */
-.parcours {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 28px 20px 60px;
+/* Séquence FLE côté élève — page de travail à deux colonnes (plan 2026-10-13).
+   Colonne 1 : l'étape ouverte, au gabarit des colonnes de travail (carte
+   blanche, en-tête, corps qui défile). Rail : le sommaire. Public DASPA :
+   grand, aéré, peu de texte. */
+
+/* ── Colonne 1 ── */
+.colonne {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 26px;
-}
-
-.entete {
-  text-align: center;
-}
-
-.titre {
-  font-family: var(--c-font-title);
-  font-size: 28px;
-  color: var(--c-primary);
-  margin: 0 0 6px;
-}
-
-.sousTitre {
-  margin: 0;
-  font-size: 16px;
-  color: var(--c-text-secondary);
-}
-
-/* ── Ligne de progression ── */
-.ligne {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cran {
-  display: flex;
-  align-items: center;
-}
-
-.cranBouton {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 3px solid var(--c-border-strong);
   background: var(--c-bg-card);
-  color: var(--c-text-secondary);
-  font-size: 16px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-.cranBouton:hover {
-  transform: scale(1.08);
-}
-
-.cranFait {
-  background: var(--c-success);
-  border-color: var(--c-success);
-  color: #fff;
-}
-
-.cranCourant {
-  border-color: #4a7ba7;
-  color: #4a7ba7;
-  box-shadow: 0 0 0 5px rgba(74, 123, 167, 0.18);
-}
-
-.trait {
-  width: clamp(24px, 6vw, 64px);
-  height: 4px;
-  background: var(--c-border);
-}
-
-.traitFait {
-  background: var(--c-success);
-}
-
-/* ── Modules ── */
-.modules {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.module {
-  background: var(--c-bg-card);
-  border: 1.5px solid var(--c-border);
-  border-radius: 14px;
+  border-radius: var(--c-radius-lg);
+  box-shadow: var(--c-shadow-card);
   overflow: hidden;
 }
 
-.moduleFait {
-  border-color: rgba(45, 138, 78, 0.45);
-}
-
-.moduleEntete {
+.entete {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 16px;
-  width: 100%;
-  padding: 16px 20px;
-  border: none;
-  background: none;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
+  padding: 16px 22px;
+  background: #98adc4;
+  border-bottom: 1px solid #8a9fb8;
 }
 
-.moduleEntete:hover {
-  background: var(--c-bg-element);
-}
-
-.modulePicto {
+.entetePicto {
   font-size: 34px;
   line-height: 1;
 }
 
-.moduleTexte {
+.enteteTexte {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
 }
 
-.moduleNum {
+.enteteNum {
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--c-text-muted);
+  color: #2f4a66;
 }
 
-.moduleTitre {
+.enteteTitre {
   font-family: var(--c-font-title);
-  font-size: 20px;
-  color: var(--c-text);
+  font-size: 22px;
+  color: #1f3550;
 }
 
-.moduleMeta {
+.enteteMeta {
   font-size: 13px;
-  color: var(--c-text-secondary);
+  color: #2f4a66;
 }
 
-.moduleChevron {
-  font-size: 18px;
-  color: var(--c-text-muted);
+.etat {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 700;
+  color: #2f4a66;
+}
+.etatFait {
+  background: #fff;
+  color: var(--c-success);
 }
 
-.moduleCorps {
-  padding: 4px 20px 20px;
+.corps {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px 26px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-}
-
-.theorie {
-  background: rgba(74, 123, 167, 0.07);
-  border: 1px solid rgba(74, 123, 167, 0.25);
-  border-radius: 10px;
-  padding: 10px 16px;
-}
-
-.theorieTitre {
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 15px;
-  color: #345d85;
+  gap: 16px;
 }
 
 .theorieTexte {
-  margin-top: 10px;
   font-size: 17px;
   line-height: 1.7;
   color: var(--c-text);
 }
-
 .theorieTexte h2 {
   font-size: 19px;
   margin: 14px 0 6px;
 }
-
 .theorieTexte h3 {
   font-size: 17px;
   margin: 12px 0 4px;
 }
-
 .theorieTexte p {
   margin: 0 0 8px;
 }
-
 .theorieTexte ul,
 .theorieTexte ol {
   margin: 0 0 8px;
   padding-left: 22px;
-}
-
-.vide {
-  margin: 0;
-  font-size: 14px;
-  color: var(--c-text-muted);
-}
-
-/* ── Activités ── */
-.activites {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.activite {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border: 1.5px solid var(--c-border);
-  border-radius: 12px;
-  background: var(--c-bg-card);
-  text-decoration: none;
-  color: var(--c-text);
-  transition: border-color 0.15s ease, transform 0.15s ease;
-}
-
-.activite:hover {
-  border-color: var(--c-primary);
-  transform: translateX(3px);
-}
-
-.activiteEtat {
-  font-size: 22px;
-  line-height: 1;
-  color: var(--c-border-strong);
-}
-
-.activite_en_cours .activiteEtat {
-  color: var(--c-accent);
-}
-
-.activite_fait .activiteEtat {
-  color: var(--c-success);
-}
-
-.activite_fait {
-  background: rgba(45, 138, 78, 0.06);
-}
-
-.activiteNom {
-  flex: 1;
-  font-size: 17px;
-  font-weight: 600;
-  min-width: 0;
-}
-
-.activiteType {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--c-bg-element);
-  color: var(--c-text-secondary);
-}
-
-.activiteLabel {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--c-text-secondary);
-  min-width: 62px;
-  text-align: right;
-}
-
-.activite_fait .activiteLabel {
-  color: var(--c-success);
-}
-
-.activite_en_cours .activiteLabel {
-  color: var(--c-accent-dark);
-}
-
-/* ── Étapes de nature différente ── */
-.cranTheorie {
-  border-color: rgba(74, 123, 167, 0.6);
-  font-size: 18px;
-}
-
-.activiteCourante {
-  border-color: #4a7ba7;
-  box-shadow: 0 0 0 4px rgba(74, 123, 167, 0.15);
-}
-
-.activiteTexte {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.activiteNum {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-text-muted);
 }
 
 /* Les volets de ressources, dans un cadre neutre */
@@ -319,4 +110,279 @@
   border-radius: 10px;
   background: var(--c-bg);
   overflow: hidden;
+}
+
+.vide {
+  margin: 0;
+  font-size: 14px;
+  color: var(--c-text-muted);
+}
+
+.erreur {
+  margin: 0;
+  font-size: 14px;
+  color: var(--c-danger);
+}
+
+/* « J'ai lu » : à droite, sous le contenu — même bouton que la lecture de cours */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+.btnLu {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 9px 18px;
+  border: 1.5px solid #4a7ba7;
+  border-radius: 999px;
+  background: #4a7ba7;
+  color: #fff;
+  cursor: pointer;
+}
+.btnLu:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.luFait {
+  margin: 0;
+  font-weight: 700;
+  color: #2f7a4a;
+}
+
+/* Une activité : sa carte, qui ouvre l'écran habituel */
+.activite {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 22px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-bg-card);
+  text-decoration: none;
+  color: var(--c-text);
+  transition: border-color 0.15s ease;
+}
+.activite:hover {
+  border-color: var(--c-primary);
+}
+.activite_fait {
+  background: rgba(45, 138, 78, 0.06);
+}
+.activitePicto {
+  font-size: 34px;
+  line-height: 1;
+}
+.activiteTexte {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.activiteNom {
+  font-size: 18px;
+  font-weight: 600;
+}
+.activiteType {
+  width: fit-content;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--c-bg-element);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}
+.activiteLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+.activite_fait .activiteLabel {
+  color: var(--c-success);
+}
+.activite_en_cours .activiteLabel {
+  color: var(--c-accent-dark);
+}
+.activiteOuvrir {
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Pied : étape précédente / suivante */
+.pied {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-bg);
+}
+.nav {
+  padding: 8px 14px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+.nav:hover:not(:disabled) {
+  color: var(--c-primary);
+  border-color: var(--c-primary);
+}
+.nav:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── Rail : sommaire de la séquence ── */
+.sommaire {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+.sommaireVide {
+  padding: 16px;
+  color: var(--c-text-muted);
+}
+
+.sommaireConsignes {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--c-bg);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.sommaireConsignes p {
+  margin: 0 0 4px;
+}
+.sommaireConsigneTitre {
+  font-weight: 700;
+}
+
+.sommaireCompteur {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+.sommaireBarre {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--c-bg-element);
+}
+.sommaireBarre i {
+  display: block;
+  height: 100%;
+  background: var(--c-success);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.sommaireListe {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sommaireItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sommaireItem:hover {
+  background: var(--c-bg);
+}
+.sommaireItemActif,
+.sommaireItemActif:hover {
+  border-color: rgba(74, 123, 167, 0.5);
+  background: rgba(74, 123, 167, 0.08);
+}
+.sommaireCase {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--c-border-strong);
+  border-radius: 4px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+.sommaireCaseFaite {
+  border-color: var(--c-success);
+  background: var(--c-success);
+}
+.sommaireTexte {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sommaireNum {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+.sommaireTitre {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+.sommaireTitreFait {
+  color: var(--c-text-secondary);
+}
+.sommaireEnCours {
+  font-size: 12px;
+  color: var(--c-accent-dark);
+}
+.sommaireLegende {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+@media (max-width: 700px) {
+  .entete {
+    padding: 12px 14px;
+  }
+  .corps {
+    padding: 16px;
+  }
+  .activite {
+    flex-wrap: wrap;
+  }
 }

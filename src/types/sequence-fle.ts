@@ -65,6 +65,8 @@ export interface EtapeParcoursTheorie {
   competences: string[];
   introduction: string; // HTML
   ressources: import('./devoir').DevoirRessource | null;
+  /** « J'ai lu, je continue » cliqué par l'élève (plan 2026-10-13) — prof : toujours à faire */
+  etat: 'a-faire' | 'fait';
 }
 
 export interface EtapeParcoursActivite {

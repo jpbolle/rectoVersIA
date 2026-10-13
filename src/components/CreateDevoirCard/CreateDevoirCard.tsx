@@ -4,9 +4,11 @@ import styles from './CreateDevoirCard.module.css';
 
 interface CreateDevoirCardProps {
   onClick: () => void;
+  /** « Créer une séquence » pour les séquences FLE */
+  libelle?: string;
 }
 
-export default function CreateDevoirCard({ onClick }: CreateDevoirCardProps) {
+export default function CreateDevoirCard({ onClick, libelle = 'Créer un nouveau travail' }: CreateDevoirCardProps) {
   return (
     <article
       className={styles.card}
@@ -17,7 +19,7 @@ export default function CreateDevoirCard({ onClick }: CreateDevoirCardProps) {
     >
       <div className={styles.content}>
         <span className={styles.icon}>+</span>
-        <h3 className={styles.title}>Créer un nouveau travail</h3>
+        <h3 className={styles.title}>{libelle}</h3>
       </div>
     </article>
   );

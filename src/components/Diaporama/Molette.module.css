@@ -1,0 +1,52 @@
+/* Bouton rotatif (Molette) */
+.molette {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bouton {
+  display: flex;
+  border-radius: 50%;
+  cursor: ns-resize;
+  touch-action: none;
+  outline: none;
+  user-select: none;
+}
+.bouton:focus-visible {
+  box-shadow: 0 0 0 3px rgba(45, 106, 90, 0.25);
+}
+
+.piste {
+  fill: none;
+  stroke: var(--c-border);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.arc {
+  fill: none;
+  stroke: var(--c-primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.tete {
+  fill: #fff;
+  stroke: var(--c-border-strong);
+  stroke-width: 1;
+}
+.bouton:hover .tete {
+  fill: var(--c-bg);
+}
+.aiguille {
+  stroke: var(--c-primary-dark);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.valeur {
+  min-width: 40px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+}

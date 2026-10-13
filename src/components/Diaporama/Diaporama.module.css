@@ -1,0 +1,427 @@
+/* Diaporama — afficheur (plan 2026-10-13). Les tailles internes à la dia sont
+   en « cqw » (% de la largeur du cadre) : la dia garde ses proportions, en
+   petit comme en plein écran. */
+
+.diaporama {
+  outline: none;
+}
+.diaporama:focus-visible {
+  box-shadow: 0 0 0 4px rgba(45, 106, 90, 0.2);
+  border-radius: 12px;
+}
+
+/* Plein écran : fond sombre, dia centrée, la barre en dessous */
+.diaporama:fullscreen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px;
+  background: #1c2b27;
+}
+.diaporama:fullscreen .cadre {
+  width: min(100%, calc((100vh - 7rem) * 16 / 9));
+  border-width: 12px;
+}
+.diaporama:fullscreen .compteur {
+  background: var(--c-primary-light);
+}
+.diaporama:fullscreen .pleinEcran {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+/* ── Le cadre 16:9 ── */
+.cadre {
+  container-type: inline-size;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0 auto;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 8px solid var(--c-primary);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--c-text);
+  font-family: var(--c-font-body);
+}
+
+.cadreMiniature {
+  border-width: 3px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.vide {
+  margin: auto;
+  padding: 0 4cqw;
+  text-align: center;
+  font-size: 1.8cqw;
+  font-style: italic;
+  color: var(--c-text-muted);
+}
+
+/* ── Dia classique ── */
+.dia {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 3.5cqw 5cqw 4cqw;
+}
+
+.diaTitre {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 4.2cqw;
+  line-height: 1.15;
+  font-weight: 700;
+  color: var(--c-primary-dark);
+}
+
+.diaCorps {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 4cqw;
+  margin-top: 2.5cqw;
+}
+.diaCorpsImages {
+  align-items: center;
+}
+
+.colonneMots {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.8cqw;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.texte {
+  font-size: 2cqw;
+  line-height: 1.4;
+  color: var(--c-text);
+}
+
+/* Encadré : une forme à retenir — étiquette à gauche, valeur en gros */
+.encadre {
+  display: flex;
+  align-items: center;
+  gap: 1.5cqw;
+  padding: 0.9cqw 1.5cqw;
+  border-left: 0.5cqw solid var(--c-accent);
+  border-radius: 1cqw;
+  background: rgba(212, 148, 76, 0.1);
+}
+.encadreLabel {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.8cqw;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--c-text-secondary);
+}
+.encadreValeur {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 2.6cqw;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--c-primary-dark);
+}
+.encadreVide {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 1.6cqw;
+  font-style: italic;
+  color: var(--c-text-muted);
+}
+
+/* Lien : un bouton */
+.lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8cqw;
+  width: fit-content;
+  padding: 0.9cqw 1.6cqw;
+  border-radius: 1cqw;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 1.9cqw;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: background 0.15s;
+}
+.lien:hover {
+  background: var(--c-primary-dark);
+}
+.lien:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(212, 148, 76, 0.6);
+}
+.lienIcone {
+  flex-shrink: 0;
+  width: 1.8cqw;
+  height: 1.8cqw;
+}
+.lienVide {
+  margin: 0;
+  font-size: 1.8cqw;
+  font-style: italic;
+  color: var(--c-text-muted);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Images */
+.colonneImages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3cqw;
+  min-height: 0;
+  min-width: 0;
+  flex-shrink: 0;
+}
+.colonneImagesCote {
+  flex-direction: column;
+}
+.colonneImagesSeule {
+  flex: 1;
+  height: 100%;
+}
+
+.image {
+  object-fit: contain;
+}
+
+.imageFixe,
+.imageCliquable {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+.imageCliquable {
+  padding: 0;
+  border: none;
+  border-radius: 1cqw;
+  background: none;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.imageCliquable:hover {
+  transform: scale(1.03);
+}
+.imageCliquable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(212, 148, 76, 0.6);
+}
+
+.imageAttente {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 0;
+  border: 0.2cqw dashed var(--c-border);
+  border-radius: 1cqw;
+  font-size: 1.6cqw;
+  color: var(--c-text-muted);
+}
+
+/* Fenêtre au clic sur une image */
+.voile {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(28, 43, 39, 0.6);
+  backdrop-filter: blur(2px);
+}
+.fenetre {
+  position: relative;
+  max-width: 768px;
+  max-height: 90vh;
+  overflow: auto;
+}
+.fermer {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--c-text);
+  font-size: 15px;
+  box-shadow: var(--c-shadow-popup);
+  cursor: pointer;
+}
+.fermer:hover {
+  background: var(--c-bg-element);
+}
+.imageGrande {
+  display: block;
+  max-width: 100%;
+  max-height: 85vh;
+  border-radius: 8px;
+  background: #fff;
+  object-fit: contain;
+}
+.fenetreTexte {
+  padding: 34px 56px 28px 28px;
+  border-radius: 12px;
+  background: #fff;
+  /* Bandeau vert en haut, en ombre intérieure : il épouse les coins arrondis */
+  box-shadow: inset 0 6px 0 var(--c-primary), var(--c-shadow-popup);
+}
+.fenetreTitre {
+  margin: 0 0 14px;
+  font-family: var(--c-font-title);
+  font-size: 22px;
+  color: var(--c-primary-dark);
+}
+.fenetreCorps {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--c-text);
+}
+
+/* ── Dia HTML ── */
+.htmlBoite {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+.htmlCadre {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+}
+
+/* ── Barre de navigation ── */
+.barre {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.point {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--c-border);
+  cursor: pointer;
+  transition: width 0.2s, background 0.2s;
+}
+.point:hover {
+  background: var(--c-border-strong);
+}
+.pointActif,
+.pointActif:hover {
+  width: 24px;
+  background: var(--c-primary);
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fleche {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--c-primary);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.fleche:hover:not(:disabled) {
+  background: var(--c-primary-dark);
+}
+.fleche:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.compteur {
+  min-width: 56px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--c-primary-dark);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.droite {
+  display: flex;
+  justify-content: flex-end;
+}
+.pleinEcran {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--c-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.pleinEcran:hover {
+  background: var(--c-bg);
+  color: var(--c-primary);
+}
+
+@media (max-width: 600px) {
+  .barre {
+    grid-template-columns: 1fr auto;
+  }
+  .points {
+    display: none;
+  }
+}

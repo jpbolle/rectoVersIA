@@ -19,6 +19,7 @@
 // Collection Firestore `modulesFle`, accès serveur uniquement (/api/modules-fle).
 
 import type { DevoirRessource } from './devoir';
+import { diaporamaPresent } from './diaporama';
 
 export interface ModuleFle {
   id: string; // MFL-YYYYMMDD-XXXX
@@ -62,7 +63,7 @@ export function introductionVide(html: string | undefined | null): boolean {
   return html.replace(/<[^>]*>/g, '').trim().length === 0;
 }
 
-/** Nombre de ressources jointes (document, outils, fichiers, vidéos, interactifs) */
+/** Nombre de ressources jointes (document, outils, fichiers, vidéos, interactifs, diaporama) */
 export function compterRessources(r: DevoirRessource | null | undefined): number {
   if (!r) return 0;
   let n = 0;
@@ -71,6 +72,7 @@ export function compterRessources(r: DevoirRessource | null | undefined): number
   n += r.files?.length ?? 0;
   n += r.videos?.length ?? 0;
   n += r.interactifs?.length ?? 0;
+  if (diaporamaPresent(r.diaporama)) n++;
   return n;
 }
 

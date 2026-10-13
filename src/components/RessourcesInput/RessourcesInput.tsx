@@ -18,6 +18,7 @@ import {
   TAILLE_MAX_CODE,
   urlDepuisIntegration,
 } from '@/lib/integration';
+import type { RessourceDiaporama } from '@/types/diaporama';
 import styles from './RessourcesInput.module.css';
 
 interface EditorProps {
@@ -31,7 +32,13 @@ const DocumentEditor = dynamic<EditorProps>(
   { ssr: false, loading: () => <div className={styles.editorLoading}>Chargement...</div> }
 );
 
-type RessourceTab = 'fichier' | 'lien' | 'texte' | 'video' | 'interactif';
+// Le diaporama (react-markdown, dnd-kit) n'est chargé que si son onglet existe
+const DiaporamaEditeur = dynamic(() => import('@/components/Diaporama/DiaporamaEditeur'), {
+  ssr: false,
+  loading: () => <div className={styles.editorLoading}>Chargement...</div>,
+});
+
+type RessourceTab = 'fichier' | 'lien' | 'texte' | 'video' | 'interactif' | 'diaporama';
 
 const ACCEPTED_EXTENSIONS = '.jpg,.jpeg,.png,.gif,.webp';
 
@@ -39,6 +46,8 @@ interface RessourcesInputProps {
   ressources: DevoirRessource | null;
   onRessourcesChange: (ressources: DevoirRessource | null) => void;
   disabled?: boolean;
+  /** 6ᵉ onglet « Diaporama » — points de théorie FLE seulement (plan 2026-10-13) */
+  avecDiaporama?: boolean;
 }
 
 // Vide si aucun texte réel (une liste à puces vide ou un paragraphe vide comptent comme vides)
@@ -104,6 +113,24 @@ function nouvelInteractif(): RessourceInteractif {
   };
 }
 
+// `buildRessource` ne connaît pas le diaporama : on le recolle par-dessus. Un
+// diaporama seul suffit à faire exister l'objet ressources.
+function avecLeDiaporama(
+  r: DevoirRessource | null,
+  diaporama: RessourceDiaporama | null | undefined
+): DevoirRessource | null {
+  if (!diaporama || diaporama.dias.length === 0) {
+    if (!r) return null;
+    const reste = { ...r };
+    delete reste.diaporama;
+    return reste;
+  }
+  return {
+    ...(r ?? { type: 'text', content: '', outils: '', document: '', files: [], videos: [], interactifs: [] }),
+    diaporama,
+  };
+}
+
 // Reconstruit l'objet ressources — null si tous les onglets sont vides
 function buildRessource(
   outils: string,
@@ -140,10 +167,19 @@ function buildRessource(
 
 export default function RessourcesInput({
   ressources,
-  onRessourcesChange,
+  onRessourcesChange: emettre,
   disabled = false,
+  avecDiaporama = false,
 }: RessourcesInputProps) {
   const { getAuthHeaders, isAdmin } = useAuth();
+
+  // Les onglets reconstruisent l'objet sans le diaporama : chaque envoi le
+  // recolle, sans quoi taper une vidéo effacerait les dias
+  const diaporamaValue = ressources?.diaporama ?? null;
+  const onRessourcesChange = useCallback(
+    (r: DevoirRessource | null) => emettre(avecLeDiaporama(r, diaporamaValue)),
+    [emettre, diaporamaValue]
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<RessourceTab>('fichier');
@@ -171,6 +207,7 @@ export default function RessourcesInput({
   const hasTexte = !isEmptyHtml(documentValue);
   const hasVideo = videosValue.length > 0;
   const hasInteractif = interactifsValue.length > 0;
+  const hasDiaporama = (diaporamaValue?.dias.length ?? 0) > 0;
 
   // Champ Lien : texte brut du textarea (une URL par ligne), resynchronisé
   // quand la valeur externe change (réinitialisation, ouverture du modal)
@@ -518,7 +555,37 @@ export default function RessourcesInput({
         >
           Interactif {hasInteractif && <span className={styles.tabDot} />}
         </button>
+        {avecDiaporama && (
+          <button
+            type="button"
+            className={`${styles.tab} ${activeTab === 'diaporama' ? styles.tabActive : hasDiaporama ? styles.tabRempli : ''}`}
+            onClick={() => setActiveTab('diaporama')}
+          >
+            Diaporama {hasDiaporama && <span className={styles.tabDot} />}
+          </button>
+        )}
       </div>
+
+      {/* ── Onglet Diaporama : une dia à la fois, projetable (théorie FLE) ── */}
+      {avecDiaporama && activeTab === 'diaporama' && (
+        <div className={styles.tabPanel}>
+          <DiaporamaEditeur
+            diaporama={diaporamaValue}
+            onChange={(d) =>
+              emettre(
+                avecLeDiaporama(
+                  buildRessource(outilsValue, documentValue, filesValue, videosValue, interactifsValue, {
+                    outils: outilsTitre,
+                    document: documentTitre,
+                  }),
+                  d
+                )
+              )
+            }
+            disabled={disabled}
+          />
+        </div>
+      )}
 
       {/* ── Onglet Image : dépôt d'images (compressées, stockées en Firestore) ── */}
       {activeTab === 'fichier' && (

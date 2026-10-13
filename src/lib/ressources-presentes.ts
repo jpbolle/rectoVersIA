@@ -6,6 +6,7 @@
 // les ressources générales du portfolio masquées à tort le 2026-10-11).
 
 import type { DevoirRessource } from '@/types/devoir';
+import { diaporamaPresent } from '@/types/diaporama';
 
 export function ressourcesPresentes(r: DevoirRessource | null | undefined): boolean {
   if (!r) return false;
@@ -18,6 +19,7 @@ export function ressourcesPresentes(r: DevoirRessource | null | undefined): bool
     ancien.length > 0 ||
     (r.files?.length ?? 0) > 0 ||
     (r.videos?.length ?? 0) > 0 ||
-    (r.interactifs?.length ?? 0) > 0
+    (r.interactifs?.length ?? 0) > 0 ||
+    diaporamaPresent(r.diaporama)
   );
 }

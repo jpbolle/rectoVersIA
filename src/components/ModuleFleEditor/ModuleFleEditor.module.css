@@ -34,9 +34,37 @@
 
 .barreTitre {
   flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
   font-family: var(--c-font-title);
   font-size: 20px;
   color: var(--c-primary);
+}
+
+.barreType {
+  color: var(--c-text-secondary);
+}
+
+/* Pastille du niveau CECR */
+.barreNiveau {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--c-primary);
+  color: #fff;
+  font-family: var(--c-font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.barreLecture {
+  font-family: var(--c-font-body);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--c-text-muted);
 }
 
 .erreur {
@@ -56,6 +84,100 @@
   .colonnes {
     grid-template-columns: 1fr;
   }
+}
+
+/* Fiche repliée : une bande VERTICALE à gauche, sur toute la hauteur ; la
+   théorie prend le reste de la largeur (JP, 2026-10-13) */
+.colonnesRepliees {
+  grid-template-columns: 44px minmax(0, 1fr);
+}
+.colonnesRepliees .ficheEncadre {
+  align-self: stretch;
+}
+.colonnesRepliees .ficheEntete {
+  align-items: center;
+  height: 100%;
+  max-height: 520px;
+  padding: 16px 0;
+  /* Texte couché, lu de haut en bas : le chevron reste en haut */
+  writing-mode: vertical-rl;
+}
+.colonnesRepliees .ficheEntete:hover {
+  background: var(--c-bg-element);
+}
+.colonnesRepliees .ficheChevron {
+  width: auto;
+}
+
+/* Écran étroit : la bande redevient un bandeau au-dessus de la théorie */
+@media (max-width: 900px) {
+  .colonnesRepliees {
+    grid-template-columns: 1fr;
+  }
+  .colonnesRepliees .ficheEntete {
+    height: auto;
+    padding: 12px 16px;
+    writing-mode: horizontal-tb;
+  }
+}
+
+.ficheEncadre {
+  min-width: 0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  background: var(--c-bg);
+}
+
+.ficheEntete {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ficheEntete:hover .ficheEnteteTitre {
+  color: var(--c-primary);
+}
+
+.ficheChevron {
+  width: 12px;
+  color: var(--c-text-muted);
+}
+
+.ficheEnteteTitre {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+/* Titre de la colonne 2, au gabarit de celui de la fiche */
+.contenuTitre {
+  margin: 0;
+  padding: 12px 0 10px;
+  border-bottom: 1px solid var(--c-border);
+  font-family: var(--c-font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.ficheResume {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ficheEncadre .fiche {
+  padding: 4px 16px 16px;
 }
 
 .fiche,

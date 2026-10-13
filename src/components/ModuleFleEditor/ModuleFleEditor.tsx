@@ -75,11 +75,17 @@ export default function ModuleFleEditor({
   // Id du module ; vide tant qu'un nouveau n'a pas été enregistré une fois
   const [idModule, setIdModule] = useState(module.id);
   const nouveau = !idModule;
+  // La fiche (titre, partage, type, niveau, compétences) se replie pour
+  // laisser toute la largeur à la théorie (JP, 2026-10-13). Ouverte pour un
+  // nouveau point (le titre est à saisir), repliée pour un point existant.
+  const [ficheOuverte, setFicheOuverte] = useState(() => !module.id);
 
   const modifie = nouveau || JSON.stringify(brouillon) !== JSON.stringify(enregistre);
   const competences = useMemo(() => competencesVisibles(config), [config]);
   const niveaux = useMemo(() => niveauxVisibles(config), [config]);
   const typesVisibles = config.typesModule.filter((t) => t.visible || t.id === brouillon.type);
+  const typeLabel = typesVisibles.find((t) => t.id === brouillon.type)?.label;
+  const niveauLabel = niveaux.find((n) => n.id === brouillon.niveau)?.label;
 
   // Les « Je peux… » des compétences cochées, au niveau du module — pour se guider
   const descripteurs = useMemo(
@@ -132,7 +138,22 @@ export default function ModuleFleEditor({
         <button type="button" className={styles.retour} onClick={onFermer}>
           {libelleRetour}
         </button>
-        <span className={styles.barreTitre}>{lectureSeule ? 'Point de théorie (lecture)' : nouveau ? 'Nouveau point de théorie' : 'Modifier le point de théorie'}</span>
+        {/* Le point de théorie lui-même : « Avoir — Grammaire » + pastille du
+            niveau (JP, 2026-10-13). Sans titre encore : « Nouveau point de théorie » */}
+        <span className={styles.barreTitre}>
+          {brouillon.titre.trim() ? (
+            <>
+              <span>
+                {brouillon.titre.trim().charAt(0).toUpperCase() + brouillon.titre.trim().slice(1)}
+                {typeLabel && <span className={styles.barreType}> — {typeLabel}</span>}
+              </span>
+              {niveauLabel && <span className={styles.barreNiveau}>{niveauLabel}</span>}
+              {lectureSeule && <span className={styles.barreLecture}>lecture seule</span>}
+            </>
+          ) : (
+            'Nouveau point de théorie'
+          )}
+        </span>
         {!lectureSeule && (
           <button
             type="button"
@@ -146,8 +167,24 @@ export default function ModuleFleEditor({
       </div>
       {erreur && <p className={styles.erreur}>{erreur}</p>}
 
-      <div className={styles.colonnes}>
-        {/* ── Fiche ── */}
+      <div className={`${styles.colonnes} ${ficheOuverte ? '' : styles.colonnesRepliees}`}>
+        {/* ── Fiche : l'administratif, dans un encadré repliable ── */}
+        <section className={styles.ficheEncadre}>
+          <button
+            type="button"
+            className={styles.ficheEntete}
+            onClick={() => setFicheOuverte((o) => !o)}
+            aria-expanded={ficheOuverte}
+          >
+            <span className={styles.ficheChevron} aria-hidden="true">
+              {ficheOuverte ? '▾' : '▸'}
+            </span>
+            <span className={styles.ficheEnteteTitre}>Fiche informative</span>
+            {/* Titre, type et niveau sont déjà dans l'en-tête : seul le
+                partage, invisible ailleurs, mérite un rappel */}
+            {!ficheOuverte && brouillon.prive && <span className={styles.ficheResume}>🔒 Privé</span>}
+          </button>
+        {ficheOuverte && (
         <div className={styles.fiche}>
           <label className={styles.champ}>
             Titre
@@ -244,9 +281,13 @@ export default function ModuleFleEditor({
             </div>
           )}
         </div>
+        )}
+        </section>
 
         {/* ── Introduction + ressources ── */}
         <div className={styles.contenu}>
+          {/* Pendant de « Fiche informative » (JP, 2026-10-13) */}
+          <h3 className={styles.contenuTitre}>Contenu pédagogique</h3>
           <div className={styles.bloc}>
             <p className={styles.blocTitre}>
               Introduction, indications
@@ -263,12 +304,13 @@ export default function ModuleFleEditor({
           <div className={styles.bloc}>
             <p className={styles.blocTitre}>
               La théorie
-              <span>Les ressources qui la portent : document, images, vidéos, liens, contenu interactif.</span>
+              <span>Les ressources qui la portent : document, images, vidéos, liens, contenu interactif, diaporama.</span>
             </p>
             <RessourcesInput
               ressources={brouillon.ressources}
               onRessourcesChange={(r: DevoirRessource | null) => poser('ressources', r)}
               disabled={lectureSeule}
+              avecDiaporama
             />
           </div>
         </div>

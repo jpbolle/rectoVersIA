@@ -37,7 +37,9 @@ import PortfolioRessourcesEtape from '@/components/Portfolio/PortfolioRessources
 import { clePartie } from '@/types/portfolio';
 import PortfolioValeursActivite from '@/components/Portfolio/PortfolioValeursActivite';
 import { usePortfolioEleve } from '@/hooks/usePortfolioEleve';
-import SequenceFleActivity from '@/components/SequenceFleActivity/SequenceFleActivity';
+import { SequenceEtape, SequenceSommaire } from '@/components/SequenceFleActivity/SequenceFleActivity';
+import { useParcoursFle } from '@/hooks/useParcoursFle';
+import RessourcesTab from '@/components/RessourcesTab/RessourcesTab';
 import OeuvreReader from '@/components/OeuvreReader/OeuvreReader';
 import OeuvreSommaire from '@/components/OeuvreReader/OeuvreSommaire';
 import { useOeuvreLecture } from '@/hooks/useOeuvreLecture';
@@ -215,6 +217,9 @@ export default function TravailPage() {
   const showAiData = !isPreviewMode && !iaEleveMasquee && devoir?.accesIA === true;
   const [activeTab, setActiveTab] = useState<TabType>('consignes');
   const [panelOpen, setPanelOpen] = useState<boolean>(true);
+  // SÉQUENCE FLE (plan 2026-10-13) : son parcours, partagé par la colonne 1
+  // (l'étape ouverte) et le rail (le sommaire)
+  const parcoursFle = useParcoursFle(devoir && estSequenceFle(devoir) ? devoirId : null, isPreviewMode);
   // Chaque NOUVELLE ÉTAPE ouvre l'onglet Consignes de la colonne de droite
   // (JP, 2026-10-11 : ses objectifs et sa consigne y vivent). Clé = l'id de
   // l'étape (une chaîne) — jamais l'objet, instable.
@@ -559,19 +564,59 @@ export default function TravailPage() {
   // ── SÉQUENCE FLE : pas de copie, pas de remise — le parcours, et c'est tout.
   // On sort AVANT les gardes sur le travail : une séquence n'en a pas besoin.
   if (devoir && estSequenceFle(devoir)) {
+    // La page de travail à DEUX COLONNES, comme toute activité (plan
+    // 2026-10-13) : l'étape ouverte à gauche, le sommaire dans le rail.
+    // Ni copie ni remise : la barre du haut dit où l'on en est.
+    const ressourcesSequence = ressourcesPresentes(devoir.ressources);
+    const ongletSequence = activeTab === 'ressources' && ressourcesSequence ? 'ressources' : 'sommaire';
+    const tabsSequence: RailTab[] = [{ id: 'sommaire', label: 'Sommaire de la séquence', icon: ICON_SOMMAIRE }];
+    if (ressourcesSequence) tabsSequence.push({ id: 'ressources', label: 'Ressources', icon: ICON_RESSOURCES });
     return (
-      <div className={styles.page}>
-        <div className={styles.sequenceBarre}>
-          <button
-            type="button"
-            className={styles.sequenceRetour}
-            onClick={() => router.push(isPreviewMode ? '/dashboard' : '/fle')}
+      <div className={`${styles.page} ${isPreviewMode ? styles.previewMode : ''}`}>
+        {isPreviewMode && (
+          <div className={styles.previewBanner}>
+            <span>👁️ Mode prévisualisation — Vue élève</span>
+            <button className={styles.previewBackButton} onClick={() => router.push('/dashboard')}>
+              Retour au tableau de bord
+            </button>
+          </div>
+        )}
+        <WorkTopBar
+          title={devoir.intitule}
+          status="draft"
+          isSaving={parcoursFle.enregistrement}
+          lastSaved={null}
+          onSubmit={() => {}}
+          isPreviewMode={isPreviewMode}
+          hideSubmit
+          submissionClosed
+          closedLabel={
+            parcoursFle.total > 0
+              ? parcoursFle.faites === parcoursFle.total
+                ? '✓ Tout est fait. Bravo !'
+                : `${parcoursFle.faites} étape${parcoursFle.faites > 1 ? 's' : ''} faite${parcoursFle.faites > 1 ? 's' : ''} sur ${parcoursFle.total}`
+              : ''
+          }
+          onBack={() => router.push(isPreviewMode ? '/dashboard' : '/fle')}
+        />
+        <main className={styles.main}>
+          <SequenceEtape seq={parcoursFle} isPreviewMode={isPreviewMode} />
+          <WorkspaceRail
+            tabs={tabsSequence}
+            activeTab={ongletSequence}
+            onActiveTabChange={(id) => setActiveTab(id as TabType)}
+            isOpen={panelOpen}
+            onIsOpenChange={setPanelOpen}
+            panelTitle={ongletSequence === 'ressources' ? 'Ressources' : 'Sommaire de la séquence'}
+            storageKey="activite-rail-width"
           >
-            ← {isPreviewMode ? 'Mes Activités' : 'Mon profil FLE'}
-          </button>
-          {isPreviewMode && <span className={styles.sequenceApercu}>👁️ Vue élève</span>}
-        </div>
-        <SequenceFleActivity devoirId={devoir.id} intitule={devoir.intitule} isPreviewMode={isPreviewMode} />
+            {ongletSequence === 'ressources' ? (
+              <RessourcesTab devoir={devoir} />
+            ) : (
+              <SequenceSommaire seq={parcoursFle} consignes={devoir.consignes} />
+            )}
+          </WorkspaceRail>
+        </main>
       </div>
     );
   }

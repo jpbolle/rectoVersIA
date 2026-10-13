@@ -15,11 +15,9 @@ import ActiviteFlePanel from '@/components/ActiviteFlePanel/ActiviteFlePanel';
 import AffichageBadge from '@/components/AffichageBadge/AffichageBadge';
 import { useAffichage } from '@/hooks/useAffichage';
 import styles from '../parcours-fle/parcours-fle.module.css';
+import onglets from '../grilles/grilles.module.css';
 
 type Section = 'theorie' | 'activites';
-
-// Une section masquée (Gestion de l'affichage) : grisée, non cliquable
-const BLOQUE = { opacity: 0.4, cursor: 'not-allowed' } as const;
 
 export default function RessourcesFlePage() {
   const { isAuthenticated, isLoading: authLoading, role } = useAuth();
@@ -75,30 +73,30 @@ export default function RessourcesFlePage() {
       <Header variant="prof" />
       <main className={styles.mainContent}>
         <h1 className={styles.pageTitle}>Mes ressources FLE</h1>
-        <div className={styles.bascule} role="tablist" aria-label="Ressources FLE">
+        {/* Onglets — même barre que Mes Ressources (JP, 2026-10-13) ; une
+            section MASQUÉE reste visible, grisée et non cliquable */}
+        <div className={onglets.tabBar} role="tablist" aria-label="Ressources FLE">
           <button
             type="button"
             role="tab"
             aria-selected={affichee === 'theorie'}
-            className={`${styles.basculeBtn} ${affichee === 'theorie' ? styles.basculeActive : ''}`}
-            style={vTheorie.bloque ? BLOQUE : undefined}
+            className={`${onglets.tabButton} ${affichee === 'theorie' ? onglets.tabActive : ''} ${vTheorie.bloque ? onglets.tabBloque : ''}`}
             onClick={() => !vTheorie.bloque && setSection('theorie')}
             disabled={vTheorie.bloque}
             title={vTheorie.bloque ? vTheorie.note : undefined}
           >
-            📖 Points de théorie <AffichageBadge vue={vTheorie} compact />
+            Points de théorie <AffichageBadge vue={vTheorie} compact />
           </button>
           <button
             type="button"
             role="tab"
             aria-selected={affichee === 'activites'}
-            className={`${styles.basculeBtn} ${affichee === 'activites' ? styles.basculeActive : ''}`}
-            style={vActivites.bloque ? BLOQUE : undefined}
+            className={`${onglets.tabButton} ${affichee === 'activites' ? onglets.tabActive : ''} ${vActivites.bloque ? onglets.tabBloque : ''}`}
             onClick={() => !vActivites.bloque && setSection('activites')}
             disabled={vActivites.bloque}
             title={vActivites.bloque ? vActivites.note : undefined}
           >
-            🎯 Activités FLE <AffichageBadge vue={vActivites} compact />
+            Activités FLE <AffichageBadge vue={vActivites} compact />
           </button>
         </div>
         {affichee === 'theorie' ? <ModuleFlePanel /> : affichee === 'activites' ? <ActiviteFlePanel /> : null}

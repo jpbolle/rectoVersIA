@@ -128,6 +128,12 @@ export default function DashboardPage() {
 
   const [isReady, setIsReady] = useState(false);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  // Séquence FLE en création ou ouverte : elle occupe toute la page
+  const [sequencePleinePage, setSequencePleinePage] = useState(false);
+  const changerSequencePleinePage = useCallback((active: boolean) => {
+    setSequencePleinePage(active);
+    if (active) window.scrollTo({ top: 0 });
+  }, []);
   // Créer une activité : d'abord la popup de choix du type (2026-10-04), puis
   // le formulaire ouvert sur l'atelier choisi.
   const [choixAtelierVisible, setChoixAtelierVisible] = useState(false);
@@ -484,6 +490,7 @@ export default function DashboardPage() {
             classe dans Mes Classes. */}
         {!isFormVisible && (
         <section className={styles.evaluationsSection}>
+          {!sequencePleinePage && (
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>{espace === 'fle' ? 'Activités en cours' : 'Mes activités en cours'}</h2>
             <div className={styles.headerActions}>
@@ -518,18 +525,26 @@ export default function DashboardPage() {
               </select>
             </div>
           </div>
+          )}
 
               {/* Espace FLE : UN SEUL bloc, deux rangées (JP, 2026-10-09) — les
                   séquences de cours d'abord, puis les activités FLE */}
               {espace === 'fle' && (
                 <>
-                  <h3 className={styles.subSectionTitle}>🧭 Mes séquences FLE</h3>
-                  <SequencesFlePanel integre />
-                  <h3 className={`${styles.subSectionTitle} ${styles.subSectionTitleSuite}`}>🎯 Mes activités FLE</h3>
+                  {/* Créer ou composer une séquence occupe TOUTE la page, comme
+                      créer une activité (JP, 2026-10-13) : le reste s'efface,
+                      le panneau garde sa place (et donc son état) */}
+                  {!sequencePleinePage && <h3 className={styles.subSectionTitle}>🧭 Mes séquences FLE</h3>}
+                  <SequencesFlePanel integre onPleinePage={changerSequencePleinePage} />
+                  {!sequencePleinePage && (
+                    <h3 className={`${styles.subSectionTitle} ${styles.subSectionTitleSuite}`}>🎯 Mes activités FLE</h3>
+                  )}
                 </>
               )}
 
               {/* Travaux en cours */}
+              {!sequencePleinePage && (
+              <>
               <div className={styles.evaluationsGrid}>
                 {devoirsLoading ? (
                   <EmptyState icon="hourglass" message="En cours de chargement" />
@@ -574,11 +589,13 @@ export default function DashboardPage() {
                   </div>
                 </>
               )}
+              </>
+              )}
         </section>
         )}
 
         {/* ── Activités classées : le même bloc à onglets que chez l'élève ── */}
-        {!isFormVisible && (
+        {!isFormVisible && !sequencePleinePage && (
         <section className={`${styles.evaluationsSection} ${styles.classeesSection}`}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Activités classées</h2>

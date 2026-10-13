@@ -158,8 +158,12 @@ export default function LectureCoursPage() {
     [getAuthHeaders, id, setLecture]
   );
 
-  // Enchaîne les sections encore à faire, dans l'ordre. Une section en
-  // erreur attend « Réessayer » ; une seule chaîne à la fois.
+  // Enchaîne les sections encore à faire, dans l'ordre ; une seule chaîne à
+  // la fois. La chaîne S'ARRÊTE à la première section en erreur (JP,
+  // 2026-10-14) : si le problème vient du texte du cours (refus de Claude,
+  // texte vide), les suivantes échoueraient pareil — ou sortiraient « prêtes »
+  // mais absurdes — et chaque appel est payé. Les suivantes restent « en
+  // attente » ; « Réessayer » relance la section bloquée PUIS reprend la chaîne.
   const enchainer = useCallback(
     async (premiere?: SectionCle) => {
       if (enGeneration.current) return;
@@ -168,10 +172,8 @@ export default function LectureCoursPage() {
         if (premiere) await genererSection(premiere);
         for (;;) {
           const l = lectureRef.current;
-          const suivante = l
-            ? SECTIONS_GENEREES.find((c) => ['a-faire', 'en-cours'].includes(l.sections[c].statut))
-            : undefined;
-          if (!suivante) break;
+          const suivante = l ? SECTIONS_GENEREES.find((c) => l.sections[c].statut !== 'prete') : undefined;
+          if (!suivante || l!.sections[suivante].statut === 'erreur') break;
           await genererSection(suivante);
         }
       } finally {

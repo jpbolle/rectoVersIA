@@ -16,6 +16,8 @@ import { useGrilleTypes } from '@/hooks/useEvaluations';
 import CreationForm from '@/components/CreationForm/CreationForm';
 import ActiviteRessourceCard from '@/components/ActiviteRessourceCard/ActiviteRessourceCard';
 import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
+import CreateDevoirCard from '@/components/CreateDevoirCard/CreateDevoirCard';
+import DevoirCard from '@/components/DevoirCard/DevoirCard';
 import EditDevoirModal from '@/components/EditDevoirModal/EditDevoirModal';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import { donneesDeCopie } from '@/lib/devoir-copie';
@@ -24,14 +26,20 @@ import { ATELIER_SEQUENCE_FLE } from '@/types/didactique';
 import type { CreateDevoirData, Devoir } from '@/types/devoir';
 import SequenceAtelier from './SequenceAtelier';
 import styles from '@/components/ModuleFlePanel/ModuleFlePanel.module.css';
+// La grille des cartes d'activité du tableau de bord, pour que les deux
+// rangées (séquences, activités) s'alignent
+import dashboardStyles from '@/app/dashboard/dashboard.module.css';
 
 interface Props {
   // Posé DANS le bloc « Activités en cours » du tableau de bord (JP, 2026-10-09) :
   // la grille seule, sans son propre bloc blanc ni texte d'aide
   integre?: boolean;
+  // Création ou atelier ouvert : le tableau de bord s'efface derrière, comme
+  // pour la création d'une activité (JP, 2026-10-13)
+  onPleinePage?: (active: boolean) => void;
 }
 
-export default function SequencesFlePanel({ integre = false }: Props) {
+export default function SequencesFlePanel({ integre = false, onPleinePage }: Props) {
   const { getAuthHeaders } = useAuth();
   const {
     devoirs,
@@ -39,6 +47,8 @@ export default function SequencesFlePanel({ integre = false }: Props) {
     createDevoir,
     updateDevoir,
     toggleArchive,
+    toggleDisponible,
+    toggleCorrige,
     refetch,
   } = useDevoirs();
   const { grilleTypes, grilles } = useGrilleTypes();
@@ -63,6 +73,13 @@ export default function SequencesFlePanel({ integre = false }: Props) {
   const actives = sequences.filter((d) => !d.archive);
   const archivees = sequences.filter((d) => d.archive);
   const sequenceOuverte = ouverte ? sequences.find((d) => d.id === ouverte) ?? null : null;
+
+  const pleinePage = creation || sequenceOuverte !== null;
+  useEffect(() => {
+    onPleinePage?.(pleinePage);
+    // Panneau démonté (changement d'espace) : le tableau de bord réapparaît
+    return () => onPleinePage?.(false);
+  }, [pleinePage, onPleinePage]);
 
   useEffect(() => {
     if (!message) return;
@@ -189,8 +206,27 @@ export default function SequencesFlePanel({ integre = false }: Props) {
     />
   );
 
-  // Intégré au bloc du tableau de bord : la grille, les archivées à la suite
-  // (grisées), rien d'autre
+  // Intégré au bloc du tableau de bord : la grille, les archivées à la suite,
+  // rien d'autre. Même CARTE que les activités voisines (DevoirCard : titre,
+  // étiquettes, « Travail disponible », ✏️, dupliquer) — la carte des
+  // Ressources détonnait, et n'avait aucune bascule pour ouvrir la séquence
+  // aux élèves (« Se présenter » restée fermée, JP, 2026-10-13). Le clic
+  // ouvre la ligne du temps, pas les copies.
+  const cartesActivite = (liste: Devoir[]) =>
+    liste.map((d) => (
+      <DevoirCard
+        key={d.id}
+        devoir={d}
+        variant="prof"
+        onOuvrir={(x) => setOuverte(x.id)}
+        onEdit={setEnEdition}
+        onDuplicate={dupliquer}
+        onToggleDisponible={basculer(toggleDisponible)}
+        onToggleCorrige={basculer(toggleCorrige)}
+        onToggleArchive={basculer(toggleArchive)}
+      />
+    ));
+
   if (integre) {
     return (
       <div className={styles.integre}>
@@ -202,10 +238,10 @@ export default function SequencesFlePanel({ integre = false }: Props) {
         {isLoading ? (
           <EmptyState icon="hourglass" message="En cours de chargement" />
         ) : (
-          <div className={styles.grille}>
-            <CreateOeuvreCard onClick={() => setCreation(true)} libelle="Créer une séquence" />
-            {cartes(actives)}
-            {cartes(archivees)}
+          <div className={dashboardStyles.evaluationsGrid}>
+            <CreateDevoirCard onClick={() => setCreation(true)} libelle="Créer une séquence" />
+            {cartesActivite(actives)}
+            {cartesActivite(archivees)}
           </div>
         )}
         {popupEdition}

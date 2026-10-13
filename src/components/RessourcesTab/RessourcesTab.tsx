@@ -16,6 +16,12 @@ const RessourceEditor = dynamic(
   { ssr: false }
 );
 
+// Diaporama d'un point de théorie FLE (plan 2026-10-13) — chargé à la demande
+const DiaporamaVue = dynamic(
+  () => import('@/components/Diaporama/DiaporamaVue').then((m) => m.DiaporamaVue),
+  { ssr: false }
+);
+
 interface RessourcesTabProps {
   devoir: Devoir;
   ressourceAnnotations?: string;
@@ -367,8 +373,10 @@ export default function RessourcesTab({
     it.kind === 'code' ? !!it.code?.trim() : integrationAutorisee(it.url)
   );
   const hasInteractifs = ressourceInteractifs.length > 0;
+  const diaporama = devoir.ressources.diaporama;
+  const hasDiaporama = (diaporama?.dias?.length ?? 0) > 0;
 
-  if (!hasOutils && !hasDocument && !hasLegacy && !hasFiles && !hasVideos && !hasInteractifs) {
+  if (!hasOutils && !hasDocument && !hasLegacy && !hasFiles && !hasVideos && !hasInteractifs && !hasDiaporama) {
     if (rienSiVide) return dictionaryBlock ? <div className={styles.container}>{dictionaryBlock}</div> : null;
     return (
       <div className={styles.container}>
@@ -389,6 +397,17 @@ export default function RessourcesTab({
     : studentRessourceImageShapes;
 
   const volets: VoletRessource[] = [];
+
+  // Le diaporama d'abord : c'est l'explication principale du point de
+  // théorie (décision JP, 2026-10-13) — premier volet, donc ouvert d'emblée
+  if (hasDiaporama) {
+    volets.push({
+      cle: 'diaporama',
+      icone: '🎞️',
+      titre: diaporama!.titre.trim() || 'Diaporama',
+      contenu: <DiaporamaVue dias={diaporama!.dias} />,
+    });
+  }
 
   ressourceFiles.forEach((file, index) => {
     const key = file.fileId || String(index);

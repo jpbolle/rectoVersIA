@@ -19,6 +19,8 @@ interface Props {
   onVoir?: (m: ModuleFle) => void;
   onDupliquer: (m: ModuleFle) => void;
   onArchiver?: (m: ModuleFle) => void;
+  /** Point archivé à moi : l'icône d'archive devient « Restaurer » */
+  onRestaurer?: (m: ModuleFle) => void;
   onTogglePartage?: (m: ModuleFle) => void;
 }
 
@@ -30,6 +32,7 @@ export default function ModuleFleCard({
   onVoir,
   onDupliquer,
   onArchiver,
+  onRestaurer,
   onTogglePartage,
 }: Props) {
   const { config } = useDidactiqueFle();
@@ -78,7 +81,13 @@ export default function ModuleFleCard({
       partagee={module.shared}
       titrePartager={module.shared ? 'Retirer des exemples partagés' : 'Proposer comme exemple à tous'}
       onDupliquer={() => onDupliquer(module)}
-      onArchiver={editable && onArchiver ? () => onArchiver(module) : undefined}
+      onArchiver={
+        editable && onArchiver
+          ? () => onArchiver(module)
+          : mienne && module.archive && onRestaurer
+            ? () => onRestaurer(module)
+            : undefined
+      }
       // Point de théorie d'un collègue : Voir + « Dupliquer »
       lectureSeule={!mienne}
     />

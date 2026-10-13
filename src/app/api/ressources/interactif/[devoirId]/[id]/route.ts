@@ -33,7 +33,11 @@ export async function GET(
 ) {
   try {
     const { devoirId, id } = await params;
-    const snap = await adminDb.collection('devoirs').doc(devoirId).get();
+    // Un POINT DE THÉORIE FLE (MFL-…) porte les mêmes ressources qu'une
+    // activité : son animation s'ouvre en grand par la même route — elle
+    // répondait « non trouvée » (JP, 2026-10-13)
+    let snap = await adminDb.collection('devoirs').doc(devoirId).get();
+    if (!snap.exists) snap = await adminDb.collection('modulesFle').doc(devoirId).get();
     if (!snap.exists) {
       return NextResponse.json({ error: 'Activité non trouvée' }, { status: 404 });
     }
