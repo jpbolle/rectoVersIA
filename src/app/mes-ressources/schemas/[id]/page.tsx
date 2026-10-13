@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { DiagramWorkspace } from '@/components/Diagram/DiagramWorkspace';
+import PartageToggle from '@/components/PartageToggle/PartageToggle';
 import { diagramVide } from '@/lib/schemas-personnels';
 import type { DiagramExportHandle } from '@/lib/diagram/diagram-export';
 import type { Diagram } from '@/types/diagram';
@@ -41,6 +42,11 @@ export default function SchemaPersonnelPage() {
   const thumbTimer = useRef<number | null>(null);
   const latest = useRef<Diagram | null>(null);
   const dirty = useRef(false);
+  // Corrigé du prof : partagé par défaut (plan 2026-10-13-ressources-privees).
+  // Ref en plus du state : le premier enregistrement (POST) doit lire la valeur
+  // du moment, sans recréer `flush`.
+  const [prive, setPrive] = useState(false);
+  const priveRef = useRef(false);
 
   useEffect(() => {
     if (redirecting) return;
@@ -68,6 +74,8 @@ export default function SchemaPersonnelPage() {
         const json = await res.json();
         if (!json.success) throw new Error();
         latest.current = json.data.diagram as Diagram;
+        priveRef.current = json.data.prive === true;
+        setPrive(priveRef.current);
         setDiagram(json.data.diagram as Diagram);
       } catch {
         setDiagram(null);
@@ -91,7 +99,7 @@ export default function SchemaPersonnelPage() {
       const res = await fetch(neuf ? '/api/schemas/personnel' : `/api/schemas/personnel/${idRef.current}`, {
         method: neuf ? 'POST' : 'PUT',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ diagram: latest.current }),
+        body: JSON.stringify(neuf ? { diagram: latest.current, prive: priveRef.current } : { diagram: latest.current }),
       });
       const json = await res.json();
       if (!json.success) throw new Error();
@@ -143,6 +151,29 @@ export default function SchemaPersonnelPage() {
     [flush, refreshThumbnail],
   );
 
+  // Partage avec les collègues : aussitôt si le corrigé existe en base ;
+  // sinon, il partira avec le premier enregistrement
+  const changerPrive = useCallback(
+    async (valeur: boolean) => {
+      setPrive(valeur);
+      priveRef.current = valeur;
+      if (!idRef.current) return;
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers) throw new Error();
+        const res = await fetch(`/api/schemas/personnel/${idRef.current}`, {
+          method: 'PUT',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prive: valeur }),
+        });
+        if (!res.ok) throw new Error();
+      } catch {
+        setSaveState('error');
+      }
+    },
+    [getAuthHeaders],
+  );
+
   // En quittant la page : on enregistre ce qui est en attente.
   useEffect(() => {
     const onHide = () => {
@@ -173,7 +204,21 @@ export default function SchemaPersonnelPage() {
   const status = saveState === 'saved' ? 'Enregistré' : saveState === 'pending' ? 'Enregistrement…' : 'Enregistrement impossible — vérifie ta connexion';
   return (
     <div className={styles.page}>
-      <DiagramWorkspace diagram={diagram} onChange={onChange} backHref={retour} status={status} exportRef={exportRef} />
+      <DiagramWorkspace
+        diagram={diagram}
+        onChange={onChange}
+        backHref={retour}
+        status={status}
+        exportRef={exportRef}
+        // Les schémas d'élèves ne sortent jamais de chez eux : réglage du prof seul
+        reglages={
+          role === 'prof' ? (
+            <div className={styles.partage}>
+              <PartageToggle prive={prive} onChange={changerPrive} />
+            </div>
+          ) : undefined
+        }
+      />
     </div>
   );
 }

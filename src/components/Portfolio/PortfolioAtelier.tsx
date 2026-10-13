@@ -16,6 +16,7 @@ import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
 import CreationForm from '@/components/CreationForm/CreationForm';
 import EditDevoirModal from '@/components/EditDevoirModal/EditDevoirModal';
 import PortfolioBuilder from './PortfolioBuilder';
+import PartageToggle from '@/components/PartageToggle/PartageToggle';
 import type { CreateDevoirData, Devoir } from '@/types/devoir';
 import type { PortfolioEtape, PortfolioMatrice } from '@/types/portfolio';
 import ed from '@/components/ModuleFleEditor/ModuleFleEditor.module.css';
@@ -36,7 +37,7 @@ interface Props {
   onRetour: () => void;
 }
 
-type Fiche = Pick<PortfolioMatrice, 'titre' | 'description' | 'tacheFinale' | 'consignes' | 'etapes' | 'ressources'>;
+type Fiche = Pick<PortfolioMatrice, 'titre' | 'description' | 'tacheFinale' | 'consignes' | 'etapes' | 'ressources' | 'prive'>;
 
 export default function PortfolioAtelier({
   matrice,
@@ -56,6 +57,7 @@ export default function PortfolioAtelier({
     consignes: matrice.consignes,
     etapes: matrice.etapes,
     ressources: matrice.ressources,
+    prive: matrice.prive === true,
   });
   // Consignes générales et ressources du portfolio : facultatives (chaque
   // étape a déjà les siennes) — l'encadré n'apparaît que si le prof coche.
@@ -237,6 +239,8 @@ export default function PortfolioAtelier({
           onChange={(e) => poser({ description: e.target.value })}
           placeholder="Certification de Noël, 4ᵉ…"
         />
+        <span className={styles.lab}>Partage</span>
+        <PartageToggle prive={fiche.prive === true} onChange={(prive) => poser({ prive })} />
         <label className={styles.ficheOption}>
           <input
             type="checkbox"

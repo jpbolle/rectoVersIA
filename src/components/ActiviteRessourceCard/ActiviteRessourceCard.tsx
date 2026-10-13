@@ -55,6 +55,8 @@ export default function ActiviteRessourceCard({
     certificatif ? 'Certificatif' : 'Formatif',
     ...(sequence ? [devoir.disponible ? 'Ouverte' : 'Fermée'] : devoir.corrigeDisponible ? ['Corrigé visible'] : []),
     ...(devoir.archive ? ['Archivé'] : []),
+    // Repère sur mes propres activités FLE : celle-ci ne sort pas de chez moi
+    ...(!lectureSeule && devoir.prive ? ['🔒 Privé'] : []),
   ];
 
   const description = sequence

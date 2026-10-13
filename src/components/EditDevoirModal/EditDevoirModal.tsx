@@ -40,6 +40,7 @@ import CorrigeSchemaPicker from '@/components/CorrigeSchemaPicker/CorrigeSchemaP
 import SchemaDepartInput, { SCHEMA_DEPART_VIDE, type SchemaDepartValeur } from '@/components/SchemaDepartInput/SchemaDepartInput';
 import styles from './EditDevoirModal.module.css';
 import FlipChoice from '@/components/FlipChoice/FlipChoice';
+import PartageToggle from '@/components/PartageToggle/PartageToggle';
 
 type FormFace = 'recto' | 'verso';
 
@@ -126,6 +127,8 @@ export default function EditDevoirModal({
   const [flipInverted, setFlipInverted] = useState(false);
   // Auto-évaluation intégrée — absent = activé (activités antérieures)
   const [autoEvaluation, setAutoEvaluation] = useState(true);
+  // Activité FLE : privée ou partagée avec les collègues (plan 2026-10-13)
+  const [prive, setPrive] = useState(false);
   const [evaluation, setEvaluation] = useState<EvaluationType>('formatif');
   // Didactique : le mode principal et les habiletés se modifient ; l'atelier
   // non — il commande le dispositif, le changer transformerait l'activité
@@ -203,6 +206,7 @@ export default function EditDevoirModal({
       setDisponible(devoir.disponible || false);
       setFlipInverted(devoir.flipInverted ?? false);
       setAutoEvaluation(devoir.autoEvaluation !== false);
+      setPrive(devoir.prive === true);
       setEvaluation(devoir.evaluation ?? 'formatif');
       setModePrincipal(
         devoir.modePrincipal ??
@@ -430,6 +434,11 @@ export default function EditDevoirModal({
       data.autoEvaluation = autoEvaluation;
     }
 
+    // Activité FLE : partage avec les collègues
+    if (devoir.referentiel === 'fle') {
+      data.prive = prive;
+    }
+
     const ok = await onSave(devoir.id, data, silencieux);
     if (ok && fermer) onClose();
     return ok;
@@ -454,7 +463,7 @@ export default function EditDevoirModal({
     accesIA, disponible, ressources, evaluation, modePrincipal, habiletes,
     flipInverted, ressourcesToIA, profTheme, profDraft, planToIA,
     profProduction, productionToIA, lectureQuiz, lectureMode, hiddenQuestions, autoEvalQuiz, sondageReglages, autoEvaluation,
-    nkQuestions, nkThemes, eleves, sequenceFle, portfolio,
+    prive, nkQuestions, nkThemes, eleves, sequenceFle, portfolio,
     // Atelier de conceptualisation (absents jusqu'au 2026-10-11 : un corrigé
     // choisi puis la popup fermée par ✕ n'était jamais enregistré)
     schemaType, schemaTypeLibre, schemaDepart, schemaCorrige?.sourceId ?? null, schemaCorrige?.titre ?? null,
@@ -530,6 +539,14 @@ export default function EditDevoirModal({
   // ── Recto : description de l'activité ──
   const renderRecto = () => (
     <>
+      {/* Activité FLE : à la place des classes, le partage avec les collègues */}
+      {estFle && (
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Partage</label>
+          <PartageToggle prive={prive} onChange={setPrive} disabled={isSaving} />
+        </div>
+      )}
+
       {!sansClasse && (
         <>
           {/* Classes */}

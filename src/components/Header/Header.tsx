@@ -19,7 +19,7 @@ export type AdminHeaderTab = 'vue' | 'membres' | 'didactique' | 'affichage' | 'c
 // l'a que s'il a une classe FLE (`avecCoursFle`, ou le header `fle`). Les
 // menus suivent l'espace :
 //   prof classique : Accueil · Mes Activités · Mes Classes · Mes Ressources
-//   prof FLE       : Accueil · Mes activités FLE · Mes classes · Mes ressources FLE
+//   prof FLE       : Accueil · Mes activités FLE · Mes classes FLE · Mes ressources FLE
 //   élève classique: le header élève habituel ; élève FLE : « Mon profil FLE ».
 interface HeaderProps {
   variant: 'prof' | 'student' | 'admin' | 'fle';
@@ -160,7 +160,7 @@ export default function Header({
               Mes activités FLE
             </button>
             <button className={styles.navBtn} onClick={() => router.push('/classes')}>
-              Mes classes
+              Mes classes FLE
             </button>
             <button className={styles.navBtn} onClick={() => router.push('/ressources-fle')}>
               Mes ressources FLE

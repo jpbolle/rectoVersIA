@@ -28,7 +28,8 @@ export async function GET(
     // Le sien, un exemple partagé, ou celui d'un collègue non archivé : lisible
     // (et duplicable) sans être modifiable — même doctrine que les grilles
     // (bloc « Questionnaires des professeurs », JP 2026-10-09).
-    if (q.profId !== auth.uid && !q.shared && q.archive) {
+    // Privé (plan 2026-10-13) : ni lisible ni duplicable par un collègue
+    if (q.profId !== auth.uid && !q.shared && (q.archive || q.prive)) {
       return NextResponse.json({ success: false, message: 'Accès refusé' }, { status: 403 });
     }
     return NextResponse.json({ success: true, data: q });
@@ -75,6 +76,9 @@ export async function PATCH(
     }
     // `shared` reste à l'admin : c'est lui qui décide des exemples du projet.
     if (body.shared !== undefined && auth.isAdmin) patch.shared = body.shared === true;
+    if (body.prive !== undefined) patch.prive = body.prive === true;
+    // Un exemple de l'admin reste visible de tous
+    if ((patch.shared ?? snap.data()?.shared) === true) patch.prive = false;
 
     await ref.update(patch);
     return NextResponse.json({ success: true, avertissement });

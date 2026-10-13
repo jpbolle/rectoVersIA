@@ -11,6 +11,7 @@ export interface VocabulaireThemeSummary {
   profId: string | null;
   profName?: string;
   targetLevels?: string[];  // ex: ['1', '2', '3', 'daspa']
+  prive?: boolean;          // absente des « Listes des professeurs » des collègues
 }
 
 export function useVocabulaireThemes() {
@@ -59,14 +60,14 @@ export function useVocabulaireThemes() {
   // Toutes les listes (pour le dropdown du formulaire de creation de devoirs)
   const themes = allThemes;
 
-  const createTheme = useCallback(async (name: string): Promise<string | null> => {
+  const createTheme = useCallback(async (name: string, prive = false): Promise<string | null> => {
     const headers = await getAuthHeaders();
     if (!headers) return null;
 
     const res = await fetch('/api/vocabulaire/themes', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, prive }),
     });
     const json = await res.json();
     if (!json.success) throw new Error(json.message || 'Erreur');
@@ -101,7 +102,7 @@ export function useVocabulaireThemes() {
     await fetchThemes();
   }, [getAuthHeaders, fetchThemes]);
 
-  const updateThemeMeta = useCallback(async (id: string, meta: { targetLevels?: string[] }) => {
+  const updateThemeMeta = useCallback(async (id: string, meta: { targetLevels?: string[]; prive?: boolean }) => {
     const headers = await getAuthHeaders();
     if (!headers) return;
 

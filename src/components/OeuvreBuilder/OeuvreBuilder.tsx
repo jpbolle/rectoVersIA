@@ -18,6 +18,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import PartageToggle from '@/components/PartageToggle/PartageToggle';
 import { compressImage } from '@/lib/image-compress';
 import { parseYoutubeId } from '@/lib/youtube';
 import { decouperBloc, extraireLocuteur, lignesDuBloc } from '@/lib/oeuvre-decoupe';
@@ -401,7 +402,9 @@ interface OeuvreBuilderProps {
 }
 
 export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }: OeuvreBuilderProps) {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, user } = useAuth();
+  // Privé / partagé : réglage de l'auteur seul — un co-éditeur ne le voit pas
+  const estAuteur = !!user && user.uid === initiale.profId;
   const headersRef = useRef(getAuthHeaders);
   headersRef.current = getAuthHeaders;
 
@@ -487,6 +490,25 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
         onModifie();
       } catch {
         setMessage('Le sommaire n’a pas pu être enregistré');
+      }
+    },
+    [initiale.id, entetesJson, onModifie]
+  );
+
+  // Partage avec les collègues : enregistré aussitôt (plan 2026-10-13)
+  const changerPrive = useCallback(
+    async (prive: boolean) => {
+      setOeuvre((o) => ({ ...o, prive }));
+      try {
+        const res = await fetch(`/api/oeuvres/${initiale.id}`, {
+          method: 'PATCH',
+          headers: await entetesJson(),
+          body: JSON.stringify({ prive }),
+        });
+        if (!res.ok) throw new Error();
+        onModifie();
+      } catch {
+        setMessage('Le réglage de partage n’a pas pu être enregistré');
       }
     },
     [initiale.id, entetesJson, onModifie]
@@ -1257,6 +1279,16 @@ export default function OeuvreBuilder({ oeuvre: initiale, onFermer, onModifie }:
           </button>
         </div>
       </header>
+
+      {estAuteur && (
+        <div className={styles.partage}>
+          <PartageToggle
+            prive={oeuvre.prive === true}
+            onChange={changerPrive}
+            verrouillePartage={oeuvre.shared === true}
+          />
+        </div>
+      )}
 
       {message && <div className={styles.message}>{message}</div>}
 

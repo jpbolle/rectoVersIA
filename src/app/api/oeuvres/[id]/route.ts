@@ -101,6 +101,10 @@ export async function PATCH(
     }
     if (typeof body.archive === 'boolean') update.archive = body.archive;
     if (auth.isAdmin && typeof body.shared === 'boolean') update.shared = body.shared;
+    // Privé / partagé : l'auteur seul en décide, pas un co-éditeur
+    if (typeof body.prive === 'boolean' && estProprietaire) update.prive = body.prive;
+    // Un exemple de l'admin reste visible de tous
+    if ((update.shared ?? oeuvre.shared) === true) update.prive = false;
 
     // Qui partage l'œuvre reste SON AUTEUR. Un co-éditeur peut remanier le
     // texte, jamais décider qui d'autre y accède — sans quoi le partage

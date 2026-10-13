@@ -26,6 +26,7 @@ import type { DevoirRessource } from '@/types/devoir';
 import type { ModuleFle } from '@/types/module-fle';
 import DocumentEditor from '@/components/RessourcesInput/DocumentEditor';
 import RessourcesInput from '@/components/RessourcesInput/RessourcesInput';
+import PartageToggle from '@/components/PartageToggle/PartageToggle';
 import styles from './ModuleFleEditor.module.css';
 
 interface Props {
@@ -38,7 +39,10 @@ interface Props {
   libelleRetour?: string;
 }
 
-type Brouillon = Pick<ModuleFle, 'titre' | 'description' | 'type' | 'niveau' | 'competences' | 'introduction' | 'ressources'>;
+type Brouillon = Pick<
+  ModuleFle,
+  'titre' | 'description' | 'type' | 'niveau' | 'competences' | 'introduction' | 'ressources' | 'prive'
+>;
 
 function extraire(m: ModuleFle): Brouillon {
   return {
@@ -49,6 +53,8 @@ function extraire(m: ModuleFle): Brouillon {
     competences: m.competences,
     introduction: m.introduction,
     ressources: m.ressources,
+    // Partagé par défaut (plan 2026-10-13-ressources-privees)
+    prive: m.prive === true,
   };
 }
 
@@ -163,6 +169,16 @@ export default function ModuleFleEditor({
               placeholder="En une phrase : ce que l’élève saura faire après ce point de théorie."
             />
           </label>
+          {!lectureSeule && (
+            <div className={styles.champ}>
+              <span>Partage</span>
+              <PartageToggle
+                prive={brouillon.prive === true}
+                onChange={(prive) => poser('prive', prive)}
+                verrouillePartage={module.shared === true}
+              />
+            </div>
+          )}
           <div className={styles.deuxChamps}>
             <label className={styles.champ}>
               Type

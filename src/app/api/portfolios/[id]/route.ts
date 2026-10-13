@@ -54,6 +54,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
     if (body.etapes !== undefined) update.etapes = etapesPortfolioPourFirestore(body.etapes, { codeAutorise: auth.isAdmin, assurerIntroduction: true });
     if (typeof body.archive === 'boolean') update.archive = body.archive;
+    if (typeof body.prive === 'boolean') update.prive = body.prive;
 
     await ref.update(update);
     const apres = await ref.get();

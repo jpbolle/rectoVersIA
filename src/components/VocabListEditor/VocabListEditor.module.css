@@ -17,6 +17,11 @@
 }
 
 /* Niveaux cibles */
+/* Double bouton Partagé / Privé (plan 2026-10-13) */
+.vocabPartage {
+  margin: 12px 0 8px;
+}
+
 .vocabTargetLevels {
   display: flex;
   align-items: center;

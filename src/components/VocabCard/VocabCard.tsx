@@ -26,7 +26,11 @@ export default function VocabCard({ theme, onEdit, onDelete, onDuplicate, onView
     <RessourceCard
       icone="📝"
       titre={theme.name.charAt(0).toUpperCase() + theme.name.slice(1)}
-      etiquettes={[`${theme.wordCount} mot${theme.wordCount > 1 ? 's' : ''}`]}
+      etiquettes={[
+        `${theme.wordCount} mot${theme.wordCount > 1 ? 's' : ''}`,
+        // Repère sur mes propres listes : celle-ci ne sort pas de chez moi
+        ...(!readOnly && theme.prive ? ['🔒 Privé'] : []),
+      ]}
       sousTitre={readOnly && theme.profName ? theme.profName : undefined}
       onOuvrir={ouvrir ? () => ouvrir(theme) : undefined}
       titreOuvrir={readOnly ? 'Voir la liste' : 'Modifier la liste'}

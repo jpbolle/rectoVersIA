@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: toutes.filter((m) => m.profId === auth.uid),
-      autres: toutes.filter((m) => m.profId !== auth.uid && !m.archive),
+      // Un portfolio privé ne sort pas de chez son auteur (plan 2026-10-13)
+      autres: toutes.filter((m) => m.profId !== auth.uid && !m.archive && !m.prive),
     });
   } catch (error) {
     console.error('Erreur GET /api/portfolios:', error);
@@ -59,6 +60,8 @@ export async function POST(request: NextRequest) {
       ressources: body.ressources ? sanitizeRessources(body.ressources, { codeAutorise: auth.isAdmin }) : null,
       etapes: etapesPortfolioPourFirestore(body.etapes, { codeAutorise: auth.isAdmin, assurerIntroduction: true }),
       profId: auth.uid,
+      // Partagé par défaut
+      prive: body.prive === true,
       archive: false,
       anneeScolaire: calculateSchoolYear(),
       createdAt: now,

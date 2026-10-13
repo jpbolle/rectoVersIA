@@ -382,6 +382,9 @@ export interface PortfolioMatrice {
   ressources: DevoirRessource | null;
   etapes: PortfolioEtape[];
   profId: string;
+  // Privé : absent des « Portfolios des professeurs » des collègues (absent =
+  // partagé). Plan 2026-10-13-ressources-privees.
+  prive?: boolean;
   archive: boolean;
   anneeScolaire: string;
   createdAt: string;

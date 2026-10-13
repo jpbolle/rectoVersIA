@@ -38,6 +38,8 @@ export default function ModuleFleCard({
 
   const etiquettes = [
     ...(module.archive ? ['Archivé'] : []),
+    // Repère sur mes propres points de théorie : celui-ci ne sort pas de chez moi
+    ...(mienne && module.prive ? ['🔒 Privé'] : []),
     ...(module.niveau ? [niveauLabel(config, module.niveau)] : []),
     ...module.competences.slice(0, 2).map((c) => competenceLabel(config, c)),
     ...(module.competences.length > 2

@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
       success: true,
       data: tous.filter((m) => m.profId === auth.uid),
       shared: tous.filter((m) => m.shared && m.profId !== auth.uid && !m.archive),
-      otherProfs: tous.filter((m) => m.profId !== auth.uid && !m.shared && !m.archive),
+      // Un point de théorie privé ne sort pas de chez son auteur (plan 2026-10-13)
+      otherProfs: tous.filter((m) => m.profId !== auth.uid && !m.shared && !m.archive && !m.prive),
     });
   } catch (error) {
     console.error('Erreur GET /api/modules-fle:', error);
@@ -69,6 +70,8 @@ export async function POST(request: NextRequest) {
       profId: auth.uid,
       profName: await nomDuProf(auth),
       shared: auth.isAdmin && body.shared === true,
+      // Partagé par défaut ; un exemple de l'admin ne peut pas être privé
+      prive: body.prive === true && !(auth.isAdmin && body.shared === true),
       archive: false,
       anneeScolaire: calculateSchoolYear(),
       createdAt: now,

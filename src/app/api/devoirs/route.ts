@@ -127,6 +127,7 @@ export async function GET(request: NextRequest) {
         schema: data.typeTravail === 'schematiser' ? schemaPourFirestore(data.schema) : null,
         // Activité FLE : rangée dans Mes Ressources › Modules FLE, pas au tableau de bord
         referentiel: data.referentiel === 'fle' ? ('fle' as const) : null,
+        prive: data.prive === true,
         submittedCount: undefined as number | undefined,
         monAcces: undefined as 'titulaire' | 'edition' | 'lecture' | undefined,
         auteurNom: undefined as string | undefined,
@@ -395,7 +396,8 @@ export async function GET(request: NextRequest) {
       try {
         const snapFle = await adminDb.collection('devoirs').where('referentiel', '==', 'fle').get();
         autresFle = snapFle.docs
-          .filter((d) => d.data().profId !== auth.uid && d.data().archive !== true)
+          // Une activité FLE privée ne sort pas de chez son auteur (plan 2026-10-13)
+          .filter((d) => d.data().profId !== auth.uid && d.data().archive !== true && d.data().prive !== true)
           .map(versDevoir);
       } catch (e) {
         console.error('Activités FLE des collègues illisibles :', e);
@@ -534,6 +536,8 @@ export async function POST(request: NextRequest) {
       // Horodatage de l'ouverture aux élèves (notifications)
       ...(ouverte ? { disponibleAt: new Date() } : {}),
       ...(estFle ? { referentiel: 'fle' } : {}),
+      // Activité FLE : partagée par défaut avec les collègues
+      ...(estFle && body.prive === true ? { prive: true } : {}),
       // Sondage : nominatif / anonyme, rythme de l'élève / du prof (2026-10-09)
       ...(typeTravail === 'autoevaluation' ? { sondage: sanitizeSondageReglages(sondage) } : {}),
     };

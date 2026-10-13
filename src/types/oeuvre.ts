@@ -227,6 +227,10 @@ export interface Oeuvre {
   profId: string;
   profName?: string;
   shared: boolean;
+  // Privée : absente des « Œuvres des professeurs » des collègues (absent =
+  // partagée). Le partage nominatif ci-dessous marche quand même. Plan
+  // 2026-10-13-ressources-privees.
+  prive?: boolean;
   // Partage nominatif — voir le commentaire ci-dessus.
   partages?: OeuvrePartage[];
   archive: boolean;

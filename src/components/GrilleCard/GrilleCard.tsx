@@ -41,6 +41,8 @@ export default function GrilleCard({
     ...(grille.uaa ?? []).map((id) => `UAA ${id}`),
     `${nbCriteres} critère${nbCriteres > 1 ? 's' : ''}`,
     `${totalWeight} pts`,
+    // Repère sur mes propres grilles : celle-ci ne sort pas de chez moi
+    ...(!readOnly && grille.prive ? ['🔒 Privé'] : []),
   ];
 
   return (

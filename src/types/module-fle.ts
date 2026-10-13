@@ -32,6 +32,9 @@ export interface ModuleFle {
   profId: string;
   profName?: string;
   shared: boolean; // exemple proposé à tous (admin)
+  // Privé : absent des « … des professeurs » des collègues (absent = partagé).
+  // Plan 2026-10-13-ressources-privees.
+  prive?: boolean;
   archive: boolean;
   anneeScolaire: string;
   createdAt: string;

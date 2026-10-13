@@ -1,0 +1,60 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 3px;
+  gap: 2px;
+  background: var(--c-bg-element);
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--c-text-secondary);
+  font-family: var(--c-font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.option:hover:not(:disabled):not(.active) {
+  color: var(--c-primary);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+}
+
+.option:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.active {
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+  box-shadow: var(--c-shadow-card);
+}
+
+.aide {
+  margin: 0;
+  /* Posée dans des champs aux libellés en gras : la phrase d'aide reste légère */
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--c-text-secondary);
+}

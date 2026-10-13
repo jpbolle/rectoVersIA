@@ -16,6 +16,7 @@ import EmptyState from '@/components/EmptyState/EmptyState';
 import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
 import RessourceCard from '@/components/RessourceCard/RessourceCard';
 import LectureQuizBuilder from '@/components/LectureQuizBuilder/LectureQuizBuilder';
+import PartageToggle from '@/components/PartageToggle/PartageToggle';
 import type { LectureQuiz } from '@/types/lecture';
 import type {
   QuestionnaireLecture,
@@ -41,6 +42,8 @@ export default function QuestionnaireLecturePanel({ onUtiliser }: Props = {}) {
   // Questionnaire ouvert dans le constructeur (null = la bibliothèque)
   const [ouvert, setOuvert] = useState<QuestionnaireLecture | null>(null);
   const [nom, setNom] = useState('');
+  // Partagé par défaut (plan 2026-10-13-ressources-privees)
+  const [prive, setPrive] = useState(false);
   const [quiz, setQuiz] = useState<LectureQuiz | null>(null);
   const [enregistre, setEnregistre] = useState(false);
 
@@ -80,6 +83,7 @@ export default function QuestionnaireLecturePanel({ onUtiliser }: Props = {}) {
       }
       setOuvert(json.data);
       setNom(json.data.nom);
+      setPrive(json.data.prive === true);
       setQuiz(json.data.quiz);
     },
     [getAuthHeaders]
@@ -124,6 +128,7 @@ export default function QuestionnaireLecturePanel({ onUtiliser }: Props = {}) {
       updatedAt: '',
     });
     setNom('');
+    setPrive(false);
     setQuiz({ mode: 'worksheet', questions: [] });
   }, []);
 
@@ -143,7 +148,7 @@ export default function QuestionnaireLecturePanel({ onUtiliser }: Props = {}) {
         {
           method: nouveau ? 'POST' : 'PATCH',
           headers,
-          body: JSON.stringify({ nom: nom.trim(), quiz }),
+          body: JSON.stringify({ nom: nom.trim(), prive, quiz }),
         }
       );
       const json = await res.json();
@@ -166,7 +171,7 @@ export default function QuestionnaireLecturePanel({ onUtiliser }: Props = {}) {
     } finally {
       setEnregistre(false);
     }
-  }, [ouvert, nom, quiz, getAuthHeaders, charger]);
+  }, [ouvert, nom, prive, quiz, getAuthHeaders, charger]);
 
   const archiver = useCallback(
     async (q: QuestionnaireLectureResume) => {
@@ -227,6 +232,9 @@ export default function QuestionnaireLecturePanel({ onUtiliser }: Props = {}) {
             Fermer
           </button>
         </div>
+        <div className={styles.partage}>
+          <PartageToggle prive={prive} onChange={setPrive} verrouillePartage={ouvert.shared === true} />
+        </div>
         {message && <p className={classeMessage}>{message}</p>}
         <LectureQuizBuilder
           value={quiz}
@@ -243,6 +251,8 @@ export default function QuestionnaireLecturePanel({ onUtiliser }: Props = {}) {
     q.mode === 'quiz' ? 'Quiz' : 'Questionnaire',
     `${q.nbQuestions} question${q.nbQuestions > 1 ? 's' : ''}`,
     `${q.points} pt${q.points > 1 ? 's' : ''}`,
+    // Seuls les miens peuvent être privés : ceux des collègues ne le sont jamais ici
+    ...(q.prive ? ['🔒 Privé'] : []),
   ];
 
   // Mêmes blocs blancs titrés que les autres onglets (Œuvres, Portfolios…) —

@@ -159,7 +159,12 @@ export default function ConceptualisationsPanel() {
           <img src={s.thumbnail} alt="" />
         ) : undefined
       }
-      etiquettes={[DIAGRAM_TYPE_LABELS[s.type], ...(s.archive ? ['Archivé'] : [])]}
+      etiquettes={[
+        DIAGRAM_TYPE_LABELS[s.type],
+        ...(s.archive ? ['Archivé'] : []),
+        // Repère sur mes propres corrigés : celui-ci ne sort pas de chez moi
+        ...(!lectureSeule && s.prive ? ['🔒 Privé'] : []),
+      ]}
       archivee={s.archive}
       onOuvrir={lectureSeule ? undefined : () => router.push(`/mes-ressources/schemas/${s.id}`)}
       onDupliquer={() => dupliquer(s)}

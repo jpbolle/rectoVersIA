@@ -59,6 +59,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
     if (typeof body.archive === 'boolean') update.archive = body.archive;
     if (auth.isAdmin && typeof body.shared === 'boolean') update.shared = body.shared;
+    if (typeof body.prive === 'boolean') update.prive = body.prive;
+    // Un exemple de l'admin reste visible de tous
+    if ((update.shared ?? moduleFle.shared) === true) update.prive = false;
 
     await ref.update(update);
     const apres = await ref.get();

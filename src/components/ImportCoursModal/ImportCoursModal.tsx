@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { PDF_PAGES_MAX } from '@/types/lecture-cours';
+import { PDF_OCTETS_MAX, PDF_PAGES_MAX } from '@/types/lecture-cours';
 import type { DocumentCoursResume } from '@/types/lecture-cours';
 import styles from './ImportCoursModal.module.css';
 
@@ -76,6 +76,24 @@ export default function ImportCoursModal({ isOpen, onClose, onImported }: Props)
 
   if (!isOpen) return null;
 
+  // Poids en Mo, à la belge (virgule décimale)
+  const enMo = (octets: number) => (octets / (1024 * 1024)).toFixed(1).replace('.', ',');
+  const moMax = Math.round(PDF_OCTETS_MAX / (1024 * 1024));
+  const messageTropLourd = (octets?: number) =>
+    `Ce PDF est trop lourd${octets ? ` (${enMo(octets)} Mo)` : ''} : ${moMax} Mo maximum. ` +
+    'Garde seulement les pages que tu dois lire, ou demande de l’aide à ton professeur.';
+
+  // Vérifié dès le choix du fichier : l'élève est prévenu avant de cliquer sur « Importer »
+  const choisirFichier = (f: File | null) => {
+    if (f && f.size > PDF_OCTETS_MAX) {
+      setFichier(null);
+      setErreur(messageTropLourd(f.size));
+      return;
+    }
+    setErreur(null);
+    setFichier(f);
+  };
+
   const pret =
     (mode === 'lien' && url.trim().length > 0) ||
     (mode === 'texte' && texte.trim().length >= 200) ||
@@ -90,6 +108,10 @@ export default function ImportCoursModal({ isOpen, onClose, onImported }: Props)
     try {
       const headers = await getAuthHeaders();
       if (!headers) throw new Error('Connexion perdue : reconnecte-toi.');
+      // Même plafond que le serveur : inutile d'envoyer un fichier qui sera refusé
+      if (mode === 'pdf' && fichier && fichier.size > PDF_OCTETS_MAX) {
+        throw new Error(messageTropLourd(fichier.size));
+      }
       const form = new FormData();
       form.set('mode', mode);
       form.set('titre', titre);
@@ -108,6 +130,13 @@ export default function ImportCoursModal({ isOpen, onClose, onImported }: Props)
         if (k.toLowerCase() === 'content-type') delete entetes[k];
       });
       const res = await fetch('/api/fle/lectures', { method: 'POST', headers: entetes, body: form });
+      // Nginx (devant l'app sur le VPS) répond en HTML quand il bloque la requête :
+      // on traduit son code d'erreur au lieu d'afficher « Unexpected token '<' »
+      if (!(res.headers.get('content-type') || '').includes('application/json')) {
+        if (res.status === 413) throw new Error(messageTropLourd(mode === 'pdf' ? fichier?.size : undefined));
+        if (res.status === 504) throw new Error('La lecture du PDF a pris trop de temps. Réessaie avec moins de pages.');
+        throw new Error(`Le serveur n’a pas répondu correctement (erreur ${res.status}). Réessaie dans un instant.`);
+      }
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Import impossible.');
       setDocuments(null);
@@ -179,14 +208,14 @@ export default function ImportCoursModal({ isOpen, onClose, onImported }: Props)
           {mode === 'pdf' && (
             <div className={styles.field}>
               <label className={styles.label} htmlFor="import-pdf">
-                Choisis un PDF ({PDF_PAGES_MAX} pages maximum)
+                Choisis un PDF ({PDF_PAGES_MAX} pages et {moMax} Mo maximum)
               </label>
               <input
                 id="import-pdf"
                 type="file"
                 accept="application/pdf,.pdf"
                 className={styles.inputFile}
-                onChange={(e) => setFichier(e.target.files?.[0] ?? null)}
+                onChange={(e) => choisirFichier(e.target.files?.[0] ?? null)}
                 disabled={enCours}
               />
               <p className={styles.aide}>

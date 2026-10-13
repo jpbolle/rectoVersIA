@@ -23,6 +23,9 @@ export interface Grille {
   profId: string;
   profName?: string;   // Nom du prof (pour affichage dans "Grilles des professeurs")
   shared: boolean;     // Grille exemple visible par tous (admin seulement)
+  // Privée : absente des « Grilles des professeurs » des collègues (absent = partagée).
+  // Les élèves la lisent toujours. Plan 2026-10-13-ressources-privees.
+  prive?: boolean;
   anneeScolaire: string;
   archive: boolean;
   criteria: GrilleCriterion[];
@@ -36,6 +39,7 @@ export interface CreateGrilleData {
   description?: string;
   uaa?: number[];
   ateliers?: string[];
+  prive?: boolean;
   criteria: Omit<GrilleCriterion, 'id'>[];
 }
 

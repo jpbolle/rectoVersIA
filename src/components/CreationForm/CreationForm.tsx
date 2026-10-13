@@ -47,6 +47,7 @@ import type { TypeModal } from '@/types/didactique';
 import { DIAGRAM_TYPES, DIAGRAM_TYPE_LABELS, type DiagramType } from '@/types/diagram';
 import styles from './CreationForm.module.css';
 import FlipChoice from '@/components/FlipChoice/FlipChoice';
+import PartageToggle from '@/components/PartageToggle/PartageToggle';
 
 type FormFace = 'recto' | 'verso';
 
@@ -336,6 +337,8 @@ export default function CreationForm({
   // Auto-évaluation intégrée — activée par défaut : c'est le geste qu'on
   // veut voir posé, le prof la retire quand elle n'a pas lieu d'être.
   const [autoEvaluation, setAutoEvaluation] = useState(true);
+  // Activité FLE : partagée par défaut avec les collègues (plan 2026-10-13)
+  const [prive, setPrive] = useState(false);
   // Questionnaire choisi dans la bibliothèque, ou « sur mesure » (écrit ici)
   const [lectureQuizId, setLectureQuizId] = useState<string>(preselection?.lectureQuizId ?? QUESTIONNAIRE_SUR_MESURE);
   // COMMENT le questionnaire se joue. Porté par l'activité et non par le
@@ -489,6 +492,7 @@ export default function CreationForm({
       disponible: sansClasse ? false : disponible,
       typeTravail,
       ...(modeFle ? { referentiel: 'fle' as const } : {}),
+      ...(modeFle && prive ? { prive: true } : {}),
       // Toujours transmis : « absent = activé » ne vaut que pour les activités
       // antérieures au réglage, pas pour celles qu'on crée maintenant.
       autoEvaluation: supporteAutoEval ? autoEvaluation : false,
@@ -803,6 +807,14 @@ export default function CreationForm({
             min={getTodayString()}
           />
         </div>
+        )}
+
+        {/* Activité FLE : à la place des classes, le partage avec les collègues */}
+        {modeFle && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Partage</label>
+            <PartageToggle prive={prive} onChange={setPrive} disabled={isSubmitting} />
+          </div>
         )}
 
         <div className={styles.formGroup}>

@@ -5,6 +5,7 @@ import { useDidactique } from '@/hooks/useDidactique';
 import type { Grille, GrilleCriterion, GrilleLevel } from '@/types/grille';
 import { LEVEL_LABELS, LEVEL_PERCENTAGES, UAA_LIST } from '@/types/grille';
 import { ATELIERS } from '@/types/didactique';
+import PartageToggle from '@/components/PartageToggle/PartageToggle';
 import styles from './GrilleBuilder.module.css';
 
 interface GrilleBuilderProps {
@@ -14,6 +15,7 @@ interface GrilleBuilderProps {
     description: string;
     uaa: number[];
     ateliers: string[];
+    prive: boolean;
     criteria: GrilleCriterion[];
   }) => void;
   onCancel: () => void;
@@ -42,6 +44,8 @@ export default function GrilleBuilder({ grille, onSave, onCancel, isSaving }: Gr
   // Types d'activité auxquels la grille se rapporte : c'est ce qui filtre les
   // grilles proposées à la création d'une activité
   const [selectedAteliers, setSelectedAteliers] = useState<string[]>(grille?.ateliers || []);
+  // Partagée par défaut (plan 2026-10-13-ressources-privees)
+  const [prive, setPrive] = useState(grille?.prive === true);
 
   // UAA dynamiques (config didactique, gérée par l'admin) : visibles + celles
   // déjà cochées sur la grille ; libellé de repli sur la liste historique
@@ -112,6 +116,7 @@ export default function GrilleBuilder({ grille, onSave, onCancel, isSaving }: Gr
       description: description.trim(),
       uaa: selectedUaa,
       ateliers: selectedAteliers,
+      prive,
       criteria: criteria.map((c, i) => ({
         ...c,
         order: i,
@@ -122,7 +127,7 @@ export default function GrilleBuilder({ grille, onSave, onCancel, isSaving }: Gr
         })),
       })),
     });
-  }, [name, description, selectedUaa, selectedAteliers, criteria, onSave]);
+  }, [name, description, selectedUaa, selectedAteliers, prive, criteria, onSave]);
 
   // --- CRITERES ---
 
@@ -334,6 +339,12 @@ export default function GrilleBuilder({ grille, onSave, onCancel, isSaving }: Gr
               })}
             </div>
           )}
+        </div>
+
+        {/* Partage avec les collègues : partagée par défaut */}
+        <div className={styles.field}>
+          <label className={styles.label}>Partage</label>
+          <PartageToggle prive={prive} onChange={setPrive} verrouillePartage={grille?.shared === true} />
         </div>
       </div>
 

@@ -25,3 +25,8 @@
 .missing a {
   color: var(--c-primary);
 }
+
+/* Double bouton Partagé / Privé d'un corrigé du prof (plan 2026-10-13) */
+.partage {
+  margin: 4px 0 12px;
+}

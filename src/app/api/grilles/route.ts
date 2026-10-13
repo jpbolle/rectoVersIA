@@ -17,6 +17,7 @@ function docToGrilleList(doc: FirebaseFirestore.DocumentSnapshot): Grille {
     profId: data.profId || '',
     profName: data.profName || '',
     shared: data.shared ?? false,
+    prive: data.prive === true,
     anneeScolaire: data.anneeScolaire || '',
     archive: data.archive ?? false,
     criteria: (data.criteria || []).map((c: GrilleCriterion) => ({
@@ -93,8 +94,9 @@ export async function GET(request: NextRequest) {
     // Prof : separer mes grilles, grilles partagees, grilles des autres profs
     const myGrilles = allGrilles.filter((g) => g.profId === auth.uid);
     const sharedGrilles = allGrilles.filter((g) => g.shared && g.profId !== auth.uid && !g.archive);
+    // Une grille privée ne sort pas de chez son auteur (plan 2026-10-13)
     const otherProfsGrilles = allGrilles.filter(
-      (g) => g.profId !== auth.uid && !g.shared && !g.archive
+      (g) => g.profId !== auth.uid && !g.shared && !g.archive && !g.prive
     );
 
     return NextResponse.json({
@@ -160,6 +162,8 @@ export async function POST(request: NextRequest) {
 
     // Seul l'admin peut marquer une grille comme partagee
     const shared = auth.isAdmin && body.shared === true;
+    // Partagée par défaut ; un exemple de l'admin ne peut pas être privé
+    const prive = body.prive === true && !shared;
 
     await adminDb.collection('grilles').doc(id).set({
       id,
@@ -170,6 +174,7 @@ export async function POST(request: NextRequest) {
       profId: auth.uid,
       profName,
       shared,
+      prive,
       anneeScolaire,
       archive: false,
       criteria: criteriaWithIds,
@@ -188,6 +193,7 @@ export async function POST(request: NextRequest) {
         profId: auth.uid,
         profName,
         shared,
+        prive,
         anneeScolaire,
         archive: false,
         criteria: criteriaWithIds,

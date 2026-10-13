@@ -200,6 +200,7 @@ export function docToPortfolioMatrice(doc: Doc): PortfolioMatrice {
     ressources: data.ressources && typeof data.ressources === 'object' ? (data.ressources as DevoirRessource) : null,
     etapes: etapesPortfolioPourFirestore(data.etapes, { codeAutorise: true }),
     profId: typeof data.profId === 'string' ? data.profId : '',
+    prive: data.prive === true,
     archive: data.archive === true,
     anneeScolaire: typeof data.anneeScolaire === 'string' ? data.anneeScolaire : '',
     createdAt: iso(data.createdAt),

@@ -57,6 +57,8 @@ export async function POST(request: NextRequest) {
         profId: auth.uid,
         anneeScolaire: calculateSchoolYear(),
         archive: false,
+        // Partagé par défaut (plan 2026-10-13-ressources-privees)
+        prive: body.prive === true,
         // Le contenu passe par le MÊME garde-fou que celui des activités :
         // c'est lui qui recale les corrigés quand un choix vide est jeté.
         quiz: quizPourFirestore(quizNettoye ?? { mode: 'worksheet', questions: [] }),

@@ -97,6 +97,7 @@ export function docToOeuvre(doc: Doc): Oeuvre {
     profId: d.profId || '',
     profName: d.profName || '',
     shared: d.shared ?? false,
+    prive: d.prive === true,
     partages: normaliserPartages(d.partages),
     archive: d.archive ?? false,
     anneeScolaire: d.anneeScolaire || '',

@@ -4,6 +4,19 @@ import { verifyAuth } from '@/lib/api-auth';
 import { decrypt } from '@/lib/crypto';
 import type { VocabulaireWord } from '@/types/vocabulaire';
 
+// Qui peut modifier ou supprimer une liste : son auteur (`createdBy`), ou l'admin.
+// Une liste ancienne SANS auteur reste ouverte à tous les profs — c'est ainsi
+// que l'interface la traite (« Mes listes », useVocabulaireThemes).
+// Faille fermée le 2026-10-13 : PUT et DELETE ne vérifiaient rien, un prof
+// pouvait réécrire ou effacer la liste d'un collègue par l'API.
+function peutModifier(
+  data: FirebaseFirestore.DocumentData | undefined,
+  auth: { uid: string; isAdmin: boolean }
+): boolean {
+  const auteur = data?.createdBy;
+  return !auteur || auteur === auth.uid || auth.isAdmin;
+}
+
 export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
   if (!auth) {
@@ -31,7 +44,16 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const themes = snapshot.docs.map((doc) => {
+    // Une liste privée ne sort pas de chez son auteur côté profs (plan
+    // 2026-10-13-ressources-privees) ; les élèves gardent tout (leurs activités)
+    const visibles = auth.role === 'prof'
+      ? snapshot.docs.filter((doc) => {
+          const d = doc.data();
+          return d.prive !== true || !d.createdBy || d.createdBy === auth.uid;
+        })
+      : snapshot.docs;
+
+    const themes = visibles.map((doc) => {
       const data = doc.data();
       const createdBy = data.createdBy || null;
       return {
@@ -43,6 +65,7 @@ export async function GET(request: NextRequest) {
           ? (profNames[createdBy] || 'Professeur')
           : undefined,
         targetLevels: data.targetLevels || undefined,
+        prive: data.prive === true,
       };
     });
 
@@ -65,7 +88,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, words, targetLevels } = body as { name: string; words?: VocabulaireWord[]; targetLevels?: string[] };
+    const { name, words, targetLevels, prive } = body as {
+      name: string;
+      words?: VocabulaireWord[];
+      targetLevels?: string[];
+      prive?: boolean;
+    };
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -90,6 +118,8 @@ export async function POST(request: NextRequest) {
       words: words || [],
       createdBy: auth.uid,
       createdAt: new Date().toISOString(),
+      // Partagée par défaut
+      prive: prive === true,
       ...(targetLevels && { targetLevels }),
     });
 
@@ -115,7 +145,7 @@ export async function PUT(request: NextRequest) {
     const { id, words, meta } = body as {
       id: string;
       words?: VocabulaireWord[];
-      meta?: { targetLevels?: string[] };
+      meta?: { targetLevels?: string[]; prive?: boolean };
     };
 
     if (!id) {
@@ -133,6 +163,12 @@ export async function PUT(request: NextRequest) {
         { status: 404 }
       );
     }
+    if (!peutModifier(doc.data(), auth)) {
+      return NextResponse.json(
+        { success: false, message: 'Cette liste appartient à un autre professeur — duplique-la pour la modifier' },
+        { status: 403 }
+      );
+    }
 
     const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
     if (words && Array.isArray(words)) {
@@ -140,6 +176,7 @@ export async function PUT(request: NextRequest) {
     }
     if (meta) {
       if (meta.targetLevels !== undefined) updateData.targetLevels = meta.targetLevels;
+      if (meta.prive !== undefined) updateData.prive = meta.prive === true;
     }
 
     await docRef.update(updateData);
@@ -178,6 +215,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         { success: false, message: 'Liste introuvable' },
         { status: 404 }
+      );
+    }
+    if (!peutModifier(doc.data(), auth)) {
+      return NextResponse.json(
+        { success: false, message: 'Cette liste appartient à un autre professeur' },
+        { status: 403 }
       );
     }
 

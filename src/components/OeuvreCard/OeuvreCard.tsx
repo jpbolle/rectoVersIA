@@ -76,6 +76,8 @@ export default function OeuvreCard({
         ]
       : []),
     ...(partageRecu ? [partageRecu === 'edition' ? 'Co-édition' : 'Lecture seule'] : []),
+    // Repère sur mes propres œuvres : celle-ci ne sort pas de chez moi
+    ...(mienne && oeuvre.prive ? ['🔒 Privé'] : []),
   ];
 
   // L'auteur ne se répète pas s'il est déjà dans le titre

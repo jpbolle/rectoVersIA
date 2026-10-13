@@ -12,7 +12,10 @@ import type { Classe, Eleve } from '@/types/classe';
 import styles from './MesElevesSection.module.css';
 
 interface MesElevesSectionProps {
+  // Les classes de l'espace courant : seuls leurs élèves sont listés
   classes: Classe[];
+  // « Mes Élèves » par défaut ; « Élèves FLE » dans l'espace FLE
+  titre?: string;
   // Incrémenté par la page après ajout/modification/suppression d'un élève
   refreshKey: number;
   onOpenFiche: (eleve: Eleve) => void;
@@ -20,6 +23,7 @@ interface MesElevesSectionProps {
 
 export default function MesElevesSection({
   classes,
+  titre = 'Mes Élèves',
   refreshKey,
   onOpenFiche,
 }: MesElevesSectionProps) {
@@ -61,7 +65,11 @@ export default function MesElevesSection({
     const needle = search.trim().toLowerCase();
     return eleves
       .filter((e) => {
-        const archived = classeById.get(e.classeId)?.archive === true;
+        // `/api/eleves` renvoie les élèves de TOUTES les classes du prof : on ne
+        // garde que ceux des classes reçues (l'espace courant, classique ou FLE)
+        const classe = classeById.get(e.classeId);
+        if (!classe) return false;
+        const archived = classe.archive === true;
         if (filter === 'actifs' ? archived : !archived) return false;
         if (!needle) return true;
         return `${e.prenom} ${e.nom}`.toLowerCase().includes(needle);
@@ -72,7 +80,7 @@ export default function MesElevesSection({
   return (
     <section className={styles.section}>
       <div className={styles.header}>
-        <h2 className={styles.title}>Mes Élèves</h2>
+        <h2 className={styles.title}>{titre}</h2>
         <div className={styles.tools}>
           <input
             type="search"

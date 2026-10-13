@@ -30,6 +30,8 @@ export interface QuestionnaireLecture {
   archive: boolean;
   /** Questionnaire d'exemple, visible de tous les profs (admin seulement) */
   shared?: boolean;
+  /** Privé : absent des « Questionnaires des professeurs » des collègues (absent = partagé) */
+  prive?: boolean;
   /** Le contenu même : mode + questions */
   quiz: LectureQuiz;
   createdAt: string;
@@ -45,6 +47,7 @@ export interface QuestionnaireLectureResume {
   anneeScolaire: string;
   archive: boolean;
   shared?: boolean;
+  prive?: boolean;
   /** Nombre de questions, blocs informatifs exclus */
   nbQuestions: number;
   /** Total des points */

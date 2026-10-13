@@ -34,6 +34,7 @@ const versMeta = (d: FirebaseFirestore.QueryDocumentSnapshot): SchemaPersonnelMe
     createdAt: data.createdAt || '',
     updatedAt: data.updatedAt || '',
     ...(data.archive === true ? { archive: true } : {}),
+    ...(data.prive === true ? { prive: true } : {}),
   };
 };
 
@@ -52,7 +53,8 @@ export async function GET(request: NextRequest) {
 
     const profs = await adminDb.collection(COLLECTION).where('prof', '==', true).get();
     const autres = profs.docs
-      .filter((d) => d.data().uid !== auth.uid && d.data().archive !== true)
+      // Un corrigé privé ne sort pas de chez son auteur (plan 2026-10-13)
+      .filter((d) => d.data().uid !== auth.uid && d.data().archive !== true && d.data().prive !== true)
       .map(versMeta)
       .sort(parDate);
     return NextResponse.json({ success: true, data: list, autres });
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest) {
   const auth = await verifyAuth(request);
   if (!auth) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
-  let body: { type?: unknown; titre?: unknown; duplicateOf?: unknown; diagram?: unknown };
+  let body: { type?: unknown; titre?: unknown; duplicateOf?: unknown; diagram?: unknown; prive?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -79,7 +81,11 @@ export async function POST(request: NextRequest) {
     if (typeof body.duplicateOf === 'string') {
       const src = await adminDb.collection(COLLECTION).doc(body.duplicateOf).get();
       // Le sien, ou (prof) celui d'un collègue de la bibliothèque des corrigés
-      const lisible = src.exists && (src.data()?.uid === auth.uid || (auth.role === 'prof' && src.data()?.prof === true));
+      // (sauf s'il l'a rendu privé — plan 2026-10-13)
+      const lisible =
+        src.exists &&
+        (src.data()?.uid === auth.uid ||
+          (auth.role === 'prof' && src.data()?.prof === true && src.data()?.prive !== true));
       if (!lisible) {
         return NextResponse.json({ error: 'Schéma introuvable' }, { status: 404 });
       }
@@ -116,7 +122,8 @@ export async function POST(request: NextRequest) {
       ((depart ? depart.title : typeof body.titre === 'string' ? body.titre : '') || '').trim().slice(0, 120) || 'Sans titre';
     const ref = await adminDb.collection(COLLECTION).add({
       uid: auth.uid,
-      ...(auth.role === 'prof' ? { prof: true } : {}),
+      // Corrigé du prof : partagé par défaut
+      ...(auth.role === 'prof' ? { prof: true, prive: body.prive === true } : {}),
       titre,
       type,
       diagram: depart ?? diagramVide(type, titre),

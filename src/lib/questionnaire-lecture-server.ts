@@ -35,6 +35,7 @@ function docToQuestionnaire(id: string, data: Record<string, unknown>): Question
     anneeScolaire: String(data.anneeScolaire ?? ''),
     archive: data.archive === true,
     shared: data.shared === true ? true : undefined,
+    prive: data.prive === true ? true : undefined,
     quiz: lectureQuizDepuisFirestore(data.quiz) ?? { mode: 'worksheet', questions: [] },
     createdAt: toISO(data.createdAt),
     updatedAt: toISO(data.updatedAt),
@@ -70,6 +71,7 @@ export async function listerQuestionnaires(
       anneeScolaire: String(data.anneeScolaire ?? ''),
       archive: data.archive === true,
       shared: data.shared === true ? true : undefined,
+      prive: data.prive === true ? true : undefined,
       nbQuestions,
       points,
       mode: quiz?.mode ?? 'worksheet',
@@ -84,7 +86,14 @@ export async function listerQuestionnaires(
     .map((d) => resumer(d.id, d.data()));
 
   const autres = tous.docs
-    .filter((d) => d.data().profId !== profId && d.data().shared !== true && d.data().archive !== true)
+    // Un questionnaire privé ne sort pas de chez son auteur (plan 2026-10-13)
+    .filter(
+      (d) =>
+        d.data().profId !== profId &&
+        d.data().shared !== true &&
+        d.data().archive !== true &&
+        d.data().prive !== true
+    )
     .map((d) => resumer(d.id, d.data()));
 
   const parNom = (a: QuestionnaireLectureResume, b: QuestionnaireLectureResume) =>

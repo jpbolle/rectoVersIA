@@ -28,7 +28,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const data = doc.data()!;
     return NextResponse.json({
       success: true,
-      data: { id: doc.id, titre: data.titre, type: data.type, diagram: data.diagram, updatedAt: data.updatedAt },
+      data: {
+        id: doc.id,
+        titre: data.titre,
+        type: data.type,
+        diagram: data.diagram,
+        updatedAt: data.updatedAt,
+        prive: data.prive === true,
+      },
     });
   } catch (error) {
     console.error('Erreur GET /api/schemas/personnel/[id]:', error);
@@ -43,7 +50,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   if (!auth) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
   const { id } = await params;
 
-  let body: { diagram?: unknown; thumbnail?: unknown; archive?: unknown };
+  let body: { diagram?: unknown; thumbnail?: unknown; archive?: unknown; prive?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -66,6 +73,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     patch.thumbnail = body.thumbnail;
   }
   if (typeof body.archive === 'boolean') patch.archive = body.archive;
+  if (typeof body.prive === 'boolean') patch.prive = body.prive;
 
   try {
     const doc = await charger(id, auth.uid);

@@ -55,8 +55,9 @@ export async function GET(request: NextRequest) {
       shared: toutes.filter(
         (o) => o.shared && o.profId !== auth.uid && !o.archive && !idsPartagees.has(o.id)
       ),
+      // Une œuvre privée ne sort pas de chez son auteur (plan 2026-10-13)
       otherProfs: toutes.filter(
-        (o) => o.profId !== auth.uid && !o.shared && !o.archive && !idsPartagees.has(o.id)
+        (o) => o.profId !== auth.uid && !o.shared && !o.archive && !o.prive && !idsPartagees.has(o.id)
       ),
     });
   } catch (error) {
@@ -97,6 +98,8 @@ export async function POST(request: NextRequest) {
       profId: auth.uid,
       profName,
       shared,
+      // Partagée par défaut ; un exemple de l'admin ne peut pas être privé
+      prive: body.prive === true && !shared,
       archive: false,
       anneeScolaire: calculateSchoolYear(),
       createdAt: now,

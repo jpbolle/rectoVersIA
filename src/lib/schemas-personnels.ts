@@ -22,6 +22,9 @@ export interface SchemaPersonnelMeta {
   updatedAt: string;
   // Bibliothèque du prof (Mes Ressources › Conceptualisations, 2026-10-11)
   archive?: boolean;
+  // Corrigé privé : absent du bloc « des professeurs » des collègues (absent =
+  // partagé). Plan 2026-10-13-ressources-privees.
+  prive?: boolean;
 }
 
 export function estTypeSchema(t: unknown): t is DiagramType {

@@ -26,6 +26,7 @@ import OeuvreBuilder from '@/components/OeuvreBuilder/OeuvreBuilder';
 import OeuvreCard from '@/components/OeuvreCard/OeuvreCard';
 import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
 import OeuvrePartageModal from '@/components/OeuvreCard/OeuvrePartageModal';
+import PartageToggle from '@/components/PartageToggle/PartageToggle';
 import { partageDe } from '@/types/oeuvre';
 import type { Oeuvre } from '@/types/oeuvre';
 import styles from './OeuvrePanel.module.css';
@@ -61,6 +62,8 @@ export default function OeuvrePanel({ onUtiliser }: { onUtiliser?: (o: Oeuvre) =
   const [creation, setCreation] = useState(false);
   const [nouveauTitre, setNouveauTitre] = useState('');
   const [nouvelAuteur, setNouvelAuteur] = useState('');
+  // Partagée par défaut (plan 2026-10-13-ressources-privees)
+  const [nouvellePrive, setNouvellePrive] = useState(false);
 
   const charger = useCallback(async () => {
     setChargement(true);
@@ -108,7 +111,7 @@ export default function OeuvrePanel({ onUtiliser }: { onUtiliser?: (o: Oeuvre) =
       const res = await fetch('/api/oeuvres', {
         method: 'POST',
         headers: { ...(headers || {}), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titre: nouveauTitre.trim(), auteur: nouvelAuteur.trim() }),
+        body: JSON.stringify({ titre: nouveauTitre.trim(), auteur: nouvelAuteur.trim(), prive: nouvellePrive }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
@@ -116,11 +119,12 @@ export default function OeuvrePanel({ onUtiliser }: { onUtiliser?: (o: Oeuvre) =
       setCreation(false);
       setNouveauTitre('');
       setNouvelAuteur('');
+      setNouvellePrive(false);
       charger();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Erreur');
     }
-  }, [nouveauTitre, nouvelAuteur, charger]);
+  }, [nouveauTitre, nouvelAuteur, nouvellePrive, charger]);
 
   const dupliquer = useCallback(
     async (o: Oeuvre) => {
@@ -293,6 +297,7 @@ export default function OeuvrePanel({ onUtiliser }: { onUtiliser?: (o: Oeuvre) =
                   placeholder="Ex : Molière"
                 />
               </label>
+              <PartageToggle prive={nouvellePrive} onChange={setNouvellePrive} />
             </div>
             <footer className={styles.popupPied}>
               <button type="button" className={styles.btnGhost} onClick={() => setCreation(false)}>

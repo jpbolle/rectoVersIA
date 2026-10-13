@@ -16,6 +16,7 @@ function docToGrille(doc: FirebaseFirestore.DocumentSnapshot): Grille {
     profId: data.profId || '',
     profName: data.profName || '',
     shared: data.shared ?? false,
+    prive: data.prive === true,
     anneeScolaire: data.anneeScolaire || '',
     archive: data.archive ?? false,
     criteria: (data.criteria || []).map((c: GrilleCriterion) => ({
@@ -121,6 +122,9 @@ export async function PATCH(
     if (body.archive !== undefined) updateData.archive = body.archive;
     // Seul l'admin peut changer le flag shared
     if (body.shared !== undefined && isAdmin(auth.email)) updateData.shared = body.shared;
+    if (body.prive !== undefined) updateData.prive = body.prive === true;
+    // Un exemple de l'admin reste visible de tous
+    if ((updateData.shared ?? existingData.shared) === true) updateData.prive = false;
 
     if (body.criteria !== undefined && Array.isArray(body.criteria)) {
       updateData.criteria = body.criteria.map(

@@ -15,6 +15,7 @@ import CreateOeuvreCard from '@/components/OeuvreCard/CreateOeuvreCard';
 import RessourceCard from '@/components/RessourceCard/RessourceCard';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import PortfolioAtelier from './PortfolioAtelier';
+import PartageToggle from '@/components/PartageToggle/PartageToggle';
 import { ATELIER_PORTFOLIO } from '@/types/didactique';
 import type { CreateDevoirData, Devoir } from '@/types/devoir';
 import { nombreEtapes, type PortfolioMatrice } from '@/types/portfolio';
@@ -40,6 +41,8 @@ export default function PortfolioPanel() {
   const [creation, setCreation] = useState(false);
   const [titreNouveau, setTitreNouveau] = useState('');
   const [descNouvelle, setDescNouvelle] = useState('');
+  // Partagé par défaut (plan 2026-10-13-ressources-privees)
+  const [priveNouveau, setPriveNouveau] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   // « Utiliser pour une classe » : le formulaire de création d'activité, pré-rempli
   const [utiliser, setUtiliser] = useState<PortfolioMatrice | null>(null);
@@ -79,13 +82,14 @@ export default function PortfolioPanel() {
       const res = await fetch('/api/portfolios', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ titre, description: descNouvelle.trim() }),
+        body: JSON.stringify({ titre, description: descNouvelle.trim(), prive: priveNouveau }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Création impossible');
       setCreation(false);
       setTitreNouveau('');
       setDescNouvelle('');
+      setPriveNouveau(false);
       await charger();
       // Une matrice se compose aussitôt : on ouvre son atelier
       setOuverte((json.data as PortfolioMatrice).id);
@@ -216,6 +220,8 @@ export default function PortfolioPanel() {
       ...(nbRenvois > 0 ? [`${nbRenvois} activité${nbRenvois > 1 ? 's' : ''}`] : []),
       ...(nbCollectives > 0 ? [`${nbCollectives} collective${nbCollectives > 1 ? 's' : ''}`] : []),
       ...(m.archive ? ['Archivé'] : []),
+      // Repère sur mes propres portfolios : celui-ci ne sort pas de chez moi
+      ...(!lectureSeule && m.prive ? ['🔒 Privé'] : []),
     ];
     return (
       <RessourceCard
@@ -314,6 +320,8 @@ export default function PortfolioPanel() {
                 onChange={(e) => setDescNouvelle(e.target.value)}
                 placeholder="Certification de Noël, 4ᵉ…"
               />
+              <span className={styles.lab}>Partage</span>
+              <PartageToggle prive={priveNouveau} onChange={setPriveNouveau} />
             </div>
             <footer className={base.popupPied}>
               <span className={base.popupNote}>Les étapes se composent ensuite, dans l’atelier.</span>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useVocabulaireWords } from '@/hooks/useVocabulaireWords';
 import EmptyState from '@/components/EmptyState/EmptyState';
+import PartageToggle from '@/components/PartageToggle/PartageToggle';
 import type { VocabulaireThemeSummary } from '@/hooks/useVocabulaireThemes';
 import type { VocabulaireWord } from '@/types/vocabulaire';
 import styles from './VocabListEditor.module.css';
@@ -59,9 +60,9 @@ interface VocabListEditorProps {
   // 'create' : saisie du nom d'une nouvelle liste — objet : édition de la liste
   mode: 'create' | VocabulaireThemeSummary;
   readOnly?: boolean;
-  createTheme: (name: string) => Promise<string | null>;
+  createTheme: (name: string, prive?: boolean) => Promise<string | null>;
   updateWords: (id: string, words: VocabulaireWord[]) => Promise<void>;
-  updateThemeMeta?: (id: string, meta: { targetLevels?: string[] }) => Promise<void>;
+  updateThemeMeta?: (id: string, meta: { targetLevels?: string[]; prive?: boolean }) => Promise<void>;
   getAuthHeaders?: () => Promise<Record<string, string> | null>;
   onClose?: () => void;
   onCreated?: (theme: VocabulaireThemeSummary) => void;
@@ -84,6 +85,8 @@ export default function VocabListEditor({
   const [newListName, setNewListName] = useState('');
   const [creating, setCreating] = useState(false);
   const [targetLevels, setTargetLevels] = useState<string[]>([]);
+  // Partagée par défaut (plan 2026-10-13-ressources-privees)
+  const [prive, setPrive] = useState(false);
 
   // Mots de la liste en cours
   const { words: wordsMap, isLoading: wordsLoading } = useVocabulaireWords(
@@ -161,16 +164,17 @@ export default function VocabListEditor({
   // Synchroniser les niveaux ciblés quand on change de liste
   useEffect(() => {
     setTargetLevels(theme?.targetLevels || []);
+    setPrive(theme?.prive === true);
   }, [theme?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateConfirm = useCallback(async () => {
     if (!newListName.trim() || creating) return;
     setCreating(true);
     try {
-      const id = await createTheme(newListName.trim());
+      const id = await createTheme(newListName.trim(), prive);
       if (id) {
         onMessage?.(`Liste "${newListName.trim()}" créée !`, 'success');
-        onCreated?.({ id, name: newListName.trim(), wordCount: 0, profId: null });
+        onCreated?.({ id, name: newListName.trim(), wordCount: 0, profId: null, prive });
       }
       setNewListName('');
     } catch (err) {
@@ -178,7 +182,7 @@ export default function VocabListEditor({
     } finally {
       setCreating(false);
     }
-  }, [newListName, creating, createTheme, onCreated, onMessage]);
+  }, [newListName, creating, prive, createTheme, onCreated, onMessage]);
 
   const handleWordChange = useCallback((index: number, field: keyof VocabulaireWord, value: string) => {
     setEditingWords((prev) => {
@@ -493,6 +497,9 @@ export default function VocabListEditor({
             {creating ? 'Création...' : 'Créer la liste'}
           </button>
         </div>
+        <div className={styles.vocabPartage}>
+          <PartageToggle prive={prive} onChange={setPrive} disabled={creating} />
+        </div>
       </div>
     );
   }
@@ -511,6 +518,19 @@ export default function VocabListEditor({
           </button>
         )}
       </div>
+
+      {/* Partage avec les collègues : enregistré aussitôt, comme les élèves ciblés */}
+      {!readOnly && updateThemeMeta && (
+        <div className={styles.vocabPartage}>
+          <PartageToggle
+            prive={prive}
+            onChange={(valeur) => {
+              setPrive(valeur);
+              updateThemeMeta(theme.id, { prive: valeur });
+            }}
+          />
+        </div>
+      )}
 
       {/* Eleves cibles */}
       {!readOnly && updateThemeMeta && (

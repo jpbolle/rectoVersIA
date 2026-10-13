@@ -21,6 +21,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ success: false, message: 'Module introuvable' }, { status: 404 });
     }
     const source = docToModuleFle(sourceSnap);
+    // Un point de théorie privé ne se duplique que chez son auteur (plan 2026-10-13)
+    if (source.prive && !source.shared && source.profId !== auth.uid && !auth.isAdmin) {
+      return NextResponse.json({ success: false, message: 'Ce point de théorie est privé' }, { status: 403 });
+    }
     const nouvelId = generateModuleFleId();
     const now = new Date();
 

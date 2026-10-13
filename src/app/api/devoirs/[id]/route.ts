@@ -377,6 +377,11 @@ export async function PATCH(
     // Champs modifiables
     const updateData: Record<string, unknown> = {};
 
+    // Activité FLE : privée ou partagée avec les collègues (plan 2026-10-13)
+    if (typeof body.prive === 'boolean' && docSnap.data()?.referentiel === 'fle') {
+      updateData.prive = body.prive;
+    }
+
     if (body.disponible !== undefined) {
       updateData.disponible = body.disponible;
       // Horodatage de l'ouverture aux élèves (notifications)

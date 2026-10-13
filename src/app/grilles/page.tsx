@@ -206,6 +206,7 @@ export default function GrillesPage() {
       description: string;
       uaa: number[];
       ateliers: string[];
+      prive: boolean;
       criteria: GrilleCriterion[];
     }) => {
       setIsSaving(true);
@@ -216,6 +217,7 @@ export default function GrillesPage() {
             description: data.description,
             uaa: data.uaa,
             ateliers: data.ateliers,
+            prive: data.prive,
             criteria: data.criteria,
           });
           setMessage({ text: `Grille "${data.name}" créée avec succès !`, type: 'success' });
@@ -225,6 +227,7 @@ export default function GrillesPage() {
             description: data.description,
             uaa: data.uaa,
             ateliers: data.ateliers,
+            prive: data.prive,
             criteria: data.criteria,
           });
           setMessage({ text: `Grille "${data.name}" modifiée avec succès !`, type: 'success' });

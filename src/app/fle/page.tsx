@@ -360,7 +360,7 @@ export default function FlePage() {
                 onClick={() => changerVue('parcours')}
               >
                 <span className={styles.cardPicto} aria-hidden="true">🎒</span>
-                <span className={styles.cardTitre}>Mes parcours</span>
+                <span className={styles.cardTitre}>Mes activités et séquences de cours</span>
                 <span className={styles.cardSous}>Le travail donné par mon professeur</span>
                 <span className={styles.cardCompte}>
                   {travailFle === null
@@ -414,7 +414,7 @@ export default function FlePage() {
                   {vue === 'parcours' ? '🎒' : vue === 'lectures' ? '📚' : '🎯'}
                 </span>
                 <h2 className={styles.blocTitre}>
-                  {vue === 'parcours' ? 'Mes parcours' : vue === 'lectures' ? 'Mes lectures de cours' : 'Mes évaluations'}
+                  {vue === 'parcours' ? 'Mes activités et séquences de cours' : vue === 'lectures' ? 'Mes lectures de cours' : 'Mes évaluations'}
                 </h2>
                 <span className={styles.blocAction}>
                   {vue === 'lectures' && boutonImporter}

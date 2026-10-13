@@ -94,6 +94,14 @@
   font-weight: 600;
 }
 
+/* Double bouton Partagé / Privé, sous l'en-tête (plan 2026-10-13) */
+.partage {
+  padding: 10px 22px;
+  background: var(--c-bg-card);
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0;
+}
+
 .message {
   padding: 10px 22px;
   background: var(--c-bg-element);

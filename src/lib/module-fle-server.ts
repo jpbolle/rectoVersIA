@@ -29,6 +29,7 @@ export function docToModuleFle(doc: Doc): ModuleFle {
     profId: typeof data.profId === 'string' ? data.profId : '',
     profName: typeof data.profName === 'string' ? data.profName : undefined,
     shared: data.shared === true,
+    prive: data.prive === true,
     archive: data.archive === true,
     anneeScolaire: typeof data.anneeScolaire === 'string' ? data.anneeScolaire : '',
     createdAt: iso(data.createdAt),

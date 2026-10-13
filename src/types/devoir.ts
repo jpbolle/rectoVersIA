@@ -257,6 +257,9 @@ export interface Devoir {
   // aux élèves (`ouvertParSequence`). Absent = activité classique.
   // (Plan 2026-09-19-fle-theorie-et-activites.)
   referentiel?: 'fle' | null;
+  // Activité FLE privée : absente du bloc « … des professeurs » des collègues
+  // (absent = partagée). Plan 2026-10-13-ressources-privees.
+  prive?: boolean;
   // ⚠ Plus de drapeau `fle` « utilisable dans un parcours FLE » (retiré le
   // 2026-10-09) : une activité est FLE par son `referentiel` ou par ses
   // classes (une classe FLE suffit) — `estDevoirFle()` ci-dessous. Le champ
@@ -350,6 +353,8 @@ export interface CreateDevoirData {
   portfolio?: PortfolioContenu | null;
   // Activité FLE (voir `Devoir.referentiel`)
   referentiel?: 'fle' | null;
+  // Activité FLE privée (voir `Devoir.prive`)
+  prive?: boolean;
   // Atelier de conceptualisation (type schematiser uniquement)
   schema?: SchemaConfig | null;
   // AUTO-ÉVALUATION INTÉGRÉE — l'élève se prononce sur son propre travail

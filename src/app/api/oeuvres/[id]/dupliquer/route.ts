@@ -14,7 +14,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { calculateSchoolYear } from '@/lib/auth-utils';
 import { docToOeuvre, docToSection } from '@/lib/oeuvre-server';
-import { generateOeuvreId, generateChapitreId, generateSectionId } from '@/types/oeuvre';
+import { generateOeuvreId, generateChapitreId, generateSectionId, partageDe } from '@/types/oeuvre';
 
 export async function POST(
   request: NextRequest,
@@ -33,6 +33,17 @@ export async function POST(
     }
 
     const source = docToOeuvre(sourceSnap);
+    // Une œuvre privée ne se duplique que chez son auteur — ou chez un collègue
+    // à qui il l'a partagée nommément (plan 2026-10-13)
+    if (
+      source.prive &&
+      !source.shared &&
+      source.profId !== auth.uid &&
+      !auth.isAdmin &&
+      !partageDe(source, auth.email)
+    ) {
+      return NextResponse.json({ success: false, message: 'Cette œuvre est privée' }, { status: 403 });
+    }
     const sectionsSnap = await sourceRef.collection('sections').get();
     const parId = new Map(sectionsSnap.docs.map((d) => [d.id, docToSection(d)]));
 

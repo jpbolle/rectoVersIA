@@ -486,6 +486,7 @@ export default function ClassesPage() {
         {!selectedClasse && (
           <MesElevesSection
             classes={classes}
+            titre={espace === 'fle' ? 'Élèves FLE' : 'Mes Élèves'}
             refreshKey={elevesRefreshKey}
             onOpenFiche={setFicheEleve}
           />

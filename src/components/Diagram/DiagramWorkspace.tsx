@@ -66,6 +66,8 @@ interface Props {
   instructions?: ReactNode;
   /** Ligne d'état sous le titre (« Enregistré », « Page de test »…). */
   status?: ReactNode;
+  /** RectoVerso : réglages posés sous la ligne d'état (partage d'un corrigé du prof) */
+  reglages?: ReactNode;
   backHref?: string;
   readOnly?: boolean;
   /** Pour que le parent puisse produire une vignette. */
@@ -87,7 +89,7 @@ interface Props {
   onSuggestion?: (ligneId: string) => void;
 }
 
-export function DiagramWorkspace({ diagram, onChange, instructions, status, backHref, readOnly = false, exportRef: externalRef, embedded = false, lockType = false, marques, onMarque, suggestions, onSuggestion }: Props) {
+export function DiagramWorkspace({ diagram, onChange, instructions, status, reglages, backHref, readOnly = false, exportRef: externalRef, embedded = false, lockType = false, marques, onMarque, suggestions, onSuggestion }: Props) {
   // Pastilles : un contexte seulement s'il y a quelque chose à montrer ou à poser
   const marquesValue = useMemo(
     () => (marques || onMarque ? { marques: marques ?? {}, onMarque, suggestions, onSuggestion } : null),
@@ -310,6 +312,7 @@ export function DiagramWorkspace({ diagram, onChange, instructions, status, back
           />
         )}
         {status && <p className={styles.status}>{status}</p>}
+        {reglages}
         <div className={styles.instructions}>
           {instructions ?? (
             <>
