@@ -54,6 +54,10 @@ export default function VocabulaireListReadOnly({ travailContent, themes }: Voca
   const unknownWords = themeWords.filter((w) => getWordCategory(masteryMap.get(w.word)) === 'unknown');
   const misconceivedWords = themeWords.filter((w) => getWordCategory(masteryMap.get(w.word)) === 'misconceived');
   const knownWords = themeWords.filter((w) => getWordCategory(masteryMap.get(w.word)) === 'known');
+  // Inconnu = décoché par l'élève au diagnostic ; non traité = jamais testé
+  const declares = new Set(state.motsDeclaresInconnus ?? []);
+  const inconnusDeclares = unknownWords.filter((w) => declares.has(w.word));
+  const nonTraites = unknownWords.filter((w) => !declares.has(w.word));
 
   const total = themeWords.length;
   const knownPct = Math.round((knownWords.length / total) * 100);
@@ -109,8 +113,13 @@ export default function VocabulaireListReadOnly({ travailContent, themes }: Voca
             <span className={styles.summaryItem}>
               <span className={styles.dotMisconceived} /> {misconceivedWords.length} méconnus ({misconceivedPct}%)
             </span>
+            {inconnusDeclares.length > 0 && (
+              <span className={styles.summaryItem}>
+                <span className={styles.dotUnknown} /> {inconnusDeclares.length} inconnus
+              </span>
+            )}
             <span className={styles.summaryItem}>
-              <span className={styles.dotUnknown} /> {unknownWords.length} inconnus
+              <span className={styles.dotNonTraite} /> {nonTraites.length} non traités
             </span>
           </div>
 
@@ -151,15 +160,31 @@ export default function VocabulaireListReadOnly({ travailContent, themes }: Voca
             </div>
           )}
 
-          {unknownWords.length > 0 && (
+          {inconnusDeclares.length > 0 && (
             <div className={styles.section}>
               <h4 className={styles.sectionTitle}>
-                <span className={styles.sectionDot} style={{ background: 'var(--c-text-dim)' }} />
-                Inconnus ({unknownWords.length})
+                <span className={styles.sectionDot} style={{ background: '#e74c3c' }} />
+                Inconnus ({inconnusDeclares.length})
               </h4>
               <div className={styles.tagGrid}>
-                {unknownWords.map((w, i) => (
+                {inconnusDeclares.map((w, i) => (
                   <span key={`${w.word}-${i}`} className={`${styles.tag} ${styles.tagUnknown}`}>
+                    {w.word}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {nonTraites.length > 0 && (
+            <div className={styles.section}>
+              <h4 className={styles.sectionTitle}>
+                <span className={`${styles.sectionDot} ${styles.dotNonTraite}`} />
+                Non traités ({nonTraites.length})
+              </h4>
+              <div className={styles.tagGrid}>
+                {nonTraites.map((w, i) => (
+                  <span key={`${w.word}-${i}`} className={`${styles.tag} ${styles.tagNonTraite}`}>
                     {w.word}
                   </span>
                 ))}

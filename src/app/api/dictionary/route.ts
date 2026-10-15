@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MODELE_RAPIDE } from '@/lib/claude';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { encrypt } from '@/lib/crypto';
@@ -162,7 +163,7 @@ async function fetchProxemie(word: string): Promise<string[]> {
   const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
   const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5-20250929',
+    model: MODELE_RAPIDE,
     max_tokens: 500,
     system: `Tu es un dictionnaire de proxémie lexicale pour des élèves de 15 ans francophones (Belgique).
 Pour le mot donné, fournis 10 à 14 mots proches par le sens (proxémie lexicale : voisinage sémantique,

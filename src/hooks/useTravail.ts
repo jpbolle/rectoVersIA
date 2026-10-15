@@ -58,7 +58,7 @@ export function useTravail(devoirId: string | null) {
   }, [devoirId, role, getAuthHeaders]);
 
   // Sauvegarde immediate
-  const saveNow = useCallback(async (data: UpdateTravailData) => {
+  const saveNow = useCallback(async (data: UpdateTravailData, depart = false) => {
     if (!travailRef.current) return false;
 
     const headers = await getAuthHeaders();
@@ -67,10 +67,14 @@ export function useTravail(devoirId: string | null) {
     setIsSaving(true);
 
     try {
+      const body = JSON.stringify(data);
       const res = await fetch(`/api/travaux/${travailRef.current.id}`, {
         method: 'PATCH',
         headers,
-        body: JSON.stringify(data),
+        body,
+        // Au départ de la page : la requête survit à la fermeture de l'onglet
+        // (le navigateur refuse `keepalive` au-delà de 64 Ko)
+        keepalive: depart && body.length < 60000,
       });
 
       const json = await res.json();
@@ -258,12 +262,39 @@ export function useTravail(devoirId: string | null) {
     return success;
   }, [saveNow]);
 
-  // Nettoyer le timer au demontage
+  // Envoyer TOUT DE SUITE ce qui attend encore dans le debounce.
+  // Avant (jusqu'au 2026-10-15), le démontage ANNULAIT le timer sans rien
+  // envoyer : tout ce que l'élève avait fait dans les 2,5 s avant de quitter
+  // la page (réponses de QCM, « Terminer » d'une scène…) était perdu en
+  // silence. Signalé par un prof (anthologie Molière : « mes réponses
+  // disparaissent ») — 20 scènes ouvertes, 1 seule terminée en base.
+  const envoyerEnAttente = useCallback(() => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
+    const data = pendingUpdate.current;
+    if (!data) return;
+    pendingUpdate.current = null;
+    void saveNow(data, true);
+  }, [saveNow]);
+
+  const envoyerEnAttenteRef = useRef(envoyerEnAttente);
+  envoyerEnAttenteRef.current = envoyerEnAttente;
+
+  // Départ de la page (navigation dans l'app), onglet masqué, Chromebook
+  // refermé, onglet fermé : ce qui attend part immédiatement
   useEffect(() => {
+    const surMasquage = () => {
+      if (document.visibilityState === 'hidden') envoyerEnAttenteRef.current();
+    };
+    const surDepart = () => envoyerEnAttenteRef.current();
+    document.addEventListener('visibilitychange', surMasquage);
+    window.addEventListener('pagehide', surDepart);
     return () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
+      document.removeEventListener('visibilitychange', surMasquage);
+      window.removeEventListener('pagehide', surDepart);
+      envoyerEnAttenteRef.current();
     };
   }, []);
 

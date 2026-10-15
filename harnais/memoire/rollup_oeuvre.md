@@ -1,5 +1,16 @@
 # Rollup — Atelier « Lecture d'une œuvre »
 
+## Perte de réponses à la sortie de page — CORRIGÉ le 2026-10-15 (écrit, `tsc` OK, non vu à l'écran)
+
+Signalé par un prof (une élève de 4A, anthologie Molière : « mes lectures et mes réponses
+aux QCM disparaissent, ma progression ne s'affiche pas »). En base : 20 scènes ouvertes,
+2 seulement avec des réponses, 1 seule « terminée ». Cause : `useTravail` (hook de
+sauvegarde de TOUTES les activités élèves, page `/activites/[id]`) annulait au démontage
+la sauvegarde en attente (debounce 2,5 s) sans l'envoyer. Correctif : envoi immédiat de
+ce qui attend au démontage, à l'onglet masqué (`visibilitychange`) et à la fermeture
+(`pagehide`, `fetch` en `keepalive` sous 60 Ko). Les réponses déjà perdues ne sont pas
+récupérables (jamais arrivées au serveur).
+
 ## 2026-09-01 (soir) — le suivi de lecture ignorait la classe choisie
 
 Une lecture d'œuvre donnée à la 4C et à la 4D : le prof choisissait sa classe,

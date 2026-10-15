@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/api-auth';
-import { appelerClaude } from '@/lib/claude';
+import { MODELE_RAPIDE, appelerClaude } from '@/lib/claude';
 import { estLangueConnue, langueLabel } from '@/types/niveaux-fle';
 
 // POST { texte, langue } → { traduction }
@@ -41,6 +41,8 @@ async function claude(texte: string, langue: string): Promise<string> {
       ? `Traduis en ${langueLabel(langue)} (code ${langue}) ce mot ou cette expression du français : « ${texte} »`
       : `Explique très simplement : « ${texte} »`,
     maxTokens: 60,
+    // Traduire un mot : Haiku suffit (décision JP du 2026-10-15, « là où c'est pertinent »)
+    modele: MODELE_RAPIDE,
   });
   return reponse.trim().replace(/^[«"']|[»"'.]$/g, '').trim();
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MODELE_RAPIDE } from '@/lib/claude';
 import { verifyAuth } from '@/lib/api-auth';
 
 export async function POST(request: NextRequest) {
@@ -91,7 +92,7 @@ Réponds en JSON strict (pas de markdown, pas de commentaires) :
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250929',
+        model: MODELE_RAPIDE,
         max_tokens: 2048,
         messages: [{ role: 'user', content: prompt }],
       }),

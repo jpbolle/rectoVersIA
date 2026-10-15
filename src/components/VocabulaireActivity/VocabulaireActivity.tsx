@@ -20,6 +20,7 @@ import type {
   SynonymsExercise,
   AntonymsExercise,
   DiagnosticScore,
+  DiagnosticManches,
   VocabulaireExercise,
   CrosswordExercise,
   SynonymAntonymTextExercise,
@@ -202,6 +203,35 @@ function buildAntonymsExercise(words: VocabulaireWord[]): AntonymsExercise | nul
   };
 }
 
+// ── Diagnostic en manches (plan du 2026-10-15) ──
+// TOUS les mots à vérifier sont testés : par lots de 10 au plus, équilibrés
+// (25 mots → 9 + 8 + 8, pas 10 + 10 + 5) et mélangés. Avant, le diagnostic ne
+// testait que les 10 premiers mots en définitions ; les autres restaient
+// « inconnus » même si l'élève les connaissait.
+const MOTS_PAR_MANCHE = 10;
+
+function decouperEnManches(mots: string[]): string[][] {
+  const melanges = shuffle(mots);
+  const n = Math.max(1, Math.ceil(melanges.length / MOTS_PAR_MANCHE));
+  const lots: string[][] = Array.from({ length: n }, () => []);
+  melanges.forEach((mot, i) => lots[i % n].push(mot));
+  return lots;
+}
+
+// La série d'une manche : définitions, synonymes, texte à trous (IA),
+// antonymes, emploi en contexte (IA). Sans réponse de l'IA, la manche garde
+// ses exercices construits sur place — les définitions testent tous ses mots.
+function construireManche(mots: VocabulaireWord[], ia: VocabulaireExercise[] | null): VocabulaireExercise[] {
+  const exercises: VocabulaireExercise[] = [buildDefinitionsExercise(mots)];
+  const synEx = buildSynonymsExercise(mots);
+  if (synEx) exercises.push(synEx);
+  for (const ex of ia ?? []) if (ex.type === 'fill_in_blanks_dropdown') exercises.push(ex);
+  const antEx = buildAntonymsExercise(mots);
+  if (antEx) exercises.push(antEx);
+  for (const ex of ia ?? []) if (ex.type === 'context_sentences') exercises.push(ex);
+  return exercises;
+}
+
 // Exercice word_families (cote client)
 function buildWordFamiliesExercise(words: VocabulaireWord[]): WordFamiliesExercise {
   return {
@@ -235,9 +265,17 @@ export default function VocabulaireActivity({
   // State persistant
   // Au retour, toujours repartir en learning (sauf si diagnostic initial jamais fait)
   const [phase, setPhase] = useState<'diagnostic' | 'learning' | 'evaluation'>(
-    (savedState?.diagnosticCount || 0) === 0 ? 'diagnostic' : 'learning'
+    (savedState?.diagnosticCount || 0) === 0 || savedState?.diagnosticManches ? 'diagnostic' : 'learning'
   );
-  const [diagnosticSelections, setDiagnosticSelections] = useState<string[]>([]);
+  // Diagnostic initial : tous les mots sont cochés d'office (« connus, à
+  // vérifier ») ; on retient ceux que l'élève DÉCOCHE (JP, 2026-10-15)
+  const [diagnosticDecoches, setDiagnosticDecoches] = useState<string[]>([]);
+  const [manches, setManches] = useState<DiagnosticManches | null>(savedState?.diagnosticManches ?? null);
+  const [motsDeclaresInconnus, setMotsDeclaresInconnus] = useState<string[]>(savedState?.motsDeclaresInconnus ?? []);
+  const [prepareManche, setPrepareManche] = useState(false);
+  // Réponses de l'IA par lot, demandées une seule fois : la manche suivante
+  // se prépare pendant que l'élève fait la précédente
+  const manchesPrechargees = useRef(new Map<string, Promise<VocabulaireExercise[] | null>>());
   const [diagnosticCount, setDiagnosticCount] = useState(savedState?.diagnosticCount || 0);
   const [diagnosticScores, setDiagnosticScores] = useState<DiagnosticScore[]>(
     savedState?.diagnosticScores || []
@@ -248,7 +286,9 @@ export default function VocabulaireActivity({
   const [learningSessions, setLearningSessions] = useState(savedState?.learningSessions || 0);
   const [currentSelection, setCurrentSelection] = useState<string[]>([]);
   const [activityOpened, setActivityOpened] = useState(savedState?.activityOpened || 0);
-  const [exerciseResults, setExerciseResults] = useState<ExerciseResult[]>([]);
+  const [exerciseResults, setExerciseResults] = useState<ExerciseResult[]>(
+    savedState?.diagnosticManches ? savedState.exerciseResults ?? [] : []
+  );
   const [productionValidation, setProductionValidation] = useState<ProductionValidation | null>(
     savedState?.productionValidation || null
   );
@@ -347,12 +387,14 @@ export default function VocabulaireActivity({
   // Exercices IA (pour fill_in_blanks_dropdown + context_sentences)
   const {
     exercises: iaExercises,
-    isGenerating,
+    isGenerating: isGeneratingIa,
     error: exerciseError,
     generate,
     validateProduction,
     reset: resetExercises,
   } = useVocabulaireExercises();
+
+  const isGenerating = isGeneratingIa || prepareManche;
 
   // Les exercices affiches sont soit locaux (diagnostic) soit IA + locaux (learning)
   const displayedExercises = localExercises.length > 0 ? localExercises : iaExercises;
@@ -382,6 +424,7 @@ export default function VocabulaireActivity({
   // Categorisation des mots
   const allWordTexts = allThemeWords.map((w) => w.word);
   const categories = categorizeWords(allWordTexts, wordMastery);
+  const diagnosticSelections = allWordTexts.filter((w) => !diagnosticDecoches.includes(w));
 
   // Notifier le parent (auto-save)
   const onStateChangeRef = useRef(onStateChange);
@@ -395,6 +438,8 @@ export default function VocabulaireActivity({
       diagnosticSelections,
       diagnosticCount,
       diagnosticScores,
+      diagnosticManches: manches ?? undefined,
+      motsDeclaresInconnus: motsDeclaresInconnus.length > 0 ? motsDeclaresInconnus : undefined,
       wordMastery,
       learningSessions,
       currentSelection,
@@ -414,11 +459,12 @@ export default function VocabulaireActivity({
       prevStateStrRef.current = stateStr;
       onStateChangeRef.current(state);
     }
-  }, [phase, diagnosticSelections, diagnosticCount, diagnosticScores, wordMastery, learningSessions, currentSelection, displayedExercises, exerciseResults, activityOpened, timeTick, productionValidation, evaluationScores, evaluationAttempts, difficultWords, flashcardsDefinitionFirst]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- diagnosticSelections est dérivé à chaque rendu ; la comparaison JSON évite les sauvegardes inutiles
+  }, [phase, diagnosticDecoches, manches, motsDeclaresInconnus, diagnosticCount, diagnosticScores, wordMastery, learningSessions, currentSelection, displayedExercises, exerciseResults, activityOpened, timeTick, productionValidation, evaluationScores, evaluationAttempts, difficultWords, flashcardsDefinitionFirst]);
 
   // --- Handlers diagnostic initial ---
   const handleDiagnosticSelect = useCallback((wordText: string) => {
-    setDiagnosticSelections((prev) =>
+    setDiagnosticDecoches((prev) =>
       prev.includes(wordText) ? prev.filter((w) => w !== wordText) : [...prev, wordText]
     );
   }, []);
@@ -470,66 +516,133 @@ export default function VocabulaireActivity({
     setShowFlashcards(true);
   }, [currentSelection, resetExercises]);
 
-  // --- Generation exercices diagnostic (principalement cote client) ---
-  const generateDiagnosticExercises = useCallback(async (wordsToTest: VocabulaireWord[]) => {
-    const exercises: VocabulaireExercise[] = [];
+  // --- Fin du diagnostic (tout est une seule session) ---
+  const handleDiagnosticComplete = useCallback(() => {
+    // Calculer le score du diagnostic complet
+    const allResults = exerciseResults.flatMap((r) => r.results);
+    const correct = allResults.filter((r) => r.correct).length;
+    const total = allResults.length;
+    const wordsTested = [...new Set(allResults.map((r) => r.word))];
 
-    // 1. Definitions (client)
-    exercises.push(buildDefinitionsExercise(wordsToTest));
+    const score: DiagnosticScore = {
+      date: new Date().toISOString(),
+      correct,
+      total,
+      wordsTested,
+    };
 
-    // 2. Synonymes (client)
-    const synEx = buildSynonymsExercise(wordsToTest);
-    if (synEx) exercises.push(synEx);
-
-    // Exercices IA : texte a trous dropdown + emploi en contexte
-    const result = await generate(wordsToTest, 'diagnostic', [selectedTheme]);
-
-    // 3. Texte a trous avec menu deroulant (IA)
-    if (result && result.exercises) {
-      for (const ex of result.exercises) {
-        if (ex.type === 'fill_in_blanks_dropdown') {
-          exercises.push(ex);
-        }
-      }
-    }
-
-    // 4. Antonymes (client)
-    const antEx = buildAntonymsExercise(wordsToTest);
-    if (antEx) exercises.push(antEx);
-
-    // 5. Emploi en contexte (IA)
-    if (result && result.exercises) {
-      for (const ex of result.exercises) {
-        if (ex.type === 'context_sentences') {
-          exercises.push(ex);
-        }
-      }
-    }
-
-    setLocalExercises(exercises);
+    setDiagnosticScores((prev) => [...prev, score]);
+    setManches(null);
+    manchesPrechargees.current.clear();
+    setDiagnosticCount((prev) => prev + 1);
+    setPhase('learning');
+    setCurrentSelection([]);
+    setLocalExercises([]);
+    resetExercises();
     setExerciseResults([]);
     setExercisesAllCompleted(false);
-    setProductionValidation(null);
-    flipTo('verso');
-  }, [generate, selectedTheme, flipTo]);
+    flipTo('recto');
+  }, [exerciseResults, resetExercises, flipTo]);
+
+  // --- Diagnostic en manches ---
+  // Exercices IA d'un lot (texte à trous à menu + emploi en contexte), appelés
+  // directement — pas via useVocabulaireExercises — pour pouvoir préparer la
+  // manche suivante en arrière-plan. null = échec : la manche garde ses
+  // exercices construits sur place.
+  const chargerIaDiagnostic = useCallback(async (mots: VocabulaireWord[]): Promise<VocabulaireExercise[] | null> => {
+    const headers = await getAuthHeaders();
+    if (!headers) return null;
+    try {
+      const res = await fetch('/api/vocabulaire/generate', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ words: mots, mode: 'diagnostic', themes: [selectedTheme] }),
+      });
+      const json = await res.json();
+      return json.success ? ((json.data?.exercises as VocabulaireExercise[]) ?? []) : null;
+    } catch (err) {
+      console.error('Diagnostic (IA) indisponible:', err);
+      return null;
+    }
+  }, [getAuthHeaders, selectedTheme]);
+
+  // Un lot n'est demandé qu'une fois, même si l'élève clique deux fois
+  const iaDuLot = useCallback((lot: string[]) => {
+    const cle = lot.join('|');
+    let promesse = manchesPrechargees.current.get(cle);
+    if (!promesse) {
+      promesse = chargerIaDiagnostic(allThemeWords.filter((w) => lot.includes(w.word)));
+      manchesPrechargees.current.set(cle, promesse);
+    }
+    return promesse;
+  }, [chargerIaDiagnostic, allThemeWords]);
+
+  const afficherManche = useCallback(async (etat: DiagnosticManches, index: number) => {
+    const lot = etat.lots[index];
+    if (!lot) return;
+    setPrepareManche(true);
+    try {
+      const ia = await iaDuLot(lot);
+      // La suivante se prépare pendant que l'élève fait celle-ci
+      if (index + 1 < etat.lots.length) void iaDuLot(etat.lots[index + 1]);
+      setLocalExercises(construireManche(allThemeWords.filter((w) => lot.includes(w.word)), ia));
+      setExercisesAllCompleted(false);
+      setProductionValidation(null);
+      setManches({ ...etat, affichee: index });
+      flipTo('verso');
+    } finally {
+      setPrepareManche(false);
+    }
+  }, [iaDuLot, allThemeWords, flipTo]);
+
+  const demarrerDiagnostic = useCallback(async (mots: string[]) => {
+    const etat: DiagnosticManches = { lots: decouperEnManches(mots), affichee: 0, faites: 0 };
+    manchesPrechargees.current.clear();
+    setExerciseResults([]);
+    setManches(etat);
+    await afficherManche(etat, 0);
+  }, [afficherManche]);
+
+  // Tous les exercices de la manche affichée sont faits et vérifiés
+  const handleAllCompleted = useCallback((fait: boolean) => {
+    setExercisesAllCompleted(fait);
+    if (fait && phase === 'diagnostic') {
+      setManches((m) => (m && m.faites <= m.affichee ? { ...m, faites: m.affichee + 1 } : m));
+    }
+  }, [phase]);
+
+  const handleMancheSuivante = useCallback(() => {
+    if (manches) void afficherManche(manches, manches.affichee + 1);
+  }, [manches, afficherManche]);
 
   // --- Generation exercices ---
-  const handleGenerate = useCallback(async () => {
+  // Verrou posé DÈS le clic : le bouton ne passe en « Génération en cours… »
+  // qu'après la lecture du dictionnaire personnel, et chaque clic dans
+  // l'intervalle lançait son propre appel Claude (payant).
+  const generationVerrou = useRef(false);
+
+  const genererSerie = useCallback(async () => {
     if (phase === 'diagnostic') {
-      if (diagnosticCount === 0) {
-        // Diagnostic initial : tester les mots selectionnes "je connais"
-        if (diagnosticSelections.length === 0) return;
-        const wordsToTest = allThemeWords.filter((w) => diagnosticSelections.includes(w.word));
-        await generateDiagnosticExercises(wordsToTest);
-      } else {
-        // Diagnostic intermediaire : tester connus + meconnus (automatique)
-        const wordsToTest = allThemeWords.filter((w) => {
-          const cat = getWordCategory(wordMastery.find((m) => m.word === w.word));
-          return cat === 'known' || cat === 'misconceived';
-        });
-        if (wordsToTest.length === 0) return;
-        await generateDiagnosticExercises(wordsToTest);
+      // Diagnostic en cours (l'élève était parti) : reprise à la première
+      // manche non faite — ou fin du diagnostic si toutes le sont
+      if (manches) {
+        if (manches.faites >= manches.lots.length) handleDiagnosticComplete();
+        else await afficherManche(manches, manches.faites);
+        return;
       }
+      const mots = diagnosticCount === 0
+        // Diagnostic initial : les mots que l'élève n'a pas décochés
+        ? diagnosticSelections
+        // Diagnostic intermediaire : tester connus + meconnus (automatique)
+        : allThemeWords
+            .filter((w) => {
+              const cat = getWordCategory(wordMastery.find((m) => m.word === w.word));
+              return cat === 'known' || cat === 'misconceived';
+            })
+            .map((w) => w.word);
+      if (mots.length === 0) return;
+      if (diagnosticCount === 0) setMotsDeclaresInconnus(allWordTexts.filter((w) => diagnosticDecoches.includes(w)));
+      await demarrerDiagnostic(mots);
     } else if (phase === 'learning') {
       if (currentSelection.length < 6) return;
       const selectedWordObjects = allThemeWords.filter((w) => currentSelection.includes(w.word));
@@ -586,9 +699,11 @@ export default function VocabulaireActivity({
       for (let i = 0; i < exercises.length; i++) {
         exercises[i] = { ...exercises[i], title: exercises[i].title.replace(/^Exercice \d+/, `Exercice ${i + 1}`) };
       }
-      if (exercises.length > 0) {
-        setLocalExercises(exercises);
-      }
+      // Échec de Claude : on garde la série précédente telle quelle (le message
+      // d'erreur s'affiche) et rien n'est compté — avant, chaque échec comptait
+      // une « session » (146 pour un élève, presque toutes ratées)
+      if (!result || exercises.length === 0) return;
+      setLocalExercises(exercises);
       setExerciseResults([]);
       setExercisesAllCompleted(false);
       setProductionValidation(null);
@@ -596,7 +711,18 @@ export default function VocabulaireActivity({
       flipTo('verso');
     }
     // L'evaluation n'utilise plus handleGenerate — elle a son propre flux
-  }, [phase, diagnosticCount, diagnosticSelections, currentSelection, allThemeWords, wordMastery, selectedTheme, generate, flipTo, generateDiagnosticExercises, getAuthHeaders]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- diagnosticSelections est dérivé de diagnosticDecoches
+  }, [phase, manches, diagnosticCount, diagnosticDecoches, currentSelection, allThemeWords, wordMastery, selectedTheme, generate, flipTo, afficherManche, demarrerDiagnostic, handleDiagnosticComplete, getAuthHeaders]);
+
+  const handleGenerate = useCallback(async () => {
+    if (generationVerrou.current) return;
+    generationVerrou.current = true;
+    try {
+      await genererSerie();
+    } finally {
+      generationVerrou.current = false;
+    }
+  }, [genererSerie]);
 
   // --- Diagnostic intermediaire — generation directe (pas de page intermediaire) ---
   const handleIntermediateDiagnostic = useCallback(async () => {
@@ -612,8 +738,8 @@ export default function VocabulaireActivity({
       return cat === 'known' || cat === 'misconceived';
     });
     if (wordsToTest.length === 0) return;
-    await generateDiagnosticExercises(wordsToTest);
-  }, [resetExercises, allThemeWords, wordMastery, generateDiagnosticExercises]);
+    await demarrerDiagnostic(wordsToTest.map((w) => w.word));
+  }, [resetExercises, allThemeWords, wordMastery, demarrerDiagnostic]);
 
   // --- Evaluation : verification condition d'acces puis generation ---
   const handleEvaluation = useCallback(async () => {
@@ -726,32 +852,6 @@ export default function VocabulaireActivity({
     });
   }, [phase]);
 
-  // --- Fin du diagnostic (tout est une seule session) ---
-  const handleDiagnosticComplete = useCallback(() => {
-    // Calculer le score du diagnostic complet
-    const allResults = exerciseResults.flatMap((r) => r.results);
-    const correct = allResults.filter((r) => r.correct).length;
-    const total = allResults.length;
-    const wordsTested = [...new Set(allResults.map((r) => r.word))];
-
-    const score: DiagnosticScore = {
-      date: new Date().toISOString(),
-      correct,
-      total,
-      wordsTested,
-    };
-
-    setDiagnosticScores((prev) => [...prev, score]);
-    setDiagnosticCount((prev) => prev + 1);
-    setPhase('learning');
-    setCurrentSelection([]);
-    setLocalExercises([]);
-    resetExercises();
-    setExerciseResults([]);
-    setExercisesAllCompleted(false);
-    flipTo('recto');
-  }, [exerciseResults, resetExercises, flipTo]);
-
   // --- Production validation ---
   const handleValidateProduction = useCallback(async (text: string) => {
     const exercise = displayedExercises.find((e) => e.type === 'production_challenge');
@@ -769,6 +869,11 @@ export default function VocabulaireActivity({
 
   const getGenerateLabel = () => {
     if (phase === 'diagnostic') {
+      if (manches) {
+        return manches.faites >= manches.lots.length
+          ? 'Terminer le diagnostic'
+          : `Reprendre le diagnostic (manche ${manches.faites + 1}/${manches.lots.length})`;
+      }
       if (diagnosticCount === 0) return 'Vérifier mes connaissances';
       return 'Lancer le diagnostic intermédiaire';
     }
@@ -780,9 +885,14 @@ export default function VocabulaireActivity({
 
   const getGenerateHint = () => {
     if (phase === 'diagnostic') {
-      if (diagnosticCount === 0) return plural(diagnosticSelections.length) + ' sélectionné' + (diagnosticSelections.length > 1 ? 's' : '');
+      const nbManches = (n: number) => Math.max(1, Math.ceil(n / MOTS_PAR_MANCHE));
+      if (manches) return `${manches.faites} manche${manches.faites > 1 ? 's' : ''} faite${manches.faites > 1 ? 's' : ''} sur ${manches.lots.length}`;
+      if (diagnosticCount === 0) {
+        const n = diagnosticSelections.length;
+        return n === 0 ? 'aucun mot à vérifier' : `${plural(n)} à vérifier · ${plural(nbManches(n), 'manche')}`;
+      }
       const n = categories.known.length + categories.misconceived.length;
-      return plural(n) + ' à retester';
+      return `${plural(n)} à retester · ${plural(nbManches(n), 'manche')}`;
     }
     return `${currentSelection.length}/6-10 mots`;
   };
@@ -798,6 +908,7 @@ export default function VocabulaireActivity({
     // Bloquer tant que les exercices en cours ne sont pas tous verifies
     if (displayedExercises.length > 0 && !exercisesAllCompleted) return false;
     if (phase === 'diagnostic') {
+      if (manches) return true;
       if (diagnosticCount === 0) return diagnosticSelections.length > 0;
       return categories.known.length + categories.misconceived.length > 0;
     }
@@ -950,7 +1061,7 @@ export default function VocabulaireActivity({
               <div className={styles.phaseBar}>
                 <p className={styles.phaseDescription}>
                   {phase === 'diagnostic' && diagnosticCount === 0 &&
-                    'Clique sur les mots que tu penses connaître, puis vérifie tes connaissances.'}
+                    'Tous les mots sont cochés comme connus : décoche ceux que tu ne connais pas, puis vérifie tes connaissances. Chaque mot coché sera testé.'}
                   {phase === 'diagnostic' && diagnosticCount > 0 &&
                     'Diagnostic intermédiaire : les mots connus et méconnus seront testés.'}
                   {phase === 'learning' &&
@@ -975,6 +1086,8 @@ export default function VocabulaireActivity({
                 currentSelection={currentSelection}
                 onLearningSelect={handleLearningSelect}
                 wordMastery={wordMastery}
+                motsInconnus={motsDeclaresInconnus}
+                selectionFigee={!!manches && diagnosticCount === 0}
                 disabled={disabled}
                 isLoading={wordsLoading}
                 flashcardsSlot={(() => {
@@ -1046,9 +1159,8 @@ export default function VocabulaireActivity({
                               onClick={handleGenerate}
                               disabled={isGenerating}
                             >
-                              {isGenerating ? 'Génération en cours...' : (
-                                exercisesAllCompleted ? 'Régénérer les exercices' : getGenerateLabel()
-                              )}
+                              {/* Diagnostic toujours en manches : le libellé dit où on en est */}
+                              {isGenerating ? 'Génération en cours...' : getGenerateLabel()}
                             </button>
                             <span className={styles.actionBtnHint}>{getGenerateHint()}</span>
                           </span>
@@ -1148,6 +1260,15 @@ export default function VocabulaireActivity({
               <VocabulaireExercises
                 exercises={displayedExercises}
                 isGenerating={isGenerating}
+                manche={
+                  phase === 'diagnostic' && manches && manches.lots.length > 1
+                    ? {
+                        numero: manches.affichee + 1,
+                        total: manches.lots.length,
+                        onSuivante: manches.affichee + 1 < manches.lots.length ? handleMancheSuivante : undefined,
+                      }
+                    : undefined
+                }
                 error={exerciseError}
                 onGenerate={handleGenerate}
                 onValidateProduction={handleValidateProduction}
@@ -1157,7 +1278,7 @@ export default function VocabulaireActivity({
                 onExerciseResult={handleExerciseResult}
                 onDiagnosticComplete={phase === 'diagnostic' ? handleDiagnosticComplete : undefined}
                 phase={phase}
-                onAllCompleted={setExercisesAllCompleted}
+                onAllCompleted={handleAllCompleted}
                 onBackToRecto={() => flipTo('recto')}
                 onIntermediateDiagnostic={phase === 'learning' ? handleIntermediateDiagnostic : undefined}
                 onEvaluation={

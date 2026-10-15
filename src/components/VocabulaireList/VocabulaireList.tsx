@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { VocabulaireWord, WordMasteryEntry } from '@/types/vocabulaire';
 import { getWordCategory } from '@/types/vocabulaire';
 import styles from './VocabulaireList.module.css';
@@ -17,6 +19,10 @@ interface VocabulaireListProps {
   onLearningSelect?: (wordText: string) => void;
   // Suivi de maitrise
   wordMastery: WordMasteryEntry[];
+  // Mots que l'élève a décochés au diagnostic initial (« je ne connais pas »)
+  motsInconnus?: string[];
+  // Diagnostic lancé : les lots des manches sont tirés, la sélection ne bouge plus
+  selectionFigee?: boolean;
   // Etat
   disabled?: boolean;
   isLoading?: boolean;
@@ -34,6 +40,8 @@ export default function VocabulaireList({
   currentSelection,
   onLearningSelect,
   wordMastery,
+  motsInconnus = [],
+  selectionFigee = false,
   disabled = false,
   isLoading = false,
   generateButton,
@@ -43,6 +51,50 @@ export default function VocabulaireList({
   const unknownWords = words.filter((w) => getWordCategory(masteryMap.get(w.word)) === 'unknown');
   const misconceivedWords = words.filter((w) => getWordCategory(masteryMap.get(w.word)) === 'misconceived');
   const knownWords = words.filter((w) => getWordCategory(masteryMap.get(w.word)) === 'known');
+  // Quatre états, quatre couleurs (JP, 2026-10-15) : connu = vert, méconnu =
+  // orange, inconnu = rouge (décoché au diagnostic, jamais testé depuis),
+  // non traité = blanc (jamais testé, jamais déclaré)
+  const declares = new Set(motsInconnus);
+  const inconnusDeclares = unknownWords.filter((w) => declares.has(w.word));
+  const nonTraites = unknownWords.filter((w) => !declares.has(w.word));
+
+  // ── Bulle de définition (cadre noir) ──
+  // Rendue dans <body>, en position fixe : la liste est une zone qui défile
+  // (overflow), qui coupait les bulles de la première rangée sous le bandeau
+  // (signalé par un prof le 2026-10-15). Au ras du haut, elle passe dessous.
+  const [bulle, setBulle] = useState<{ word: VocabulaireWord; x: number; y: number; dessous: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!bulle) return;
+    const cacher = () => setBulle(null);
+    window.addEventListener('scroll', cacher, true);
+    return () => window.removeEventListener('scroll', cacher, true);
+  }, [bulle]);
+
+  const survol = (word: VocabulaireWord) => ({
+    onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      const dessous = r.top < 200;
+      const x = Math.min(Math.max(r.left + r.width / 2, 160), window.innerWidth - 160);
+      setBulle({ word, x, y: dessous ? r.bottom + 8 : r.top - 8, dessous });
+    },
+    onMouseLeave: () => setBulle(null),
+  });
+
+  const bulleFlottante =
+    bulle && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className={`${styles.tooltip} ${bulle.dessous ? styles.tooltipDessous : ''}`}
+            style={{ left: bulle.x, top: bulle.y }}
+          >
+            <div className={styles.tooltipWord}>{bulle.word.word}</div>
+            <div className={styles.tooltipDefinition}>{bulle.word.definition}</div>
+            {bulle.word.example && <div className={styles.tooltipExample}>{bulle.word.example}</div>}
+          </div>,
+          document.body
+        )
+      : null;
 
   if (isLoading) {
     return <div className={styles.loading}>Chargement des mots...</div>;
@@ -56,38 +108,51 @@ export default function VocabulaireList({
   if (phase === 'diagnostic' && onDiagnosticSelect) {
     return (
       <div className={`${styles.container} ${disabled ? styles.disabled : ''}`}>
-        <div className={styles.counter}>
-          <span className={styles.counterHighlight}>{diagnosticSelections.length}</span>
-          {' '} mot{diagnosticSelections.length > 1 ? 's' : ''} sélectionné{diagnosticSelections.length > 1 ? 's' : ''}
-        </div>
+        {(() => {
+          // Sélection figée : elle se relit dans les mots déclarés inconnus au
+          // lancement (diagnosticSelections, elle, repart à « tout coché »)
+          const aVerifier = selectionFigee ? words.length - inconnusDeclares.length : diagnosticSelections.length;
+          const decoches = words.length - aVerifier;
+          return (
+            <div className={styles.counter}>
+              {selectionFigee && 'Diagnostic en cours, sélection figée : '}
+              <span className={styles.counterHighlight}>{aVerifier}</span>
+              {' '}mot{aVerifier > 1 ? 's' : ''} à vérifier
+              {decoches > 0 && ` · ${decoches} décoché${decoches > 1 ? 's' : ''} (je ne connais pas)`}
+            </div>
+          );
+        })()}
         <div className={styles.tagGrid}>
           {words.map((word, idx) => {
-            const selected = diagnosticSelections.includes(word.word);
-            const tagClass = `${styles.wordTag} ${selected ? styles.tagSelected : ''}`;
+            const selected = selectionFigee ? !declares.has(word.word) : diagnosticSelections.includes(word.word);
+            // Coché = « connu, à vérifier » ; décoché = l'élève dit ne pas le
+            // connaître → couleur des mots inconnus (JP, 2026-10-15)
+            const tagClass = `${styles.wordTag} ${selected ? styles.tagAVerifier : styles.tagUnknown}`;
 
             return (
-              <div key={`${word.word}-${idx}`} className={styles.tagWrapper}>
-                <button
-                  type="button"
-                  className={tagClass}
-                  onClick={() => !disabled && onDiagnosticSelect(word.word)}
-                  disabled={disabled}
-                >
-                  {word.word}
-                  {selected && <span className={styles.tagBadge}>✓</span>}
-                </button>
-                <div className={styles.tooltip}>
-                  <div className={styles.tooltipWord}>{word.word}</div>
-                  <div className={styles.tooltipDefinition}>{word.definition}</div>
-                  {word.example && (
-                    <div className={styles.tooltipExample}>{word.example}</div>
-                  )}
-                </div>
+              <div key={`${word.word}-${idx}`} className={styles.tagWrapper} {...survol(word)}>
+                {selectionFigee ? (
+                  <span className={`${tagClass} ${styles.tagFige}`}>
+                    {word.word}
+                    {selected && <span className={styles.tagBadge}>✓</span>}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className={tagClass}
+                    onClick={() => !disabled && onDiagnosticSelect(word.word)}
+                    disabled={disabled}
+                  >
+                    {word.word}
+                    {selected && <span className={styles.tagBadge}>✓</span>}
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
         {generateButton}
+        {bulleFlottante}
       </div>
     );
   }
@@ -100,14 +165,30 @@ export default function VocabulaireList({
           Diagnostic intermédiaire — état actuel de tes connaissances
         </div>
 
-        {unknownWords.length > 0 && (
+        {inconnusDeclares.length > 0 && (
           <div className={styles.section}>
             <h4 className={styles.sectionTitle}>
-              <span className={styles.sectionDot} style={{ background: 'var(--c-text-dim)' }} />
-              Inconnus ({unknownWords.length})
+              <span className={`${styles.sectionDot} ${styles.dotInconnu}`} />
+              Inconnus ({inconnusDeclares.length})
             </h4>
             <div className={styles.tagGrid}>
-              {unknownWords.map((w, i) => (
+              {inconnusDeclares.map((w, i) => (
+                <div key={`${w.word}-${i}`} className={styles.tagWrapper}>
+                  <span className={`${styles.wordTag} ${styles.tagUnknown}`}>{w.word}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {nonTraites.length > 0 && (
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>
+              <span className={`${styles.sectionDot} ${styles.dotNonTraite}`} />
+              Non traités ({nonTraites.length})
+            </h4>
+            <div className={styles.tagGrid}>
+              {nonTraites.map((w, i) => (
                 <div key={`${w.word}-${i}`} className={styles.tagWrapper}>
                   <span className={`${styles.wordTag} ${styles.tagDisabled}`}>{w.word}</span>
                 </div>
@@ -119,7 +200,7 @@ export default function VocabulaireList({
         {misconceivedWords.length > 0 && (
           <div className={styles.section}>
             <h4 className={styles.sectionTitle}>
-              <span className={styles.sectionDot} style={{ background: '#e67e22' }} />
+              <span className={`${styles.sectionDot} ${styles.dotMeconnu}`} />
               Méconnus ({misconceivedWords.length})
             </h4>
             <div className={styles.tagGrid}>
@@ -135,7 +216,7 @@ export default function VocabulaireList({
         {knownWords.length > 0 && (
           <div className={styles.section}>
             <h4 className={styles.sectionTitle}>
-              <span className={styles.sectionDot} style={{ background: '#27ae60' }} />
+              <span className={`${styles.sectionDot} ${styles.dotConnu}`} />
               Connus ({knownWords.length})
             </h4>
             <div className={styles.tagGrid}>
@@ -181,9 +262,10 @@ export default function VocabulaireList({
     if (selected) tagClass += ` ${styles.tagSelected}`;
     if (category === 'known') tagClass += ` ${styles.tagKnown}`;
     if (category === 'misconceived' && !selected) tagClass += ` ${styles.tagMisconceived}`;
+    if (category === 'unknown' && declares.has(word.word) && !selected) tagClass += ` ${styles.tagUnknown}`;
 
     return (
-      <div key={`${word.word}-${idx}`} className={styles.tagWrapper}>
+      <div key={`${word.word}-${idx}`} className={styles.tagWrapper} {...survol(word)}>
         <button
           type="button"
           className={tagClass}
@@ -196,13 +278,6 @@ export default function VocabulaireList({
           {word.word}
           {selected && <span className={styles.tagBadge}>✓</span>}
         </button>
-        <div className={styles.tooltip}>
-          <div className={styles.tooltipWord}>{word.word}</div>
-          <div className={styles.tooltipDefinition}>{word.definition}</div>
-          {word.example && (
-            <div className={styles.tooltipExample}>{word.example}</div>
-          )}
-        </div>
       </div>
     );
   };
@@ -217,15 +292,28 @@ export default function VocabulaireList({
       {/* Flashcards (affichage des mots difficiles) — au-dessus des 3 sections */}
       {flashcardsSlot}
 
-      {/* Section Inconnus */}
-      {unknownWords.length > 0 && (
+      {/* Section Inconnus (décochés au diagnostic) */}
+      {inconnusDeclares.length > 0 && (
         <div className={styles.section}>
           <h4 className={styles.sectionTitle}>
-            <span className={styles.sectionDot} style={{ background: 'var(--c-text-dim)' }} />
-            Inconnus ({unknownWords.length})
+            <span className={`${styles.sectionDot} ${styles.dotInconnu}`} />
+            Inconnus ({inconnusDeclares.length})
           </h4>
           <div className={styles.tagGrid}>
-            {unknownWords.map((w, i) => renderWordTag(w, i))}
+            {inconnusDeclares.map((w, i) => renderWordTag(w, i))}
+          </div>
+        </div>
+      )}
+
+      {/* Section Non traités (jamais testés, jamais déclarés) */}
+      {nonTraites.length > 0 && (
+        <div className={styles.section}>
+          <h4 className={styles.sectionTitle}>
+            <span className={`${styles.sectionDot} ${styles.dotNonTraite}`} />
+            Non traités ({nonTraites.length})
+          </h4>
+          <div className={styles.tagGrid}>
+            {nonTraites.map((w, i) => renderWordTag(w, i))}
           </div>
         </div>
       )}
@@ -234,7 +322,7 @@ export default function VocabulaireList({
       {misconceivedWords.length > 0 && (
         <div className={styles.section}>
           <h4 className={styles.sectionTitle}>
-            <span className={styles.sectionDot} style={{ background: '#e67e22' }} />
+            <span className={`${styles.sectionDot} ${styles.dotMeconnu}`} />
             Méconnus ({misconceivedWords.length})
           </h4>
           <div className={styles.tagGrid}>
@@ -247,7 +335,7 @@ export default function VocabulaireList({
       {knownWords.length > 0 && (
         <div className={styles.section}>
           <h4 className={styles.sectionTitle}>
-            <span className={styles.sectionDot} style={{ background: '#27ae60' }} />
+            <span className={`${styles.sectionDot} ${styles.dotConnu}`} />
             Connus ({knownWords.length})
           </h4>
           <div className={styles.tagGrid}>
@@ -256,6 +344,7 @@ export default function VocabulaireList({
         </div>
       )}
       {generateButton}
+      {bulleFlottante}
     </div>
   );
 }

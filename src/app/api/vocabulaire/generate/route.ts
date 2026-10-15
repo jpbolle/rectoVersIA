@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MODELE_RAPIDE } from '@/lib/claude';
 import { verifyAuth } from '@/lib/api-auth';
+import { adminDb } from '@/lib/firebase/admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import Anthropic from '@anthropic-ai/sdk';
 import type { VocabulaireWord } from '@/types/vocabulaire';
 
@@ -38,13 +41,15 @@ function buildApprentissagePrompt(
 
 CONTRAINTE ABSOLUE : Tu DOIS utiliser EXACTEMENT ces ${allWords.length} mots dans l'exercice 1 : ${allWords.join(', ')}
 
+Thème de la liste : ${themesText}
+
 Mots principaux à apprendre : ${mainWords.join(', ')}${spacedContext}${personalContext}
 
 AUCUN mot ne doit être oublié. TOUS les ${allWords.length} mots DOIVENT apparaître dans le texte ET dans highlighted_words.
 
 Génère une réponse au format JSON suivant:
 {
-  "title": "Apprentissage du vocabulaire : ${themesText}",
+  "title": "Apprentissage du vocabulaire",
   "exercises": [
     {
       "type": "text_with_definitions",
@@ -129,7 +134,7 @@ Génère une évaluation au format JSON avec exactement ces 5 exercices :
 
 FORMAT JSON EXACT :
 {
-  "title": "Diagnostic de vocabulaire - ${theme}",
+  "title": "Diagnostic de vocabulaire",
   "totalPoints": 20,
   "exercises": [
     {
@@ -276,6 +281,27 @@ function cleanJsonResponse(text: string): string {
   return cleaned;
 }
 
+// Un guillemet droit dans le nom d'un thème (« la-fable-et-la-"ferme-des-animaux"… »)
+// recopié par Claude dans son JSON cassait TOUTES les générations de l'activité :
+// réponse complète facturée (~0,07 $), puis JSON illisible — 232 échecs en
+// octobre 2026, l'essentiel de la facture. Le thème n'entre plus dans le prompt
+// qu'après ce nettoyage, et les titres sont posés par le code, pas par Claude.
+function themeSansGuillemets(theme: string): string {
+  return theme.replace(/["“”]/g, '').trim();
+}
+
+// ── Plafond : 3 études (sessions d'apprentissage) par élève et par jour ──
+// Décision JP du 2026-10-15, après l'incident de coût. Compteur SERVEUR
+// (`quotasVocabulaire/{uid}_{jour}`), pour qu'un rechargement de page ne le
+// remette pas à zéro. Seules les études RÉUSSIES comptent : un échec de
+// Claude ne doit pas priver l'élève de son étude. Jour = calendrier belge.
+const ETUDES_PAR_JOUR = 3;
+
+function refQuota(uid: string) {
+  const jour = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Brussels' });
+  return adminDb.collection('quotasVocabulaire').doc(`${uid}_${jour}`);
+}
+
 export async function POST(request: NextRequest) {
   const auth = await verifyAuth(request);
   if (!auth) {
@@ -284,7 +310,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { words, mode, themes, spacedWords, personalWords, compositionText, requiredWords, compositionTheme, synAntChecks } = body as {
+    const { words, mode, themes: themesBruts, spacedWords, personalWords, compositionText, requiredWords, compositionTheme, synAntChecks } = body as {
       words: VocabulaireWord[];
       mode: 'apprentissage' | 'diagnostic' | 'evaluation' | 'evaluate_composition' | 'validate_syn_ant';
       themes?: string[];
@@ -296,6 +322,7 @@ export async function POST(request: NextRequest) {
       // Pour mode validate_syn_ant
       synAntChecks?: { original: string; type: 'synonym' | 'antonym'; userAnswer: string; context?: string }[];
     };
+    const themes = themesBruts?.map(themeSansGuillemets).filter(Boolean);
 
     // Mode validation synonymes/antonymes par Claude
     if (mode === 'validate_syn_ant') {
@@ -342,7 +369,7 @@ FORMAT JSON EXACT (un objet par cas, dans le même ordre) :
 RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
 
       const synAntResponse = await client.messages.create({
-        model: 'claude-sonnet-4-5-20250929',
+        model: MODELE_RAPIDE,
         max_tokens: 1000,
         messages: [{ role: 'user', content: synAntPrompt }],
       });
@@ -439,13 +466,30 @@ RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
         maxTokens = 6000;
         break;
       default:
-        prompt = buildApprentissagePrompt(words, themes || ['vocabulaire'], spacedWords || [], personalWords || []);
+        prompt = buildApprentissagePrompt(words, themes?.length ? themes : ['vocabulaire'], spacedWords || [], personalWords || []);
         maxTokens = 4500;
         break;
     }
 
+    const plafonne = auth.role === 'eleve' && mode !== 'diagnostic' && mode !== 'evaluation';
+    if (plafonne) {
+      const faites = (await refQuota(auth.uid).get()).data()?.etudes ?? 0;
+      if (faites >= ETUDES_PAR_JOUR) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Tu as déjà fait tes ${ETUDES_PAR_JOUR} études de vocabulaire aujourd’hui. Reviens demain pour une nouvelle étude ! En attendant, tu peux réviser tes mots avec les cartes.`,
+          },
+          { status: 429 }
+        );
+      }
+    }
+
+    // Modèle (décisions JP du 2026-10-15) : Haiku 5.5 pour l'étude, l'évaluation
+    // et le diagnostic — passé en manches de 10 mots, il multiplie les appels ;
+    // seule la notation de la composition reste sur Sonnet
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: MODELE_RAPIDE,
       max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -460,6 +504,15 @@ RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
 
     const cleaned = cleanJsonResponse(textBlock.text);
     const parsed = JSON.parse(cleaned);
+
+    // Titres posés ici plutôt que recopiés par Claude (cf. themeSansGuillemets)
+    const nomTheme = themes?.length ? themes.join(', ') : 'vocabulaire';
+    if (mode === 'diagnostic') parsed.title = `Diagnostic de vocabulaire - ${themes?.[0] || 'vocabulaire'}`;
+    else if (mode !== 'evaluation') parsed.title = `Apprentissage du vocabulaire : ${nomTheme}`;
+
+    if (plafonne) {
+      await refQuota(auth.uid).set({ uid: auth.uid, etudes: FieldValue.increment(1), updatedAt: new Date() }, { merge: true });
+    }
 
     return NextResponse.json({
       success: true,

@@ -78,23 +78,22 @@
   border-color: var(--c-primary-light);
 }
 
-/* Mode diagnostic */
-.tagKnown {
+/* Diagnostic initial : tous les mots cochés d'office (JP, 2026-10-15) */
+.tagAVerifier {
   border-color: var(--c-success);
-  background: var(--c-success);
-  color: white;
+  background: color-mix(in srgb, var(--c-success) 14%, var(--c-bg-card));
+  color: var(--c-text);
 }
 
-.tagUnknown {
-  border-color: var(--c-warning);
-  background: var(--c-warning);
-  color: white;
+.tagFige,
+.tagFige:hover {
+  cursor: default;
+  transform: none;
+  box-shadow: none;
 }
 
-.tagMisconceived {
-  border-color: var(--c-danger);
-  background: var(--c-danger);
-  color: white;
+.tagAVerifier .tagBadge {
+  color: var(--c-success);
 }
 
 .tagBadge {
@@ -102,12 +101,11 @@
   font-weight: 700;
 }
 
-/* Tooltip */
+/* Bulle de définition — rendue dans <body> en position fixe (cf. VocabulaireList.tsx),
+   pour ne plus être coupée par la zone de la liste qui défile */
 .tooltip {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
+  transform: translate(-50%, -100%);
   min-width: 220px;
   max-width: 300px;
   padding: 12px 14px;
@@ -117,11 +115,14 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   font-size: 13px;
   line-height: 1.5;
-  opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  transform: translateX(-50%) translateY(4px);
-  z-index: 100;
+  z-index: 10000;
+  animation: tooltipApparition 0.15s ease;
+}
+
+@keyframes tooltipApparition {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .tooltip::after {
@@ -134,10 +135,16 @@
   border-top-color: var(--c-text);
 }
 
-.tagWrapper:hover .tooltip {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
+/* Mot au ras du haut : la bulle s'ouvre sous le mot */
+.tooltipDessous {
+  transform: translate(-50%, 0);
+}
+
+.tooltipDessous::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: var(--c-text);
 }
 
 .tooltipWord {
@@ -202,6 +209,24 @@
   background: var(--c-bg-element);
   cursor: default;
   opacity: 0.8;
+}
+
+/* ── Quatre états, quatre couleurs (JP, 2026-10-15) ──
+   connu = vert · méconnu = orange · inconnu = rouge · non traité = blanc */
+
+/* Inconnu : décoché au diagnostic (« je ne connais pas »), jamais testé depuis */
+.tagUnknown {
+  border-color: #e74c3c;
+  background: #fdecea;
+  color: #922b21;
+}
+
+.dotConnu { background: #27ae60; }
+.dotMeconnu { background: #e67e22; }
+.dotInconnu { background: #e74c3c; }
+.dotNonTraite {
+  background: var(--c-bg-card);
+  box-shadow: inset 0 0 0 1px var(--c-border);
 }
 
 /* Mode learning — meconnus */

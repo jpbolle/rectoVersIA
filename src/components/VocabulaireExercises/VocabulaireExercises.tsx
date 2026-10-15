@@ -170,7 +170,7 @@ function DragAndDrop({
         <button
           className={styles.checkBtn}
           onClick={handleCheck}
-          disabled={Object.keys(answers).length === 0}
+          disabled={exercise.definitions.some((d) => !answers[d.id])}
         >
           {attempts === 0 ? 'Vérifier mes réponses' : `Réessayer (${3 - attempts} tentative${3 - attempts > 1 ? 's' : ''} restante${3 - attempts > 1 ? 's' : ''})`}
         </button>
@@ -257,7 +257,7 @@ function DiagnosticDefinitions({
         <button
           className={styles.checkBtn}
           onClick={handleCheck}
-          disabled={Object.keys(answers).length === 0}
+          disabled={exercise.definitions.some((d) => !answers[d.id])}
         >
           {attempts === 0 ? 'Vérifier mes réponses' : `Réessayer (${3 - attempts} tentative${3 - attempts > 1 ? 's' : ''} restante${3 - attempts > 1 ? 's' : ''})`}
         </button>
@@ -418,7 +418,7 @@ function DiagnosticPairs({
         <button
           className={styles.checkBtn}
           onClick={handleCheck}
-          disabled={pairs.length === 0}
+          disabled={pairs.length < expectedCount}
         >
           {attempts === 0
             ? `Vérifier mes ${type === 'synonyms' ? 'synonymes' : 'antonymes'}`
@@ -792,7 +792,7 @@ function FillInBlanks({
         <button
           className={styles.checkBtn}
           onClick={handleCheck}
-          disabled={answers.every((a) => !a.trim())}
+          disabled={answers.some((a) => !a.trim())}
         >
           {attempts === 0 ? 'Vérifier mes réponses' : `Réessayer (${3 - attempts} tentative${3 - attempts > 1 ? 's' : ''} restante${3 - attempts > 1 ? 's' : ''})`}
         </button>
@@ -883,6 +883,9 @@ interface VocabulaireExercisesProps {
   // par 3 boutons (Retour a la liste / Evaluation / Etat de mes connaissances)
   intermediateDiagnosticMode?: boolean;
   onShowKnowledgeTab?: () => void;
+  // Diagnostic en manches (plan du 2026-10-15) : bandeau « Manche n / N » et,
+  // quand la manche est faite, bouton vers la suivante (absent à la dernière)
+  manche?: { numero: number; total: number; onSuivante?: () => void };
 }
 
 export default function VocabulaireExercises({
@@ -903,6 +906,7 @@ export default function VocabulaireExercises({
   onEvaluation,
   intermediateDiagnosticMode = false,
   onShowKnowledgeTab,
+  manche,
 }: VocabulaireExercisesProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set());
@@ -931,7 +935,10 @@ export default function VocabulaireExercises({
     });
   }, [exercises, onExerciseResult, completedExercises]);
 
-  // Exercices qui necessitent une action (pas lecture seule)
+  // Exercices qui necessitent une action (pas lecture seule).
+  // Une série n'est « terminée » que si TOUS ses exercices sont faits ET vérifiés :
+  // chaque bouton « Vérifier » reste grisé tant qu'une case est vide (JP,
+  // 2026-10-15 — avant, une seule case remplie suffisait, et on enchaînait les séries)
   const gradableExercises = exercises.filter(
     (e) => e.type !== 'text_with_definitions' && e.type !== 'word_families'
   );
@@ -1070,6 +1077,16 @@ export default function VocabulaireExercises({
   return (
     <div className={styles.container}>
       <div className={styles.exercisesWrapper}>
+        {manche && (
+          <div className={styles.mancheBandeau}>
+            <strong>Manche {manche.numero} / {manche.total}</strong>
+            <span>
+              {manche.onSuivante
+                ? 'Termine tous les exercices pour passer à la manche suivante.'
+                : 'Dernière manche du diagnostic.'}
+            </span>
+          </div>
+        )}
         {/* Exercice visible avec bordure + nav au milieu du bas */}
         <div className={styles.exerciseFrame}>
           {exercises.map((exercise, index) => renderExercise(exercise, index))}
@@ -1107,7 +1124,22 @@ export default function VocabulaireExercises({
 
         {/* Actions apres completion de tous les exercices */}
         {/* Convention de couleurs : VERT (primary) = genere du contenu — AMBER (accent) = affiche du contenu. */}
-        {allCompleted && intermediateDiagnosticMode && onDiagnosticComplete ? (
+        {allCompleted && manche?.onSuivante ? (
+          /* Manche faite, d'autres attendent — vert : génère la suite */
+          <div className={styles.actionBar}>
+            <span className={styles.actionBarLine} />
+            <div className={styles.actionBarRow}>
+              <button
+                type="button"
+                className={`${styles.actionBarBtn} ${styles.actionBarBtnPrimary}`}
+                onClick={manche.onSuivante}
+              >
+                Manche suivante ({manche.numero + 1}/{manche.total})
+              </button>
+            </div>
+            <span className={styles.actionBarLine} />
+          </div>
+        ) : allCompleted && intermediateDiagnosticMode && onDiagnosticComplete ? (
           /* Fin de diagnostic intermediaire — action bar 100px */
           <div className={styles.actionBar}>
             <span className={styles.actionBarLine} />

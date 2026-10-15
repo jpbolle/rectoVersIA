@@ -750,6 +750,26 @@
   padding: 16px;
 }
 
+/* Diagnostic en manches : où en est l'élève */
+.mancheBandeau {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--c-primary);
+  background: var(--c-bg-card);
+  border-radius: var(--c-radius);
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}
+
+.mancheBandeau strong {
+  font-size: 14px;
+  color: var(--c-text);
+}
+
 /* Cadre avec bordure autour de l'exercice visible */
 .exerciseFrame {
   position: relative;

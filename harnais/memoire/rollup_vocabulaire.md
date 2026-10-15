@@ -1,5 +1,59 @@
 # Rollup — module Vocabulaire
 
+## Incident de coût du 2026-10-14 (diagnostiqué le 2026-10-15)
+
+Limite de dépense Claude atteinte (fixée par JP ; accès coupé jusqu'au 2026-11-01 sauf
+relèvement). Cause : le thème `la-fable-et-la-"ferme-des-animaux"-…` (guillemets droits)
+recopié par Claude dans le `title` de son JSON → **toutes** les générations des deux
+activités « Ferme des animaux » cassaient (`JSON.parse`, position 61), facturées en entier
+(Sonnet 4.5, ~0,07 $ pièce) : 232 échecs dans les logs PM2, ≈ 16 $ sur 17,64 $ d'octobre.
+Puis 617 refus « usage limits » (gratuits). Le compteur `learningSessions` montait à chaque
+clic, échec compris (146 pour un élève) — il ne mesure **pas** le travail réel.
+Corrigé le 2026-10-15 (**écrit, `tsc` OK, non testé à l'écran — l'API était coupée**) :
+thème nettoyé (`themeSansGuillemets`) + titres posés par le code dans
+`api/vocabulaire/generate` ; compteur incrémenté au succès seulement et verrou au premier
+clic dans `VocabulaireActivity`. **Plafond 3 études/jour/élève** (décision JP) : compteur serveur
+`quotasVocabulaire/{uid}_{jour belge}` (adminDb seul, pas de règle Firestore), seules les
+études réussies comptent, diagnostic et évaluation hors plafond, profs non plafonnés.
+Vérifié : une série se « termine » au 1er clic sur Vérifier, même avec une seule case
+remplie. Refusé par JP : réutiliser une série (la personnalisation est le cœur du projet).
+À venir : bascule Haiku des routes simples ; module admin « coûts par activité ».
+
+**Retours d'un prof testeur (mail, 2026-10-15)** — bulles de définition coupées par le
+bandeau : CORRIGÉ (bulle rendue dans `<body>` en position fixe, `VocabulaireList`, passe
+sous le mot au ras du haut ; écrit, `tsc` OK, non vu à l'écran). « Parcours qui ne se
+lance pas » = le bug des guillemets (activités « Ferme des animaux »), pas la charge.
+Constat : le diagnostic initial ne teste qu'une partie des mots cochés (définitions
+plafonnées aux 10 PREMIERS, 4 paires de synonymes, 3 d'antonymes, 5 trous, ~5 phrases) ;
+les cochés non testés restent « inconnus » — c'est le vrai symptôme du point 1 du prof.
+Demande JP (tous les mots cochés d'office) en attente d'arbitrage sur ce point.
+
+**Diagnostic en manches — ÉCRIT le 2026-10-15** (plan `plans/2026-10-15-diagnostic-vocabulaire-complet.md`,
+validé ; `tsc` OK ; **non vu à l'écran**) : tous les mots cochés d'office (`diagnosticDecoches`
+= les mots décochés, sélection dérivée ; couleur `tagAVerifier`, décoché = `tagUnknown`, la couleur des mots inconnus), lots
+équilibrés de 10 (`decouperEnManches`), une série par manche (`construireManche` : sans IA,
+les exercices locaux restent), IA de la manche suivante préchargée (`iaDuLot`, appel direct
+à `/api/vocabulaire/generate`), état `diagnosticManches {lots, affichee, faites}` dans
+`travail.content` pour la reprise, bandeau + bouton « Manche suivante » dans
+`VocabulaireExercises`. Diagnostic intermédiaire aussi en manches. Diagnostic passé sur
+**Haiku 5.5** (JP) — seule la notation de composition reste sur Sonnet 4.5.
+⚠ Remarqué, non traité : `getWordCategory` classe « méconnu » un mot réussi UNE seule fois
+(il faut 2 réussites sur les 3 derniers essais) — un mot vu dans un seul exercice du
+diagnostic, même juste, sort « méconnu ».
+
+**Diagnostic en manches TESTÉ par JP le 2026-10-15 (« les manches fonctionnent »).** Sélection
+figée dès le lancement (`selectionFigee`, relue dans `motsDeclaresInconnus`) — TESTÉ par JP.
+**Rien de la session du 2026-10-15 n'est commité ni déployé en fin de session** (JP : « pas de
+commit pour l'instant ») ; limite de dépense Claude à relever APRÈS déploiement.
+**Quatre états, quatre couleurs (JP, 2026-10-15)** : connu = vert, méconnu = orange,
+**inconnu = rouge** (mot décoché au diagnostic initial, jamais testé depuis — retenu dans
+`motsDeclaresInconnus` du `travail.content`), **non traité = blanc** (jamais testé, jamais
+déclaré). Appliqué partout : liste élève (`VocabulaireList`, sections « Inconnus » +
+« Non traités »), vue prof (`VocabulaireListReadOnly`), statistiques (`VocabulaireStats`,
+4 cartes). Les anciennes règles CSS « Mode diagnostic » (méconnu rouge, écrasé plus bas)
+ont été supprimées. Les travaux antérieurs n'ont pas `motsDeclaresInconnus` : leurs mots
+jamais testés s'affichent « non traités ».
+
 ## État actuel
 
 Module complet et livré (v3.8) : flip recto (mots) / verso (exercices), phases

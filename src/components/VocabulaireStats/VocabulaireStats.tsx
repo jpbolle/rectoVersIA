@@ -43,18 +43,28 @@ export default function VocabulaireStats({
   let knownCount = 0;
   let misconceivedCount = 0;
   let unknownCount = 0;
+  let nonTraiteCount = 0;
+
+  // Inconnu = décoché par l'élève au diagnostic ; non traité = jamais testé (JP, 2026-10-15)
+  const declares = new Set(state.motsDeclaresInconnus ?? []);
+  const etat = (word: string) => {
+    const cat = getWordCategory(masteryMap.get(word));
+    return cat === 'unknown' && !declares.has(word) ? 'nonTraite' : cat;
+  };
 
   for (const word of allWords) {
-    const cat = getWordCategory(masteryMap.get(word));
+    const cat = etat(word);
     if (cat === 'known') knownCount++;
     else if (cat === 'misconceived') misconceivedCount++;
-    else unknownCount++;
+    else if (cat === 'unknown') unknownCount++;
+    else nonTraiteCount++;
   }
 
   const total = allWords.length || 1;
   const knownPct = Math.round((knownCount / total) * 100);
   const misconceivedPct = Math.round((misconceivedCount / total) * 100);
   const unknownPct = Math.round((unknownCount / total) * 100);
+  const nonTraitePct = Math.round((nonTraiteCount / total) * 100);
 
   // Dernier diagnostic et derniere evaluation pour les titres collapsibles
   const diagScores = state.diagnosticScores || [];
@@ -92,6 +102,11 @@ export default function VocabulaireStats({
           <div className={styles.statValue}>{unknownPct}%</div>
           <div className={styles.statLabel}>Inconnus</div>
           <div className={styles.statCount}>{unknownCount}/{total}</div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statValue}>{nonTraitePct}%</div>
+          <div className={styles.statLabel}>Non traités</div>
+          <div className={styles.statCount}>{nonTraiteCount}/{total}</div>
         </div>
       </div>
 
@@ -214,7 +229,7 @@ export default function VocabulaireStats({
           <tbody>
             {allWords.map((word) => {
               const entry: WordMasteryEntry | undefined = masteryMap.get(word);
-              const category = getWordCategory(entry);
+              const category = etat(word);
               const attempts = entry?.attempts || [];
 
               return (
@@ -222,7 +237,7 @@ export default function VocabulaireStats({
                   <td className={styles.tdWord}>{word}</td>
                   <td className={styles.tdStatus}>
                     <span className={`${styles.badge} ${styles[`badge_${category}`]}`}>
-                      {category === 'known' ? 'Connu' : category === 'misconceived' ? 'Méconnu' : 'Inconnu'}
+                      {category === 'known' ? 'Connu' : category === 'misconceived' ? 'Méconnu' : category === 'unknown' ? 'Inconnu' : 'Non traité'}
                     </span>
                   </td>
                   <td className={styles.tdAttempts}>

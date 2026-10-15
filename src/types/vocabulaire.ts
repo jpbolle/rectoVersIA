@@ -266,6 +266,12 @@ export interface DiagnosticScore {
   wordsTested: string[];
 }
 
+export interface DiagnosticManches {
+  lots: string[][];   // mots de chaque manche (lots équilibrés, mélangés)
+  affichee: number;   // index de la manche affichée
+  faites: number;     // nombre de manches entièrement faites et vérifiées
+}
+
 export interface VocabulaireActivityState {
   // Phase courante
   phase: 'diagnostic' | 'learning' | 'evaluation';
@@ -274,6 +280,14 @@ export interface VocabulaireActivityState {
   diagnosticSelections: string[];          // mots cliques "je pense connaitre" (premier diagnostic)
   diagnosticCount: number;                 // nb de diagnostics passes
   diagnosticScores: DiagnosticScore[];     // score de chaque diagnostic passe
+  // Diagnostic en manches (plan du 2026-10-15) : TOUS les mots à vérifier sont
+  // testés, par lots de 10 au plus. Présent seulement pendant un diagnostic en
+  // cours — c'est ce qui permet de reprendre à la manche suivante.
+  diagnosticManches?: DiagnosticManches;
+  // Mots décochés au diagnostic initial (« je ne connais pas ») : affichés
+  // « inconnus » (rouge) tant qu'ils n'ont pas été testés ; un mot jamais
+  // testé et jamais déclaré est « non traité » (blanc). JP, 2026-10-15.
+  motsDeclaresInconnus?: string[];
 
   // Suivi de maitrise (unifie diagnostic + learning + evaluation)
   wordMastery: WordMasteryEntry[];

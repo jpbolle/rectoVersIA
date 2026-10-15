@@ -34,7 +34,7 @@
   color: var(--c-text);
 }
 
-.dotKnown, .dotMisconceived, .dotUnknown {
+.dotKnown, .dotMisconceived, .dotUnknown, .dotNonTraite {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -43,7 +43,11 @@
 
 .dotKnown { background: #27ae60; }
 .dotMisconceived { background: #e67e22; }
-.dotUnknown { background: var(--c-text-dim); }
+.dotUnknown { background: #e74c3c; }
+.dotNonTraite {
+  background: var(--c-bg-card);
+  box-shadow: inset 0 0 0 1px var(--c-border);
+}
 
 /* Barre de progression */
 .progressBar {
@@ -123,8 +127,15 @@
   border: 1px solid #e67e22;
 }
 
+/* Quatre états (JP, 2026-10-15) : connu vert · méconnu orange · inconnu rouge · non traité blanc */
 .tagUnknown {
-  background: var(--c-bg-element);
+  background: #fdecea;
+  color: #922b21;
+  border: 1px solid #e74c3c;
+}
+
+.tagNonTraite {
+  background: var(--c-bg-card);
   color: var(--c-text-dim);
   border: 1px solid var(--c-border);
 }
