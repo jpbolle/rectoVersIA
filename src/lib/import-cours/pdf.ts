@@ -12,6 +12,7 @@
 
 import { inflateSync } from 'zlib';
 import { MODELE_CLAUDE, MODELE_RAPIDE, appelerClaude } from '@/lib/claude';
+import type { SuiviIa } from '@/lib/claude';
 import { PDF_OCTETS_MAX, PDF_PAGES_MAX } from '@/types/lecture-cours';
 import type { UsageClaude } from '@/types/lecture-cours';
 
@@ -80,12 +81,18 @@ type ConsignesTranscription = Pick<Parameters<typeof appelerClaude>[0], 'system'
 /** Une transcription par un modèle ; `refus` = ce que le modèle a répondu à la place */
 async function transcrire(
   consignes: ConsignesTranscription,
-  modele: string
+  modele: string,
+  suivi: SuiviIa
 ): Promise<{ pages: number; texte: string; usage: UsageClaude } | { refus: string }> {
   try {
-    const { texte: brut, usage } = await appelerClaude({ ...consignes, modele });
+    const { texte: brut, usage } = await appelerClaude({ ...consignes, modele, suivi });
     const lu = lireTranscription(brut);
-    return ressembleARefus(lu.texte) ? { refus: lu.texte.trim() } : { ...lu, usage };
+    if (ressembleARefus(lu.texte)) {
+      // Refus rendu en texte : facturé, inutilisable
+      suivi.echec(new Error('Refus de transcrire (rendu en texte)'));
+      return { refus: lu.texte.trim() };
+    }
+    return { ...lu, usage };
   } catch (e) {
     if (e instanceof Error && e.message.startsWith('Le modèle a refusé')) return { refus: '' };
     throw e;
@@ -94,7 +101,8 @@ async function transcrire(
 
 export async function textePdf(
   buffer: Buffer,
-  nomFichier: string
+  nomFichier: string,
+  suivi: SuiviIa
 ): Promise<{ texte: string; pages: number; usage: UsageClaude }> {
   if (buffer.length > PDF_OCTETS_MAX) {
     throw new Error(`Fichier trop lourd (${Math.round(buffer.length / 1024 / 1024)} Mo) : 4 Mo maximum.`);
@@ -132,8 +140,8 @@ Première ligne de ta réponse : PAGES: <nombre de pages du document>. À partir
   // Recopie fidèle = de l'extraction : Haiku suffit (décision JP, 2026-10-12).
   // S'il REFUSE (extrait d'une œuvre protégée), Sonnet reprend une fois
   // (décision JP, 2026-10-14) ; deux refus = message clair, rien n'est créé.
-  let transcription = await transcrire(consignes, MODELE_RAPIDE);
-  if ('refus' in transcription) transcription = await transcrire(consignes, MODELE_CLAUDE);
+  let transcription = await transcrire(consignes, MODELE_RAPIDE, suivi);
+  if ('refus' in transcription) transcription = await transcrire(consignes, MODELE_CLAUDE, suivi);
   if ('refus' in transcription) {
     // Le refus est montré TEL QUEL à l'élève (JP, 2026-10-14) : on doit voir
     // que ce n'est pas un bug, et pourquoi Claude a refusé

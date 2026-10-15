@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/api-auth';
-import { appelerClaudeJson } from '@/lib/claude';
+import { appelerClaudeJson, suivreIa } from '@/lib/claude';
+import { messageErreurIa } from '@/lib/consommation-ia';
 
 // POST { phrase, mots, niveau? } → le verdict de Claude sur la phrase écrite
 // par l'élève avec son vocabulaire (exercice « Phrase avec le vocabulaire »
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
   const auth = await verifyAuth(request);
   if (!auth) return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 });
 
+  const suivi = suivreIa('fle.verifier-phrase', request, auth);
   try {
     const body = await request.json();
     const phrase = typeof body?.phrase === 'string' ? body.phrase.trim().slice(0, 600) : '';
@@ -37,6 +39,7 @@ Mots de vocabulaire qu'il devait employer (il peut les avoir transformés : plur
 
 JSON : {"sentenceValid": true, "sentenceFeedback": "<texte>", "correctedSentence": null, "wordsFeedback": [{"word": "<mot>", "correct": true, "explanation": "<texte>"}]}`,
       maxTokens: 1500,
+      suivi,
     });
 
     const verdict: Verdict = {
@@ -54,6 +57,6 @@ JSON : {"sentenceValid": true, "sentenceFeedback": "<texte>", "correctedSentence
     return NextResponse.json({ success: true, data: verdict });
   } catch (error) {
     console.error('Erreur POST /api/fle/verifier-phrase:', error);
-    return NextResponse.json({ success: false, message: 'Vérification impossible' }, { status: 502 });
+    return NextResponse.json({ success: false, message: messageErreurIa(error, 'Vérification impossible') }, { status: 502 });
   }
 }

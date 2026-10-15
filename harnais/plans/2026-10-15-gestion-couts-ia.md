@@ -4,7 +4,7 @@
 > Il n'est pas mis à jour : depuis, la décision a **peut-être été dépassée**.
 > Ce qui existe réellement se lit dans `init.md` et dans `harnais/memoire/`.
 
-- **Statut** : proposé
+- **Statut** : ÉCRIT le 2026-10-15 (soir), étapes 1 à 4 d'un coup — JP absent (« tu fais tout, je teste une fois que tout est fait ») ; arbitrages pris par l'agent, ci-dessous
 - **Demande initiale** (JP, 2026-10-15) : « l'admin doit voir, pour chaque activité qui
   nécessite des appels IA, combien cela coûte. Si montant excessif comme aujourd'hui, le
   script doit déclencher une recherche : serait-il possible d'être connecté à Claude
@@ -108,6 +108,17 @@ l'IA), réactivable en un clic par l'admin.
 - Étape 3 : les totaux « console » et « app » du jour sont affichés côte à côte et proches.
 - Étape 4 : un seuil volontairement bas déclenche le bandeau et un rapport du type
   « 12 × `JSON.parse` sur l'activité X depuis 10 h ».
+
+## Arbitrages pris par l'agent le 2026-10-15 (à confirmer par JP)
+
+| Point | Retenu | Pourquoi |
+|---|---|---|
+| Granularité | **A — une ligne par appel** (`consommationIa`), purge à 12 mois | c'est ce qui retrouve un incident en une ligne |
+| Seuils | 2 $/jour (app) · 1 $/jour/activité · 60 appels/élève/jour · alerte à 20 % d'échecs, **coupure à 50 %** (dès 10 appels facturés sur l'heure) | la coupure à 20 % aurait coupé des activités sur 2 échecs sur 10 ; l'incident du 14/10 était à 100 % |
+| Réaction | bandeau dans l'admin + **coupure de l'activité seule**, réactivable en un clic ; bouton « Couper l'IA » manuel. **Pas d'e-mail** | l'e-mail automatique exige l'accord explicite de JP (consigne durable) |
+| Enquête | **par règles** (échecs regroupés par message, nombres masqués) | gratuit, déterministe |
+| Clé Admin | code prêt, **facultatif** (`ANTHROPIC_ADMIN_KEY`) ; sans clé : « Non relié » | dépend du rôle de JP dans l'organisation |
+| Surveillance | **en direct** (mémoire du serveur, à chaque appel) + **à l'ouverture de la page admin** ; route `/api/admin/couts/surveillance` prête pour un *cron* horaire, **facultatif** | pas d'installation obligatoire sur le VPS |
 
 ## Points à trancher par l'utilisateur (un à la fois)
 

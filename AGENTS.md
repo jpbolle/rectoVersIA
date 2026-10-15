@@ -121,6 +121,9 @@ appel passe par le helper `src/lib/claude.ts`** (client unique, cache de prompt,
 `claude-sonnet-5-5` (décision JP, 2026-10-08) ; **`MODELE_RAPIDE` = `claude-haiku-5-5`** (20× moins cher)
 pour les tâches simples — transcription, résumé, repérage — selon les besoins de chaque exercice
 (décision JP, 2026-10-12 ; répartition de la lecture de cours : `MODELE_SECTION`).
+**Gestion des coûts (2026-10-15)** : tout appel Claude passe par un `SuiviIa` (`suivreIa(...)`, même
+helper) et une réponse inutilisable est signalée par `suivi.echec(e)` — sinon l'appel échappe au
+suivi des coûts, aux alertes et à la coupure automatique. Détail : `init.md` § 7.
 
 ### VPS — jamais de SSH direct
 Ne **jamais** tenter de SSH sur le VPS Hostinger : fournir les commandes à l'utilisateur,

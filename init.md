@@ -74,7 +74,10 @@ activée sur le projet Google `recto-versia` ; absente → import sans PDF conse
 `ENCRYPTION_KEY` (chiffrement des identités élèves — **même clé sur tous les postes et
 le VPS**, sinon déchiffrement impossible), `ALLOWED_AUDIENCES` (clients OAuth Google dont
 `/api/ingest` accepte les jetons — celui de l'extension Daspalecte, liste séparée par des
-virgules) — **ne jamais écrire les valeurs ici.**
+virgules), `ANTHROPIC_ADMIN_KEY` (2026-10-15, **facultative** : clé Admin `sk-ant-admin…` de l'organisation
+Anthropic, lue par la Gestion des coûts pour le rapprochement avec la console — absente → « Non relié »),
+`SURVEILLANCE_SECRET` (2026-10-15, facultative : secret de la tâche planifiée qui appelle
+`/api/admin/couts/surveillance`) — **ne jamais écrire les valeurs ici.**
 Sur le VPS : `.env.local`.
 
 ### Développement local
@@ -368,6 +371,13 @@ interface Questionnaire {
 
 ### Autres collections
 
+- **Gestion des coûts IA** (2026-10-15, serveur seulement) : **`consommationIa`** — une ligne par appel
+  Claude (`fonction`, `modele`, jetons, `coutUsd`, `statut` ok|erreur + `erreur`, `devoirId`, `uid`, `role`,
+  `jour` AAAA-MM-JJ Bruxelles) ; uid seulement, purgée après 12 mois. **`alertesIa/{clé fixe}`** (identifiant
+  déterministe : une alerte rejouée reste une seule alerte ; `vue`). **`iaSuspensions/{devoirId}`** : l'IA de
+  l'activité est COUPÉE (`raison`, `rapport`) — toute route IA de cette activité répond « suspendue ».
+  **`iaReactivations/{devoirId}`** : date de la dernière réactivation (les échecs d'avant ne comptent plus).
+
 - **`aiSchemaComparaisons/AISCHEMA-{travailId}`** (2026-10-11) : comparaison IA d'une copie de schéma avec le
   corrigé — lignes, décisions ✓/✗ du prof, `demandeParEleve` (l'aide IA de l'élève, une fois). Serveur seulement.
 - **`schemasPersonnels`** : `prof: true` = corrigé de la bibliothèque du prof (Mes Ressources › Conceptualisations),
@@ -582,7 +592,7 @@ interface Questionnaire {
 | `/classes` | prof | Mes Classes, **filtré par espace** (FLE : « Mes classes FLE ») ; carte FLE à liseré ambre |
 | `/ressources-fle` | prof | **Mes ressources FLE** (espace FLE) : points de théorie (`ModuleFlePanel`) · activités FLE sans classe (`ActiviteFlePanel`), `?section=` |
 | `/parcours-fle`, `/activites-fle` | prof | Redirections (espace FLE → `/dashboard`, ou `/ressources-fle?section=`) |
-| `/admin` | admin | Titre de page = nom de l'onglet actif (`ADMIN_TABS`, source unique dans `Header.tsx`). Header dédié (variant `admin`) en onglets : Vue d'ensemble (stats) / Gestion des membres (professeurs) / Gestion didactique — sélecteur de référentiel **Cours de français** (`DidactiquePanel`, UAA + habiletés) / **FLE** (`DidactiqueFlePanel`) — / Gestion des coûts (compteurs d'usage IA — pas de suivi tokens) |
+| `/admin` | admin | Titre de page = nom de l'onglet actif (`ADMIN_TABS`, source unique dans `Header.tsx`). Header dédié (variant `admin`) en onglets : Vue d'ensemble (stats) / Gestion des membres (professeurs) / Gestion didactique — sélecteur de référentiel **Cours de français** (`DidactiquePanel`, UAA + habiletés) / **FLE** (`DidactiqueFlePanel`) — / Gestion des coûts (`CoutsPanel`, 2026-10-15 : coût du jour / 7 jours / mois, par activité → par élève, par fonction, par modèle, erreurs qui reviennent, alertes et **coupures** de l'IA d'une activité, rapprochement console) |
 | `/roadmap` | tous | Nouveautés + à venir — **pilotée par Firestore**, éditable par l'admin (drag « À venir » → « Nouveautés » pour marquer fait) |
 | `/rgpd` | tous | Données personnelles : quelles données, protection (chiffrement), services IA, droits RGPD — statique, menu avatar |
 | `/accueil` | élève | **Page d'ouverture** (`/` y renvoie) : 3 blocs (travaux et lectures en retard · échéances à venir · derniers résultats) + **roue des ceintures** (`CeinturesRoue`) |
@@ -654,6 +664,8 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
 | `/api/ingest` | POST | **Extension Daspalecte** (chemin imposé par `analytics.js` : `${apiBase}/api/ingest`). Jeton **d'accès Google** (pas Firebase) vérifié par `tokeninfo` contre `ALLOWED_AUDIENCES` ; contrat `IngestBody` de daspa-app inchangé (`src/lib/daspalecte/schema.ts`) ; lot idempotent en une transaction. Prof → 200 ignoré ; aucune fiche `eleves` → 403 `unknown_account` (l'extension coupe alors son suivi) |
 | `/api/auth/role`, `/api/auth/init-user` | GET, POST | Résolution rôle, création doc user |
 | `/api/professeurs`, `/api/admin/stats`, `/api/admin/prof-stats/[profId]` | — | Admin (profId = email encodé) |
+| `/api/admin/couts` | GET `?mois=AAAA-MM` · POST `reactiver` / `couper` / `vue` / `toutesVues` | Admin — rapport des coûts IA (`src/lib/rapport-couts.ts`) ; ouvrir la page relance la surveillance depuis la base |
+| `/api/admin/couts/surveillance` | GET | Admin, ou en-tête `X-Surveillance: $SURVEILLANCE_SECRET` (tâche planifiée) — seuils + purge des traces > 12 mois |
 | `/api/roadmap` | GET, POST | Roadmap Firestore (POST admin) |
 | `/api/annonces`, `/api/annonces/[id]` | GET, POST, DELETE | GET **admin uniquement**. POST : admin (cibles profs/élèves/tous) **ou prof** (cible `eleve`, vérification `estMonEleve`). Lues par `/api/notifications`. Écriture serveur possible sans passer par la route : `src/lib/annonce-server.ts` |
 | `/api/oeuvres`, `/api/oeuvres/[id]`, `/api/oeuvres/[id]/sections[/[sectionId]]`, `/api/oeuvres/[id]/dupliquer` | CRUD | Bibliothèque d'œuvres. GET liste en **4 paniers** : les miennes / **partagées avec moi** / exemples / celles des autres profs |
@@ -981,6 +993,16 @@ Quatre variants : `prof`, `student`, `admin`, **`fle`** (**Mon profil FLE** · M
 ---
 
 ## 7. Gotchas opérationnels
+
+### Tout appel Claude passe par un `SuiviIa` — sinon il échappe à la gestion des coûts
+`suivreIa('domaine.fonction', request, auth, devoirId?)` (`src/lib/claude.ts`) : `suivi.creer(params)` à la
+place de `client.messages.create`, ou `appelerClaude({ …, suivi })`. Si la route juge ensuite la réponse
+inutilisable (JSON cassé, réponse vide, refus rendu en texte), **`suivi.echec(e)`** : l'appel a été facturé, il
+doit compter comme échec — c'est ce qui aurait révélé l'incident du 2026-10-14 (232 échecs facturés en 6 jours).
+L'activité vient de `devoirId` ou, à défaut, de l'en-tête `X-Activite` que `getAuthHeaders` ajoute quand une
+page déclare `useActiviteCourante(devoirId)` (`/activites/[id]`, `/dashboard/travaux/[devoirId]…`).
+**Symptôme d'un oubli** : la console Anthropic facture plus que la page « Gestion des coûts » (écart qui
+grandit), ou une fonction absente du tableau « Par fonction ».
 
 > Les gotchas **critiques** (boucles de hooks, redirections, ContentLock, échelle des
 > grilles) sont dans `AGENTS.md`. Ici : les pièges opérationnels.

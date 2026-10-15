@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { appelerClaudeJson } from '@/lib/claude';
+import { appelerClaudeJson, suivreIa } from '@/lib/claude';
 import { COLL_LECTURES, chargerLecture } from '@/lib/lecture-cours-server';
 import { consigneAvisResume, consigneCorrectionTexte, contexteCours, preambule } from '@/lib/prompts-lecture-cours';
 import type { AvisResume, CorrectionPhrases } from '@/types/lecture-cours';
@@ -37,6 +37,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const ctx = { langue: lecture.langue, niveau: lecture.niveau };
+    const suivi = suivreIa(cle === 'passerelle' ? 'lecture-cours.correction' : 'lecture-cours.avis-resume', request, auth);
     const ref = adminDb.collection(COLL_LECTURES).doc(id);
     const now = new Date().toISOString();
 
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         contexteCache: contexteCours(lecture.titre, lecture.texte),
         user: consigneCorrectionTexte(texte, ctx),
         maxTokens: 4000,
+        suivi,
       });
       const correction: CorrectionPhrases = {
         phrases: Array.isArray(data?.phrases)
@@ -72,6 +74,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       contexteCache: contexteCours(lecture.titre, lecture.texte),
       user: consigneAvisResume(texte, ctx),
       maxTokens: 5000,
+      suivi,
     });
     const avis: AvisResume = {
       avis: data?.avis === 'positif' || data?.avis === 'negatif' ? data.avis : 'mitige',

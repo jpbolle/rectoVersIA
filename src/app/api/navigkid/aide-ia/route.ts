@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase/admin';
+import { suivreIa } from '@/lib/claude';
+import type { SuiviIa } from '@/lib/claude';
+import { messageErreurIa } from '@/lib/consommation-ia';
 
 export async function POST(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -18,6 +21,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'questionnaireId requis.' }, { status: 400 });
   }
 
+  let suivi: SuiviIa | null = null;
   try {
     // Charger le questionnaire
     const qDoc = await adminDb.collection('questionnaires').doc(questionnaireId).get();
@@ -57,6 +61,10 @@ export async function POST(request: NextRequest) {
 
     const prompt = buildPrompt(questions, reponses, recherches);
 
+    // Gestion des coûts : appel par `fetch`, noté à la main
+    suivi = suivreIa('navigkid.aide', request, auth, questionnaire.devoirId || null);
+    await suivi.verifierAutorise();
+    const debut = Date.now();
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -74,15 +82,18 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errText = await response.text();
       console.error('Erreur Claude API:', errText);
+      suivi.noter('claude-sonnet-4-5-20250929', null, Date.now() - debut, `[${response.status}] ${errText.slice(0, 250)}`);
       return NextResponse.json({ error: 'Erreur API Claude.' }, { status: 502 });
     }
 
     const data = await response.json();
+    suivi.noter(data.model || 'claude-sonnet-4-5-20250929', data.usage, Date.now() - debut);
     const text = data.content?.[0]?.text || '';
 
     // Parser le JSON de la réponse
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      suivi.echec(new Error('Pas d’objet JSON dans la réponse'));
       return NextResponse.json({ feedback: text });
     }
 
@@ -90,7 +101,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, feedback });
   } catch (err) {
     console.error('Erreur aide-ia:', err);
-    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 });
+    suivi?.echec(err);
+    return NextResponse.json({ error: messageErreurIa(err, 'Erreur serveur.') }, { status: 500 });
   }
 }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MODELE_RAPIDE } from '@/lib/claude';
+import { MODELE_RAPIDE, suivreIa } from '@/lib/claude';
 import { verifyAuth } from '@/lib/api-auth';
 
 export async function POST(request: NextRequest) {
@@ -83,7 +83,10 @@ Réponds en JSON strict (pas de markdown, pas de commentaires) :
   }
 ]`;
 
+  // Gestion des coûts : appel par `fetch`, noté à la main
+  const suivi = suivreIa('navigkid.questions', request, auth);
   try {
+    const debut = Date.now();
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -101,14 +104,17 @@ Réponds en JSON strict (pas de markdown, pas de commentaires) :
     if (!response.ok) {
       const errText = await response.text();
       console.error('Erreur Claude API:', errText);
+      suivi.noter(MODELE_RAPIDE, null, Date.now() - debut, `[${response.status}] ${errText.slice(0, 250)}`);
       return NextResponse.json({ error: 'Erreur API Claude.' }, { status: 502 });
     }
 
     const data = await response.json();
+    suivi.noter(data.model || MODELE_RAPIDE, data.usage, Date.now() - debut);
     const text = data.content?.[0]?.text || '';
 
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
+      suivi.echec(new Error('Pas de tableau JSON dans la réponse'));
       return NextResponse.json({ error: 'Reponse IA non interpretable.' }, { status: 500 });
     }
 
@@ -116,6 +122,7 @@ Réponds en JSON strict (pas de markdown, pas de commentaires) :
     return NextResponse.json({ questions });
   } catch (err) {
     console.error('Erreur generation questions:', err);
+    suivi.echec(err);
     return NextResponse.json({ error: 'Erreur reseau.' }, { status: 500 });
   }
 }

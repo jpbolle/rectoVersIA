@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiviteCourante } from '@/lib/activite-courante';
 import { useAffichage } from '@/hooks/useAffichage';
 import { useStudentClasses } from '@/hooks/useStudentClasses';
 import { useTravail } from '@/hooks/useTravail';
@@ -129,6 +130,8 @@ export default function TravailPage() {
   const params = useParams();
   const router = useRouter();
   const devoirId = params.id as string;
+  // Gestion des coûts IA : les appels de cette page sont attribués à l'activité
+  useActiviteCourante(devoirId);
 
   const { isAuthenticated, role, isLoading: authLoading, getAuthHeaders } = useAuth();
   const { classes, isLoading: classesLoading } = useStudentClasses();

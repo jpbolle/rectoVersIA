@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MODELE_RAPIDE } from '@/lib/claude';
+import { MODELE_RAPIDE, suivreIa } from '@/lib/claude';
+import type { SuiviIa } from '@/lib/claude';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { encrypt } from '@/lib/crypto';
-import Anthropic from '@anthropic-ai/sdk';
 import type { DictionaryAction } from '@/types/dictionary';
 
 // ── Dictionnaire élève ──
@@ -159,10 +159,8 @@ async function fetchWiktionnaire(word: string): Promise<string | null> {
 
 // ── Proxémie via Claude ──
 
-async function fetchProxemie(word: string): Promise<string[]> {
-  const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
-
-  const message = await anthropic.messages.create({
+async function fetchProxemie(word: string, suivi: SuiviIa): Promise<string[]> {
+  const message = await suivi.creer({
     model: MODELE_RAPIDE,
     max_tokens: 500,
     system: `Tu es un dictionnaire de proxémie lexicale pour des élèves de 15 ans francophones (Belgique).
@@ -185,7 +183,8 @@ Si le mot n'existe pas en français, réponds { "mots": [] }.`,
   try {
     const parsed = JSON.parse(responseText);
     return Array.isArray(parsed.mots) ? parsed.mots.filter((m: unknown) => typeof m === 'string') : [];
-  } catch {
+  } catch (e) {
+    suivi.echec(e);
     return [];
   }
 }
@@ -232,7 +231,7 @@ export async function GET(request: NextRequest) {
 
     // 2. Proxémie → Claude
     if (action === 'proxemie') {
-      const mots = await fetchProxemie(word);
+      const mots = await fetchProxemie(word, suivreIa('dictionnaire.proxemie', request, auth));
       await cacheRef.set({ word, proxemie: mots, updatedAt: new Date() }, { merge: true });
       return NextResponse.json({ success: true, data: { word, action, items: mots } });
     }

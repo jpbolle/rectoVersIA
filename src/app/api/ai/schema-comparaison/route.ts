@@ -3,7 +3,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { accesTravail, peutAgir } from '@/lib/classe-acces';
-import { appelerClaudeJson, MODELE_CLAUDE } from '@/lib/claude';
+import { appelerClaudeJson, MODELE_CLAUDE, suivreIa } from '@/lib/claude';
 import { estDiagramPlausible } from '@/lib/schemas-personnels';
 import { schemaPourFirestore } from '@/lib/schema-devoir';
 import {
@@ -48,10 +48,10 @@ async function copieAutorisee(request: NextRequest, travailId: string, agir: boo
   if (auth.role === 'prof') {
     const acces = await accesTravail(travail, auth);
     if (!acces || (agir && !peutAgir(acces.acces))) return refus('Accès refusé', 403);
-    return { travail, eleve: false as const };
+    return { travail, auth, eleve: false as const };
   }
   if (travail.studentId !== auth.uid) return refus('Accès refusé', 403);
-  return { travail, eleve: true as const };
+  return { travail, auth, eleve: true as const };
 }
 
 export async function GET(request: NextRequest) {
@@ -161,6 +161,7 @@ export async function POST(request: NextRequest) {
         estArbre(eleve.type) ? 'Rappel : ici, un lien = un rattachement parent → idée.\n' : ''
       }Compare et réponds en JSON.`,
       maxTokens: 6000,
+      suivi: suivreIa('schema.comparaison', request, ok.auth, String(ok.travail.devoirId || '') || null),
     });
 
     const totaux = totauxCorrige(corrige.diagram);

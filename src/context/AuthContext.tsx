@@ -5,6 +5,7 @@ import { type User } from 'firebase/auth';
 import { signInWithGoogle, signOutUser, onTokenRefresh } from '@/lib/firebase/auth';
 import { getUserRole, isAdmin as checkIsAdmin } from '@/lib/auth-utils';
 import type { UserRole } from '@/types';
+import { activiteCourante } from '@/lib/activite-courante';
 
 interface AuthState {
   user: User | null;
@@ -14,7 +15,8 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
-type AuthHeaders = { 'Content-Type': string; Authorization: string };
+// `X-Activite` : l'activité ouverte, pour attribuer les appels IA (gestion des coûts)
+type AuthHeaders = { 'Content-Type': string; Authorization: string; 'X-Activite'?: string };
 
 interface AuthContextValue extends AuthState {
   signIn: () => Promise<{ success: boolean; error?: string }>;
@@ -169,9 +171,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!userRef.current) await authSettledRef.current?.promise;
     if (!userRef.current) return null;
     const token = await userRef.current.getIdToken();
+    const activite = activiteCourante();
     return {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
+      ...(activite ? { 'X-Activite': activite } : {}),
     };
   }, []);
 

@@ -10,6 +10,7 @@ import type { AdminHeaderTab } from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import DidactiquePanel from '@/components/DidactiquePanel/DidactiquePanel';
 import AffichagePanel from '@/components/AffichagePanel/AffichagePanel';
+import CoutsPanel from '@/components/CoutsPanel/CoutsPanel';
 import DidactiqueFlePanel from '@/components/DidactiquePanel/DidactiqueFlePanel';
 import AnnonceModal from '@/components/AnnonceModal/AnnonceModal';
 import ProfFiche from '@/components/ProfFiche/ProfFiche';
@@ -30,12 +31,6 @@ interface AdminStats {
   travauxSoumis: number;
   corrections: number;
   correctionsFinalisees: number;
-  // Compteurs d'usage IA (onglet « Gestion des coûts »)
-  ia?: {
-    gridEvaluations: number;
-    devoirsAvecIA: number;
-    dictionaryEntries: number;
-  };
 }
 
 export default function AdminPage() {
@@ -464,31 +459,8 @@ export default function AdminPage() {
         {/* Gestion de l'affichage : ce que voient les autres profs (plan 2026-10-11) */}
         {activeTab === 'affichage' && <AffichagePanel />}
 
-        {/* Gestion des coûts : usage de l'IA */}
-        {activeTab === 'couts' && (
-          <section className={styles.statsSection}>
-            <h2 className={styles.sectionTitle}>Usage de l&apos;IA</h2>
-            <div className={styles.statsGrid}>
-              <div className={styles.statCard}>
-                <span className={styles.statValue}>{stats?.ia?.gridEvaluations ?? '—'}</span>
-                <span className={styles.statLabel}>Évaluations IA de grilles</span>
-              </div>
-              <div className={styles.statCard}>
-                <span className={styles.statValue}>{stats?.ia?.devoirsAvecIA ?? '—'}</span>
-                <span className={styles.statLabel}>Devoirs avec IA activée</span>
-              </div>
-              <div className={styles.statCard}>
-                <span className={styles.statValue}>{stats?.ia?.dictionaryEntries ?? '—'}</span>
-                <span className={styles.statLabel}>Mots en cache dictionnaire</span>
-              </div>
-            </div>
-            <p className={styles.coutsNote}>
-              Ces compteurs mesurent l&apos;usage, pas la dépense : les appels à Claude et
-              Whisper ne sont pas encore comptabilisés en tokens ni en euros. Un suivi
-              détaillé des coûts par appel reste à mettre en place.
-            </p>
-          </section>
-        )}
+        {/* Gestion des coûts IA : coût par activité, alertes, coupures (plan 2026-10-15) */}
+        {activeTab === 'couts' && <CoutsPanel />}
 
         {/* Professeurs */}
         {activeTab === 'membres' && (

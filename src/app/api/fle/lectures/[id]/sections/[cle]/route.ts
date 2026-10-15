@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
-import { MODELE_CLAUDE, MODELE_RAPIDE, appelerClaudeJson } from '@/lib/claude';
+import { MODELE_CLAUDE, MODELE_RAPIDE, appelerClaudeJson, suivreIa } from '@/lib/claude';
 import { COLL_LECTURES, chargerLecture, estSectionCle } from '@/lib/lecture-cours-server';
 import { consigneSection, contenuValide, contexteCours, preambule } from '@/lib/prompts-lecture-cours';
 import { arbreVersDiagram } from '@/lib/lecture-cours-arbre';
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const ref = adminDb.collection(COLL_LECTURES).doc(id);
     await ref.update({ [`sections.${cle}.statut`]: 'en-cours', [`sections.${cle}.erreur`]: null, updatedAt: new Date() });
 
+    const suivi = suivreIa(`lecture-cours.${cle}`, request, auth);
     try {
       const { data, usage } = await appelerClaudeJson<unknown>({
         system: preambule(lecture.langue, lecture.niveau),
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         // trop près de 8 000 — dépassé le 2026-10-11 (« Réponse trop longue »)
         maxTokens: cle === 'grammaire' ? 16000 : cle === 'reformulation' || cle === 'vocabulaire' ? 12000 : 8000,
         modele: MODELE_SECTION[cle],
+        suivi,
       });
       if (!contenuValide(cle, data)) throw new Error('Réponse incomplète du modèle.');
       // Phrases à la loupe : l'arbre emboîté devient un schéma du moteur
@@ -94,6 +96,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Génération impossible.';
       console.error(`Erreur génération section ${cle} de ${id}:`, err);
+      suivi.echec(err);
       await ref.update({
         [`sections.${cle}.statut`]: 'erreur',
         [`sections.${cle}.erreur`]: message,

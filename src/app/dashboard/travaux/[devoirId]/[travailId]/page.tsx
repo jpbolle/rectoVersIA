@@ -11,6 +11,7 @@ import PortfolioBilan from '@/components/Portfolio/PortfolioBilan';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiviteCourante } from '@/lib/activite-courante';
 import { useAffichage } from '@/hooks/useAffichage';
 import { useGrille } from '@/hooks/useGrille';
 import { useCorrection, calculateScore } from '@/hooks/useCorrection';
@@ -65,6 +66,8 @@ export default function TravailDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { devoirId, travailId } = params as { devoirId: string; travailId: string };
+  // Gestion des coûts IA : les appels de cette page sont attribués à l'activité
+  useActiviteCourante(devoirId);
 
   const { isAuthenticated, role, user, isLoading: authLoading, getAuthHeaders } = useAuth();
   const { vue: vueAffichage } = useAffichage();

@@ -1,0 +1,375 @@
+/* GESTION DES COÛTS IA — sur le gabarit de la gestion de l'affichage : des
+   cartes à en-tête vert, des tableaux sobres. Le rouge est réservé à ce qui
+   demande d'agir (coupure, taux d'échec), toujours avec une icône et un mot. */
+
+.panneau {
+  max-width: 1080px;
+}
+
+.intro {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--c-text-secondary);
+}
+
+.texte {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--c-text);
+}
+
+.muet {
+  font-size: 12.5px;
+  color: var(--c-text-muted);
+}
+
+.erreur {
+  font-size: 13px;
+  color: var(--c-danger, #c0392b);
+}
+
+.vide {
+  font-size: 13px;
+  color: var(--c-text-muted);
+  padding: 18px;
+  margin: 0;
+  text-align: center;
+}
+
+/* ── Bandeaux : ce qui demande d'agir ── */
+
+.bandeau {
+  border: 1px solid var(--c-accent);
+  border-left-width: 5px;
+  border-radius: 12px;
+  background: #fdf6ec;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+}
+
+.bandeauCoupure {
+  border-color: var(--c-danger, #c0392b);
+  background: #fdf0ee;
+}
+
+.bandeau h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-family: var(--c-font-title);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.bandeauTete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bandeauLigne {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-top: 1px solid var(--c-border);
+  font-size: 13.5px;
+  color: var(--c-text);
+}
+
+.rapport {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  color: var(--c-text-secondary);
+}
+
+/* ── Boutons ── */
+
+.boutonVert,
+.boutonDiscret {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.boutonVert {
+  border: none;
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.boutonVert:hover:not(:disabled) {
+  background: var(--c-primary-dark, var(--c-primary));
+}
+
+.boutonDiscret {
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card, #fff);
+  color: var(--c-text-secondary);
+}
+
+.boutonDiscret:hover:not(:disabled) {
+  border-color: var(--c-accent);
+  color: var(--c-text);
+}
+
+.boutonVert:disabled,
+.boutonDiscret:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── Mois ── */
+
+.barreMois {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.titreMois {
+  margin: 0;
+  min-width: 170px;
+  text-align: center;
+  font-family: var(--c-font-title);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--c-text);
+  text-transform: capitalize;
+}
+
+/* ── Tuiles ── */
+
+.tuiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.tuile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-bg-card, #fff);
+}
+
+.tuileTitre {
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-text-secondary);
+}
+
+.tuileValeur {
+  font-family: var(--c-font-title);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--c-text);
+}
+
+.tuileDetail {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+
+/* ── Cartes ── */
+
+.carte {
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-bg-card, #fff);
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.carteTete {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 11px 16px;
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.carteTete h3 {
+  margin: 0;
+  font-family: var(--c-font-title);
+  font-size: 15.5px;
+  font-weight: 600;
+}
+
+.carteTete span {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.carteCorps {
+  padding: 14px 16px;
+}
+
+.deuxColonnes {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .deuxColonnes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── Tableaux ── */
+
+.defile {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  color: var(--c-text);
+}
+
+.table th {
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--c-border);
+  vertical-align: top;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.nombre {
+  text-align: right !important;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ligneCliquable {
+  cursor: pointer;
+}
+
+.ligneCliquable:hover td {
+  background: var(--c-bg-element, #faf6f0);
+}
+
+.titreActivite {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.sousTitre {
+  display: block;
+  margin-left: 20px;
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.pastilleCoupee {
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--c-danger, #c0392b);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.detail > td {
+  background: var(--c-bg-element, #faf6f0);
+  padding: 10px 16px 12px 32px;
+}
+
+.detail .table {
+  font-size: 13px;
+}
+
+.echecFort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  color: var(--c-danger, #c0392b);
+}
+
+/* Barre du coût par jour : une seule série, la valeur toujours écrite à côté */
+.colBarre {
+  width: 55%;
+}
+
+.colBarre .barreFond {
+  display: inline-block;
+  width: calc(100% - 90px);
+  height: 10px;
+  vertical-align: middle;
+}
+
+.barre {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--c-primary);
+}
+
+.barreValeur {
+  display: inline-block;
+  width: 84px;
+  margin-left: 6px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+.erreurs {
+  list-style: none;
+  margin: 0;
+  padding: 6px 16px 10px;
+}
+
+.erreurs li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 13.5px;
+  color: var(--c-text);
+}
+
+.erreurs li:last-child {
+  border-bottom: none;
+}

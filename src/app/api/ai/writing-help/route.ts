@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { accesTravail } from '@/lib/classe-acces';
-import Anthropic from '@anthropic-ai/sdk';
+import { suivreIa } from '@/lib/claude';
+import { messageErreurIa } from '@/lib/consommation-ia';
 import type { AiSuggestion, AiSuggestionType, AiSuggestionItem } from '@/types/ai-suggestions';
 
 // ── Prompts système par type ──
@@ -295,11 +296,10 @@ export async function POST(request: NextRequest) {
 
   const systemPrompt = SYSTEM_PROMPTS[type] + '\n' + jsonInstructions;
 
-  // Appeler Claude API
+  // Appeler Claude API (tracé : gestion des coûts)
+  const suivi = suivreIa(`aide-ecriture.${type}`, request, auth, devoirId);
   try {
-    const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
-
-    const message = await anthropic.messages.create({
+    const message = await suivi.creer({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 4000,
       system: systemPrompt,
@@ -337,8 +337,9 @@ export async function POST(request: NextRequest) {
 
   } catch (err) {
     console.error('Erreur appel Claude API:', err);
+    suivi.echec(err);
     return NextResponse.json(
-      { error: 'Erreur lors de l\'analyse IA. Veuillez réessayer.' },
+      { error: messageErreurIa(err, 'Erreur lors de l\'analyse IA. Veuillez réessayer.') },
       { status: 500 }
     );
   }

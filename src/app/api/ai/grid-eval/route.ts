@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { accesTravail, peutAgir } from '@/lib/classe-acces';
-import Anthropic from '@anthropic-ai/sdk';
+import { suivreIa } from '@/lib/claude';
+import { messageErreurIa } from '@/lib/consommation-ia';
 import { LEVEL_LABELS, LEVEL_PERCENTAGES } from '@/types/grille';
 import { planHasContent, planToMarkdown } from '@/lib/draft-utils';
 import type { Grille, GrilleCriterion } from '@/types/grille';
@@ -402,11 +403,10 @@ CONSIGNES :
 
 RAPPEL FORMAT : JSON brut uniquement. Commence par { et termine par }.`;
 
-  // Appeler Claude API
+  // Appeler Claude API (tracé : gestion des coûts)
+  const suivi = suivreIa('grille.evaluation', request, auth, devoirId);
   try {
-    const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
-
-    const message = await anthropic.messages.create({
+    const message = await suivi.creer({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 4000,
       system: SYSTEM_PROMPT,
@@ -445,11 +445,13 @@ RAPPEL FORMAT : JSON brut uniquement. Commence par { et termine par }.`;
         parsed = JSON.parse(match[0]);
       } else {
         console.error('Impossible de parser la réponse Claude:', cleaned.substring(0, 200));
+        suivi.echec(new Error('Réponse illisible (JSON)'));
         return NextResponse.json({ error: "Erreur de format dans la réponse IA" }, { status: 500 });
       }
     }
 
     if (!parsed.corrections) {
+      suivi.echec(new Error('Réponse sans corrections'));
       return NextResponse.json({ error: "Réponse IA invalide" }, { status: 500 });
     }
 
@@ -491,8 +493,9 @@ RAPPEL FORMAT : JSON brut uniquement. Commence par { et termine par }.`;
 
   } catch (err) {
     console.error('Erreur appel Claude API:', err);
+    suivi.echec(err);
     return NextResponse.json(
-      { error: "Erreur lors de l'évaluation IA. Veuillez réessayer." },
+      { error: messageErreurIa(err, "Erreur lors de l'évaluation IA. Veuillez réessayer.") },
       { status: 500 }
     );
   }

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/api-auth';
-import Anthropic from '@anthropic-ai/sdk';
-
-const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
+import { suivreIa } from '@/lib/claude';
 
 export async function POST(request: NextRequest) {
   const auth = await verifyAuth(request);
@@ -10,6 +8,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Non autorise' }, { status: 401 });
   }
 
+  const suivi = suivreIa('vocabulaire.defi-production', request, auth);
   try {
     const body = await request.json();
     const { text, requiredWords, constraint } = body as {
@@ -49,7 +48,7 @@ REGLES :
 - feedback : toujours bienveillant, encourager même si c'est incorrect
 - JSON valide uniquement`;
 
-    const response = await client.messages.create({
+    const response = await suivi.creer({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 500,
       messages: [{ role: 'user', content: prompt }],
@@ -57,6 +56,7 @@ REGLES :
 
     const textBlock = response.content.find((b) => b.type === 'text');
     if (!textBlock || textBlock.type !== 'text') {
+      suivi.echec(new Error('Pas de réponse textuelle'));
       return NextResponse.json(
         { success: false, message: 'Pas de reponse textuelle de Claude' },
         { status: 500 }
@@ -73,6 +73,7 @@ REGLES :
     return NextResponse.json({ success: true, data: parsed });
   } catch (error) {
     console.error('Erreur POST /api/vocabulaire/validate:', error);
+    suivi.echec(error);
     return NextResponse.json({
       success: true,
       data: {

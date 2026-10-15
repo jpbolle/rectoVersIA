@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MODELE_RAPIDE } from '@/lib/claude';
+import { MODELE_RAPIDE, suivreIa } from '@/lib/claude';
+import type { SuiviIa } from '@/lib/claude';
+import { messageErreurIa } from '@/lib/consommation-ia';
 import { verifyAuth } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import Anthropic from '@anthropic-ai/sdk';
 import type { VocabulaireWord } from '@/types/vocabulaire';
-
-const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
 // --- Prompt apprentissage (4 exercices — word_families construit cote client) ---
 function buildApprentissagePrompt(
@@ -308,6 +307,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Non autorise' }, { status: 401 });
   }
 
+  // Gestion des coûts : la fonction est précisée selon le mode, une fois lu
+  let suivi: SuiviIa | null = null;
   try {
     const body = await request.json();
     const { words, mode, themes: themesBruts, spacedWords, personalWords, compositionText, requiredWords, compositionTheme, synAntChecks } = body as {
@@ -323,6 +324,13 @@ export async function POST(request: NextRequest) {
       synAntChecks?: { original: string; type: 'synonym' | 'antonym'; userAnswer: string; context?: string }[];
     };
     const themes = themesBruts?.map(themeSansGuillemets).filter(Boolean);
+    const FONCTIONS: Record<string, string> = {
+      validate_syn_ant: 'vocabulaire.synonymes',
+      evaluate_composition: 'vocabulaire.composition',
+      diagnostic: 'vocabulaire.diagnostic',
+      evaluation: 'vocabulaire.evaluation',
+    };
+    suivi = suivreIa(FONCTIONS[mode] ?? 'vocabulaire.etude', request, auth);
 
     // Mode validation synonymes/antonymes par Claude
     if (mode === 'validate_syn_ant') {
@@ -368,7 +376,7 @@ FORMAT JSON EXACT (un objet par cas, dans le même ordre) :
 
 RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
 
-      const synAntResponse = await client.messages.create({
+      const synAntResponse = await suivi.creer({
         model: MODELE_RAPIDE,
         max_tokens: 1000,
         messages: [{ role: 'user', content: synAntPrompt }],
@@ -376,6 +384,7 @@ RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
 
       const synAntBlock = synAntResponse.content.find((b) => b.type === 'text');
       if (!synAntBlock || synAntBlock.type !== 'text') {
+        suivi.echec(new Error('Pas de réponse textuelle'));
         return NextResponse.json({ success: true, data: { results: [] } });
       }
 
@@ -428,7 +437,7 @@ FORMAT JSON EXACT :
 
 RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
 
-      const evalResponse = await client.messages.create({
+      const evalResponse = await suivi.creer({
         model: 'claude-sonnet-4-5-20250929',
         max_tokens: 1500,
         messages: [{ role: 'user', content: evalPrompt }],
@@ -436,6 +445,7 @@ RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
 
       const evalBlock = evalResponse.content.find((b) => b.type === 'text');
       if (!evalBlock || evalBlock.type !== 'text') {
+        suivi.echec(new Error('Pas de réponse textuelle'));
         return NextResponse.json(
           { success: false, message: 'Pas de reponse textuelle de Claude' },
           { status: 500 }
@@ -488,7 +498,7 @@ RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
     // Modèle (décisions JP du 2026-10-15) : Haiku 5.5 pour l'étude, l'évaluation
     // et le diagnostic — passé en manches de 10 mots, il multiplie les appels ;
     // seule la notation de la composition reste sur Sonnet
-    const response = await client.messages.create({
+    const response = await suivi.creer({
       model: MODELE_RAPIDE,
       max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
@@ -496,6 +506,7 @@ RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
 
     const textBlock = response.content.find((b) => b.type === 'text');
     if (!textBlock || textBlock.type !== 'text') {
+      suivi.echec(new Error('Pas de réponse textuelle'));
       return NextResponse.json(
         { success: false, message: 'Pas de reponse textuelle de Claude' },
         { status: 500 }
@@ -521,8 +532,9 @@ RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
     });
   } catch (error) {
     console.error('Erreur POST /api/vocabulaire/generate:', error);
+    suivi?.echec(error);
     return NextResponse.json(
-      { success: false, message: 'Erreur lors de la generation des exercices' },
+      { success: false, message: messageErreurIa(error, 'Erreur lors de la generation des exercices') },
       { status: 500 }
     );
   }

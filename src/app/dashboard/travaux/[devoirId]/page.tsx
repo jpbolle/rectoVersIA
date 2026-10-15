@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiviteCourante } from '@/lib/activite-courante';
 import UserAvatar from '@/components/UserAvatar';
 import type { Devoir } from '@/types/devoir';
 import type { Travail } from '@/types/travail';
@@ -28,6 +29,8 @@ export default function TravauxPage() {
   const params = useParams();
   const router = useRouter();
   const devoirId = params.devoirId as string;
+  // Gestion des coûts IA : les appels de cette page sont attribués à l'activité
+  useActiviteCourante(devoirId);
 
   const { isAuthenticated, role, user, isLoading: authLoading, getAuthHeaders } = useAuth();
   // `user` est un objet instable : on ne garde que son identifiant pour les

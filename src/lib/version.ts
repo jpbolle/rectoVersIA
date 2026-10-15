@@ -5,4 +5,4 @@
 //
 // ⚠ Géré À LA MAIN par l'utilisateur (convention du projet) : ne jamais
 // l'incrémenter automatiquement, ni ici, ni dans la documentation.
-export const APP_VERSION = '3.1.1';
+export const APP_VERSION = '3.1.2';

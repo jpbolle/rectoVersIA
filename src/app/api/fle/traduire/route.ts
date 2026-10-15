@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/api-auth';
-import { MODELE_RAPIDE, appelerClaude } from '@/lib/claude';
+import { MODELE_RAPIDE, appelerClaude, suivreIa } from '@/lib/claude';
+import type { SuiviIa } from '@/lib/claude';
 import { estLangueConnue, langueLabel } from '@/types/niveaux-fle';
 
 // POST { texte, langue } → { traduction }
@@ -32,7 +33,7 @@ async function google(texte: string, langue: string): Promise<string | null> {
   }
 }
 
-async function claude(texte: string, langue: string): Promise<string> {
+async function claude(texte: string, langue: string, suivi: SuiviIa): Promise<string> {
   const { texte: reponse } = await appelerClaude({
     system: langue
       ? 'Tu es un dictionnaire bilingue. Tu réponds par la traduction seule, sans explication ni ponctuation.'
@@ -43,6 +44,7 @@ async function claude(texte: string, langue: string): Promise<string> {
     maxTokens: 60,
     // Traduire un mot : Haiku suffit (décision JP du 2026-10-15, « là où c'est pertinent »)
     modele: MODELE_RAPIDE,
+    suivi,
   });
   return reponse.trim().replace(/^[«"']|[»"'.]$/g, '').trim();
 }
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
     const cle = `${langue || 'fr'}:${texte.toLowerCase()}`;
     let traduction = cache.get(cle);
     if (!traduction) {
-      traduction = (langue ? await google(texte, langue) : null) ?? (await claude(texte, langue));
+      traduction = (langue ? await google(texte, langue) : null) ?? (await claude(texte, langue, suivreIa('fle.traduction', request, auth)));
       if (cache.size > 5000) cache.clear();
       cache.set(cle, traduction);
     }

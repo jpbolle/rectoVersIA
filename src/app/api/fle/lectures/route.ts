@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { importerCours } from '@/lib/import-cours';
+import { suivreIa } from '@/lib/claude';
 import type { DemandeImport } from '@/lib/import-cours';
 import { deposerPdf, driveConfigure } from '@/lib/import-cours/drive';
 import {
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
 
       // L'extraction dit elle-même pourquoi elle refuse (pages, partage, longueur)
       try {
-        resultat = await importerCours(demande);
+        resultat = await importerCours(demande, suivreIa('lecture-cours.transcription-pdf', request, auth));
       } catch (err) {
         return NextResponse.json(
           { success: false, message: err instanceof Error ? err.message : 'Import impossible.' },

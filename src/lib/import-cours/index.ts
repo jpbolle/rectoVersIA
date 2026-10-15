@@ -4,6 +4,7 @@
 import { cibleGoogle, texteGoogle } from './google';
 import { textePageWeb } from './web';
 import { textePdf } from './pdf';
+import type { SuiviIa } from '@/lib/claude';
 import { TEXTE_MAX } from '@/types/lecture-cours';
 import type { SourceLecture, UsageClaude } from '@/types/lecture-cours';
 
@@ -34,7 +35,8 @@ function titreParDefaut(): string {
   return `Cours du ${new Date().toLocaleDateString('fr-BE', { day: 'numeric', month: 'long' })}`;
 }
 
-export async function importerCours(demande: DemandeImport): Promise<ResultatImport> {
+/** `suivi` : la trace des coûts, pour la transcription d'un PDF par Claude */
+export async function importerCours(demande: DemandeImport, suivi: SuiviIa): Promise<ResultatImport> {
   const titreDonne = demande.titre?.trim().slice(0, 120) || '';
 
   if (demande.mode === 'texte') {
@@ -46,7 +48,7 @@ export async function importerCours(demande: DemandeImport): Promise<ResultatImp
   }
 
   if (demande.mode === 'pdf') {
-    const { texte, pages, usage } = await textePdf(demande.buffer, demande.nomFichier);
+    const { texte, pages, usage } = await textePdf(demande.buffer, demande.nomFichier, suivi);
     return {
       titre: titreDonne || demande.nomFichier.replace(/\.pdf$/i, '').slice(0, 120) || titreParDefaut(),
       texte: borner(texte),
