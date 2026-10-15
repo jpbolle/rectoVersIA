@@ -469,7 +469,9 @@ RÈGLE : JSON valide uniquement, aucun texte supplémentaire.`;
     switch (mode) {
       case 'diagnostic':
         prompt = buildDiagnosticPrompt(words, themes?.[0] || 'vocabulaire');
-        maxTokens = 3000;
+        // 3 000 → 6 000 (JP, 2026-10-15) : un diagnostic facturé sans texte en
+        // retour, à ~3 000 jetons produits — le plafond avait été atteint
+        maxTokens = 6000;
         break;
       case 'evaluation':
         prompt = buildEvaluationPrompt(words, themes?.[0] || 'vocabulaire');

@@ -157,3 +157,5 @@ rechargement. Ne pas reproposer sans nouvelle demande.
 - 2026-05-05 — diagnostic intermédiaire fluidifié, action bars de fin de session
   harmonisées, convention de couleurs des boutons.
 - 2026-08-06 — migration de ce rollup depuis la mémoire auto Claude Code (retrofit harnais).
+
+- **2026-10-15 (soir)** — diagnostic : `maxTokens` 3 000 → **6 000** (`/api/vocabulaire/generate`). Repéré par la nouvelle page « Gestion des coûts » : 1 diagnostic facturé (0,0017 $, ≈ 3 000 jetons produits) sans texte en retour (« Pas de réponse textuelle »). Hypothèse non vérifiée : plafond atteint par Haiku 5.5. À surveiller dans « Erreurs qui reviennent ».
