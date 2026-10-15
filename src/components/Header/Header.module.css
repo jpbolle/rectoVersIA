@@ -49,9 +49,13 @@
 
 .navButtons {
   display: flex;
-  gap: 15px;
+  gap: calc(15px - 7px * var(--t));
   justify-content: center;
   margin-top: calc(25px * (1 - var(--t)));
+  /* Réduit : la ligne s'écarte du logo et des actions (largeurs mesurées par
+     Header.tsx), pour ne jamais passer dessous (JP, 2026-10-15) */
+  padding-left: calc(var(--reserve-g, 0px) * var(--t));
+  padding-right: calc(var(--reserve-d, 0px) * var(--t));
 }
 
 /* Moins d'animations : les deux états se succèdent en fondu court */
@@ -67,17 +71,19 @@
 }
 
 .navBtn {
-  padding: 12px 30px;
+  /* Les étiquettes se resserrent avec l'en-tête : 12/30 px → 7/14 px */
+  padding: calc(12px - 5px * var(--t)) calc(30px - 16px * var(--t));
   border: 2px solid rgba(255, 255, 255, 0.7);
   background: transparent;
   color: var(--c-text-on-primary);
   border-radius: var(--c-radius-sm);
-  font-size: 14px;
+  font-size: calc(14px - 2px * var(--t));
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  /* Pas de `all` : les tailles suivent le défilement sans retard */
+  transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: calc(2px - 1.5px * var(--t));
   font-family: var(--c-font-body);
 }
 
@@ -131,9 +137,9 @@
 
 .headerActions {
   position: absolute;
-  /* Déplié : en haut à droite. Réduit : sur la ligne des boutons (padding 10 px,
-     bouton de 42 px, action de 40 px → 11 px), toujours à droite. */
-  top: calc(20px - 9px * var(--t));
+  /* Déplié : en haut à droite. Réduit : centré sur la ligne des boutons
+     resserrés (padding 10 px, bouton ≈ 33 px, action de 40 px → 8 px). */
+  top: calc(20px - 12px * var(--t));
   right: 20px;
   display: flex;
   gap: 10px;
@@ -264,12 +270,12 @@
     font-size: 14px;
   }
   .navButtons {
-    gap: 10px;
+    gap: calc(10px - 4px * var(--t));
     margin-top: calc(15px * (1 - var(--t)));
   }
   .navBtn {
-    padding: 10px 20px;
-    font-size: 13px;
+    padding: calc(10px - 4px * var(--t)) calc(20px - 10px * var(--t));
+    font-size: calc(13px - 1.5px * var(--t));
   }
   .logoLink {
     top: 12px;
@@ -284,7 +290,7 @@
     height: 44px;
   }
   .headerActions {
-    top: calc(12px - 2px * var(--t));
+    top: calc(12px - 7px * var(--t));
     right: 12px;
     gap: 8px;
   }

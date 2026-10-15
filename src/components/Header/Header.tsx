@@ -52,7 +52,30 @@ export const ADMIN_TABS: { key: AdminHeaderTab; label: string }[] = [
 // image sur les 140 premiers pixels de défilement ; le CSS fait le reste.
 // Les pages réservent la hauteur de l'en-tête DÉPLIÉ par des marges en dur —
 // c'est l'état en haut de page, rien à changer chez elles.
+//
+// RÉDUIT, la ligne des boutons partage sa hauteur avec le logo (à gauche) et
+// les actions (à droite) : sur un écran étroit, ils se superposaient aux
+// étiquettes (JP, 2026-10-15). La place qu'ils prennent réellement est mesurée
+// (`--reserve-g`, `--reserve-d`) et la ligne s'en écarte à mesure que `--t`
+// monte ; les étiquettes, elles, se resserrent (CSS).
 const DEFILEMENT_MAX_PX = 140;
+// Échelle du logo une fois réduit (cf. `.logoLink` : scale(1 - 0.55 t))
+const ECHELLE_LOGO_REDUIT = 0.45;
+const ECART_PX = 12;
+
+function mesurerReserves(el: HTMLElement) {
+  const logo = el.querySelector<HTMLElement>(`.${styles.logoLink}`);
+  const contenu = el.querySelector<HTMLElement>(`.${styles.headerContent}`);
+  const actions = el.querySelector<HTMLElement>(`.${styles.headerActions}`);
+  if (!logo || !contenu || !actions) return;
+  // Coordonnées dans l'en-tête, transformations ignorées (offset*) : le logo
+  // réduit occupe le centre de sa boîte, à 45 % de sa largeur
+  const finLogo = logo.offsetLeft + (logo.offsetWidth * (1 + ECHELLE_LOGO_REDUIT)) / 2;
+  const gauche = Math.max(0, finLogo + ECART_PX - contenu.offsetLeft);
+  const droite = Math.max(0, contenu.offsetLeft + contenu.offsetWidth - (actions.offsetLeft - ECART_PX));
+  el.style.setProperty('--reserve-g', `${Math.round(gauche)}px`);
+  el.style.setProperty('--reserve-d', `${Math.round(droite)}px`);
+}
 
 function useEnteteRetractable(ref: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
@@ -76,9 +99,18 @@ function useEnteteRetractable(ref: React.RefObject<HTMLElement | null>) {
     };
     appliquer();
     window.addEventListener('scroll', onScroll, { passive: true });
+    // Les actions changent de largeur (double bouton qui apparaît après la
+    // connexion, badge) et l'écran de taille : on remesure à chaque fois
+    const remesurer = () => mesurerReserves(el);
+    remesurer();
+    const observateur = new ResizeObserver(remesurer);
+    observateur.observe(el);
+    const actions = el.querySelector(`.${styles.headerActions}`);
+    if (actions) observateur.observe(actions);
     return () => {
       window.removeEventListener('scroll', onScroll);
       if (demande) window.cancelAnimationFrame(demande);
+      observateur.disconnect();
     };
   }, [ref]);
 }

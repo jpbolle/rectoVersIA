@@ -158,6 +158,19 @@ export default function CoutsPanel() {
   const alertesNonLues = r.alertes.filter((a) => !a.vue);
   const maxJour = Math.max(...r.parJour.map((j) => j.cout), 0.0001);
   const moisCourant = r.mois === r.aujourdhui.slice(0, 7);
+  // Console et application comparées sur la MÊME période : à partir du jour
+  // où le suivi a commencé, s'il tombe dans le mois affiché
+  const debutSuivi = r.depuis ? new Date(r.depuis).toLocaleDateString('sv-SE', { timeZone: 'Europe/Brussels' }) : null;
+  const comparaison = r.console.parJour
+    ? debutSuivi && debutSuivi.startsWith(r.mois)
+      ? {
+          libelle: `Depuis le début du suivi (${new Date(r.depuis!).toLocaleDateString('fr-BE')})`,
+          console: r.console.parJour.filter((j) => j.jour >= debutSuivi).reduce((t, j) => t + j.cout, 0),
+        }
+      : debutSuivi && debutSuivi < r.mois
+        ? { libelle: 'Sur le mois', console: r.console.total ?? 0 }
+        : null
+    : null;
 
   return (
     <div className={styles.panneau}>
@@ -292,14 +305,20 @@ export default function CoutsPanel() {
           ) : (
             <>
               <p className={styles.texte}>
-                Console : <strong>{dollars(r.console.total ?? 0)}</strong> · Application :{' '}
-                <strong>{dollars(r.totaux.mois.cout)}</strong> · Écart :{' '}
-                <strong>{dollars((r.console.total ?? 0) - r.totaux.mois.cout)}</strong>
+                Dépensé en {nomMois(r.mois)}, toute l’organisation : <strong>{dollars(r.console.total ?? 0)}</strong>
               </p>
+              {comparaison && (
+                <p className={styles.texte}>
+                  {comparaison.libelle} : console <strong>{dollars(comparaison.console)}</strong> · application{' '}
+                  <strong>{dollars(r.totaux.mois.cout)}</strong> · écart{' '}
+                  <strong>{dollars(comparaison.console - r.totaux.mois.cout)}</strong>
+                </p>
+              )}
               <p className={styles.muet}>
-                La console couvre toute l’organisation (d’autres applications sur le même compte s’y ajoutent)
-                et compte en jours UTC. Un écart qui grandit sans autre application = un appel qui échappe au
-                suivi.
+                C’est ce qui a été <strong>dépensé</strong>, pas ce qu’il reste. La console couvre toute
+                l’organisation (d’autres applications sur le même compte s’y ajoutent) et compte par jours
+                entiers (UTC) : le jour où le suivi a commencé, elle compte aussi les appels d’avant. Un écart
+                qui grandit, jour après jour, sans autre application = un appel qui échappe au suivi.
               </p>
             </>
           )}
